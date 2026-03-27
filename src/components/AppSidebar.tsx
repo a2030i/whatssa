@@ -1,4 +1,5 @@
-import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, LogOut } from "lucide-react";
+import { useState } from "react";
+import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -13,9 +14,10 @@ const navItems = [
 
 const AppSidebar = () => {
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  return (
-    <aside className="fixed right-0 top-0 h-screen w-[220px] gradient-sidebar flex flex-col z-50">
+  const sidebarContent = (
+    <>
       {/* Logo */}
       <div className="p-5 border-b border-sidebar-border">
         <div className="flex items-center gap-2.5">
@@ -34,6 +36,7 @@ const AppSidebar = () => {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={() => setMobileOpen(false)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                 isActive
@@ -60,7 +63,42 @@ const AppSidebar = () => {
           </div>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile trigger */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="md:hidden fixed top-3 right-3 z-50 w-10 h-10 rounded-lg bg-card shadow-card flex items-center justify-center"
+      >
+        <Menu className="w-5 h-5 text-foreground" />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 bg-foreground/40 z-50" onClick={() => setMobileOpen(false)}>
+          <aside
+            className="absolute right-0 top-0 h-full w-[240px] gradient-sidebar flex flex-col animate-slide-in-right"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="absolute left-3 top-5 text-sidebar-foreground hover:text-sidebar-accent-foreground"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex fixed right-0 top-0 h-screen w-[220px] gradient-sidebar flex-col z-40">
+        {sidebarContent}
+      </aside>
+    </>
   );
 };
 
