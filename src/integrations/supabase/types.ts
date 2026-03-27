@@ -14,7 +14,146 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      conversations: {
+        Row: {
+          assigned_team: string | null
+          assigned_to: string | null
+          created_at: string | null
+          customer_name: string | null
+          customer_phone: string
+          customer_profile_pic: string | null
+          id: string
+          last_message: string | null
+          last_message_at: string | null
+          notes: string | null
+          status: string | null
+          tags: string[] | null
+          unread_count: number | null
+          updated_at: string | null
+          wa_conversation_id: string | null
+        }
+        Insert: {
+          assigned_team?: string | null
+          assigned_to?: string | null
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone: string
+          customer_profile_pic?: string | null
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          notes?: string | null
+          status?: string | null
+          tags?: string[] | null
+          unread_count?: number | null
+          updated_at?: string | null
+          wa_conversation_id?: string | null
+        }
+        Update: {
+          assigned_team?: string | null
+          assigned_to?: string | null
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone?: string
+          customer_profile_pic?: string | null
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          notes?: string | null
+          status?: string | null
+          tags?: string[] | null
+          unread_count?: number | null
+          updated_at?: string | null
+          wa_conversation_id?: string | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          media_url: string | null
+          message_type: string | null
+          metadata: Json | null
+          sender: string
+          status: string | null
+          wa_message_id: string | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          media_url?: string | null
+          message_type?: string | null
+          metadata?: Json | null
+          sender: string
+          status?: string | null
+          wa_message_id?: string | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          media_url?: string | null
+          message_type?: string | null
+          metadata?: Json | null
+          sender?: string
+          status?: string | null
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_config: {
+        Row: {
+          access_token: string
+          business_account_id: string
+          business_name: string | null
+          created_at: string | null
+          display_phone: string | null
+          id: string
+          is_connected: boolean | null
+          phone_number_id: string
+          updated_at: string | null
+          webhook_verify_token: string
+        }
+        Insert: {
+          access_token: string
+          business_account_id: string
+          business_name?: string | null
+          created_at?: string | null
+          display_phone?: string | null
+          id?: string
+          is_connected?: boolean | null
+          phone_number_id: string
+          updated_at?: string | null
+          webhook_verify_token?: string
+        }
+        Update: {
+          access_token?: string
+          business_account_id?: string
+          business_name?: string | null
+          created_at?: string | null
+          display_phone?: string | null
+          id?: string
+          is_connected?: boolean | null
+          phone_number_id?: string
+          updated_at?: string | null
+          webhook_verify_token?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
