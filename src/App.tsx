@@ -18,6 +18,8 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import CustomersPage from "./pages/CustomersPage";
 import PlanUpgradePage from "./pages/PlanUpgradePage";
 import IntegrationsPage from "./pages/IntegrationsPage";
+import OrdersPage from "./pages/OrdersPage";
+import AbandonedCartsPage from "./pages/AbandonedCartsPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -70,6 +72,8 @@ const AppRoutes = () => {
       <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/templates" element={<ProtectedRoute><AppLayout><TemplatesPage /></AppLayout></ProtectedRoute>} />
       <Route path="/wallet" element={<ProtectedRoute><AppLayout><WalletPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/orders" element={<ProtectedRoute><AppLayout><OrdersPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/abandoned-carts" element={<ProtectedRoute><AppLayout><AbandonedCartsPage /></AppLayout></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

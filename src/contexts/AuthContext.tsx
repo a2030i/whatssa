@@ -10,6 +10,7 @@ interface AuthContextType {
   orgId: string | null;
   isLoading: boolean;
   isSuperAdmin: boolean;
+  isEcommerce: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   orgId: null,
   isLoading: true,
   isSuperAdmin: false,
+  isEcommerce: false,
   signOut: async () => {},
 });
 
@@ -32,6 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [isEcommerce, setIsEcommerce] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
@@ -42,6 +45,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (profileRes.data) {
       setProfile(profileRes.data);
       setOrgId(profileRes.data.org_id);
+      // Fetch org ecommerce status
+      if (profileRes.data.org_id) {
+        const { data: orgData } = await supabase.from("organizations").select("is_ecommerce").eq("id", profileRes.data.org_id).maybeSingle();
+        setIsEcommerce(orgData?.is_ecommerce || false);
+      }
     }
     if (roleRes.data && roleRes.data.length > 0) {
       const roles = roleRes.data.map((r: any) => r.role);
@@ -62,6 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setProfile(null);
           setUserRole(null);
           setOrgId(null);
+          setIsEcommerce(false);
         }
         setIsLoading(false);
       }
@@ -86,6 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setProfile(null);
     setUserRole(null);
     setOrgId(null);
+    setIsEcommerce(false);
   };
 
   return (
@@ -98,6 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         orgId,
         isLoading,
         isSuperAdmin: userRole === "super_admin",
+        isEcommerce,
         signOut,
       }}
     >
