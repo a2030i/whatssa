@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download } from "lucide-react";
+import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,10 +29,12 @@ interface Recipient {
 }
 
 const CampaignsPage = () => {
-  const { orgId } = useAuth();
+  const { orgId, isEcommerce } = useAuth();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [tagDefs, setTagDefs] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [detailCampaign, setDetailCampaign] = useState<any>(null);
   const [recipients, setRecipients] = useState<any[]>([]);
@@ -48,6 +50,13 @@ const CampaignsPage = () => {
     excludeTags: [] as string[],
     excludeCampaignIds: [] as string[],
     variableColumns: [] as string[],
+    // E-commerce filters
+    filterProduct: "",
+    filterCity: "",
+    filterDateFrom: "",
+    filterDateTo: "",
+    filterMinAmount: "",
+    filterMaxAmount: "",
   });
   const [uploadedRecipients, setUploadedRecipients] = useState<Recipient[]>([]);
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
@@ -59,13 +68,21 @@ const CampaignsPage = () => {
 
   const load = async () => {
     const [c, cust, tags] = await Promise.all([
-      supabase.from("campaigns").select("*").eq("org_id", orgId).order("created_at", { ascending: false }),
-      supabase.from("customers").select("*").eq("org_id", orgId),
-      supabase.from("customer_tag_definitions").select("*").eq("org_id", orgId),
+      supabase.from("campaigns").select("*").eq("org_id", orgId!).order("created_at", { ascending: false }),
+      supabase.from("customers").select("*").eq("org_id", orgId!),
+      supabase.from("customer_tag_definitions").select("*").eq("org_id", orgId!),
     ]);
     setCampaigns(c.data || []);
     setCustomers(cust.data || []);
     setTagDefs(tags.data || []);
+    if (isEcommerce && orgId) {
+      const [o, p] = await Promise.all([
+        supabase.from("orders").select("*").eq("org_id", orgId),
+        supabase.from("products").select("id, name, name_ar").eq("org_id", orgId),
+      ]);
+      setOrders(o.data || []);
+      setProducts(p.data || []);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,9 +117,38 @@ const CampaignsPage = () => {
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  const getEcommerceFilteredCustomers = () => {
+    // Get customer phones from orders matching e-commerce filters
+    let filteredOrders = [...orders];
+    if (form.filterProduct) {
+      // We need order_items but we don't have them loaded — filter by customer or skip
+      // For now filter orders that have the product name in notes/tags (simplified)
+      filteredOrders = filteredOrders.filter(o => o.customer_name?.includes(form.filterProduct) || o.notes?.includes(form.filterProduct));
+    }
+    if (form.filterCity) {
+      filteredOrders = filteredOrders.filter(o => o.customer_city === form.filterCity);
+    }
+    if (form.filterDateFrom) {
+      filteredOrders = filteredOrders.filter(o => o.created_at >= form.filterDateFrom);
+    }
+    if (form.filterDateTo) {
+      filteredOrders = filteredOrders.filter(o => o.created_at <= form.filterDateTo + "T23:59:59");
+    }
+    if (form.filterMinAmount) {
+      filteredOrders = filteredOrders.filter(o => (o.total || 0) >= parseFloat(form.filterMinAmount));
+    }
+    if (form.filterMaxAmount) {
+      filteredOrders = filteredOrders.filter(o => (o.total || 0) <= parseFloat(form.filterMaxAmount));
+    }
+    // Unique customer phones
+    const phones = [...new Set(filteredOrders.map(o => o.customer_phone).filter(Boolean))];
+    return customers.filter(c => phones.includes(c.phone));
+  };
+
   const getAudienceCount = () => {
     if (form.audienceType === "upload") return uploadedRecipients.length;
     if (form.audienceType === "select") return selectedCustomerIds.length;
+    if (form.audienceType === "orders") return getEcommerceFilteredCustomers().length;
     let filtered = customers;
     if (form.audienceType === "tags" && form.audienceTags.length > 0) {
       filtered = customers.filter((c) => (c.tags || []).some((t: string) => form.audienceTags.includes(t)));
@@ -117,6 +163,9 @@ const CampaignsPage = () => {
     if (form.audienceType === "upload") return uploadedRecipients;
     if (form.audienceType === "select") {
       return customers.filter((c) => selectedCustomerIds.includes(c.id)).map((c) => ({ phone: c.phone, name: c.name }));
+    }
+    if (form.audienceType === "orders") {
+      return getEcommerceFilteredCustomers().map((c) => ({ phone: c.phone, name: c.name }));
     }
     let filtered = customers;
     if (form.audienceType === "tags" && form.audienceTags.length > 0) {
@@ -170,7 +219,7 @@ const CampaignsPage = () => {
 
   const resetForm = () => {
     setShowCreate(false);
-    setForm({ name: "", templateName: "", templateLang: "ar", scheduledAt: "", notes: "", audienceType: "all", audienceTags: [], excludeTags: [], excludeCampaignIds: [], variableColumns: [] });
+    setForm({ name: "", templateName: "", templateLang: "ar", scheduledAt: "", notes: "", audienceType: "all", audienceTags: [], excludeTags: [], excludeCampaignIds: [], variableColumns: [], filterProduct: "", filterCity: "", filterDateFrom: "", filterDateTo: "", filterMinAmount: "", filterMaxAmount: "" });
     setUploadedRecipients([]);
     setSelectedCustomerIds([]);
     setTemplateVars([]);
@@ -400,6 +449,7 @@ const CampaignsPage = () => {
                   { value: "tags", label: "حسب التصنيف", icon: Target },
                   { value: "select", label: "اختيار يدوي", icon: Check },
                   { value: "upload", label: "رفع إكسل", icon: Upload },
+                  ...(isEcommerce ? [{ value: "orders", label: "حسب الطلبات", icon: ShoppingCart }] : []),
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -468,6 +518,56 @@ const CampaignsPage = () => {
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* E-commerce Orders Filter */}
+              {form.audienceType === "orders" && isEcommerce && (
+                <div className="space-y-3 bg-secondary/30 rounded-xl p-4">
+                  <p className="text-xs font-semibold flex items-center gap-1.5"><ShoppingCart className="w-3.5 h-3.5 text-primary" /> فلاتر الطلبات المتقدمة</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">المنتج</Label>
+                      <Select value={form.filterProduct} onValueChange={(v) => setForm({ ...form, filterProduct: v === "_all" ? "" : v })}>
+                        <SelectTrigger className="text-xs bg-background border-0 h-8"><SelectValue placeholder="كل المنتجات" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_all">كل المنتجات</SelectItem>
+                          {products.map(p => <SelectItem key={p.id} value={p.name}>{p.name_ar || p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">المدينة</Label>
+                      <Select value={form.filterCity} onValueChange={(v) => setForm({ ...form, filterCity: v === "_all" ? "" : v })}>
+                        <SelectTrigger className="text-xs bg-background border-0 h-8"><SelectValue placeholder="كل المدن" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_all">كل المدن</SelectItem>
+                          {[...new Set(orders.map(o => o.customer_city).filter(Boolean))].map(city => (
+                            <SelectItem key={city} value={city}>{city}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">من تاريخ</Label>
+                      <Input type="date" value={form.filterDateFrom} onChange={(e) => setForm({ ...form, filterDateFrom: e.target.value })} className="text-xs bg-background border-0 h-8" dir="ltr" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">إلى تاريخ</Label>
+                      <Input type="date" value={form.filterDateTo} onChange={(e) => setForm({ ...form, filterDateTo: e.target.value })} className="text-xs bg-background border-0 h-8" dir="ltr" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">الحد الأدنى للمبلغ</Label>
+                      <Input type="number" value={form.filterMinAmount} onChange={(e) => setForm({ ...form, filterMinAmount: e.target.value })} placeholder="0" className="text-xs bg-background border-0 h-8" dir="ltr" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">الحد الأقصى للمبلغ</Label>
+                      <Input type="number" value={form.filterMaxAmount} onChange={(e) => setForm({ ...form, filterMaxAmount: e.target.value })} placeholder="∞" className="text-xs bg-background border-0 h-8" dir="ltr" />
+                    </div>
+                  </div>
+                  <div className="bg-primary/5 rounded-lg p-2.5 text-xs text-primary font-medium">
+                    عملاء مطابقون: {getEcommerceFilteredCustomers().length}
+                  </div>
                 </div>
               )}
             </div>
