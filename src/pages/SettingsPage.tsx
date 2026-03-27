@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Building2, Bell, Globe, CreditCard, Shield, ChevronLeft, CheckCircle2, Copy, ExternalLink, Loader2, AlertCircle, Phone, RefreshCw, MessageSquare } from "lucide-react";
+import { Building2, Bell, Globe, CreditCard, Shield, ChevronLeft, CheckCircle2, Copy, ExternalLink, Loader2, AlertCircle, Phone, RefreshCw, MessageSquare, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
