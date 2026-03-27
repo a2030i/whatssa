@@ -37,6 +37,10 @@ const SettingsPage = () => {
   const [accessToken, setAccessToken] = useState("");
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [sdkLoaded, setSdkLoaded] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [manualToken, setManualToken] = useState("");
+  const [manualPhoneId, setManualPhoneId] = useState("");
+  const [manualWabaId, setManualWabaId] = useState("");
 
   useEffect(() => { loadConfig(); loadFacebookSDK(); }, []);
 
