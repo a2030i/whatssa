@@ -86,8 +86,19 @@ const SettingsPage = () => {
     FB.login(
       (response: any) => {
         if (response.authResponse) {
+          // Try code first (for fresh signup), fallback to accessToken (for returning users)
           const code = response.authResponse.code;
-          exchangeToken(code);
+          const accessToken = response.authResponse.accessToken;
+          
+          if (code) {
+            exchangeToken(code);
+          } else if (accessToken) {
+            // User already connected before, use token directly
+            handleDirectToken(accessToken);
+          } else {
+            setIsLoading(false);
+            toast.error("لم يتم الحصول على بيانات المصادقة");
+          }
         } else {
           setIsLoading(false);
           toast.error("تم إلغاء عملية الربط");
@@ -101,6 +112,45 @@ const SettingsPage = () => {
       }
     );
   }, []);
+
+  const handleDirectToken = async (token: string) => {
+    try {
+      setAccessToken(token);
+      
+      // Debug token to get WABA IDs
+      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", {
+        body: { access_token: token },
+      });
+
+      if (error || data?.error) {
+        toast.error(data?.error || "فشل في جلب بيانات الحساب");
+        setIsLoading(false);
+        return;
+      }
+
+      const allPhones: PhoneNumber[] = [];
+      let firstWabaId = "";
+
+      if (data.results && data.results.length > 0) {
+        data.results.forEach((result: WabaResult) => {
+          if (!firstWabaId) firstWabaId = result.waba_id;
+          allPhones.push(...result.phone_numbers);
+        });
+      }
+
+      if (allPhones.length > 0) {
+        setBusinessAccountId(firstWabaId);
+        setPhoneNumbers(allPhones);
+        setShowPhones(true);
+        toast.success(`تم العثور على ${allPhones.length} رقم — اختر واحد`);
+      } else {
+        toast.error("لا توجد أرقام واتساب مربوطة بحسابك.");
+      }
+    } catch {
+      toast.error("حدث خطأ");
+    }
+    setIsLoading(false);
+  };
 
   const exchangeToken = async (code: string) => {
     try {
