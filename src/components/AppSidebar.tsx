@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet, UserCircle, CreditCard } from "lucide-react";
+import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,7 @@ const navItems = [
   { label: "الفريق", icon: Users, path: "/team" },
   { label: "الباقات", icon: CreditCard, path: "/plans" },
   { label: "المحفظة", icon: Wallet, path: "/wallet" },
+  { label: "الربط والتكامل", icon: Plug, path: "/integrations" },
   { label: "الإعدادات", icon: Settings, path: "/settings" },
 ];
 
