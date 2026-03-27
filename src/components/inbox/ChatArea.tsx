@@ -229,15 +229,13 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
               <DropdownMenuItem onClick={() => { onStatusChange(conversation.id, "waiting"); toast.success("تم تغيير الحالة إلى بانتظار"); }}>
                 <StickyNote className="w-4 h-4 ml-2 text-warning" /> تعيين كبانتظار
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { onStatusChange(conversation.id, "closed"); toast.success("تم إغلاق المحادثة"); }}>
+              <DropdownMenuItem onClick={() => setShowClosureReason(true)}>
                 <XCircle className="w-4 h-4 ml-2 text-destructive" /> إغلاق المحادثة
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {agents.map((agent) => (
-                <DropdownMenuItem key={agent.id} onClick={() => { onTransfer(conversation.id, agent.name); toast.success(`تم تحويل المحادثة إلى ${agent.name}`); }}>
-                  <UserPlus className="w-4 h-4 ml-2" /> تحويل إلى {agent.name}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem onClick={() => setShowTransfer(true)}>
+                <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
