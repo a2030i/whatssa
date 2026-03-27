@@ -449,6 +449,7 @@ const CampaignsPage = () => {
                   { value: "tags", label: "حسب التصنيف", icon: Target },
                   { value: "select", label: "اختيار يدوي", icon: Check },
                   { value: "upload", label: "رفع إكسل", icon: Upload },
+                  ...(isEcommerce ? [{ value: "orders", label: "حسب الطلبات", icon: ShoppingCart }] : []),
                 ].map((opt) => (
                   <button
                     key={opt.value}
