@@ -11,6 +11,21 @@ export interface Conversation {
   email?: string;
   notes?: string;
   lastSeen?: string;
+  lastCustomerMessageAt?: string; // ISO timestamp of last customer message
+}
+
+export interface MessageTemplate {
+  id: string;
+  name: string;
+  category: "marketing" | "utility" | "authentication";
+  language: string;
+  status: "approved" | "pending" | "rejected";
+  header?: string;
+  body: string;
+  footer?: string;
+  buttons?: { type: "url" | "phone" | "quick_reply"; text: string; value?: string }[];
+  variables?: string[];
+  createdAt: string;
 }
 
 export interface Message {
