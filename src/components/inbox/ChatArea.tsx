@@ -100,6 +100,8 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
   };
 
   const filteredAgents = agents.filter((a) => a.name.includes(mentionFilter));
+
+  const handleQuickReply = (text: string) => {
     if (windowExpired) {
       toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
       setShowQuickReplies(false);
