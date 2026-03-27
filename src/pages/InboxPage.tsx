@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { MessageSquare } from "lucide-react";
-import { conversations as initialConversations, messagesMap as initialMessages, Message } from "@/data/mockData";
+import { conversations as initialConversations, messagesMap as initialMessages, Message, MessageTemplate } from "@/data/mockData";
 import ConversationList from "@/components/inbox/ConversationList";
 import ChatArea from "@/components/inbox/ChatArea";
 import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";
