@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X } from "lucide-react";
+import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ const navItems = [
   { label: "التحليلات", icon: BarChart3, path: "/analytics" },
   { label: "الحملات", icon: Megaphone, path: "/campaigns" },
   { label: "الأتمتة", icon: Bot, path: "/automation" },
+  { label: "القوالب", icon: FileText, path: "/templates" },
   { label: "الفريق", icon: Users, path: "/team" },
   { label: "الإعدادات", icon: Settings, path: "/settings" },
 ];
