@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText } from "lucide-react";
+import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { label: "المحادثات", icon: MessageSquare, path: "/" },
@@ -16,6 +17,7 @@ const navItems = [
 const AppSidebar = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { profile, userRole, isSuperAdmin, signOut } = useAuth();
 
   const sidebarContent = (
     <>
@@ -54,14 +56,27 @@ const AppSidebar = () => {
 
       {/* Bottom */}
       <div className="p-3 border-t border-sidebar-border">
+        {isSuperAdmin && (
+          <NavLink
+            to="/admin"
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-sidebar-accent transition-all mb-1"
+          >
+            <Shield className="w-[18px] h-[18px]" />
+            <span>Super Admin</span>
+          </NavLink>
+        )}
         <div className="flex items-center gap-3 px-3 py-2">
           <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-bold text-sidebar-primary">
-            أح
+            {profile?.full_name?.slice(0, 2) || "؟"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-sidebar-accent-foreground truncate">أحمد محمد</p>
-            <p className="text-[10px] text-sidebar-foreground truncate">مدير النظام</p>
+            <p className="text-xs font-semibold text-sidebar-accent-foreground truncate">{profile?.full_name || "مستخدم"}</p>
+            <p className="text-[10px] text-sidebar-foreground truncate">{userRole === "admin" ? "مدير" : userRole === "super_admin" ? "مدير النظام" : "عضو"}</p>
           </div>
+          <button onClick={signOut} className="text-sidebar-foreground hover:text-red-400 transition-colors">
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </>
