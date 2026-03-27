@@ -43,7 +43,11 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
   const [templateVars, setTemplateVars] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isNoteMode, setIsNoteMode] = useState(false);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const windowExpired = isWindowExpired(conversation.lastCustomerMessageAt);
   const approvedTemplates = messageTemplates.filter((t) => t.status === "approved");
