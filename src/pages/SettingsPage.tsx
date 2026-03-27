@@ -86,8 +86,19 @@ const SettingsPage = () => {
     FB.login(
       (response: any) => {
         if (response.authResponse) {
+          // Try code first (for fresh signup), fallback to accessToken (for returning users)
           const code = response.authResponse.code;
-          exchangeToken(code);
+          const accessToken = response.authResponse.accessToken;
+          
+          if (code) {
+            exchangeToken(code);
+          } else if (accessToken) {
+            // User already connected before, use token directly
+            handleDirectToken(accessToken);
+          } else {
+            setIsLoading(false);
+            toast.error("لم يتم الحصول على بيانات المصادقة");
+          }
         } else {
           setIsLoading(false);
           toast.error("تم إلغاء عملية الربط");
