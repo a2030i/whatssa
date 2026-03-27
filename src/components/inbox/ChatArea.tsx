@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Phone, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock } from "lucide-react";
+import { Send, Phone, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Conversation, Message, quickReplies, agents, messageTemplates, MessageTemplate } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
