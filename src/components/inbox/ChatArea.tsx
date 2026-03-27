@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Phone, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Conversation, Message, quickReplies, agents, messageTemplates, MessageTemplate } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
@@ -46,8 +46,11 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
   const [isNoteMode, setIsNoteMode] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const windowExpired = isWindowExpired(conversation.lastCustomerMessageAt);
   const approvedTemplates = messageTemplates.filter((t) => t.status === "approved");
@@ -56,6 +59,10 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    return () => { if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current); };
+  }, []);
 
   const handleSend = () => {
     if (!inputText.trim()) return;
@@ -140,6 +147,43 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
     return { header, text };
   };
 
+  const startRecording = () => {
+    setIsRecording(true);
+    setRecordingTime(0);
+    recordingIntervalRef.current = setInterval(() => {
+      setRecordingTime((prev) => prev + 1);
+    }, 1000);
+    toast.info("جاري التسجيل...");
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    // Mock: send voice message
+    onSendMessage(conversation.id, `🎤 رسالة صوتية (${formatTime(recordingTime)})`);
+    setRecordingTime(0);
+    toast.success("تم إرسال الرسالة الصوتية");
+  };
+
+  const cancelRecording = () => {
+    setIsRecording(false);
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    setRecordingTime(0);
+    toast.info("تم إلغاء التسجيل");
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
@@ -168,9 +212,6 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
               <span className="text-[10px] font-medium">نافذة 24س منتهية</span>
             </div>
           )}
-          <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
-            <Phone className="w-4 h-4 text-muted-foreground" />
-          </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
@@ -312,84 +353,115 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
         </div>
       )}
 
-      {/* Input Area */}
-      <div className={cn("border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
-        {/* Tool buttons row */}
-        <div className="flex items-center gap-0.5 mb-2 overflow-x-auto pb-1">
-          {(!windowExpired || isNoteMode) && (
-            <>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
-                    <Smile className="w-4 h-4" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" side="top" align="start">
-                  <div className="grid grid-cols-8 gap-1">
-                    {emojis.map((e) => (
-                      <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
-                        {e}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              {!isNoteMode && (
-                <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => toast.info("سيتم دعم المرفقات قريباً")}>
-                  <Paperclip className="w-4 h-4" />
-                </button>
-              )}
-              {!isNoteMode && (
-                <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
-                  <Zap className="w-4 h-4" />
-                </button>
-              )}
-            </>
-          )}
-          <button
-            onClick={() => { setIsNoteMode(!isNoteMode); inputRef.current?.focus(); }}
-            className={cn("p-1.5 rounded-lg transition-colors shrink-0", isNoteMode ? "bg-amber-500/10 text-amber-500" : "hover:bg-secondary text-muted-foreground")}
-            title="ملاحظة داخلية"
-          >
-            <StickyNote className="w-4 h-4" />
+      {/* Recording UI */}
+      {isRecording && (
+        <div className="border-t border-destructive/30 bg-destructive/5 p-3 flex items-center gap-3">
+          <button onClick={cancelRecording} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-secondary transition-colors" title="إلغاء">
+            <XCircle className="w-4 h-4 text-muted-foreground" />
           </button>
-          <button
-            onClick={() => { setInputText((prev) => prev + "@"); setShowMentions(true); setMentionFilter(""); inputRef.current?.focus(); }}
-            className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
-            title="اذكر موظف @"
-          >
-            <AtSign className="w-4 h-4" />
+          <div className="flex-1 flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse" />
+            <span className="text-sm font-mono font-medium text-destructive">{formatTime(recordingTime)}</span>
+            <div className="flex-1 h-1 bg-destructive/20 rounded-full overflow-hidden">
+              <div className="h-full bg-destructive rounded-full animate-pulse" style={{ width: `${Math.min(recordingTime * 2, 100)}%` }} />
+            </div>
+          </div>
+          <button onClick={stopRecording} className="w-10 h-10 rounded-full gradient-whatsapp flex items-center justify-center hover:opacity-90 transition-opacity" title="إرسال">
+            <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
           </button>
-          {!isNoteMode && (
-            <button onClick={() => setShowTemplates(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال قالب">
-              <FileText className="w-4 h-4" />
-            </button>
-          )}
         </div>
+      )}
 
-        {/* Input + send row */}
-        <div className="flex items-center gap-2">
-          {windowExpired && !isNoteMode ? (
-            <button onClick={() => setShowTemplates(true)} className="flex-1 text-right text-sm text-muted-foreground bg-secondary rounded-lg px-4 py-2.5 hover:bg-accent transition-colors">
-              اختر قالباً لإرسال رسالة...
+      {/* Input Area */}
+      {!isRecording && (
+        <div className={cn("border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
+          {/* Tool buttons row */}
+          <div className="flex items-center gap-0.5 mb-2 overflow-x-auto pb-1">
+            {(!windowExpired || isNoteMode) && (
+              <>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
+                      <Smile className="w-4 h-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-2" side="top" align="start">
+                    <div className="grid grid-cols-8 gap-1">
+                      {emojis.map((e) => (
+                        <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {!isNoteMode && (
+                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => toast.info("سيتم دعم المرفقات قريباً")}>
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+                )}
+                {!isNoteMode && (
+                  <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
+                    <Zap className="w-4 h-4" />
+                  </button>
+                )}
+              </>
+            )}
+            <button
+              onClick={() => { setIsNoteMode(!isNoteMode); inputRef.current?.focus(); }}
+              className={cn("p-1.5 rounded-lg transition-colors shrink-0", isNoteMode ? "bg-amber-500/10 text-amber-500" : "hover:bg-secondary text-muted-foreground")}
+              title="ملاحظة داخلية"
+            >
+              <StickyNote className="w-4 h-4" />
             </button>
-          ) : (
-            <Input
-              ref={inputRef}
-              placeholder={isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "اكتب رسالة..."}
-              value={inputText}
-              onChange={(e) => handleInputChange(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              className={cn("flex-1 border-0", isNoteMode ? "bg-amber-500/5" : "bg-secondary")}
-            />
-          )}
-          {(isNoteMode || !windowExpired) && (
-            <button onClick={handleSend} disabled={!inputText.trim()} className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-opacity", inputText.trim() ? (isNoteMode ? "bg-amber-500 hover:opacity-90" : "gradient-whatsapp hover:opacity-90") : "bg-muted")}>
-              <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
+            <button
+              onClick={() => { setInputText((prev) => prev + "@"); setShowMentions(true); setMentionFilter(""); inputRef.current?.focus(); }}
+              className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+              title="اذكر موظف @"
+            >
+              <AtSign className="w-4 h-4" />
             </button>
-          )}
+            {!isNoteMode && (
+              <button onClick={() => setShowTemplates(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال قالب">
+                <FileText className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Input + send row */}
+          <div className="flex items-center gap-2">
+            {windowExpired && !isNoteMode ? (
+              <button onClick={() => setShowTemplates(true)} className="flex-1 text-right text-sm text-muted-foreground bg-secondary rounded-lg px-4 py-2.5 hover:bg-accent transition-colors">
+                اختر قالباً لإرسال رسالة...
+              </button>
+            ) : (
+              <Input
+                ref={inputRef}
+                placeholder={isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "اكتب رسالة..."}
+                value={inputText}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                className={cn("flex-1 border-0", isNoteMode ? "bg-amber-500/5" : "bg-secondary")}
+              />
+            )}
+            {(isNoteMode || !windowExpired) && (
+              inputText.trim() ? (
+                <button onClick={handleSend} className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-opacity", isNoteMode ? "bg-amber-500 hover:opacity-90" : "gradient-whatsapp hover:opacity-90")}>
+                  <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
+                </button>
+              ) : !isNoteMode ? (
+                <button onClick={startRecording} className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 gradient-whatsapp hover:opacity-90 transition-opacity">
+                  <Mic className="w-4 h-4 text-whatsapp-foreground" />
+                </button>
+              ) : (
+                <button disabled className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-muted">
+                  <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
+                </button>
+              )
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Template Picker Dialog */}
       <Dialog open={showTemplates} onOpenChange={setShowTemplates}>
