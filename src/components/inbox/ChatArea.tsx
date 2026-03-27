@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Phone, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2 } from "lucide-react";
+import { Send, Phone, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Conversation, Message, quickReplies, agents } from "@/data/mockData";
+import { Conversation, Message, quickReplies, agents, messageTemplates, MessageTemplate } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
@@ -15,6 +17,7 @@ interface ChatAreaProps {
   messages: Message[];
   onBack: () => void;
   onSendMessage: (convId: string, text: string) => void;
+  onSendTemplate: (convId: string, template: MessageTemplate, variables: string[]) => void;
   onStatusChange: (convId: string, status: "active" | "waiting" | "closed") => void;
   onTransfer: (convId: string, agent: string) => void;
 }
@@ -27,11 +30,23 @@ const MessageStatus = ({ status }: { status?: string }) => {
   return null;
 };
 
-const ChatArea = ({ conversation, messages, onBack, onSendMessage, onStatusChange, onTransfer }: ChatAreaProps) => {
+const isWindowExpired = (lastCustomerMessageAt?: string): boolean => {
+  if (!lastCustomerMessageAt) return true;
+  const diff = Date.now() - new Date(lastCustomerMessageAt).getTime();
+  return diff > 24 * 60 * 60 * 1000;
+};
+
+const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer }: ChatAreaProps) => {
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
+  const [templateVars, setTemplateVars] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const windowExpired = isWindowExpired(conversation.lastCustomerMessageAt);
+  const approvedTemplates = messageTemplates.filter((t) => t.status === "approved");
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,22 +54,56 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onStatusChang
 
   const handleSend = () => {
     if (!inputText.trim()) return;
+    if (windowExpired) {
+      toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
+      setShowTemplates(true);
+      return;
+    }
     onSendMessage(conversation.id, inputText.trim());
     setInputText("");
-    // Simulate typing indicator
     setIsTyping(true);
     setTimeout(() => setIsTyping(false), 2000);
   };
 
   const handleQuickReply = (text: string) => {
+    if (windowExpired) {
+      toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
+      setShowQuickReplies(false);
+      setShowTemplates(true);
+      return;
+    }
     onSendMessage(conversation.id, text);
     setShowQuickReplies(false);
     setIsTyping(true);
     setTimeout(() => setIsTyping(false), 2000);
   };
 
-  const handleEmoji = (emoji: string) => {
-    setInputText((prev) => prev + emoji);
+  const handleEmoji = (emoji: string) => setInputText((prev) => prev + emoji);
+
+  const openTemplateFill = (t: MessageTemplate) => {
+    setSelectedTemplate(t);
+    setTemplateVars(new Array(t.variables?.length || 0).fill(""));
+    setShowTemplates(false);
+  };
+
+  const handleSendTemplate = () => {
+    if (!selectedTemplate) return;
+    if (selectedTemplate.variables && templateVars.some((v) => !v.trim())) {
+      toast.error("يرجى تعبئة جميع المتغيرات");
+      return;
+    }
+    onSendTemplate(conversation.id, selectedTemplate, templateVars);
+    setSelectedTemplate(null);
+    setTemplateVars([]);
+    toast.success("تم إرسال القالب بنجاح");
+  };
+
+  const fillTemplateBody = (t: MessageTemplate, vars: string[]) => {
+    let text = t.body;
+    vars.forEach((v, i) => { text = text.replace(`{{${i + 1}}}`, v || `{{${i + 1}}}`); });
+    let header = t.header || "";
+    vars.forEach((v, i) => { header = header.replace(`{{${i + 1}}}`, v || `{{${i + 1}}}`); });
+    return { header, text };
   };
 
   return (
@@ -79,6 +128,12 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onStatusChang
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {windowExpired && (
+            <div className="hidden sm:flex items-center gap-1 text-warning bg-warning/10 px-2 py-1 rounded-lg ml-2">
+              <Clock className="w-3 h-3" />
+              <span className="text-[10px] font-medium">نافذة 24س منتهية</span>
+            </div>
+          )}
           <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
             <Phone className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -109,6 +164,17 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onStatusChang
         </div>
       </div>
 
+      {/* 24h Window Warning Banner */}
+      {windowExpired && (
+        <div className="bg-warning/10 border-b border-warning/20 px-4 py-2 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+          <p className="text-xs text-warning font-medium flex-1">انتهت نافذة الـ 24 ساعة. يمكنك فقط إرسال قوالب معتمدة من Meta.</p>
+          <Button size="sm" variant="outline" className="text-xs h-7 border-warning/30 text-warning hover:bg-warning/10" onClick={() => setShowTemplates(true)}>
+            <FileText className="w-3 h-3 ml-1" /> إرسال قالب
+          </Button>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-3 bg-secondary/30">
         {messages.map((msg) => (
@@ -127,13 +193,19 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onStatusChang
                   ? "bg-card shadow-card text-foreground rounded-bl-sm"
                   : "gradient-whatsapp text-whatsapp-foreground rounded-br-sm"
               )}>
+                {msg.type === "template" && (
+                  <div className="flex items-center gap-1 mb-1 text-primary">
+                    <FileText className="w-3 h-3" />
+                    <span className="text-[10px] font-semibold">قالب</span>
+                  </div>
+                )}
                 {msg.type === "note" && (
                   <div className="flex items-center gap-1 mb-1 text-warning">
                     <StickyNote className="w-3 h-3" />
                     <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
                   </div>
                 )}
-                <p>{msg.text}</p>
+                <p className="whitespace-pre-wrap">{msg.text}</p>
                 <div className={cn("flex items-center gap-0.5 mt-1", msg.sender === "agent" ? "text-muted-foreground" : "text-whatsapp-foreground/70")}>
                   <span className="text-[10px]">{msg.timestamp}</span>
                   {msg.sender === "agent" && <MessageStatus status={msg.status} />}
@@ -160,7 +232,7 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onStatusChang
       </div>
 
       {/* Quick Replies */}
-      {showQuickReplies && (
+      {showQuickReplies && !windowExpired && (
         <div className="border-t border-border bg-card px-3 py-2 flex gap-2 overflow-x-auto">
           {quickReplies.map((qr) => (
             <button key={qr.id} onClick={() => handleQuickReply(qr.text)} className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium">
@@ -174,41 +246,126 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onStatusChang
       <div className="border-t border-border bg-card p-3 md:p-4">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground">
-                  <Smile className="w-4 h-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" side="top" align="start">
-                <div className="grid grid-cols-8 gap-1">
-                  {emojis.map((e) => (
-                    <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
-                      {e}
+            {!windowExpired && (
+              <>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground">
+                      <Smile className="w-4 h-4" />
                     </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground" onClick={() => toast.info("سيتم دعم المرفقات قريباً")}>
-              <Paperclip className="w-4 h-4" />
-            </button>
-            <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-2 rounded-lg transition-colors", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
-              <Zap className="w-4 h-4" />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-2" side="top" align="start">
+                    <div className="grid grid-cols-8 gap-1">
+                      {emojis.map((e) => (
+                        <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground" onClick={() => toast.info("سيتم دعم المرفقات قريباً")}>
+                  <Paperclip className="w-4 h-4" />
+                </button>
+                <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-2 rounded-lg transition-colors", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
+                  <Zap className="w-4 h-4" />
+                </button>
+              </>
+            )}
+            <button onClick={() => setShowTemplates(true)} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground" title="إرسال قالب">
+              <FileText className="w-4 h-4" />
             </button>
           </div>
-          <Input
-            placeholder="اكتب رسالة..."
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            className="flex-1 bg-secondary border-0"
-          />
-          <button onClick={handleSend} disabled={!inputText.trim()} className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-opacity", inputText.trim() ? "gradient-whatsapp hover:opacity-90" : "bg-muted")}>
-            <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
-          </button>
+          {windowExpired ? (
+            <button onClick={() => setShowTemplates(true)} className="flex-1 text-right text-sm text-muted-foreground bg-secondary rounded-lg px-4 py-2.5 hover:bg-accent transition-colors">
+              اختر قالباً لإرسال رسالة...
+            </button>
+          ) : (
+            <Input
+              placeholder="اكتب رسالة..."
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              className="flex-1 bg-secondary border-0"
+            />
+          )}
+          {!windowExpired && (
+            <button onClick={handleSend} disabled={!inputText.trim()} className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-opacity", inputText.trim() ? "gradient-whatsapp hover:opacity-90" : "bg-muted")}>
+              <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Template Picker Dialog */}
+      <Dialog open={showTemplates} onOpenChange={setShowTemplates}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto" dir="rtl">
+          <DialogHeader><DialogTitle>اختر قالباً للإرسال</DialogTitle></DialogHeader>
+          <div className="space-y-3 mt-2">
+            {approvedTemplates.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">لا توجد قوالب معتمدة</p>
+            ) : (
+              approvedTemplates.map((t) => (
+                <button key={t.id} onClick={() => openTemplateFill(t)} className="w-full text-right bg-secondary/50 hover:bg-secondary rounded-xl p-3 transition-colors space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary shrink-0" />
+                    <span className="font-semibold text-sm">{t.name}</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-0 bg-success/10 text-success mr-auto">معتمد</Badge>
+                  </div>
+                  {t.header && <p className="text-xs font-medium">{t.header}</p>}
+                  <p className="text-xs text-muted-foreground line-clamp-2">{t.body}</p>
+                  {t.variables && <p className="text-[10px] text-muted-foreground">{t.variables.length} متغير</p>}
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Variable Fill Dialog */}
+      <Dialog open={!!selectedTemplate} onOpenChange={() => setSelectedTemplate(null)}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader><DialogTitle>تعبئة بيانات القالب</DialogTitle></DialogHeader>
+          {selectedTemplate && (
+            <div className="space-y-4 mt-2">
+              {/* Preview */}
+              <div className="bg-secondary rounded-xl p-4 space-y-2">
+                {(() => { const { header, text } = fillTemplateBody(selectedTemplate, templateVars); return (
+                  <>
+                    {header && <p className="font-bold text-sm">{header}</p>}
+                    <p className="text-sm whitespace-pre-wrap">{text}</p>
+                    {selectedTemplate.footer && <p className="text-[11px] text-muted-foreground">{selectedTemplate.footer}</p>}
+                    {selectedTemplate.buttons && selectedTemplate.buttons.length > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-border">
+                        {selectedTemplate.buttons.map((btn, i) => (
+                          <div key={i} className="text-center text-xs text-primary font-medium py-1.5 bg-card rounded-lg">{btn.text}</div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ); })()}
+              </div>
+
+              {/* Variables */}
+              {selectedTemplate.variables && selectedTemplate.variables.map((v, i) => (
+                <div key={i} className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">{`{{${i + 1}}} ${v}`}</label>
+                  <Input
+                    value={templateVars[i] || ""}
+                    onChange={(e) => { const nv = [...templateVars]; nv[i] = e.target.value; setTemplateVars(nv); }}
+                    placeholder={v}
+                    className="text-sm bg-secondary border-0"
+                  />
+                </div>
+              ))}
+
+              <Button onClick={handleSendTemplate} className="w-full gradient-whatsapp text-whatsapp-foreground gap-2">
+                <Send className="w-4 h-4" style={{ transform: "scaleX(-1)" }} /> إرسال القالب
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

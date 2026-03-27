@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { MessageSquare } from "lucide-react";
-import { conversations as initialConversations, messagesMap as initialMessages, Message } from "@/data/mockData";
+import { conversations as initialConversations, messagesMap as initialMessages, Message, MessageTemplate } from "@/data/mockData";
 import ConversationList from "@/components/inbox/ConversationList";
 import ChatArea from "@/components/inbox/ChatArea";
 import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";
@@ -73,6 +73,30 @@ const InboxPage = () => {
     setConversations((prev) => prev.map((c) => c.id === convId ? { ...c, notes } : c));
   }, []);
 
+  const handleSendTemplate = useCallback((convId: string, template: MessageTemplate, variables: string[]) => {
+    let text = template.body;
+    variables.forEach((v, i) => { text = text.replace(`{{${i + 1}}}`, v); });
+    let header = template.header || "";
+    variables.forEach((v, i) => { header = header.replace(`{{${i + 1}}}`, v); });
+    const fullText = header ? `${header}\n\n${text}${template.footer ? `\n\n${template.footer}` : ""}` : `${text}${template.footer ? `\n\n${template.footer}` : ""}`;
+
+    const newMsg: Message = {
+      id: `${convId}-${Date.now()}`,
+      conversationId: convId,
+      text: fullText,
+      sender: "agent",
+      timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+      status: "sent",
+      type: "template",
+    };
+    setAllMessages((prev) => ({ ...prev, [convId]: [...(prev[convId] || []), newMsg] }));
+    setConversations((prev) => prev.map((c) => c.id === convId ? { ...c, lastMessage: `[قالب] ${template.name}`, timestamp: "الآن" } : c));
+    
+    setTimeout(() => {
+      setAllMessages((prev) => ({ ...prev, [convId]: (prev[convId] || []).map((m) => m.id === newMsg.id ? { ...m, status: "delivered" } : m) }));
+    }, 1000);
+  }, []);
+
   return (
     <div className="flex h-screen" dir="rtl">
       <ConversationList
@@ -88,6 +112,7 @@ const InboxPage = () => {
           messages={currentMessages}
           onBack={() => setSelectedId(null)}
           onSendMessage={handleSendMessage}
+          onSendTemplate={handleSendTemplate}
           onStatusChange={handleStatusChange}
           onTransfer={handleTransfer}
         />

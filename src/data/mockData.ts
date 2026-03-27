@@ -11,6 +11,21 @@ export interface Conversation {
   email?: string;
   notes?: string;
   lastSeen?: string;
+  lastCustomerMessageAt?: string; // ISO timestamp of last customer message
+}
+
+export interface MessageTemplate {
+  id: string;
+  name: string;
+  category: "marketing" | "utility" | "authentication";
+  language: string;
+  status: "approved" | "pending" | "rejected";
+  header?: string;
+  body: string;
+  footer?: string;
+  buttons?: { type: "url" | "phone" | "quick_reply"; text: string; value?: string }[];
+  variables?: string[];
+  createdAt: string;
 }
 
 export interface Message {
@@ -20,7 +35,7 @@ export interface Message {
   sender: "customer" | "agent" | "system";
   timestamp: string;
   status?: "sent" | "delivered" | "read";
-  type?: "text" | "image" | "document" | "note";
+  type?: "text" | "image" | "document" | "note" | "template";
 }
 
 export interface Agent {
@@ -54,13 +69,67 @@ export const quickReplies = [
   { id: "6", label: "دفع", text: "طرق الدفع المتاحة: تحويل بنكي، بطاقة ائتمان، Apple Pay." },
 ];
 
+export const messageTemplates: MessageTemplate[] = [
+  {
+    id: "t1", name: "ترحيب_عميل_جديد", category: "marketing", language: "ar", status: "approved",
+    header: "مرحباً {{1}}! 👋",
+    body: "أهلاً بك في {{2}}! يسعدنا انضمامك. تصفح منتجاتنا واستمتع بخصم {{3}}% على أول طلب.",
+    footer: "للإلغاء أرسل STOP",
+    buttons: [{ type: "url", text: "تصفح المنتجات", value: "https://example.com" }],
+    variables: ["اسم العميل", "اسم المتجر", "نسبة الخصم"],
+    createdAt: "2026-03-01",
+  },
+  {
+    id: "t2", name: "تحديث_طلب", category: "utility", language: "ar", status: "approved",
+    body: "مرحباً {{1}}، طلبك رقم #{{2}} تم تحديث حالته إلى: {{3}}. يمكنك تتبع طلبك من الرابط أدناه.",
+    buttons: [{ type: "url", text: "تتبع الطلب", value: "https://example.com/track" }],
+    variables: ["اسم العميل", "رقم الطلب", "الحالة الجديدة"],
+    createdAt: "2026-03-05",
+  },
+  {
+    id: "t3", name: "تذكير_سلة_متروكة", category: "marketing", language: "ar", status: "approved",
+    header: "نسيت شيء؟ 🛒",
+    body: "مرحباً {{1}}، لاحظنا أن عندك منتجات في السلة! أكمل طلبك الآن واستمتع بتوصيل مجاني.",
+    buttons: [{ type: "url", text: "أكمل الطلب", value: "https://example.com/cart" }, { type: "quick_reply", text: "لا أرغب" }],
+    variables: ["اسم العميل"],
+    createdAt: "2026-03-10",
+  },
+  {
+    id: "t4", name: "رمز_التحقق", category: "authentication", language: "ar", status: "approved",
+    body: "رمز التحقق الخاص بك هو: {{1}}. صالح لمدة 5 دقائق. لا تشاركه مع أحد.",
+    variables: ["رمز التحقق"],
+    createdAt: "2026-03-12",
+  },
+  {
+    id: "t5", name: "عرض_موسمي", category: "marketing", language: "ar", status: "pending",
+    header: "🎉 عرض خاص!",
+    body: "مرحباً {{1}}، خصم {{2}}% على جميع المنتجات لفترة محدودة! العرض ينتهي {{3}}.",
+    footer: "الشروط والأحكام تطبق",
+    buttons: [{ type: "url", text: "تسوق الآن", value: "https://example.com/sale" }],
+    variables: ["اسم العميل", "نسبة الخصم", "تاريخ الانتهاء"],
+    createdAt: "2026-03-20",
+  },
+  {
+    id: "t6", name: "تقييم_الخدمة", category: "utility", language: "ar", status: "approved",
+    body: "مرحباً {{1}}، نتمنى أن تكون تجربتك ممتازة! نقدر رأيك، كيف تقيم خدمتنا؟",
+    buttons: [{ type: "quick_reply", text: "ممتاز ⭐⭐⭐⭐⭐" }, { type: "quick_reply", text: "جيد ⭐⭐⭐" }, { type: "quick_reply", text: "سيء ⭐" }],
+    variables: ["اسم العميل"],
+    createdAt: "2026-03-15",
+  },
+];
+
+// lastCustomerMessageAt: recent = within 24h, old = expired window
+const now = new Date();
+const recentTime = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(); // 2 hours ago
+const expiredTime = new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString(); // 26 hours ago
+
 export const conversations: Conversation[] = [
-  { id: "1", customerName: "سارة أحمد", customerPhone: "+966501234567", lastMessage: "متى يتم توصيل الطلب؟", timestamp: "منذ 2 دقيقة", unread: 3, assignedTo: "أحمد", status: "active", tags: ["طلب", "توصيل"], email: "sara@example.com", notes: "عميلة VIP - طلبات متكررة", lastSeen: "متصل الآن" },
-  { id: "2", customerName: "محمد علي", customerPhone: "+966507654321", lastMessage: "شكراً لكم على الخدمة الممتازة", timestamp: "منذ 15 دقيقة", unread: 0, assignedTo: "فاطمة", status: "active", tags: ["شكوى محلولة"], email: "mohammed@example.com", lastSeen: "منذ 10 دقائق" },
-  { id: "3", customerName: "نورة خالد", customerPhone: "+966509876543", lastMessage: "أحتاج مساعدة في الدفع", timestamp: "منذ 30 دقيقة", unread: 1, assignedTo: "أحمد", status: "waiting", tags: ["دفع"], lastSeen: "منذ 25 دقيقة" },
-  { id: "4", customerName: "عبدالله سعد", customerPhone: "+966502345678", lastMessage: "هل المنتج متوفر؟", timestamp: "منذ ساعة", unread: 0, assignedTo: "خالد", status: "active", tags: ["استفسار"], lastSeen: "منذ 45 دقيقة" },
-  { id: "5", customerName: "ريم فهد", customerPhone: "+966503456789", lastMessage: "أريد إرجاع المنتج", timestamp: "منذ ساعتين", unread: 2, assignedTo: "فاطمة", status: "waiting", tags: ["إرجاع"], notes: "ترغب بالاستبدال بدل الإرجاع", lastSeen: "منذ ساعة" },
-  { id: "6", customerName: "فيصل ناصر", customerPhone: "+966504567890", lastMessage: "تم حل المشكلة، شكراً", timestamp: "أمس", unread: 0, assignedTo: "أحمد", status: "closed", tags: ["تقنية"], lastSeen: "أمس" },
+  { id: "1", customerName: "سارة أحمد", customerPhone: "+966501234567", lastMessage: "متى يتم توصيل الطلب؟", timestamp: "منذ 2 دقيقة", unread: 3, assignedTo: "أحمد", status: "active", tags: ["طلب", "توصيل"], email: "sara@example.com", notes: "عميلة VIP - طلبات متكررة", lastSeen: "متصل الآن", lastCustomerMessageAt: recentTime },
+  { id: "2", customerName: "محمد علي", customerPhone: "+966507654321", lastMessage: "شكراً لكم على الخدمة الممتازة", timestamp: "منذ 15 دقيقة", unread: 0, assignedTo: "فاطمة", status: "active", tags: ["شكوى محلولة"], email: "mohammed@example.com", lastSeen: "منذ 10 دقائق", lastCustomerMessageAt: recentTime },
+  { id: "3", customerName: "نورة خالد", customerPhone: "+966509876543", lastMessage: "أحتاج مساعدة في الدفع", timestamp: "منذ 30 دقيقة", unread: 1, assignedTo: "أحمد", status: "waiting", tags: ["دفع"], lastSeen: "منذ 25 دقيقة", lastCustomerMessageAt: recentTime },
+  { id: "4", customerName: "عبدالله سعد", customerPhone: "+966502345678", lastMessage: "هل المنتج متوفر؟", timestamp: "منذ ساعة", unread: 0, assignedTo: "خالد", status: "active", tags: ["استفسار"], lastSeen: "منذ 45 دقيقة", lastCustomerMessageAt: expiredTime },
+  { id: "5", customerName: "ريم فهد", customerPhone: "+966503456789", lastMessage: "أريد إرجاع المنتج", timestamp: "منذ ساعتين", unread: 2, assignedTo: "فاطمة", status: "waiting", tags: ["إرجاع"], notes: "ترغب بالاستبدال بدل الإرجاع", lastSeen: "منذ ساعة", lastCustomerMessageAt: expiredTime },
+  { id: "6", customerName: "فيصل ناصر", customerPhone: "+966504567890", lastMessage: "تم حل المشكلة، شكراً", timestamp: "أمس", unread: 0, assignedTo: "أحمد", status: "closed", tags: ["تقنية"], lastSeen: "أمس", lastCustomerMessageAt: expiredTime },
 ];
 
 export const messagesMap: Record<string, Message[]> = {
