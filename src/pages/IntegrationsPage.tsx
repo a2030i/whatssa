@@ -302,6 +302,36 @@ const IntegrationsPage = () => {
         )}
       </div>
 
+      {/* Store Platforms */}
+      {isEcommerce && (
+        <div className="space-y-3">
+          <h2 className="font-semibold text-sm text-muted-foreground">منصات المتاجر الإلكترونية</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { id: "salla", name: "سلة", logo: "🛒", desc: "ربط متجرك على سلة لاستيراد الطلبات والمنتجات والعملاء تلقائياً", color: "bg-purple-500/10 text-purple-600" },
+              { id: "zid", name: "زد", logo: "🏪", desc: "ربط متجرك على زد لمزامنة البيانات والطلبات تلقائياً", color: "bg-blue-500/10 text-blue-600" },
+              { id: "shopify", name: "Shopify", logo: "🛍️", desc: "ربط متجر Shopify لاستيراد الطلبات والمنتجات والسلات المتروكة", color: "bg-green-500/10 text-green-600" },
+            ].map((platform) => (
+              <div key={platform.id} className="bg-card rounded-xl shadow-card p-5 border border-border hover:border-primary/30 transition-colors">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center text-xl", platform.color)}>
+                    {platform.logo}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">{platform.name}</p>
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">قريباً</Badge>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground mb-3">{platform.desc}</p>
+                <Button size="sm" variant="outline" className="w-full text-xs" disabled>
+                  <Plug className="w-3 h-3 ml-1" /> ربط المتجر
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Upcoming Channels */}
       <div className="space-y-3">
         <h2 className="font-semibold text-sm text-muted-foreground">قنوات أخرى</h2>
