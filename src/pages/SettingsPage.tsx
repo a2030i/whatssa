@@ -406,11 +406,30 @@ const SettingsPage = () => {
                     <KeyRound className="w-4 h-4 text-primary" />
                     <h4 className="text-sm font-semibold">ربط يدوي</h4>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    أدخل البيانات من{" "}
-                    <a href="https://developers.facebook.com/apps/" target="_blank" className="text-primary underline">Meta Developers</a>
-                    {" "}→ تطبيقك → WhatsApp → API Setup
-                  </p>
+                  <div className="bg-secondary/60 rounded-lg p-3 space-y-2 text-[11px] text-muted-foreground">
+                    <p className="font-semibold text-foreground text-xs">كيف تحصل على البيانات؟</p>
+                    <ol className="list-decimal list-inside space-y-1.5 leading-relaxed">
+                      <li>
+                        افتح{" "}
+                        <a href="https://developers.facebook.com/apps/" target="_blank" className="text-primary underline">Meta Developers</a>
+                        {" "}وادخل على تطبيقك
+                      </li>
+                      <li>
+                        من القائمة الجانبية اختر <span className="font-medium text-foreground">WhatsApp → API Setup</span>
+                      </li>
+                      <li>
+                        <span className="font-medium text-foreground">Access Token:</span> اضغط على "Generate" أو انسخ التوكن المؤقت (صالح 24 ساعة). للتوكن الدائم، استخدم{" "}
+                        <a href="https://developers.facebook.com/docs/whatsapp/business-management-api/get-started#system-user-access-tokens" target="_blank" className="text-primary underline">System User Token</a>
+                      </li>
+                      <li>
+                        <span className="font-medium text-foreground">Phone Number ID:</span> يظهر تحت الرقم مباشرة في نفس الصفحة
+                      </li>
+                      <li>
+                        <span className="font-medium text-foreground">Business Account ID:</span> يظهر أعلى الصفحة بجانب "WhatsApp Business Account ID"
+                      </li>
+                    </ol>
+                    <p className="text-[10px] mt-1">💡 ننصح باستخدام System User Token الدائم بدل التوكن المؤقت</p>
+                  </div>
                   <div className="space-y-2">
                     <Label className="text-xs">Access Token</Label>
                     <Input
