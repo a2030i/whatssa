@@ -387,7 +387,70 @@ const SettingsPage = () => {
                   )}
                   {!sdkLoaded ? "جاري التحميل..." : "ربط بحساب فيسبوك"}
                 </Button>
+               </div>
+
+              {/* Manual connection toggle */}
+              <div className="text-center">
+                <button
+                  onClick={() => setShowManual(!showManual)}
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
+                >
+                  {showManual ? "إخفاء الربط اليدوي" : "أو اربط يدوياً بإدخال البيانات"}
+                </button>
               </div>
+
+              {/* Manual connection form */}
+              {showManual && (
+                <div className="border border-border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <KeyRound className="w-4 h-4 text-primary" />
+                    <h4 className="text-sm font-semibold">ربط يدوي</h4>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    أدخل البيانات من{" "}
+                    <a href="https://developers.facebook.com/apps/" target="_blank" className="text-primary underline">Meta Developers</a>
+                    {" "}→ تطبيقك → WhatsApp → API Setup
+                  </p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Access Token</Label>
+                    <Input
+                      value={manualToken}
+                      onChange={(e) => setManualToken(e.target.value)}
+                      placeholder="EAAxxxxxxx..."
+                      className="bg-secondary border-0 text-xs"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Phone Number ID</Label>
+                    <Input
+                      value={manualPhoneId}
+                      onChange={(e) => setManualPhoneId(e.target.value)}
+                      placeholder="1234567890"
+                      className="bg-secondary border-0 text-xs"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">WhatsApp Business Account ID</Label>
+                    <Input
+                      value={manualWabaId}
+                      onChange={(e) => setManualWabaId(e.target.value)}
+                      placeholder="1234567890"
+                      className="bg-secondary border-0 text-xs"
+                      dir="ltr"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleManualConnect}
+                    disabled={isLoading || !manualToken || !manualPhoneId || !manualWabaId}
+                    className="w-full gap-2 text-sm"
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                    ربط يدوي
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
