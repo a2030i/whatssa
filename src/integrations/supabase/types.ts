@@ -47,6 +47,151 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_recipients: {
+        Row: {
+          campaign_id: string
+          created_at: string | null
+          customer_name: string | null
+          delivered_at: string | null
+          error_code: string | null
+          error_message: string | null
+          failed_at: string | null
+          id: string
+          phone: string
+          read_at: string | null
+          sent_at: string | null
+          status: string
+          variables: Json | null
+          wa_message_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string | null
+          customer_name?: string | null
+          delivered_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          phone: string
+          read_at?: string | null
+          sent_at?: string | null
+          status?: string
+          variables?: Json | null
+          wa_message_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string | null
+          customer_name?: string | null
+          delivered_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          phone?: string
+          read_at?: string | null
+          sent_at?: string | null
+          status?: string
+          variables?: Json | null
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          audience_tags: string[] | null
+          audience_type: string
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          delivered_count: number | null
+          exclude_campaign_ids: string[] | null
+          exclude_tags: string[] | null
+          failed_count: number | null
+          id: string
+          name: string
+          notes: string | null
+          org_id: string
+          read_count: number | null
+          scheduled_at: string | null
+          sent_at: string | null
+          sent_count: number | null
+          status: string
+          template_language: string | null
+          template_name: string | null
+          template_variables: Json | null
+          total_recipients: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          audience_tags?: string[] | null
+          audience_type?: string
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          delivered_count?: number | null
+          exclude_campaign_ids?: string[] | null
+          exclude_tags?: string[] | null
+          failed_count?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          org_id: string
+          read_count?: number | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          sent_count?: number | null
+          status?: string
+          template_language?: string | null
+          template_name?: string | null
+          template_variables?: Json | null
+          total_recipients?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          audience_tags?: string[] | null
+          audience_type?: string
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          delivered_count?: number | null
+          exclude_campaign_ids?: string[] | null
+          exclude_tags?: string[] | null
+          failed_count?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          org_id?: string
+          read_count?: number | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          sent_count?: number | null
+          status?: string
+          template_language?: string | null
+          template_name?: string | null
+          template_variables?: Json | null
+          total_recipients?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closure_reasons: {
         Row: {
           created_at: string | null
