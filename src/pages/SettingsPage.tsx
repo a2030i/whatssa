@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Building2, Bell, Globe, CreditCard, Shield, ChevronLeft, CheckCircle2, Copy, ExternalLink, Loader2, AlertCircle, Phone, RefreshCw, MessageSquare } from "lucide-react";
+import { Building2, Bell, Globe, CreditCard, Shield, ChevronLeft, CheckCircle2, Copy, ExternalLink, Loader2, AlertCircle, Phone, RefreshCw, MessageSquare, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,10 @@ const SettingsPage = () => {
   const [accessToken, setAccessToken] = useState("");
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [sdkLoaded, setSdkLoaded] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [manualToken, setManualToken] = useState("");
+  const [manualPhoneId, setManualPhoneId] = useState("");
+  const [manualWabaId, setManualWabaId] = useState("");
 
   useEffect(() => { loadConfig(); loadFacebookSDK(); }, []);
 
@@ -230,6 +234,65 @@ const SettingsPage = () => {
     setIsLoading(false);
   };
 
+  const handleManualConnect = async () => {
+    if (!manualToken.trim() || !manualPhoneId.trim() || !manualWabaId.trim()) {
+      toast.error("يرجى تعبئة جميع الحقول");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // Verify the token by fetching phone number info
+      const res = await fetch(
+        `https://graph.facebook.com/v21.0/${manualPhoneId.trim()}?fields=display_phone_number,verified_name,quality_rating`,
+        { headers: { Authorization: `Bearer ${manualToken.trim()}` } }
+      );
+      const phoneData = await res.json();
+
+      if (phoneData.error) {
+        toast.error(phoneData.error.message || "التوكن أو Phone Number ID غير صحيح");
+        setIsLoading(false);
+        return;
+      }
+
+      const displayPhone = phoneData.display_phone_number || manualPhoneId;
+      const businessName = phoneData.verified_name || "";
+
+      if (configId) {
+        await supabase.from("whatsapp_config").update({
+          phone_number_id: manualPhoneId.trim(),
+          business_account_id: manualWabaId.trim(),
+          access_token: manualToken.trim(),
+          display_phone: displayPhone,
+          business_name: businessName,
+          is_connected: true,
+        }).eq("id", configId);
+      } else {
+        const { data } = await supabase.from("whatsapp_config").insert({
+          phone_number_id: manualPhoneId.trim(),
+          business_account_id: manualWabaId.trim(),
+          access_token: manualToken.trim(),
+          display_phone: displayPhone,
+          business_name: businessName,
+          is_connected: true,
+        }).select().single();
+        if (data) {
+          setConfigId(data.id);
+          setWebhookVerifyToken(data.webhook_verify_token);
+        }
+      }
+
+      setAccessToken(manualToken.trim());
+      setBusinessAccountId(manualWabaId.trim());
+      setSelectedPhoneDisplay(displayPhone);
+      setIsConnected(true);
+      setShowManual(false);
+      toast.success(`✅ تم ربط الرقم ${displayPhone} بنجاح!`);
+    } catch {
+      toast.error("حدث خطأ في الربط");
+    }
+    setIsLoading(false);
+  };
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`تم نسخ ${label}`);
@@ -324,7 +387,70 @@ const SettingsPage = () => {
                   )}
                   {!sdkLoaded ? "جاري التحميل..." : "ربط بحساب فيسبوك"}
                 </Button>
+               </div>
+
+              {/* Manual connection toggle */}
+              <div className="text-center">
+                <button
+                  onClick={() => setShowManual(!showManual)}
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
+                >
+                  {showManual ? "إخفاء الربط اليدوي" : "أو اربط يدوياً بإدخال البيانات"}
+                </button>
               </div>
+
+              {/* Manual connection form */}
+              {showManual && (
+                <div className="border border-border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <KeyRound className="w-4 h-4 text-primary" />
+                    <h4 className="text-sm font-semibold">ربط يدوي</h4>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    أدخل البيانات من{" "}
+                    <a href="https://developers.facebook.com/apps/" target="_blank" className="text-primary underline">Meta Developers</a>
+                    {" "}→ تطبيقك → WhatsApp → API Setup
+                  </p>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Access Token</Label>
+                    <Input
+                      value={manualToken}
+                      onChange={(e) => setManualToken(e.target.value)}
+                      placeholder="EAAxxxxxxx..."
+                      className="bg-secondary border-0 text-xs"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Phone Number ID</Label>
+                    <Input
+                      value={manualPhoneId}
+                      onChange={(e) => setManualPhoneId(e.target.value)}
+                      placeholder="1234567890"
+                      className="bg-secondary border-0 text-xs"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">WhatsApp Business Account ID</Label>
+                    <Input
+                      value={manualWabaId}
+                      onChange={(e) => setManualWabaId(e.target.value)}
+                      placeholder="1234567890"
+                      className="bg-secondary border-0 text-xs"
+                      dir="ltr"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleManualConnect}
+                    disabled={isLoading || !manualToken || !manualPhoneId || !manualWabaId}
+                    className="w-full gap-2 text-sm"
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                    ربط يدوي
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
