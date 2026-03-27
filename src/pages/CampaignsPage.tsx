@@ -29,10 +29,12 @@ interface Recipient {
 }
 
 const CampaignsPage = () => {
-  const { orgId } = useAuth();
+  const { orgId, isEcommerce } = useAuth();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [tagDefs, setTagDefs] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [detailCampaign, setDetailCampaign] = useState<any>(null);
   const [recipients, setRecipients] = useState<any[]>([]);
@@ -48,6 +50,13 @@ const CampaignsPage = () => {
     excludeTags: [] as string[],
     excludeCampaignIds: [] as string[],
     variableColumns: [] as string[],
+    // E-commerce filters
+    filterProduct: "",
+    filterCity: "",
+    filterDateFrom: "",
+    filterDateTo: "",
+    filterMinAmount: "",
+    filterMaxAmount: "",
   });
   const [uploadedRecipients, setUploadedRecipients] = useState<Recipient[]>([]);
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
@@ -58,14 +67,23 @@ const CampaignsPage = () => {
   }, [orgId]);
 
   const load = async () => {
-    const [c, cust, tags] = await Promise.all([
+    const queries: Promise<any>[] = [
       supabase.from("campaigns").select("*").eq("org_id", orgId).order("created_at", { ascending: false }),
       supabase.from("customers").select("*").eq("org_id", orgId),
       supabase.from("customer_tag_definitions").select("*").eq("org_id", orgId),
-    ]);
-    setCampaigns(c.data || []);
-    setCustomers(cust.data || []);
-    setTagDefs(tags.data || []);
+    ];
+    if (isEcommerce) {
+      queries.push(supabase.from("orders").select("*").eq("org_id", orgId));
+      queries.push(supabase.from("products").select("id, name, name_ar").eq("org_id", orgId));
+    }
+    const results = await Promise.all(queries);
+    setCampaigns(results[0].data || []);
+    setCustomers(results[1].data || []);
+    setTagDefs(results[2].data || []);
+    if (isEcommerce) {
+      setOrders(results[3]?.data || []);
+      setProducts(results[4]?.data || []);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
