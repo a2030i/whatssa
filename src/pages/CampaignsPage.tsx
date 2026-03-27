@@ -117,9 +117,38 @@ const CampaignsPage = () => {
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  const getEcommerceFilteredCustomers = () => {
+    // Get customer phones from orders matching e-commerce filters
+    let filteredOrders = [...orders];
+    if (form.filterProduct) {
+      // We need order_items but we don't have them loaded — filter by customer or skip
+      // For now filter orders that have the product name in notes/tags (simplified)
+      filteredOrders = filteredOrders.filter(o => o.customer_name?.includes(form.filterProduct) || o.notes?.includes(form.filterProduct));
+    }
+    if (form.filterCity) {
+      filteredOrders = filteredOrders.filter(o => o.customer_city === form.filterCity);
+    }
+    if (form.filterDateFrom) {
+      filteredOrders = filteredOrders.filter(o => o.created_at >= form.filterDateFrom);
+    }
+    if (form.filterDateTo) {
+      filteredOrders = filteredOrders.filter(o => o.created_at <= form.filterDateTo + "T23:59:59");
+    }
+    if (form.filterMinAmount) {
+      filteredOrders = filteredOrders.filter(o => (o.total || 0) >= parseFloat(form.filterMinAmount));
+    }
+    if (form.filterMaxAmount) {
+      filteredOrders = filteredOrders.filter(o => (o.total || 0) <= parseFloat(form.filterMaxAmount));
+    }
+    // Unique customer phones
+    const phones = [...new Set(filteredOrders.map(o => o.customer_phone).filter(Boolean))];
+    return customers.filter(c => phones.includes(c.phone));
+  };
+
   const getAudienceCount = () => {
     if (form.audienceType === "upload") return uploadedRecipients.length;
     if (form.audienceType === "select") return selectedCustomerIds.length;
+    if (form.audienceType === "orders") return getEcommerceFilteredCustomers().length;
     let filtered = customers;
     if (form.audienceType === "tags" && form.audienceTags.length > 0) {
       filtered = customers.filter((c) => (c.tags || []).some((t: string) => form.audienceTags.includes(t)));
@@ -134,6 +163,9 @@ const CampaignsPage = () => {
     if (form.audienceType === "upload") return uploadedRecipients;
     if (form.audienceType === "select") {
       return customers.filter((c) => selectedCustomerIds.includes(c.id)).map((c) => ({ phone: c.phone, name: c.name }));
+    }
+    if (form.audienceType === "orders") {
+      return getEcommerceFilteredCustomers().map((c) => ({ phone: c.phone, name: c.name }));
     }
     let filtered = customers;
     if (form.audienceType === "tags" && form.audienceTags.length > 0) {
