@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import TransferDialog from "./TransferDialog";
+import ClosureReasonDialog from "./ClosureReasonDialog";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
@@ -48,6 +50,8 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
   const [mentionFilter, setMentionFilter] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [showClosureReason, setShowClosureReason] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -225,15 +229,13 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
               <DropdownMenuItem onClick={() => { onStatusChange(conversation.id, "waiting"); toast.success("تم تغيير الحالة إلى بانتظار"); }}>
                 <StickyNote className="w-4 h-4 ml-2 text-warning" /> تعيين كبانتظار
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { onStatusChange(conversation.id, "closed"); toast.success("تم إغلاق المحادثة"); }}>
+              <DropdownMenuItem onClick={() => setShowClosureReason(true)}>
                 <XCircle className="w-4 h-4 ml-2 text-destructive" /> إغلاق المحادثة
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {agents.map((agent) => (
-                <DropdownMenuItem key={agent.id} onClick={() => { onTransfer(conversation.id, agent.name); toast.success(`تم تحويل المحادثة إلى ${agent.name}`); }}>
-                  <UserPlus className="w-4 h-4 ml-2" /> تحويل إلى {agent.name}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem onClick={() => setShowTransfer(true)}>
+                <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -528,6 +530,22 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Transfer Dialog */}
+      <TransferDialog
+        open={showTransfer}
+        onOpenChange={setShowTransfer}
+        conversationId={conversation.id}
+        onTransfer={onTransfer}
+      />
+
+      {/* Closure Reason Dialog */}
+      <ClosureReasonDialog
+        open={showClosureReason}
+        onOpenChange={setShowClosureReason}
+        conversationId={conversation.id}
+        onClose={onStatusChange}
+      />
     </div>
   );
 };

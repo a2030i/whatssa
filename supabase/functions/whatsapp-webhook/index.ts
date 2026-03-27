@@ -115,6 +115,25 @@ serve(async (req) => {
               .select("id, unread_count")
               .single();
             conversation = newConv;
+
+            // Auto-assign new conversation
+            if (conversation) {
+              try {
+                await fetch(
+                  `${Deno.env.get("SUPABASE_URL")}/functions/v1/auto-assign`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                    },
+                    body: JSON.stringify({ conversation_id: conversation.id, org_id: orgId }),
+                  }
+                );
+              } catch (e) {
+                console.error("Auto-assign failed:", e);
+              }
+            }
           } else {
             await supabase
               .from("conversations")
