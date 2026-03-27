@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug, ShoppingCart, ShoppingBag } from "lucide-react";
+import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug, ShoppingCart, ShoppingBag, ChevronDown } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,28 +11,121 @@ interface NavItem {
   ecommerceOnly?: boolean;
 }
 
-const allNavItems: NavItem[] = [
+interface NavGroup {
+  label: string;
+  icon: any;
+  items: NavItem[];
+}
+
+const buildGroups = (isEcommerce: boolean): (NavItem | NavGroup)[] => [
   { label: "المحادثات", icon: MessageSquare, path: "/" },
   { label: "العملاء", icon: UserCircle, path: "/customers" },
-  { label: "الطلبات", icon: ShoppingCart, path: "/orders", ecommerceOnly: true },
-  { label: "السلات المتروكة", icon: ShoppingBag, path: "/abandoned-carts", ecommerceOnly: true },
+  // E-commerce group
+  ...(isEcommerce ? [{
+    label: "المتجر",
+    icon: ShoppingBag,
+    items: [
+      { label: "الطلبات", icon: ShoppingCart, path: "/orders" },
+      { label: "السلات المتروكة", icon: ShoppingBag, path: "/abandoned-carts" },
+    ],
+  } as NavGroup] : []),
+  // Marketing group
+  {
+    label: "التسويق",
+    icon: Megaphone,
+    items: [
+      { label: "الحملات", icon: Megaphone, path: "/campaigns" },
+      { label: "القوالب", icon: FileText, path: "/templates" },
+      { label: "الأتمتة", icon: Bot, path: "/automation" },
+    ],
+  },
   { label: "التحليلات", icon: BarChart3, path: "/analytics" },
-  { label: "الحملات", icon: Megaphone, path: "/campaigns" },
-  { label: "الأتمتة", icon: Bot, path: "/automation" },
-  { label: "القوالب", icon: FileText, path: "/templates" },
-  { label: "الفريق", icon: Users, path: "/team" },
-  { label: "الباقات", icon: CreditCard, path: "/plans" },
-  { label: "المحفظة", icon: Wallet, path: "/wallet" },
-  { label: "الربط والتكامل", icon: Plug, path: "/integrations" },
-  { label: "الإعدادات", icon: Settings, path: "/settings" },
+  // Management group
+  {
+    label: "الإدارة",
+    icon: Settings,
+    items: [
+      { label: "الفريق", icon: Users, path: "/team" },
+      { label: "الباقات", icon: CreditCard, path: "/plans" },
+      { label: "المحفظة", icon: Wallet, path: "/wallet" },
+      { label: "الربط والتكامل", icon: Plug, path: "/integrations" },
+      { label: "الإعدادات", icon: Settings, path: "/settings" },
+    ],
+  },
 ];
+
+function isGroup(item: NavItem | NavGroup): item is NavGroup {
+  return "items" in item;
+}
 
 const AppSidebar = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, userRole, isSuperAdmin, isEcommerce, signOut } = useAuth();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  const navItems = allNavItems.filter(item => !item.ecommerceOnly || isEcommerce);
+  const navStructure = buildGroups(isEcommerce);
+
+  // Auto-open group containing active route
+  const isActive = (path: string) => location.pathname === path;
+
+  const isGroupActive = (group: NavGroup) => group.items.some(i => isActive(i.path));
+
+  const toggleGroup = (label: string) => {
+    setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  const isGroupOpen = (group: NavGroup) => {
+    if (openGroups[group.label] !== undefined) return openGroups[group.label];
+    return isGroupActive(group); // auto-open if active
+  };
+
+  const renderItem = (item: NavItem) => {
+    const active = isActive(item.path);
+    return (
+      <NavLink
+        key={item.path}
+        to={item.path}
+        onClick={() => setMobileOpen(false)}
+        className={cn(
+          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+          active
+            ? "bg-sidebar-accent text-sidebar-primary"
+            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        )}
+      >
+        <item.icon className="w-[18px] h-[18px]" />
+        <span>{item.label}</span>
+      </NavLink>
+    );
+  };
+
+  const renderGroup = (group: NavGroup) => {
+    const open = isGroupOpen(group);
+    const active = isGroupActive(group);
+    return (
+      <div key={group.label}>
+        <button
+          onClick={() => toggleGroup(group.label)}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+            active
+              ? "text-sidebar-primary"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )}
+        >
+          <group.icon className="w-[18px] h-[18px]" />
+          <span className="flex-1 text-right">{group.label}</span>
+          <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", open && "rotate-180")} />
+        </button>
+        {open && (
+          <div className="mr-4 pr-3 border-r border-sidebar-border space-y-0.5 mt-0.5">
+            {group.items.map(renderItem)}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const sidebarContent = (
     <>
@@ -48,28 +141,9 @@ const AppSidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 py-3 px-3 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-primary"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <item.icon className="w-[18px] h-[18px]" />
-              <span>{item.label}</span>
-              {item.ecommerceOnly && (
-                <span className="mr-auto text-[8px] bg-sidebar-primary/20 text-sidebar-primary px-1.5 py-0.5 rounded-full">متجر</span>
-              )}
-            </NavLink>
-          );
-        })}
+        {navStructure.map((item) =>
+          isGroup(item) ? renderGroup(item) : renderItem(item)
+        )}
       </nav>
 
       {/* Bottom */}
