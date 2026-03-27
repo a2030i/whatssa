@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut } from "lucide-react";
+import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ const navItems = [
   { label: "الأتمتة", icon: Bot, path: "/automation" },
   { label: "القوالب", icon: FileText, path: "/templates" },
   { label: "الفريق", icon: Users, path: "/team" },
+  { label: "المحفظة", icon: Wallet, path: "/wallet" },
   { label: "الإعدادات", icon: Settings, path: "/settings" },
 ];
 
