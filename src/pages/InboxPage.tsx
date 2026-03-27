@@ -8,7 +8,8 @@ import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";
 const InboxPage = () => {
   const [conversations, setConversations] = useState(initialConversations);
   const [allMessages, setAllMessages] = useState<Record<string, Message[]>>(initialMessages);
-  const [selectedId, setSelectedId] = useState<string | null>(conversations[0].id);
+  const isMobile = window.innerWidth < 768;
+  const [selectedId, setSelectedId] = useState<string | null>(isMobile ? null : conversations[0].id);
 
   const selected = conversations.find((c) => c.id === selectedId) || null;
   const currentMessages = selectedId ? (allMessages[selectedId] || []) : [];
