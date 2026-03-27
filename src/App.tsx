@@ -15,6 +15,8 @@ import SettingsPage from "./pages/SettingsPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import WalletPage from "./pages/WalletPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import CustomersPage from "./pages/CustomersPage";
+import PlanUpgradePage from "./pages/PlanUpgradePage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -57,10 +59,12 @@ const AppRoutes = () => {
       <Route path="/auth" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       <Route path="/" element={<ProtectedRoute><AppLayout><InboxPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/customers" element={<ProtectedRoute><AppLayout><CustomersPage /></AppLayout></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/campaigns" element={<ProtectedRoute><AppLayout><CampaignsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/automation" element={<ProtectedRoute><AppLayout><AutomationPage /></AppLayout></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><AppLayout><TeamPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/plans" element={<ProtectedRoute><AppLayout><PlanUpgradePage /></AppLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/templates" element={<ProtectedRoute><AppLayout><TemplatesPage /></AppLayout></ProtectedRoute>} />
       <Route path="/wallet" element={<ProtectedRoute><AppLayout><WalletPage /></AppLayout></ProtectedRoute>} />

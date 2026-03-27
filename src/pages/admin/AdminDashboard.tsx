@@ -11,6 +11,7 @@ import AdminPlans from "@/components/admin/AdminPlans";
 import AdminCoupons from "@/components/admin/AdminCoupons";
 import AdminUsage from "@/components/admin/AdminUsage";
 import AdminSettings from "@/components/admin/AdminSettings";
+import AdminMeta from "@/components/admin/AdminMeta";
 
 const tabs = [
   { id: "overview", label: "نظرة عامة" },
@@ -19,6 +20,7 @@ const tabs = [
   { id: "plans", label: "الباقات" },
   { id: "coupons", label: "الكوبونات" },
   { id: "usage", label: "الاستخدام" },
+  { id: "meta", label: "ربط ميتا" },
   { id: "settings", label: "إعدادات النظام" },
 ];
 
@@ -35,6 +37,7 @@ const AdminDashboard = () => {
       case "plans": return <AdminPlans />;
       case "coupons": return <AdminCoupons />;
       case "usage": return <AdminUsage />;
+      case "meta": return <AdminMeta />;
       case "settings": return <AdminSettings />;
       default: return <AdminOverview />;
     }

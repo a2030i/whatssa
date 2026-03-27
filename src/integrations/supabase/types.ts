@@ -47,11 +47,50 @@ export type Database = {
         }
         Relationships: []
       }
+      closure_reasons: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          label: string
+          org_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label: string
+          org_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string
+          org_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closure_reasons_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           assigned_team: string | null
           assigned_to: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closure_reason_id: string | null
           created_at: string | null
+          customer_id: string | null
           customer_name: string | null
           customer_phone: string
           customer_profile_pic: string | null
@@ -69,7 +108,11 @@ export type Database = {
         Insert: {
           assigned_team?: string | null
           assigned_to?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closure_reason_id?: string | null
           created_at?: string | null
+          customer_id?: string | null
           customer_name?: string | null
           customer_phone: string
           customer_profile_pic?: string | null
@@ -87,7 +130,11 @@ export type Database = {
         Update: {
           assigned_team?: string | null
           assigned_to?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closure_reason_id?: string | null
           created_at?: string | null
+          customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string
           customer_profile_pic?: string | null
@@ -103,6 +150,20 @@ export type Database = {
           wa_conversation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "conversations_closure_reason_id_fkey"
+            columns: ["closure_reason_id"]
+            isOneToOne: false
+            referencedRelation: "closure_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversations_org_id_fkey"
             columns: ["org_id"]
@@ -201,6 +262,85 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: []
+      }
+      customer_tag_definitions: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+          org_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          org_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_tag_definitions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          metadata: Json | null
+          name: string | null
+          notes: string | null
+          org_id: string
+          phone: string
+          tags: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          notes?: string | null
+          org_id: string
+          phone: string
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          notes?: string | null
+          org_id?: string
+          phone?: string
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -369,9 +509,15 @@ export type Database = {
           full_name: string | null
           id: string
           is_active: boolean
+          is_online: boolean | null
+          last_seen_at: string | null
           org_id: string | null
           phone: string | null
+          team_id: string | null
           updated_at: string | null
+          work_days: number[] | null
+          work_end: string | null
+          work_start: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -379,9 +525,15 @@ export type Database = {
           full_name?: string | null
           id: string
           is_active?: boolean
+          is_online?: boolean | null
+          last_seen_at?: string | null
           org_id?: string | null
           phone?: string | null
+          team_id?: string | null
           updated_at?: string | null
+          work_days?: number[] | null
+          work_end?: string | null
+          work_start?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -389,9 +541,15 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_active?: boolean
+          is_online?: boolean | null
+          last_seen_at?: string | null
           org_id?: string | null
           phone?: string | null
+          team_id?: string | null
           updated_at?: string | null
+          work_days?: number[] | null
+          work_end?: string | null
+          work_start?: string | null
         }
         Relationships: [
           {
@@ -399,6 +557,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -426,6 +591,35 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      teams: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          org_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          org_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       usage_tracking: {
         Row: {
@@ -652,7 +846,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "super_admin" | "admin" | "member"
+      app_role: "super_admin" | "admin" | "member" | "supervisor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -780,7 +974,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "admin", "member"],
+      app_role: ["super_admin", "admin", "member", "supervisor"],
     },
   },
 } as const
