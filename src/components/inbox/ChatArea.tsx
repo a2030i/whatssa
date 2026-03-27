@@ -530,6 +530,22 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Transfer Dialog */}
+      <TransferDialog
+        open={showTransfer}
+        onOpenChange={setShowTransfer}
+        conversationId={conversation.id}
+        onTransfer={onTransfer}
+      />
+
+      {/* Closure Reason Dialog */}
+      <ClosureReasonDialog
+        open={showClosureReason}
+        onOpenChange={setShowClosureReason}
+        conversationId={conversation.id}
+        onClose={onStatusChange}
+      />
     </div>
   );
 };
