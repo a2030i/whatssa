@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_type: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_type?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_type?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           assigned_team: string | null
@@ -78,6 +111,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      coupon_redemptions: {
+        Row: {
+          coupon_id: string
+          discount_amount: number
+          id: string
+          org_id: string
+          redeemed_at: string | null
+        }
+        Insert: {
+          coupon_id: string
+          discount_amount: number
+          id?: string
+          org_id: string
+          redeemed_at?: string | null
+        }
+        Update: {
+          coupon_id?: string
+          discount_amount?: number
+          id?: string
+          org_id?: string
+          redeemed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_redemptions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          applicable_plans: string[] | null
+          code: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          min_plan_price: number | null
+          used_count: number
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          applicable_plans?: string[] | null
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          min_plan_price?: number | null
+          used_count?: number
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          applicable_plans?: string[] | null
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          min_plan_price?: number | null
+          used_count?: number
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -280,6 +403,77 @@ export type Database = {
           },
         ]
       }
+      system_settings: {
+        Row: {
+          description: string | null
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      usage_tracking: {
+        Row: {
+          api_calls: number
+          conversations_count: number
+          created_at: string | null
+          id: string
+          messages_received: number
+          messages_sent: number
+          org_id: string
+          period: string
+          storage_used_mb: number
+          updated_at: string | null
+        }
+        Insert: {
+          api_calls?: number
+          conversations_count?: number
+          created_at?: string | null
+          id?: string
+          messages_received?: number
+          messages_sent?: number
+          org_id: string
+          period: string
+          storage_used_mb?: number
+          updated_at?: string | null
+        }
+        Update: {
+          api_calls?: number
+          conversations_count?: number
+          created_at?: string | null
+          id?: string
+          messages_received?: number
+          messages_sent?: number
+          org_id?: string
+          period?: string
+          storage_used_mb?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_tracking_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -297,6 +491,101 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          org_id: string
+          reference_id: string | null
+          reference_type: string | null
+          type: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          org_id: string
+          reference_id?: string | null
+          reference_type?: string | null
+          type: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          org_id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          type?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          balance: number
+          created_at: string | null
+          currency: string
+          id: string
+          is_active: boolean
+          org_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          balance?: number
+          created_at?: string | null
+          currency?: string
+          id?: string
+          is_active?: boolean
+          org_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          balance?: number
+          created_at?: string | null
+          currency?: string
+          id?: string
+          is_active?: boolean
+          org_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whatsapp_config: {
         Row: {
