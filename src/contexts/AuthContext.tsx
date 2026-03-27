@@ -10,6 +10,7 @@ interface AuthContextType {
   orgId: string | null;
   isLoading: boolean;
   isSuperAdmin: boolean;
+  isEcommerce: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   orgId: null,
   isLoading: true,
   isSuperAdmin: false,
+  isEcommerce: false,
   signOut: async () => {},
 });
 
