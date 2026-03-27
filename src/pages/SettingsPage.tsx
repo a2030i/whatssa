@@ -94,7 +94,7 @@ const SettingsPage = () => {
         }
       },
       {
-        config_id: "1018553996818498",
+        config_id: "2159780324784856",
         response_type: "code",
         override_default_response_type: true,
         extras: {
