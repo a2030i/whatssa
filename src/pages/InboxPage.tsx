@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useState } from "react";
 import { Search, Send, Phone, MoreVertical, Tag, Clock, ArrowRight, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { conversations, messages } from "@/data/mockData";
@@ -169,7 +168,5 @@ const InboxPage = () => {
   );
 };
 
-// Need to import MessageSquare for the empty state
-import { MessageSquare } from "lucide-react";
 
 export default InboxPage;
