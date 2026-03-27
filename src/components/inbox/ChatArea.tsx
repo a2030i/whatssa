@@ -143,22 +143,22 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
-      <div className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-5">
-        <div className="flex items-center gap-3">
-          <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors" onClick={onBack}>
-            <ArrowRight className="w-5 h-5 text-muted-foreground" />
+      <div className="h-14 md:h-16 border-b border-border bg-card flex items-center justify-between px-2 md:px-5">
+        <div className="flex items-center gap-2">
+          <button className="w-9 h-9 rounded-lg hover:bg-secondary transition-colors flex items-center justify-center shrink-0" onClick={onBack}>
+            <ArrowRight className="w-5 h-5 text-foreground" />
           </button>
           <div className="relative">
-            <div className="w-9 h-9 rounded-full gradient-whatsapp flex items-center justify-center text-sm font-bold text-whatsapp-foreground">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-full gradient-whatsapp flex items-center justify-center text-sm font-bold text-whatsapp-foreground">
               {conversation.customerName.charAt(0)}
             </div>
             {conversation.lastSeen === "متصل الآن" && (
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-success border-2 border-card" />
             )}
           </div>
-          <div>
-            <p className="font-semibold text-sm">{conversation.customerName}</p>
-            <p className="text-[10px] text-muted-foreground">{conversation.lastSeen || conversation.customerPhone}</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm truncate">{conversation.customerName}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{conversation.lastSeen || conversation.customerPhone}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
