@@ -69,10 +69,10 @@ const AppSidebar = () => {
 
   return (
     <>
-      {/* Mobile trigger */}
+      {/* Mobile trigger - positioned top-left (in RTL that's the left side) */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="md:hidden fixed top-3 right-3 z-50 w-10 h-10 rounded-lg bg-card shadow-card flex items-center justify-center"
+        className="md:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-lg bg-card shadow-card flex items-center justify-center"
       >
         <Menu className="w-5 h-5 text-foreground" />
       </button>
