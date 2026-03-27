@@ -58,6 +58,13 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
 
   const handleSend = () => {
     if (!inputText.trim()) return;
+    if (isNoteMode) {
+      onSendMessage(conversation.id, `[ملاحظة] ${inputText.trim()}`);
+      setInputText("");
+      setIsNoteMode(false);
+      toast.success("تم إضافة الملاحظة الداخلية");
+      return;
+    }
     if (windowExpired) {
       toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
       setShowTemplates(true);
@@ -69,7 +76,30 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
     setTimeout(() => setIsTyping(false), 2000);
   };
 
-  const handleQuickReply = (text: string) => {
+  const handleInputChange = (value: string) => {
+    setInputText(value);
+    // Check for @mention trigger
+    const lastAtIndex = value.lastIndexOf("@");
+    if (lastAtIndex !== -1) {
+      const afterAt = value.slice(lastAtIndex + 1);
+      if (!afterAt.includes(" ") && afterAt.length <= 20) {
+        setShowMentions(true);
+        setMentionFilter(afterAt);
+        return;
+      }
+    }
+    setShowMentions(false);
+  };
+
+  const insertMention = (agentName: string) => {
+    const lastAtIndex = inputText.lastIndexOf("@");
+    const newText = inputText.slice(0, lastAtIndex) + `@${agentName} `;
+    setInputText(newText);
+    setShowMentions(false);
+    inputRef.current?.focus();
+  };
+
+  const filteredAgents = agents.filter((a) => a.name.includes(mentionFilter));
     if (windowExpired) {
       toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
       setShowQuickReplies(false);
