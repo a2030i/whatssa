@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { code } = await req.json();
+    const { code, redirect_uri } = await req.json();
 
     if (!code) {
       return new Response(
@@ -31,7 +31,8 @@ serve(async (req) => {
     }
 
     // Exchange code for short-lived token
-    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`;
+    const redirectParam = redirect_uri ? `&redirect_uri=${encodeURIComponent(redirect_uri)}` : "";
+    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}${redirectParam}`;
     const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json();
 
