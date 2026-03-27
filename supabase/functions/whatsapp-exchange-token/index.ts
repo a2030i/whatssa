@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { code, access_token: directToken } = body;
+    const { code, access_token: directToken, redirect_uri: redirectUri } = body;
 
     const appId = "1276045851157317";
     const appSecret = Deno.env.get("META_APP_SECRET");
@@ -28,7 +28,7 @@ serve(async (req) => {
 
     // If code provided, exchange it for a token
     if (code) {
-      const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`;
+      const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}${redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ""}`;
       const tokenRes = await fetch(tokenUrl);
       const tokenData = await tokenRes.json();
 

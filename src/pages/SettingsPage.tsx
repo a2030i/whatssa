@@ -12,6 +12,8 @@ import { toast } from "sonner";
 const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
 const META_APP_ID = "1276045851157317";
 
+const getOAuthRedirectUri = () => window.location.href.split("#")[0];
+
 interface PhoneNumber {
   id: string;
   display_phone_number: string;
@@ -154,8 +156,9 @@ const SettingsPage = () => {
 
   const exchangeToken = async (code: string) => {
     try {
+      const redirectUri = getOAuthRedirectUri();
       const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", {
-        body: { code },
+        body: { code, redirect_uri: redirectUri },
       });
 
       if (error || data?.error) {
