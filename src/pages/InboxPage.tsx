@@ -14,15 +14,15 @@ const InboxPage = () => {
   const selected = conversations.find((c) => c.id === selectedId) || null;
   const currentMessages = selectedId ? (allMessages[selectedId] || []) : [];
 
-  const handleSendMessage = useCallback((convId: string, text: string) => {
+  const handleSendMessage = useCallback((convId: string, text: string, type: "text" | "note" = "text") => {
     const newMsg: Message = {
       id: `${convId}-${Date.now()}`,
       conversationId: convId,
       text,
       sender: "agent",
       timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
-      status: "sent",
-      type: "text",
+      status: type === "note" ? undefined : "sent",
+      type,
     };
     setAllMessages((prev) => ({ ...prev, [convId]: [...(prev[convId] || []), newMsg] }));
     setConversations((prev) => prev.map((c) => c.id === convId ? { ...c, lastMessage: text, timestamp: "الآن" } : c));

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Phone, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock } from "lucide-react";
+import { Send, Phone, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Conversation, Message, quickReplies, agents, messageTemplates, MessageTemplate } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ interface ChatAreaProps {
   conversation: Conversation;
   messages: Message[];
   onBack: () => void;
-  onSendMessage: (convId: string, text: string) => void;
+  onSendMessage: (convId: string, text: string, type?: "text" | "note") => void;
   onSendTemplate: (convId: string, template: MessageTemplate, variables: string[]) => void;
   onStatusChange: (convId: string, status: "active" | "waiting" | "closed") => void;
   onTransfer: (convId: string, agent: string) => void;
@@ -43,10 +43,15 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
   const [templateVars, setTemplateVars] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isNoteMode, setIsNoteMode] = useState(false);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const windowExpired = isWindowExpired(conversation.lastCustomerMessageAt);
   const approvedTemplates = messageTemplates.filter((t) => t.status === "approved");
+  const filteredMentionAgents = agents.filter((a) => a.name.includes(mentionFilter));
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -54,6 +59,13 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
 
   const handleSend = () => {
     if (!inputText.trim()) return;
+    if (isNoteMode) {
+      onSendMessage(conversation.id, inputText.trim(), "note");
+      setInputText("");
+      setIsNoteMode(false);
+      toast.success("تم إضافة الملاحظة الداخلية");
+      return;
+    }
     if (windowExpired) {
       toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
       setShowTemplates(true);
@@ -63,6 +75,28 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
     setInputText("");
     setIsTyping(true);
     setTimeout(() => setIsTyping(false), 2000);
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputText(value);
+    const lastAtIndex = value.lastIndexOf("@");
+    if (lastAtIndex !== -1) {
+      const afterAt = value.slice(lastAtIndex + 1);
+      if (!afterAt.includes(" ") && afterAt.length <= 20) {
+        setShowMentions(true);
+        setMentionFilter(afterAt);
+        return;
+      }
+    }
+    setShowMentions(false);
+  };
+
+  const insertMention = (agentName: string) => {
+    const lastAtIndex = inputText.lastIndexOf("@");
+    const newText = inputText.slice(0, lastAtIndex) + `@${agentName} `;
+    setInputText(newText);
+    setShowMentions(false);
+    inputRef.current?.focus();
   };
 
   const handleQuickReply = (text: string) => {
@@ -111,7 +145,7 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
       {/* Header */}
       <div className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-5">
         <div className="flex items-center gap-3">
-          <button className="md:hidden p-1" onClick={onBack}>
+          <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors" onClick={onBack}>
             <ArrowRight className="w-5 h-5 text-muted-foreground" />
           </button>
           <div className="relative">
@@ -164,13 +198,24 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
         </div>
       </div>
 
-      {/* 24h Window Warning Banner */}
+      {/* 24h Window Warning */}
       {windowExpired && (
         <div className="bg-warning/10 border-b border-warning/20 px-4 py-2 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
           <p className="text-xs text-warning font-medium flex-1">انتهت نافذة الـ 24 ساعة. يمكنك فقط إرسال قوالب معتمدة من Meta.</p>
           <Button size="sm" variant="outline" className="text-xs h-7 border-warning/30 text-warning hover:bg-warning/10" onClick={() => setShowTemplates(true)}>
             <FileText className="w-3 h-3 ml-1" /> إرسال قالب
+          </Button>
+        </div>
+      )}
+
+      {/* Note Mode Banner */}
+      {isNoteMode && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center gap-2">
+          <StickyNote className="w-4 h-4 text-amber-500 shrink-0" />
+          <p className="text-xs text-amber-600 font-medium flex-1">وضع الملاحظات الداخلية - الرسالة لن تُرسل للعميل</p>
+          <Button size="sm" variant="ghost" className="text-xs h-7 text-amber-600" onClick={() => setIsNoteMode(false)}>
+            إلغاء
           </Button>
         </div>
       )}
@@ -189,9 +234,11 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
             ) : (
               <div className={cn(
                 "max-w-[85%] md:max-w-[70%] rounded-xl px-4 py-2.5 text-sm",
-                msg.sender === "agent"
-                  ? "bg-card shadow-card text-foreground rounded-bl-sm"
-                  : "gradient-whatsapp text-whatsapp-foreground rounded-br-sm"
+                msg.type === "note"
+                  ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
+                  : msg.sender === "agent"
+                    ? "bg-card shadow-card text-foreground rounded-bl-sm"
+                    : "gradient-whatsapp text-whatsapp-foreground rounded-br-sm"
               )}>
                 {msg.type === "template" && (
                   <div className="flex items-center gap-1 mb-1 text-primary">
@@ -200,15 +247,23 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
                   </div>
                 )}
                 {msg.type === "note" && (
-                  <div className="flex items-center gap-1 mb-1 text-warning">
+                  <div className="flex items-center gap-1 mb-1 text-amber-500">
                     <StickyNote className="w-3 h-3" />
                     <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
                   </div>
                 )}
-                <p className="whitespace-pre-wrap">{msg.text}</p>
-                <div className={cn("flex items-center gap-0.5 mt-1", msg.sender === "agent" ? "text-muted-foreground" : "text-whatsapp-foreground/70")}>
+                <p className="whitespace-pre-wrap">
+                  {msg.text.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
+                    part.startsWith("@") ? (
+                      <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{part}</span>
+                    ) : (
+                      <span key={i}>{part}</span>
+                    )
+                  )}
+                </p>
+                <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-whatsapp-foreground/70")}>
                   <span className="text-[10px]">{msg.timestamp}</span>
-                  {msg.sender === "agent" && <MessageStatus status={msg.status} />}
+                  {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
                 </div>
               </div>
             )}
@@ -232,7 +287,7 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
       </div>
 
       {/* Quick Replies */}
-      {showQuickReplies && !windowExpired && (
+      {showQuickReplies && !windowExpired && !isNoteMode && (
         <div className="border-t border-border bg-card px-3 py-2 flex gap-2 overflow-x-auto">
           {quickReplies.map((qr) => (
             <button key={qr.id} onClick={() => handleQuickReply(qr.text)} className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium">
@@ -242,11 +297,26 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
         </div>
       )}
 
-      {/* Input */}
-      <div className="border-t border-border bg-card p-3 md:p-4">
+      {/* Mentions Popup */}
+      {showMentions && filteredMentionAgents.length > 0 && (
+        <div className="border-t border-border bg-card px-3 py-2">
+          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">اذكر موظف</p>
+          <div className="flex gap-2 overflow-x-auto">
+            {filteredMentionAgents.map((a) => (
+              <button key={a.id} onClick={() => insertMention(a.name)} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
+                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{a.initials}</div>
+                {a.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div className={cn("border-t bg-card p-3 md:p-4", isNoteMode ? "border-amber-500/30" : "border-border")}>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
-            {!windowExpired && (
+            {(!windowExpired || isNoteMode) && (
               <>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -264,33 +334,56 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
                     </div>
                   </PopoverContent>
                 </Popover>
-                <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground" onClick={() => toast.info("سيتم دعم المرفقات قريباً")}>
-                  <Paperclip className="w-4 h-4" />
-                </button>
-                <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-2 rounded-lg transition-colors", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
-                  <Zap className="w-4 h-4" />
-                </button>
+                {!isNoteMode && (
+                  <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground" onClick={() => toast.info("سيتم دعم المرفقات قريباً")}>
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+                )}
+                {!isNoteMode && (
+                  <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-2 rounded-lg transition-colors", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
+                    <Zap className="w-4 h-4" />
+                  </button>
+                )}
               </>
             )}
-            <button onClick={() => setShowTemplates(true)} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground" title="إرسال قالب">
-              <FileText className="w-4 h-4" />
+            {/* Note mode toggle */}
+            <button
+              onClick={() => { setIsNoteMode(!isNoteMode); inputRef.current?.focus(); }}
+              className={cn("p-2 rounded-lg transition-colors", isNoteMode ? "bg-amber-500/10 text-amber-500" : "hover:bg-secondary text-muted-foreground")}
+              title="ملاحظة داخلية"
+            >
+              <StickyNote className="w-4 h-4" />
             </button>
+            {/* Mention trigger */}
+            <button
+              onClick={() => { setInputText((prev) => prev + "@"); setShowMentions(true); setMentionFilter(""); inputRef.current?.focus(); }}
+              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
+              title="اذكر موظف @"
+            >
+              <AtSign className="w-4 h-4" />
+            </button>
+            {!isNoteMode && (
+              <button onClick={() => setShowTemplates(true)} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground" title="إرسال قالب">
+                <FileText className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          {windowExpired ? (
+          {windowExpired && !isNoteMode ? (
             <button onClick={() => setShowTemplates(true)} className="flex-1 text-right text-sm text-muted-foreground bg-secondary rounded-lg px-4 py-2.5 hover:bg-accent transition-colors">
               اختر قالباً لإرسال رسالة...
             </button>
           ) : (
             <Input
-              placeholder="اكتب رسالة..."
+              ref={inputRef}
+              placeholder={isNoteMode ? "اكتب ملاحظة داخلية... (اكتب @ لذكر موظف)" : "اكتب رسالة... (اكتب @ لذكر موظف)"}
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              className="flex-1 bg-secondary border-0"
+              className={cn("flex-1 border-0", isNoteMode ? "bg-amber-500/5" : "bg-secondary")}
             />
           )}
-          {!windowExpired && (
-            <button onClick={handleSend} disabled={!inputText.trim()} className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-opacity", inputText.trim() ? "gradient-whatsapp hover:opacity-90" : "bg-muted")}>
+          {(isNoteMode || !windowExpired) && (
+            <button onClick={handleSend} disabled={!inputText.trim()} className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-opacity", inputText.trim() ? (isNoteMode ? "bg-amber-500 hover:opacity-90" : "gradient-whatsapp hover:opacity-90") : "bg-muted")}>
               <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
             </button>
           )}
@@ -328,7 +421,6 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
           <DialogHeader><DialogTitle>تعبئة بيانات القالب</DialogTitle></DialogHeader>
           {selectedTemplate && (
             <div className="space-y-4 mt-2">
-              {/* Preview */}
               <div className="bg-secondary rounded-xl p-4 space-y-2">
                 {(() => { const { header, text } = fillTemplateBody(selectedTemplate, templateVars); return (
                   <>
@@ -345,8 +437,6 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
                   </>
                 ); })()}
               </div>
-
-              {/* Variables */}
               {selectedTemplate.variables && selectedTemplate.variables.map((v, i) => (
                 <div key={i} className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">{`{{${i + 1}}} ${v}`}</label>
@@ -358,7 +448,6 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
                   />
                 </div>
               ))}
-
               <Button onClick={handleSendTemplate} className="w-full gradient-whatsapp text-whatsapp-foreground gap-2">
                 <Send className="w-4 h-4" style={{ transform: "scaleX(-1)" }} /> إرسال القالب
               </Button>
