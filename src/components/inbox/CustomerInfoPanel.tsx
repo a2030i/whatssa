@@ -1,10 +1,13 @@
-import { useState } from "react";
-import { Tag, Clock, Mail, Phone, StickyNote, Eye, MessageSquare } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Tag, Clock, Mail, Phone, StickyNote, MessageSquare, User, Users, Building2, ChevronDown, ChevronUp, Edit3, Plus, X, ExternalLink } from "lucide-react";
 import { Conversation } from "@/data/mockData";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CustomerInfoPanelProps {
   conversation: Conversation;
@@ -12,8 +15,35 @@ interface CustomerInfoPanelProps {
 }
 
 const CustomerInfoPanel = ({ conversation, onUpdateNotes }: CustomerInfoPanelProps) => {
+  const { orgId } = useAuth();
   const [notes, setNotes] = useState(conversation.notes || "");
   const [editingNotes, setEditingNotes] = useState(false);
+  const [customer, setCustomer] = useState<any>(null);
+  const [newTag, setNewTag] = useState("");
+  const [showAddTag, setShowAddTag] = useState(false);
+  const [sections, setSections] = useState({
+    contact: true,
+    assignment: true,
+    tags: true,
+    notes: true,
+    stats: false,
+  });
+
+  useEffect(() => {
+    setNotes(conversation.notes || "");
+    loadCustomer();
+  }, [conversation.id]);
+
+  const loadCustomer = async () => {
+    if (!orgId) return;
+    const { data } = await supabase
+      .from("customers")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("phone", conversation.customerPhone)
+      .maybeSingle();
+    setCustomer(data);
+  };
 
   const saveNotes = () => {
     onUpdateNotes(conversation.id, notes);
@@ -21,82 +51,157 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes }: CustomerInfoPanelPro
     toast.success("تم حفظ الملاحظات");
   };
 
+  const toggleSection = (key: keyof typeof sections) => {
+    setSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const addTag = async () => {
+    if (!newTag.trim()) return;
+    const updatedTags = [...conversation.tags, newTag.trim()];
+    await supabase.from("conversations").update({ tags: updatedTags }).eq("id", conversation.id);
+    setNewTag("");
+    setShowAddTag(false);
+    toast.success("تم إضافة الوسم");
+  };
+
+  const removeTag = async (tag: string) => {
+    const updatedTags = conversation.tags.filter(t => t !== tag);
+    await supabase.from("conversations").update({ tags: updatedTags }).eq("id", conversation.id);
+    toast.success("تم حذف الوسم");
+  };
+
+  const SectionHeader = ({ title, icon: Icon, sectionKey }: { title: string; icon: any; sectionKey: keyof typeof sections }) => (
+    <button onClick={() => toggleSection(sectionKey)} className="w-full flex items-center justify-between py-2 group">
+      <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+        <Icon className="w-3 h-3" /> {title}
+      </p>
+      {sections[sectionKey] ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+    </button>
+  );
+
   return (
-    <div className="w-[260px] border-r border-border bg-card p-5 hidden xl:block overflow-y-auto">
-      {/* Avatar & Name */}
-      <div className="text-center mb-5">
+    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-hidden">
+      {/* Customer Header */}
+      <div className="p-4 border-b border-border text-center">
         <div className="relative inline-block">
-          <div className="w-16 h-16 rounded-full gradient-whatsapp flex items-center justify-center text-xl font-bold text-whatsapp-foreground mx-auto mb-3">
+          <div className="w-16 h-16 rounded-full gradient-whatsapp flex items-center justify-center text-xl font-bold text-whatsapp-foreground mx-auto mb-2">
             {conversation.customerName.charAt(0)}
           </div>
           {conversation.lastSeen === "متصل الآن" && (
-            <span className="absolute bottom-3 left-0 w-4 h-4 rounded-full bg-success border-2 border-card" />
+            <span className="absolute bottom-2 left-0 w-4 h-4 rounded-full bg-success border-2 border-card" />
           )}
         </div>
-        <h3 className="font-bold">{conversation.customerName}</h3>
-        <p className="text-xs text-muted-foreground">{conversation.lastSeen}</p>
+        <h3 className="font-bold text-sm">{conversation.customerName}</h3>
+        <p className="text-[11px] text-muted-foreground">{conversation.lastSeen || "غير متصل"}</p>
+        {customer && (
+          <Badge variant="outline" className="text-[10px] mt-1.5 gap-1">
+            <Building2 className="w-2.5 h-2.5" />
+            عميل مسجل
+          </Badge>
+        )}
       </div>
 
-      <div className="space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-1">
         {/* Contact Info */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-            <Phone className="w-3 h-3" /> معلومات التواصل
-          </p>
-          <p className="text-sm" dir="ltr">{conversation.customerPhone}</p>
-          {conversation.email && (
-            <p className="text-sm text-muted-foreground truncate">{conversation.email}</p>
-          )}
-        </div>
-
-        {/* Tags */}
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-            <Tag className="w-3 h-3" /> التصنيفات
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {conversation.tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-            ))}
+        <SectionHeader title="معلومات التواصل" icon={Phone} sectionKey="contact" />
+        {sections.contact && (
+          <div className="space-y-2 pb-3 border-b border-border">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground">الهاتف</span>
+              <span className="text-xs font-medium" dir="ltr">{conversation.customerPhone}</span>
+            </div>
+            {(customer?.email || conversation.email) && (
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">البريد</span>
+                <span className="text-xs truncate max-w-[150px]">{customer?.email || conversation.email}</span>
+              </div>
+            )}
+            {customer?.name && (
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">الاسم المسجل</span>
+                <span className="text-xs font-medium">{customer.name}</span>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
-        {/* Assigned Agent */}
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-            <Clock className="w-3 h-3" /> المسؤول
-          </p>
-          <p className="text-sm">{conversation.assignedTo}</p>
-        </div>
-
-        {/* Notes */}
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-            <StickyNote className="w-3 h-3" /> ملاحظات
-          </p>
-          {editingNotes ? (
-            <div className="space-y-2">
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="text-sm bg-secondary border-0 min-h-[80px] resize-none" placeholder="أضف ملاحظة..." />
-              <div className="flex gap-2">
-                <Button size="sm" onClick={saveNotes} className="text-xs h-7">حفظ</Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditingNotes(false)} className="text-xs h-7">إلغاء</Button>
+        {/* Assignment */}
+        <SectionHeader title="إجراءات المحادثة" icon={User} sectionKey="assignment" />
+        {sections.assignment && (
+          <div className="space-y-2 pb-3 border-b border-border">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground">الموظف المسؤول</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-3 h-3 text-primary" />
+                </div>
+                <span className="text-xs font-medium">{conversation.assignedTo}</span>
               </div>
             </div>
-          ) : (
-            <button onClick={() => setEditingNotes(true)} className="w-full text-right p-2 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors">
-              <p className="text-sm text-muted-foreground">
-                {notes || "أضف ملاحظة..."}
-              </p>
-            </button>
-          )}
-        </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground">الحالة</span>
+              <Badge variant="outline" className="text-[10px]">
+                {conversation.status === "active" ? "نشط" : conversation.status === "waiting" ? "بانتظار" : "مغلق"}
+              </Badge>
+            </div>
+          </div>
+        )}
 
-        {/* Stats placeholder */}
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-            <MessageSquare className="w-3 h-3" /> إحصائيات
-          </p>
-          <div className="space-y-1.5">
+        {/* Tags */}
+        <SectionHeader title="وسوم المحادثة" icon={Tag} sectionKey="tags" />
+        {sections.tags && (
+          <div className="pb-3 border-b border-border">
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {conversation.tags.map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-[10px] gap-1 pr-1">
+                  {tag}
+                  <button onClick={() => removeTag(tag)} className="hover:text-destructive">
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </Badge>
+              ))}
+              {conversation.tags.length === 0 && <span className="text-[11px] text-muted-foreground">لا يوجد وسوم</span>}
+            </div>
+            {showAddTag ? (
+              <div className="flex gap-1.5">
+                <Input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="اسم الوسم" className="h-7 text-xs bg-secondary border-0 flex-1" onKeyDown={(e) => e.key === "Enter" && addTag()} />
+                <Button size="sm" className="h-7 text-[10px] px-2" onClick={addTag}>إضافة</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-[10px] px-1.5" onClick={() => setShowAddTag(false)}>
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            ) : (
+              <button onClick={() => setShowAddTag(true)} className="text-[11px] text-primary hover:underline flex items-center gap-1">
+                <Plus className="w-3 h-3" /> أضف وسم
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Notes */}
+        <SectionHeader title="ملاحظات" icon={StickyNote} sectionKey="notes" />
+        {sections.notes && (
+          <div className="pb-3 border-b border-border">
+            {editingNotes ? (
+              <div className="space-y-2">
+                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="text-xs bg-secondary border-0 min-h-[70px] resize-none" placeholder="أضف ملاحظة..." />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={saveNotes} className="text-[10px] h-6 px-2">حفظ</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingNotes(false)} className="text-[10px] h-6 px-2">إلغاء</Button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setEditingNotes(true)} className="w-full text-right p-2 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors">
+                <p className="text-xs text-muted-foreground">{notes || "أضف ملاحظة..."}</p>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Stats */}
+        <SectionHeader title="البيانات المتتبعة" icon={MessageSquare} sectionKey="stats" />
+        {sections.stats && (
+          <div className="space-y-2 pb-3">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">إجمالي المحادثات</span>
               <span className="font-medium">3</span>
@@ -106,11 +211,17 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes }: CustomerInfoPanelPro
               <span className="font-medium">{conversation.timestamp}</span>
             </div>
             <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">الحالة</span>
+              <Badge variant="outline" className="text-[10px]">
+                {conversation.lastSeen === "متصل الآن" ? "متصل" : "غير متصل"}
+              </Badge>
+            </div>
+            <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">متوسط الاستجابة</span>
               <span className="font-medium">1.5 دقيقة</span>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
