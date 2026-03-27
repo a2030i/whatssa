@@ -520,6 +520,56 @@ const CampaignsPage = () => {
                   )}
                 </div>
               )}
+
+              {/* E-commerce Orders Filter */}
+              {form.audienceType === "orders" && isEcommerce && (
+                <div className="space-y-3 bg-secondary/30 rounded-xl p-4">
+                  <p className="text-xs font-semibold flex items-center gap-1.5"><ShoppingCart className="w-3.5 h-3.5 text-primary" /> فلاتر الطلبات المتقدمة</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">المنتج</Label>
+                      <Select value={form.filterProduct} onValueChange={(v) => setForm({ ...form, filterProduct: v === "_all" ? "" : v })}>
+                        <SelectTrigger className="text-xs bg-background border-0 h-8"><SelectValue placeholder="كل المنتجات" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_all">كل المنتجات</SelectItem>
+                          {products.map(p => <SelectItem key={p.id} value={p.name}>{p.name_ar || p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">المدينة</Label>
+                      <Select value={form.filterCity} onValueChange={(v) => setForm({ ...form, filterCity: v === "_all" ? "" : v })}>
+                        <SelectTrigger className="text-xs bg-background border-0 h-8"><SelectValue placeholder="كل المدن" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_all">كل المدن</SelectItem>
+                          {[...new Set(orders.map(o => o.customer_city).filter(Boolean))].map(city => (
+                            <SelectItem key={city} value={city}>{city}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">من تاريخ</Label>
+                      <Input type="date" value={form.filterDateFrom} onChange={(e) => setForm({ ...form, filterDateFrom: e.target.value })} className="text-xs bg-background border-0 h-8" dir="ltr" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">إلى تاريخ</Label>
+                      <Input type="date" value={form.filterDateTo} onChange={(e) => setForm({ ...form, filterDateTo: e.target.value })} className="text-xs bg-background border-0 h-8" dir="ltr" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">الحد الأدنى للمبلغ</Label>
+                      <Input type="number" value={form.filterMinAmount} onChange={(e) => setForm({ ...form, filterMinAmount: e.target.value })} placeholder="0" className="text-xs bg-background border-0 h-8" dir="ltr" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">الحد الأقصى للمبلغ</Label>
+                      <Input type="number" value={form.filterMaxAmount} onChange={(e) => setForm({ ...form, filterMaxAmount: e.target.value })} placeholder="∞" className="text-xs bg-background border-0 h-8" dir="ltr" />
+                    </div>
+                  </div>
+                  <div className="bg-primary/5 rounded-lg p-2.5 text-xs text-primary font-medium">
+                    عملاء مطابقون: {getEcommerceFilteredCustomers().length}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Exclusions */}
