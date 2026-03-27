@@ -1,302 +1,26 @@
-import { useState, useEffect, useCallback } from "react";
-import { Building2, Bell, Globe, CreditCard, Shield, ChevronLeft, CheckCircle2, Copy, ExternalLink, Loader2, AlertCircle, Phone, RefreshCw, MessageSquare, KeyRound } from "lucide-react";
+import { useState } from "react";
+import { Building2, Bell, CreditCard, Shield, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
-const META_APP_ID = "1276045851157317";
-
-const getOAuthRedirectUri = () => window.location.href.split("#")[0].split("?")[0];
-
-interface PhoneNumber {
-  id: string;
-  display_phone_number: string;
-  verified_name: string;
-  quality_rating: string;
-}
-
-interface WabaResult {
-  waba_id: string;
-  phone_numbers: PhoneNumber[];
-}
+import { useNavigate } from "react-router-dom";
 
 const SettingsPage = () => {
-  const { orgId } = useAuth();
-  const [webhookVerifyToken, setWebhookVerifyToken] = useState("");
-  const [isConnected, setIsConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [configId, setConfigId] = useState<string | null>(null);
-  const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
-  const [selectedPhoneDisplay, setSelectedPhoneDisplay] = useState("");
-  const [showPhones, setShowPhones] = useState(false);
-  const [accessToken, setAccessToken] = useState("");
-  const [businessAccountId, setBusinessAccountId] = useState("");
-  const [sdkLoaded, setSdkLoaded] = useState(false);
-  const [showManual, setShowManual] = useState(false);
-  const [manualToken, setManualToken] = useState("");
-  const [manualPhoneId, setManualPhoneId] = useState("");
-  const [manualWabaId, setManualWabaId] = useState("");
+  const { orgId, profile } = useAuth();
+  const navigate = useNavigate();
+  const [companyName, setCompanyName] = useState(profile?.full_name || "");
+  const [companyPhone, setCompanyPhone] = useState(profile?.phone || "");
 
-  useEffect(() => { loadConfig(); loadFacebookSDK(); }, []);
-
-  const loadConfig = async () => {
-    const { data } = await supabase.from("whatsapp_config").select("*").limit(1).maybeSingle();
-    if (data) {
-      setConfigId(data.id);
-      setBusinessAccountId(data.business_account_id);
-      setAccessToken(data.access_token);
-      setWebhookVerifyToken(data.webhook_verify_token);
-      setSelectedPhoneDisplay(data.display_phone || "");
-      setIsConnected(data.is_connected || false);
-    }
-  };
-
-  const loadFacebookSDK = () => {
-    if (document.getElementById("facebook-jssdk")) {
-      setSdkLoaded(true);
-      return;
-    }
-
-    (window as any).fbAsyncInit = function () {
-      (window as any).FB.init({
-        appId: META_APP_ID,
-        cookie: true,
-        xfbml: true,
-        version: "v21.0",
-      });
-      setSdkLoaded(true);
-    };
-
-    const script = document.createElement("script");
-    script.id = "facebook-jssdk";
-    script.src = "https://connect.facebook.net/en_US/sdk.js";
-    script.async = true;
-    script.defer = true;
-    document.body.appendChild(script);
-  };
-
-  const handleFacebookLogin = useCallback(() => {
-    const FB = (window as any).FB;
-    if (!FB) {
-      toast.error("جاري تحميل Facebook SDK...");
-      return;
-    }
-
-    setIsLoading(true);
-
-    FB.login(
-      (response: any) => {
-        if (response.authResponse) {
-          const code = response.authResponse.code;
-          const accessToken = response.authResponse.accessToken;
-          
-          if (code) {
-            exchangeToken(code);
-          } else if (accessToken) {
-            handleDirectToken(accessToken);
-          } else {
-            setIsLoading(false);
-            toast.error("لم يتم الحصول على بيانات المصادقة");
-          }
-        } else {
-          setIsLoading(false);
-          toast.error("تم إلغاء عملية الربط");
-        }
-      },
-      {
-        config_id: "2159780324784856",
-        response_type: "code",
-        override_default_response_type: true,
-        scope: "whatsapp_business_management,whatsapp_business_messaging",
-      }
-    );
-  }, []);
-
-  const handleDirectToken = async (token: string) => {
-    try {
-      setAccessToken(token);
-      
-      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", {
-        body: { access_token: token },
-      });
-
-      if (error || data?.error) {
-        toast.error(data?.error || "فشل في جلب بيانات الحساب");
-        setIsLoading(false);
-        return;
-      }
-
-      const allPhones: PhoneNumber[] = [];
-      let firstWabaId = "";
-
-      if (data.results && data.results.length > 0) {
-        data.results.forEach((result: WabaResult) => {
-          if (!firstWabaId) firstWabaId = result.waba_id;
-          allPhones.push(...result.phone_numbers);
-        });
-      }
-
-      if (allPhones.length > 0) {
-        setBusinessAccountId(firstWabaId);
-        setPhoneNumbers(allPhones);
-        setShowPhones(true);
-        toast.success(`تم العثور على ${allPhones.length} رقم — اختر واحد`);
-      } else {
-        toast.error("لا توجد أرقام واتساب مربوطة بحسابك.");
-      }
-    } catch {
-      toast.error("حدث خطأ");
-    }
-    setIsLoading(false);
-  };
-
-  const exchangeToken = async (code: string) => {
-    try {
-      const redirectUri = getOAuthRedirectUri();
-      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", {
-        body: { code, redirect_uri: redirectUri },
-      });
-
-      if (error || data?.error) {
-        toast.error(data?.error || "فشل في تبادل التوكن");
-        setIsLoading(false);
-        return;
-      }
-
-      setAccessToken(data.access_token);
-
-      const allPhones: PhoneNumber[] = [];
-      let firstWabaId = "";
-
-      if (data.results && data.results.length > 0) {
-        data.results.forEach((result: WabaResult) => {
-          if (!firstWabaId) firstWabaId = result.waba_id;
-          allPhones.push(...result.phone_numbers);
-        });
-      }
-
-      if (allPhones.length > 0) {
-        setBusinessAccountId(firstWabaId);
-        setPhoneNumbers(allPhones);
-        setShowPhones(true);
-        toast.success(`تم العثور على ${allPhones.length} رقم — اختر واحد`);
-      } else {
-        toast.error("لا توجد أرقام واتساب مربوطة بحسابك. تأكد من مشاركة حساب واتساب للأعمال.");
-      }
-    } catch {
-      toast.error("حدث خطأ في الربط");
-    }
-    setIsLoading(false);
-  };
-
-  const handleSelectPhone = async (phone: PhoneNumber) => {
-    setIsLoading(true);
-    try {
-      if (configId) {
-        await supabase.from("whatsapp_config").update({
-          phone_number_id: phone.id,
-          business_account_id: businessAccountId,
-          access_token: accessToken,
-          display_phone: phone.display_phone_number,
-          business_name: phone.verified_name,
-          is_connected: true,
-          org_id: orgId,
-        }).eq("id", configId);
-      } else {
-        const { data } = await supabase.from("whatsapp_config").insert({
-          phone_number_id: phone.id,
-          business_account_id: businessAccountId,
-          access_token: accessToken,
-          display_phone: phone.display_phone_number,
-          business_name: phone.verified_name,
-          is_connected: true,
-          org_id: orgId,
-        }).select().single();
-        if (data) {
-          setConfigId(data.id);
-          setWebhookVerifyToken(data.webhook_verify_token);
-        }
-      }
-      setSelectedPhoneDisplay(phone.display_phone_number);
-      setIsConnected(true);
-      setShowPhones(false);
-      toast.success(`✅ تم ربط الرقم ${phone.display_phone_number} بنجاح!`);
-    } catch {
-      toast.error("حدث خطأ");
-    }
-    setIsLoading(false);
-  };
-
-  const handleManualConnect = async () => {
-    if (!manualToken.trim() || !manualPhoneId.trim() || !manualWabaId.trim()) {
-      toast.error("يرجى تعبئة جميع الحقول");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const res = await fetch(
-        `https://graph.facebook.com/v21.0/${manualPhoneId.trim()}?fields=display_phone_number,verified_name,quality_rating`,
-        { headers: { Authorization: `Bearer ${manualToken.trim()}` } }
-      );
-      const phoneData = await res.json();
-
-      if (phoneData.error) {
-        toast.error(phoneData.error.message || "التوكن أو Phone Number ID غير صحيح");
-        setIsLoading(false);
-        return;
-      }
-
-      const displayPhone = phoneData.display_phone_number || manualPhoneId;
-      const businessName = phoneData.verified_name || "";
-
-      if (configId) {
-        await supabase.from("whatsapp_config").update({
-          phone_number_id: manualPhoneId.trim(),
-          business_account_id: manualWabaId.trim(),
-          access_token: manualToken.trim(),
-          display_phone: displayPhone,
-          business_name: businessName,
-          is_connected: true,
-          org_id: orgId,
-        }).eq("id", configId);
-      } else {
-        const { data } = await supabase.from("whatsapp_config").insert({
-          phone_number_id: manualPhoneId.trim(),
-          business_account_id: manualWabaId.trim(),
-          access_token: manualToken.trim(),
-          display_phone: displayPhone,
-          business_name: businessName,
-          is_connected: true,
-          org_id: orgId,
-        }).select().single();
-        if (data) {
-          setConfigId(data.id);
-          setWebhookVerifyToken(data.webhook_verify_token);
-        }
-      }
-
-      setAccessToken(manualToken.trim());
-      setBusinessAccountId(manualWabaId.trim());
-      setSelectedPhoneDisplay(displayPhone);
-      setIsConnected(true);
-      setShowManual(false);
-      toast.success(`✅ تم ربط الرقم ${displayPhone} بنجاح!`);
-    } catch {
-      toast.error("حدث خطأ في الربط");
-    }
-    setIsLoading(false);
-  };
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`تم نسخ ${label}`);
+  const saveCompanyInfo = async () => {
+    if (!orgId) return;
+    // Update org name
+    await supabase.from("organizations").update({ name: companyName }).eq("id", orgId);
+    toast.success("تم حفظ البيانات");
   };
 
   return (
@@ -304,183 +28,6 @@ const SettingsPage = () => {
       <div>
         <h1 className="text-xl font-bold">الإعدادات</h1>
         <p className="text-sm text-muted-foreground mt-1">إدارة إعدادات حسابك والنظام</p>
-      </div>
-
-      {/* WhatsApp Connection */}
-      <div className="bg-card rounded-lg shadow-card">
-        <div className="p-5 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-sm">ربط WhatsApp</h3>
-          </div>
-          {isConnected ? (
-            <Badge className="bg-success/10 text-success border-0 text-xs gap-1"><CheckCircle2 className="w-3 h-3" /> متصل</Badge>
-          ) : (
-            <Badge className="bg-warning/10 text-warning border-0 text-xs gap-1"><AlertCircle className="w-3 h-3" /> غير متصل</Badge>
-          )}
-        </div>
-
-        <div className="p-5 space-y-4">
-          {/* Connected State */}
-          {isConnected && selectedPhoneDisplay && !showPhones && (
-            <div className="space-y-4">
-              <div className="text-center py-4 space-y-2">
-                <div className="w-14 h-14 rounded-full gradient-whatsapp flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-7 h-7 text-whatsapp-foreground" />
-                </div>
-                <p className="font-bold">الرقم {selectedPhoneDisplay} مربوط ✅</p>
-                <p className="text-xs text-muted-foreground">النظام جاهز لاستقبال وإرسال الرسائل</p>
-              </div>
-
-              {/* Webhook info */}
-              <details className="group">
-                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1">
-                  <ChevronLeft className="w-3 h-3 group-open:rotate-[-90deg] transition-transform" />
-                  بيانات الـ Webhook (لو ما ضبطته بعد)
-                </summary>
-                <div className="mt-3 border border-border rounded-lg p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Input value={WEBHOOK_URL} readOnly className="bg-secondary border-0 text-[11px] flex-1" dir="ltr" />
-                    <Button size="sm" variant="outline" className="shrink-0 h-8" onClick={() => copyToClipboard(WEBHOOK_URL, "URL")}><Copy className="w-3 h-3" /></Button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input value={webhookVerifyToken} readOnly className="bg-secondary border-0 text-[11px] flex-1" dir="ltr" />
-                    <Button size="sm" variant="outline" className="shrink-0 h-8" onClick={() => copyToClipboard(webhookVerifyToken, "Token")}><Copy className="w-3 h-3" /></Button>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    الصق هذي البيانات في{" "}
-                    <a href="https://developers.facebook.com/apps/" target="_blank" className="text-primary underline">Meta Developers</a>
-                    {" "}→ تطبيقك → WhatsApp → Configuration → Webhook
-                  </p>
-                </div>
-              </details>
-
-              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => { setShowPhones(false); setIsConnected(false); }}>
-                <RefreshCw className="w-3 h-3" /> تغيير الرقم
-              </Button>
-            </div>
-          )}
-
-          {/* Setup State - Embedded Signup */}
-          {(!isConnected || showPhones) && !showPhones && (
-            <div className="space-y-4">
-              <div className="bg-secondary/50 rounded-lg p-4 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <MessageSquare className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">اربط حساب واتساب للأعمال</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    سجّل دخولك بحساب فيسبوك واختر رقم واتساب — بضغطة زر واحدة
-                  </p>
-                </div>
-                <Button
-                  onClick={handleFacebookLogin}
-                  disabled={isLoading || !sdkLoaded}
-                  className="w-full gap-2 gradient-whatsapp text-whatsapp-foreground text-sm py-5"
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
-                      <path d="M12.001 2.002c-5.522 0-9.999 4.477-9.999 9.999 0 4.99 3.657 9.126 8.437 9.879v-6.988h-2.54v-2.891h2.54V9.798c0-2.508 1.493-3.891 3.776-3.891 1.094 0 2.24.195 2.24.195v2.459h-1.264c-1.24 0-1.628.772-1.628 1.563v1.875h2.771l-.443 2.891h-2.328v6.988C18.344 21.129 22 16.992 22 12.001c0-5.522-4.477-9.999-9.999-9.999z" />
-                    </svg>
-                  )}
-                  {!sdkLoaded ? "جاري التحميل..." : "ربط بحساب فيسبوك"}
-                </Button>
-              </div>
-
-              {/* Manual connection toggle */}
-              <div className="text-center">
-                <button
-                  onClick={() => setShowManual(!showManual)}
-                  className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
-                >
-                  {showManual ? "إخفاء الربط اليدوي" : "أو اربط يدوياً بإدخال البيانات"}
-                </button>
-              </div>
-
-              {/* Manual connection form */}
-              {showManual && (
-                <div className="border border-border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <KeyRound className="w-4 h-4 text-primary" />
-                    <h4 className="text-sm font-semibold">ربط يدوي</h4>
-                  </div>
-                  <div className="bg-secondary/60 rounded-lg p-3 space-y-2 text-[11px] text-muted-foreground">
-                    <p className="font-semibold text-foreground text-xs">كيف تحصل على البيانات؟</p>
-                    <ol className="list-decimal list-inside space-y-1.5 leading-relaxed">
-                      <li>
-                        افتح{" "}
-                        <a href="https://developers.facebook.com/apps/" target="_blank" className="text-primary underline">Meta Developers</a>
-                        {" "}وادخل على تطبيقك
-                      </li>
-                      <li>
-                        من القائمة الجانبية اختر <span className="font-medium text-foreground">WhatsApp → API Setup</span>
-                      </li>
-                      <li>
-                        <span className="font-medium text-foreground">Access Token:</span> اضغط على "Generate" أو انسخ التوكن المؤقت (صالح 24 ساعة). للتوكن الدائم، استخدم{" "}
-                        <a href="https://developers.facebook.com/docs/whatsapp/business-management-api/get-started#system-user-access-tokens" target="_blank" className="text-primary underline">System User Token</a>
-                      </li>
-                      <li>
-                        <span className="font-medium text-foreground">Phone Number ID:</span> يظهر تحت الرقم مباشرة في نفس الصفحة
-                      </li>
-                      <li>
-                        <span className="font-medium text-foreground">Business Account ID:</span> يظهر أعلى الصفحة بجانب "WhatsApp Business Account ID"
-                      </li>
-                    </ol>
-                    <p className="text-[10px] mt-1">💡 ننصح باستخدام System User Token الدائم بدل التوكن المؤقت</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Access Token</Label>
-                    <Input value={manualToken} onChange={(e) => setManualToken(e.target.value)} placeholder="EAAxxxxxxx..." className="bg-secondary border-0 text-xs" dir="ltr" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Phone Number ID</Label>
-                    <Input value={manualPhoneId} onChange={(e) => setManualPhoneId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">WhatsApp Business Account ID</Label>
-                    <Input value={manualWabaId} onChange={(e) => setManualWabaId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
-                  </div>
-                  <Button onClick={handleManualConnect} disabled={isLoading || !manualToken || !manualPhoneId || !manualWabaId} className="w-full gap-2 text-sm">
-                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                    ربط يدوي
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Phone Selection */}
-          {showPhones && (
-            <div className="space-y-3">
-              <h4 className="font-semibold text-sm">اختر رقمك:</h4>
-              {phoneNumbers.map((phone) => (
-                <button key={phone.id} onClick={() => handleSelectPhone(phone)} disabled={isLoading}
-                  className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-right">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full gradient-whatsapp flex items-center justify-center">
-                      <Phone className="w-5 h-5 text-whatsapp-foreground" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm" dir="ltr">{phone.display_phone_number}</p>
-                      <p className="text-xs text-muted-foreground">{phone.verified_name}</p>
-                    </div>
-                  </div>
-                  {phone.quality_rating && (
-                    <Badge variant="outline" className={cn("text-[10px]",
-                      phone.quality_rating === "GREEN" ? "text-success border-success/30" : "text-warning border-warning/30"
-                    )}>
-                      {phone.quality_rating === "GREEN" ? "✅" : "⚠️"} {phone.quality_rating === "GREEN" ? "جودة عالية" : "متوسطة"}
-                    </Badge>
-                  )}
-                </button>
-              ))}
-              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowPhones(false)}>← رجوع</Button>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Company Info */}
@@ -493,15 +40,15 @@ const SettingsPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-xs">اسم الشركة</Label>
-              <Input defaultValue="شركة التقنية المتقدمة" className="bg-secondary border-0" />
+              <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="bg-secondary border-0" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs">رقم الهاتف</Label>
-              <Input defaultValue="+966 50 123 4567" className="bg-secondary border-0" dir="ltr" />
+              <Input value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} className="bg-secondary border-0" dir="ltr" />
             </div>
           </div>
           <div className="flex justify-end">
-            <Button size="sm">حفظ</Button>
+            <Button size="sm" onClick={saveCompanyInfo}>حفظ</Button>
           </div>
         </div>
       </div>
@@ -532,10 +79,11 @@ const SettingsPage = () => {
       {/* Quick Links */}
       <div className="bg-card rounded-lg shadow-card">
         {[
-          { id: "billing", icon: CreditCard, title: "الاشتراك والفواتير", description: "إدارة الاشتراك والدفع" },
-          { id: "security", icon: Shield, title: "الأمان", description: "كلمة المرور والمصادقة" },
+          { id: "integrations", icon: CreditCard, title: "الربط والتكامل", description: "إدارة قنوات التواصل وأرقام واتساب", onClick: () => navigate("/integrations") },
+          { id: "billing", icon: CreditCard, title: "الاشتراك والفواتير", description: "إدارة الاشتراك والدفع", onClick: () => navigate("/wallet") },
+          { id: "security", icon: Shield, title: "الأمان", description: "كلمة المرور والمصادقة", onClick: () => {} },
         ].map((section, i, arr) => (
-          <button key={section.id} className={cn("w-full flex items-center justify-between p-5 hover:bg-secondary/30 transition-colors", i < arr.length - 1 && "border-b border-border")}>
+          <button key={section.id} onClick={section.onClick} className={cn("w-full flex items-center justify-between p-5 hover:bg-secondary/30 transition-colors", i < arr.length - 1 && "border-b border-border")}>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><section.icon className="w-4 h-4" /></div>
               <div className="text-right">
