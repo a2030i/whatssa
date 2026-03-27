@@ -67,22 +67,21 @@ const CampaignsPage = () => {
   }, [orgId]);
 
   const load = async () => {
-    const queries: Promise<any>[] = [
-      supabase.from("campaigns").select("*").eq("org_id", orgId).order("created_at", { ascending: false }),
-      supabase.from("customers").select("*").eq("org_id", orgId),
-      supabase.from("customer_tag_definitions").select("*").eq("org_id", orgId),
-    ];
-    if (isEcommerce) {
-      queries.push(supabase.from("orders").select("*").eq("org_id", orgId));
-      queries.push(supabase.from("products").select("id, name, name_ar").eq("org_id", orgId));
-    }
-    const results = await Promise.all(queries);
-    setCampaigns(results[0].data || []);
-    setCustomers(results[1].data || []);
-    setTagDefs(results[2].data || []);
-    if (isEcommerce) {
-      setOrders(results[3]?.data || []);
-      setProducts(results[4]?.data || []);
+    const [c, cust, tags] = await Promise.all([
+      supabase.from("campaigns").select("*").eq("org_id", orgId!).order("created_at", { ascending: false }),
+      supabase.from("customers").select("*").eq("org_id", orgId!),
+      supabase.from("customer_tag_definitions").select("*").eq("org_id", orgId!),
+    ]);
+    setCampaigns(c.data || []);
+    setCustomers(cust.data || []);
+    setTagDefs(tags.data || []);
+    if (isEcommerce && orgId) {
+      const [o, p] = await Promise.all([
+        supabase.from("orders").select("*").eq("org_id", orgId),
+        supabase.from("products").select("id, name, name_ar").eq("org_id", orgId),
+      ]);
+      setOrders(o.data || []);
+      setProducts(p.data || []);
     }
   };
 
