@@ -3,7 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Search, Building2, UserCheck, UserX } from "lucide-react";
+import { Search, Building2, UserCheck, UserX, ShoppingBag, Store } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const AdminAccounts = () => {
   const [orgs, setOrgs] = useState<any[]>([]);
@@ -34,6 +36,12 @@ const AdminAccounts = () => {
     load();
   };
 
+  const toggleEcommerce = async (orgId: string, current: boolean) => {
+    await supabase.from("organizations").update({ is_ecommerce: !current }).eq("id", orgId);
+    toast.success(!current ? "تم تحويله لمتجر إلكتروني" : "تم تحويله لمؤسسة عادية");
+    load();
+  };
+
   const updatePlan = async (orgId: string, planId: string) => {
     await supabase.from("organizations").update({ plan_id: planId }).eq("id", orgId);
     toast.success("تم تحديث الباقة");
@@ -43,6 +51,18 @@ const AdminAccounts = () => {
   const updateStatus = async (orgId: string, status: string) => {
     await supabase.from("organizations").update({ subscription_status: status }).eq("id", orgId);
     toast.success("تم تحديث الحالة");
+    load();
+  };
+
+  const updateStorePlatform = async (orgId: string, platform: string) => {
+    await supabase.from("organizations").update({ store_platform: platform || null }).eq("id", orgId);
+    toast.success("تم تحديث المنصة");
+    load();
+  };
+
+  const updateStoreUrl = async (orgId: string, url: string) => {
+    await supabase.from("organizations").update({ store_url: url || null }).eq("id", orgId);
+    toast.success("تم تحديث الرابط");
     load();
   };
 
@@ -75,7 +95,7 @@ const AdminAccounts = () => {
               <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors" onClick={() => setExpandedOrg(isExpanded ? null : org.id)}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-primary" />
+                    {org.is_ecommerce ? <Store className="w-5 h-5 text-primary" /> : <Building2 className="w-5 h-5 text-primary" />}
                   </div>
                   <div>
                     <p className="font-semibold text-sm">{org.name}</p>
@@ -83,6 +103,11 @@ const AdminAccounts = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {org.is_ecommerce && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium flex items-center gap-1">
+                      <ShoppingBag className="w-3 h-3" /> متجر
+                    </span>
+                  )}
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColor(org.subscription_status)}`}>
                     {org.subscription_status === "trial" ? "تجريبي" : org.subscription_status === "active" ? "فعال" : org.subscription_status === "expired" ? "منتهي" : "ملغي"}
                   </span>
@@ -117,6 +142,47 @@ const AdminAccounts = () => {
                       <label className="text-[10px] text-muted-foreground">نهاية التجربة</label>
                       <p className="text-xs mt-1 bg-secondary rounded-lg px-3 py-2">{org.trial_ends_at ? new Date(org.trial_ends_at).toLocaleDateString("ar-SA") : "-"}</p>
                     </div>
+                  </div>
+
+                  {/* Account Type Toggle */}
+                  <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-semibold flex items-center gap-1.5">
+                      <Store className="w-4 h-4 text-primary" /> نوع الحساب
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{org.is_ecommerce ? "متجر إلكتروني" : "مؤسسة / شركة"}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {org.is_ecommerce ? "يظهر له: الطلبات، السلات المتروكة، فلاتر المتجر" : "واجهة عادية بدون ميزات المتجر"}
+                        </p>
+                      </div>
+                      <Switch checked={org.is_ecommerce || false} onCheckedChange={() => toggleEcommerce(org.id, org.is_ecommerce || false)} />
+                    </div>
+                    {org.is_ecommerce && (
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">منصة المتجر</Label>
+                          <select value={org.store_platform || ""} onChange={(e) => updateStorePlatform(org.id, e.target.value)} className="w-full text-xs bg-background rounded-lg px-3 py-2 mt-1">
+                            <option value="">غير محدد</option>
+                            <option value="salla">سلة</option>
+                            <option value="zid">زد</option>
+                            <option value="shopify">Shopify</option>
+                            <option value="woocommerce">WooCommerce</option>
+                            <option value="other">أخرى</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">رابط المتجر</Label>
+                          <Input
+                            value={org.store_url || ""}
+                            onChange={(e) => updateStoreUrl(org.id, e.target.value)}
+                            placeholder="https://store.example.com"
+                            className="text-xs bg-background border-0 mt-1 h-8"
+                            dir="ltr"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>
