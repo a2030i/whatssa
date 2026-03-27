@@ -112,7 +112,7 @@ const SettingsPage = () => {
   const exchangeToken = async (code: string) => {
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", {
-        body: { code },
+        body: { code, redirect_uri: window.location.origin + "/settings" },
       });
 
       if (error || data?.error) {
