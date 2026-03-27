@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Search, Send, Phone, MoreVertical, Tag, Clock, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { Search, Send, Phone, MoreVertical, Tag, Clock, ArrowRight, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { conversations, messages } from "@/data/mockData";
 import type { Conversation } from "@/data/mockData";
