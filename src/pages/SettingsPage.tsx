@@ -113,6 +113,45 @@ const SettingsPage = () => {
     );
   }, []);
 
+  const handleDirectToken = async (token: string) => {
+    try {
+      setAccessToken(token);
+      
+      // Debug token to get WABA IDs
+      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", {
+        body: { access_token: token },
+      });
+
+      if (error || data?.error) {
+        toast.error(data?.error || "فشل في جلب بيانات الحساب");
+        setIsLoading(false);
+        return;
+      }
+
+      const allPhones: PhoneNumber[] = [];
+      let firstWabaId = "";
+
+      if (data.results && data.results.length > 0) {
+        data.results.forEach((result: WabaResult) => {
+          if (!firstWabaId) firstWabaId = result.waba_id;
+          allPhones.push(...result.phone_numbers);
+        });
+      }
+
+      if (allPhones.length > 0) {
+        setBusinessAccountId(firstWabaId);
+        setPhoneNumbers(allPhones);
+        setShowPhones(true);
+        toast.success(`تم العثور على ${allPhones.length} رقم — اختر واحد`);
+      } else {
+        toast.error("لا توجد أرقام واتساب مربوطة بحسابك.");
+      }
+    } catch {
+      toast.error("حدث خطأ");
+    }
+    setIsLoading(false);
+  };
+
   const exchangeToken = async (code: string) => {
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", {
