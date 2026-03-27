@@ -313,61 +313,62 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
       )}
 
       {/* Input Area */}
-      <div className={cn("border-t bg-card p-3 md:p-4", isNoteMode ? "border-amber-500/30" : "border-border")}>
+      <div className={cn("border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
+        {/* Tool buttons row */}
+        <div className="flex items-center gap-0.5 mb-2 overflow-x-auto pb-1">
+          {(!windowExpired || isNoteMode) && (
+            <>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
+                    <Smile className="w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" side="top" align="start">
+                  <div className="grid grid-cols-8 gap-1">
+                    {emojis.map((e) => (
+                      <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              {!isNoteMode && (
+                <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => toast.info("سيتم دعم المرفقات قريباً")}>
+                  <Paperclip className="w-4 h-4" />
+                </button>
+              )}
+              {!isNoteMode && (
+                <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
+                  <Zap className="w-4 h-4" />
+                </button>
+              )}
+            </>
+          )}
+          <button
+            onClick={() => { setIsNoteMode(!isNoteMode); inputRef.current?.focus(); }}
+            className={cn("p-1.5 rounded-lg transition-colors shrink-0", isNoteMode ? "bg-amber-500/10 text-amber-500" : "hover:bg-secondary text-muted-foreground")}
+            title="ملاحظة داخلية"
+          >
+            <StickyNote className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setInputText((prev) => prev + "@"); setShowMentions(true); setMentionFilter(""); inputRef.current?.focus(); }}
+            className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+            title="اذكر موظف @"
+          >
+            <AtSign className="w-4 h-4" />
+          </button>
+          {!isNoteMode && (
+            <button onClick={() => setShowTemplates(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال قالب">
+              <FileText className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Input + send row */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            {(!windowExpired || isNoteMode) && (
-              <>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground">
-                      <Smile className="w-4 h-4" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-2" side="top" align="start">
-                    <div className="grid grid-cols-8 gap-1">
-                      {emojis.map((e) => (
-                        <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
-                          {e}
-                        </button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                {!isNoteMode && (
-                  <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground" onClick={() => toast.info("سيتم دعم المرفقات قريباً")}>
-                    <Paperclip className="w-4 h-4" />
-                  </button>
-                )}
-                {!isNoteMode && (
-                  <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-2 rounded-lg transition-colors", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
-                    <Zap className="w-4 h-4" />
-                  </button>
-                )}
-              </>
-            )}
-            {/* Note mode toggle */}
-            <button
-              onClick={() => { setIsNoteMode(!isNoteMode); inputRef.current?.focus(); }}
-              className={cn("p-2 rounded-lg transition-colors", isNoteMode ? "bg-amber-500/10 text-amber-500" : "hover:bg-secondary text-muted-foreground")}
-              title="ملاحظة داخلية"
-            >
-              <StickyNote className="w-4 h-4" />
-            </button>
-            {/* Mention trigger */}
-            <button
-              onClick={() => { setInputText((prev) => prev + "@"); setShowMentions(true); setMentionFilter(""); inputRef.current?.focus(); }}
-              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
-              title="اذكر موظف @"
-            >
-              <AtSign className="w-4 h-4" />
-            </button>
-            {!isNoteMode && (
-              <button onClick={() => setShowTemplates(true)} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground" title="إرسال قالب">
-                <FileText className="w-4 h-4" />
-              </button>
-            )}
-          </div>
           {windowExpired && !isNoteMode ? (
             <button onClick={() => setShowTemplates(true)} className="flex-1 text-right text-sm text-muted-foreground bg-secondary rounded-lg px-4 py-2.5 hover:bg-accent transition-colors">
               اختر قالباً لإرسال رسالة...
@@ -375,7 +376,7 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
           ) : (
             <Input
               ref={inputRef}
-              placeholder={isNoteMode ? "اكتب ملاحظة داخلية... (اكتب @ لذكر موظف)" : "اكتب رسالة... (اكتب @ لذكر موظف)"}
+              placeholder={isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "اكتب رسالة..."}
               value={inputText}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
