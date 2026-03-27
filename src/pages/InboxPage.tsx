@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Send, Phone, MoreVertical, Tag, Clock } from "lucide-react";
+import { Search, Send, Phone, MoreVertical, Tag, Clock, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { conversations, messages } from "@/data/mockData";
 import type { Conversation } from "@/data/mockData";
@@ -14,13 +14,16 @@ const statusColors = {
 const statusLabels = { active: "نشط", waiting: "بانتظار", closed: "مغلق" };
 
 const InboxPage = () => {
-  const [selectedId, setSelectedId] = useState(conversations[0].id);
-  const selected = conversations.find((c) => c.id === selectedId)!;
+  const [selectedId, setSelectedId] = useState<string | null>(conversations[0].id);
+  const selected = conversations.find((c) => c.id === selectedId);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen" dir="rtl">
       {/* Conversation List */}
-      <div className="w-[340px] border-l border-border flex flex-col bg-card">
+      <div className={cn(
+        "border-l border-border flex flex-col bg-card",
+        selected ? "hidden md:flex md:w-[320px] lg:w-[340px]" : "w-full md:w-[320px] lg:w-[340px]"
+      )}>
         <div className="p-4 border-b border-border">
           <h1 className="text-lg font-bold mb-3">المحادثات</h1>
           <div className="relative">
@@ -66,89 +69,106 @@ const InboxPage = () => {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
-        <div className="h-16 border-b border-border bg-card flex items-center justify-between px-5">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full gradient-whatsapp flex items-center justify-center text-sm font-bold text-whatsapp-foreground">
-              {selected.customerName.charAt(0)}
-            </div>
-            <div>
-              <p className="font-semibold text-sm">{selected.customerName}</p>
-              <p className="text-xs text-muted-foreground">{selected.customerPhone}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
-              <Phone className="w-4 h-4 text-muted-foreground" />
-            </button>
-            <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
-              <MoreVertical className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-secondary/30">
-          {messages.map((msg) => (
-            <div key={msg.id} className={cn("flex", msg.sender === "agent" ? "justify-start" : "justify-end")}>
-              <div className={cn(
-                "max-w-[70%] rounded-xl px-4 py-2.5 text-sm",
-                msg.sender === "agent"
-                  ? "bg-card shadow-card text-foreground rounded-bl-sm"
-                  : "gradient-whatsapp text-whatsapp-foreground rounded-br-sm"
-              )}>
-                <p>{msg.text}</p>
-                <p className={cn("text-[10px] mt-1", msg.sender === "agent" ? "text-muted-foreground" : "text-whatsapp-foreground/70")}>
-                  {msg.timestamp}
-                </p>
+      {selected ? (
+        <div className={cn("flex-1 flex flex-col", !selected && "hidden md:flex")}>
+          {/* Chat Header */}
+          <div className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-5">
+            <div className="flex items-center gap-3">
+              <button className="md:hidden p-1" onClick={() => setSelectedId(null)}>
+                <ArrowRight className="w-5 h-5 text-muted-foreground" />
+              </button>
+              <div className="w-9 h-9 rounded-full gradient-whatsapp flex items-center justify-center text-sm font-bold text-whatsapp-foreground">
+                {selected.customerName.charAt(0)}
+              </div>
+              <div>
+                <p className="font-semibold text-sm">{selected.customerName}</p>
+                <p className="text-xs text-muted-foreground">{selected.customerPhone}</p>
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Input */}
-        <div className="border-t border-border bg-card p-4">
-          <div className="flex items-center gap-3">
-            <Input placeholder="اكتب رسالة..." className="flex-1 bg-secondary border-0" />
-            <button className="w-10 h-10 rounded-lg gradient-whatsapp flex items-center justify-center hover:opacity-90 transition-opacity">
-              <Send className="w-4 h-4 text-whatsapp-foreground rotate-180" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Customer Info Panel */}
-      <div className="w-[280px] border-r border-border bg-card p-5 hidden lg:block">
-        <div className="text-center mb-5">
-          <div className="w-16 h-16 rounded-full gradient-whatsapp flex items-center justify-center text-xl font-bold text-whatsapp-foreground mx-auto mb-3">
-            {selected.customerName.charAt(0)}
-          </div>
-          <h3 className="font-bold">{selected.customerName}</h3>
-          <p className="text-sm text-muted-foreground">{selected.customerPhone}</p>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-              <Tag className="w-3 h-3" /> التصنيفات
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {selected.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-              ))}
+            <div className="flex items-center gap-1">
+              <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
+                <Phone className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
+                <MoreVertical className="w-4 h-4 text-muted-foreground" />
+              </button>
             </div>
           </div>
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-              <Clock className="w-3 h-3" /> المسؤول
-            </p>
-            <p className="text-sm">{selected.assignedTo}</p>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-3 bg-secondary/30">
+            {messages.map((msg) => (
+              <div key={msg.id} className={cn("flex", msg.sender === "agent" ? "justify-start" : "justify-end")}>
+                <div className={cn(
+                  "max-w-[85%] md:max-w-[70%] rounded-xl px-4 py-2.5 text-sm",
+                  msg.sender === "agent"
+                    ? "bg-card shadow-card text-foreground rounded-bl-sm"
+                    : "gradient-whatsapp text-whatsapp-foreground rounded-br-sm"
+                )}>
+                  <p>{msg.text}</p>
+                  <p className={cn("text-[10px] mt-1", msg.sender === "agent" ? "text-muted-foreground" : "text-whatsapp-foreground/70")}>
+                    {msg.timestamp}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Input */}
+          <div className="border-t border-border bg-card p-3 md:p-4">
+            <div className="flex items-center gap-3">
+              <Input placeholder="اكتب رسالة..." className="flex-1 bg-secondary border-0" />
+              <button className="w-10 h-10 rounded-lg gradient-whatsapp flex items-center justify-center hover:opacity-90 transition-opacity shrink-0">
+                <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="hidden md:flex flex-1 items-center justify-center bg-secondary/20">
+          <div className="text-center text-muted-foreground">
+            <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">اختر محادثة للبدء</p>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Info Panel - desktop only */}
+      {selected && (
+        <div className="w-[260px] border-r border-border bg-card p-5 hidden xl:block">
+          <div className="text-center mb-5">
+            <div className="w-16 h-16 rounded-full gradient-whatsapp flex items-center justify-center text-xl font-bold text-whatsapp-foreground mx-auto mb-3">
+              {selected.customerName.charAt(0)}
+            </div>
+            <h3 className="font-bold">{selected.customerName}</h3>
+            <p className="text-sm text-muted-foreground" dir="ltr">{selected.customerPhone}</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Tag className="w-3 h-3" /> التصنيفات
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {selected.tags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Clock className="w-3 h-3" /> المسؤول
+              </p>
+              <p className="text-sm">{selected.assignedTo}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+// Need to import MessageSquare for the empty state
+import { MessageSquare } from "lucide-react";
 
 export default InboxPage;

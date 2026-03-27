@@ -7,9 +7,9 @@ interface AppLayoutProps {
 
 const AppLayout = ({ children }: AppLayoutProps) => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" dir="rtl">
       <AppSidebar />
-      <main className="mr-[220px] min-h-screen">
+      <main className="md:mr-[220px] min-h-screen">
         {children}
       </main>
     </div>
