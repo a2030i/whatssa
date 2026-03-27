@@ -94,15 +94,11 @@ const SettingsPage = () => {
         }
       },
       {
-        config_id: "", // Will use default
+        config_id: "1018553996818498",
         response_type: "code",
         override_default_response_type: true,
-        scope: "whatsapp_business_management,whatsapp_business_messaging",
         extras: {
-          setup: {
-            // Embedded Signup specific
-          },
-          featureType: "",
+          feature: "whatsapp_embedded_signup",
           sessionInfoVersion: 2,
         },
       }
