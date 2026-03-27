@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -25,15 +24,16 @@ serve(async (req) => {
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
 
-    if (mode === "subscribe") {
-      // Get stored verify token
+    if (mode === "subscribe" && token) {
+      // Multi-tenant: find any config matching this verify token
       const { data: config } = await supabase
         .from("whatsapp_config")
         .select("webhook_verify_token")
+        .eq("webhook_verify_token", token)
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (config && token === config.webhook_verify_token) {
+      if (config) {
         console.log("Webhook verified successfully");
         return new Response(challenge, { status: 200 });
       }
@@ -46,7 +46,7 @@ serve(async (req) => {
   if (req.method === "POST") {
     try {
       const body = await req.json();
-      console.log("Webhook received:", JSON.stringify(body));
+      console.log("Webhook received:", JSON.stringify(body).substring(0, 500));
 
       const entry = body?.entry?.[0];
       const changes = entry?.changes?.[0];
@@ -59,20 +59,47 @@ serve(async (req) => {
         });
       }
 
+      // Multi-tenant: resolve org from phone_number_id in metadata
+      const metadataPhoneId = value.metadata?.phone_number_id;
+      let orgId: string | null = null;
+
+      if (metadataPhoneId) {
+        const { data: config } = await supabase
+          .from("whatsapp_config")
+          .select("org_id")
+          .eq("phone_number_id", metadataPhoneId)
+          .eq("is_connected", true)
+          .maybeSingle();
+
+        orgId = config?.org_id || null;
+      }
+
+      if (!orgId) {
+        console.warn("No org found for phone_number_id:", metadataPhoneId);
+        // Still return 200 to Meta
+        return new Response(JSON.stringify({ status: "no org matched" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Handle incoming messages
       if (value.messages && value.messages.length > 0) {
         for (const message of value.messages) {
           const customerPhone = message.from;
           const contactName = value.contacts?.[0]?.profile?.name || customerPhone;
 
-          // Find or create conversation
+          // Find or create conversation scoped to org
           let { data: conversation } = await supabase
             .from("conversations")
-            .select("id")
+            .select("id, unread_count")
             .eq("customer_phone", customerPhone)
+            .eq("org_id", orgId)
             .neq("status", "closed")
             .limit(1)
-            .single();
+            .maybeSingle();
+
+          const messageContent = message.text?.body || `[${message.type}]`;
 
           if (!conversation) {
             const { data: newConv } = await supabase
@@ -80,27 +107,28 @@ serve(async (req) => {
               .insert({
                 customer_phone: customerPhone,
                 customer_name: contactName,
+                org_id: orgId,
                 status: "active",
-                last_message: message.text?.body || `[${message.type}]`,
+                last_message: messageContent,
                 unread_count: 1,
               })
-              .select("id")
+              .select("id, unread_count")
               .single();
             conversation = newConv;
           } else {
             await supabase
               .from("conversations")
               .update({
-                last_message: message.text?.body || `[${message.type}]`,
+                last_message: messageContent,
                 last_message_at: new Date().toISOString(),
-                unread_count: supabase.rpc ? 1 : 1, // increment in real app
+                unread_count: (conversation.unread_count || 0) + 1,
                 updated_at: new Date().toISOString(),
+                customer_name: contactName,
               })
               .eq("id", conversation.id);
           }
 
           if (conversation) {
-            // Store message
             let content = "";
             let messageType = message.type || "text";
             let mediaUrl = null;
@@ -109,7 +137,7 @@ serve(async (req) => {
               content = message.text.body;
             } else if (["image", "audio", "video", "document"].includes(message.type)) {
               content = message[message.type]?.caption || `[${message.type}]`;
-              mediaUrl = message[message.type]?.id; // Media ID to fetch later
+              mediaUrl = message[message.type]?.id;
               messageType = message.type;
             } else {
               content = `[${message.type}]`;
@@ -128,7 +156,7 @@ serve(async (req) => {
         }
       }
 
-      // Handle status updates (sent, delivered, read)
+      // Handle status updates
       if (value.statuses && value.statuses.length > 0) {
         for (const status of value.statuses) {
           await supabase
@@ -142,10 +170,10 @@ serve(async (req) => {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    } catch (error) {
-      console.error("Webhook error:", error);
+    } catch (err) {
+      console.error("Webhook error:", err);
       return new Response(JSON.stringify({ error: "Internal error" }), {
-        status: 200, // Always return 200 to Meta
+        status: 200, // Always 200 to Meta
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
