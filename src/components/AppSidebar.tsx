@@ -1,12 +1,21 @@
 import { useState } from "react";
-import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug } from "lucide-react";
+import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug, ShoppingCart, ShoppingBag } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
-const navItems = [
+interface NavItem {
+  label: string;
+  icon: any;
+  path: string;
+  ecommerceOnly?: boolean;
+}
+
+const allNavItems: NavItem[] = [
   { label: "المحادثات", icon: MessageSquare, path: "/" },
   { label: "العملاء", icon: UserCircle, path: "/customers" },
+  { label: "الطلبات", icon: ShoppingCart, path: "/orders", ecommerceOnly: true },
+  { label: "السلات المتروكة", icon: ShoppingBag, path: "/abandoned-carts", ecommerceOnly: true },
   { label: "التحليلات", icon: BarChart3, path: "/analytics" },
   { label: "الحملات", icon: Megaphone, path: "/campaigns" },
   { label: "الأتمتة", icon: Bot, path: "/automation" },
@@ -21,7 +30,9 @@ const navItems = [
 const AppSidebar = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { profile, userRole, isSuperAdmin, signOut } = useAuth();
+  const { profile, userRole, isSuperAdmin, isEcommerce, signOut } = useAuth();
+
+  const navItems = allNavItems.filter(item => !item.ecommerceOnly || isEcommerce);
 
   const sidebarContent = (
     <>
@@ -36,7 +47,7 @@ const AppSidebar = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-3 px-3 space-y-0.5">
+      <nav className="flex-1 py-3 px-3 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -53,6 +64,9 @@ const AppSidebar = () => {
             >
               <item.icon className="w-[18px] h-[18px]" />
               <span>{item.label}</span>
+              {item.ecommerceOnly && (
+                <span className="mr-auto text-[8px] bg-sidebar-primary/20 text-sidebar-primary px-1.5 py-0.5 rounded-full">متجر</span>
+              )}
             </NavLink>
           );
         })}
@@ -76,7 +90,10 @@ const AppSidebar = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-sidebar-accent-foreground truncate">{profile?.full_name || "مستخدم"}</p>
-            <p className="text-[10px] text-sidebar-foreground truncate">{userRole === "admin" ? "مدير" : userRole === "super_admin" ? "مدير النظام" : "عضو"}</p>
+            <p className="text-[10px] text-sidebar-foreground truncate">
+              {userRole === "admin" ? "مدير" : userRole === "super_admin" ? "مدير النظام" : userRole === "supervisor" ? "مشرف" : "عضو"}
+              {isEcommerce && " • متجر"}
+            </p>
           </div>
           <button onClick={signOut} className="text-sidebar-foreground hover:text-red-400 transition-colors">
             <LogOut className="w-4 h-4" />
@@ -88,7 +105,6 @@ const AppSidebar = () => {
 
   return (
     <>
-      {/* Mobile trigger - positioned top-left (in RTL that's the left side) */}
       <button
         onClick={() => setMobileOpen(true)}
         className="md:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-lg bg-card shadow-card flex items-center justify-center"
@@ -96,17 +112,10 @@ const AppSidebar = () => {
         <Menu className="w-5 h-5 text-foreground" />
       </button>
 
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 bg-foreground/40 z-50" onClick={() => setMobileOpen(false)}>
-          <aside
-            className="absolute right-0 top-0 h-full w-[240px] gradient-sidebar flex flex-col animate-slide-in-right"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="absolute left-3 top-5 text-sidebar-foreground hover:text-sidebar-accent-foreground"
-            >
+          <aside className="absolute right-0 top-0 h-full w-[240px] gradient-sidebar flex flex-col animate-slide-in-right" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setMobileOpen(false)} className="absolute left-3 top-5 text-sidebar-foreground hover:text-sidebar-accent-foreground">
               <X className="w-5 h-5" />
             </button>
             {sidebarContent}
@@ -114,7 +123,6 @@ const AppSidebar = () => {
         </div>
       )}
 
-      {/* Desktop sidebar */}
       <aside className="hidden md:flex fixed right-0 top-0 h-screen w-[220px] gradient-sidebar flex-col z-40">
         {sidebarContent}
       </aside>
