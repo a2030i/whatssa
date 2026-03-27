@@ -108,6 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         orgId,
         isLoading,
         isSuperAdmin: userRole === "super_admin",
+        isEcommerce,
         signOut,
       }}
     >
