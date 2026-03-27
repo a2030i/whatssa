@@ -11,14 +11,8 @@ serve(async (req) => {
   }
 
   try {
-    const { code } = await req.json();
-
-    if (!code) {
-      return new Response(
-        JSON.stringify({ error: "code is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const body = await req.json();
+    const { code, access_token: directToken } = body;
 
     const appId = "1276045851157317";
     const appSecret = Deno.env.get("META_APP_SECRET");
@@ -30,30 +24,40 @@ serve(async (req) => {
       );
     }
 
-    // Exchange code for short-lived token
-    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`;
-    const tokenRes = await fetch(tokenUrl);
-    const tokenData = await tokenRes.json();
+    let accessToken = directToken;
 
-    if (tokenData.error) {
-      console.error("Token exchange error:", tokenData.error);
+    // If code provided, exchange it for a token
+    if (code) {
+      const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`;
+      const tokenRes = await fetch(tokenUrl);
+      const tokenData = await tokenRes.json();
+
+      if (tokenData.error) {
+        console.error("Token exchange error:", tokenData.error);
+        return new Response(
+          JSON.stringify({ error: tokenData.error.message || "Failed to exchange token" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const shortLivedToken = tokenData.access_token;
+
+      // Exchange for long-lived token
+      const longTokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedToken}`;
+      const longTokenRes = await fetch(longTokenUrl);
+      const longTokenData = await longTokenRes.json();
+
+      accessToken = longTokenData.access_token || shortLivedToken;
+    }
+
+    if (!accessToken) {
       return new Response(
-        JSON.stringify({ error: tokenData.error.message || "Failed to exchange token" }),
+        JSON.stringify({ error: "code or access_token is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const shortLivedToken = tokenData.access_token;
-
-    // Exchange for long-lived token
-    const longTokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedToken}`;
-    const longTokenRes = await fetch(longTokenUrl);
-    const longTokenData = await longTokenRes.json();
-
-    const accessToken = longTokenData.access_token || shortLivedToken;
-
     // Get WhatsApp Business Account info using the token
-    // First get the user's business integrations
     const debugRes = await fetch(
       `https://graph.facebook.com/v21.0/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
     );
@@ -67,7 +71,6 @@ serve(async (req) => {
     const wabaIds = waScope?.target_ids || [];
 
     if (wabaIds.length === 0) {
-      // Try alternative: get businesses the user manages
       const businessRes = await fetch(
         `https://graph.facebook.com/v21.0/me/businesses?access_token=${accessToken}`
       );
@@ -78,7 +81,7 @@ serve(async (req) => {
           access_token: accessToken,
           waba_ids: [],
           businesses: businessData.data || [],
-          message: "Token obtained but no WABA found. User may need to share a WhatsApp Business Account.",
+          message: "Token obtained but no WABA found.",
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
