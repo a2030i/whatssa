@@ -43,7 +43,7 @@ interface WhatsAppConfig {
 }
 
 const IntegrationsPage = () => {
-  const { orgId } = useAuth();
+  const { orgId, isEcommerce } = useAuth();
   const [configs, setConfigs] = useState<WhatsAppConfig[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sdkLoaded, setSdkLoaded] = useState(false);
