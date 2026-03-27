@@ -147,8 +147,9 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
       {/* Header */}
       <div className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-5">
         <div className="flex items-center gap-3">
-          <button className="md:hidden p-1" onClick={onBack}>
+          <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors" onClick={onBack}>
             <ArrowRight className="w-5 h-5 text-muted-foreground" />
+          </button>
           </button>
           <div className="relative">
             <div className="w-9 h-9 rounded-full gradient-whatsapp flex items-center justify-center text-sm font-bold text-whatsapp-foreground">
