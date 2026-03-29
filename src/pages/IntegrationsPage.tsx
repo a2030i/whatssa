@@ -200,6 +200,12 @@ const IntegrationsPage = () => {
     if (error || data?.error) { handleError(data?.error || "فشل في إكمال الربط"); return false; }
     if (!data?.selected_phone || !data?.saved_config) { handleError("تعذر تسجيل الرقم"); return false; }
 
+    // Check registration result
+    if (data.registration && !data.registration.success) {
+      const regError = data.registration.error || "فشل تسجيل الرقم في WhatsApp Cloud API";
+      toast.error(`تحذير: تم حفظ البيانات لكن فشل التسجيل: ${regError}`);
+    }
+
     await loadConfigs();
     return true;
   };
