@@ -213,7 +213,7 @@ const IntegrationsPage = () => {
   };
 
   const completeSignup = async ({ token, phoneId, wabaId }: { token: string; phoneId: string; wabaId: string }) => {
-    if (!orgId) { handleError("تعذر تحديد المؤسسة"); return false; }
+    if (!orgId) { handleError("تعذر تحديد المؤسسة. أعد تسجيل الدخول وحاول مرة أخرى."); return false; }
 
     const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", {
       body: { access_token: token, phone_number_id: phoneId, waba_id: wabaId, org_id: orgId, auto_register: true, ...(twoStepPin ? { pin: twoStepPin } : {}) },
