@@ -101,15 +101,24 @@ const TeamPage = () => {
     setWorkStart(profile.work_start || "09:00");
     setWorkEnd(profile.work_end || "17:00");
     setWorkDays(profile.work_days || [0, 1, 2, 3, 4]);
+    const has2 = !!(profile.work_start_2 || profile.work_end_2);
+    setHasShift2(has2);
+    setWorkStart2(profile.work_start_2 || "18:00");
+    setWorkEnd2(profile.work_end_2 || "02:00");
+    setWorkDays2(profile.work_days_2 || []);
   };
 
   const saveSchedule = async () => {
     if (!scheduleDialog) return;
-    await supabase.from("profiles").update({
+    const update: any = {
       work_start: workStart,
       work_end: workEnd,
       work_days: workDays,
-    }).eq("id", scheduleDialog.id);
+      work_start_2: hasShift2 ? workStart2 : null,
+      work_end_2: hasShift2 ? workEnd2 : null,
+      work_days_2: hasShift2 ? workDays2 : null,
+    };
+    await supabase.from("profiles").update(update).eq("id", scheduleDialog.id);
     toast.success("تم حفظ أوقات العمل");
     setScheduleDialog(null);
     load();
@@ -117,6 +126,10 @@ const TeamPage = () => {
 
   const toggleDay = (day: number) => {
     setWorkDays((d) => d.includes(day) ? d.filter((x) => x !== day) : [...d, day].sort());
+  };
+
+  const toggleDay2 = (day: number) => {
+    setWorkDays2((d) => d.includes(day) ? d.filter((x) => x !== day) : [...d, day].sort());
   };
 
   const isAdmin = userRole === "admin" || userRole === "super_admin";
