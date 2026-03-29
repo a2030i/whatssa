@@ -216,7 +216,7 @@ const IntegrationsPage = () => {
     if (!orgId) { handleError("تعذر تحديد المؤسسة"); return false; }
 
     const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", {
-      body: { access_token: token, phone_number_id: phoneId, waba_id: wabaId, org_id: orgId, auto_register: true },
+      body: { access_token: token, phone_number_id: phoneId, waba_id: wabaId, org_id: orgId, auto_register: true, ...(twoStepPin ? { pin: twoStepPin } : {}) },
     });
 
     if (error || data?.error) { handleError(friendlyError(data?.error || "فشل في إكمال الربط")); return false; }
