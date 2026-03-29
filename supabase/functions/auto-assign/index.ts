@@ -5,17 +5,35 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 /** Check if currentTime falls within a shift, supporting overnight (e.g. 22:00→06:00) */
 function isInShift(currentTime: string, currentDay: number, start: string, end: string, days: number[]): boolean {
   if (!days.includes(currentDay)) return false;
   if (start <= end) {
-    // Normal shift: e.g. 09:00→17:00
     return currentTime >= start && currentTime <= end;
   } else {
-    // Overnight shift: e.g. 22:00→06:00
-    // Either current time is after start (same day) OR before end (next morning)
     return currentTime >= start || currentTime <= end;
   }
+}
+
+function isAgentInShift(agent: any, currentTime: string, currentDay: number): boolean {
+  const shift1Days: number[] = agent.work_days || [0, 1, 2, 3, 4];
+  const shift1Start = agent.work_start || "09:00";
+  const shift1End = agent.work_end || "17:00";
+  const inShift1 = isInShift(currentTime, currentDay, shift1Start, shift1End, shift1Days);
+
+  let inShift2 = false;
+  if (agent.work_start_2 && agent.work_end_2) {
+    const shift2Days: number[] = agent.work_days_2 || shift1Days;
+    inShift2 = isInShift(currentTime, currentDay, agent.work_start_2, agent.work_end_2, shift2Days);
+  }
+
+  return inShift1 || inShift2;
 }
 
 Deno.serve(async (req) => {
@@ -27,49 +45,91 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { conversation_id, org_id } = await req.json();
+    const { conversation_id, org_id, message_text } = await req.json();
     if (!conversation_id || !org_id) {
-      return new Response(JSON.stringify({ error: "Missing conversation_id or org_id" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Missing conversation_id or org_id" }, 400);
     }
+
+    // Get conversation to find assigned_team
+    const { data: conversation } = await supabase
+      .from("conversations")
+      .select("assigned_team, customer_phone")
+      .eq("id", conversation_id)
+      .single();
 
     const now = new Date();
     const currentDay = now.getDay();
-    const currentTime = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
+    const currentTime = now.toLocaleTimeString("en-US", {
+      hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh",
+    });
 
-    const { data: members, error: membersErr } = await supabase
+    // Get org defaults
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("default_assignment_strategy, default_max_conversations")
+      .eq("id", org_id)
+      .single();
+
+    const orgStrategy = org?.default_assignment_strategy || "round_robin";
+    const orgMaxConv = org?.default_max_conversations;
+
+    // Get all teams for skill-based routing
+    const { data: allTeams } = await supabase
+      .from("teams")
+      .select("id, name, assignment_strategy, max_conversations_per_agent, last_assigned_index, skill_keywords")
+      .eq("org_id", org_id);
+
+    // Determine which team to use
+    let targetTeam: any = null;
+
+    // 1. If conversation already has assigned_team, use that
+    if (conversation?.assigned_team && allTeams) {
+      targetTeam = allTeams.find((t: any) => t.name === conversation.assigned_team || t.id === conversation.assigned_team);
+    }
+
+    // 2. Skill-based routing: check message text against team keywords
+    if (!targetTeam && message_text && allTeams) {
+      const msgLower = (message_text || "").toLowerCase();
+      for (const team of allTeams) {
+        const keywords: string[] = Array.isArray(team.skill_keywords) ? team.skill_keywords : [];
+        if (keywords.length > 0 && keywords.some((kw: string) => msgLower.includes(kw.toLowerCase()))) {
+          targetTeam = team;
+          break;
+        }
+      }
+    }
+
+    const strategy = targetTeam?.assignment_strategy || orgStrategy;
+    const maxConv = targetTeam?.max_conversations_per_agent ?? orgMaxConv;
+
+    // If strategy is manual, don't auto-assign
+    if (strategy === "manual") {
+      return json({ assigned: false, reason: "manual_strategy" });
+    }
+
+    // Get members (filter by team if applicable)
+    let membersQuery = supabase
       .from("profiles")
-      .select("id, full_name, is_online, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2")
+      .select("id, full_name, is_online, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2, team_id")
       .eq("org_id", org_id)
       .eq("is_active", true);
 
-    if (membersErr || !members || members.length === 0) {
-      return new Response(JSON.stringify({ assigned: false, reason: "no_members" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (targetTeam) {
+      membersQuery = membersQuery.eq("team_id", targetTeam.id);
     }
 
-    // Filter available agents: online AND within any of their work shifts
-    const available = members.filter((m) => {
-      if (!m.is_online) return false;
+    const { data: members, error: membersErr } = await membersQuery;
 
-      const shift1Days: number[] = m.work_days || [0, 1, 2, 3, 4];
-      const shift1Start = m.work_start || "09:00";
-      const shift1End = m.work_end || "17:00";
-      const inShift1 = isInShift(currentTime, currentDay, shift1Start, shift1End, shift1Days);
+    if (membersErr || !members || members.length === 0) {
+      return json({ assigned: false, reason: "no_members" });
+    }
 
-      let inShift2 = false;
-      if (m.work_start_2 && m.work_end_2) {
-        const shift2Days: number[] = m.work_days_2 || shift1Days;
-        inShift2 = isInShift(currentTime, currentDay, m.work_start_2, m.work_end_2, shift2Days);
-      }
+    // Filter available agents: online AND within work shift
+    const available = members.filter((m) => m.is_online && isAgentInShift(m, currentTime, currentDay));
 
-      return inShift1 || inShift2;
-    });
-
-    const assignAgent = async (pool: typeof members, fallback = false) => {
-      const agentLoads = await Promise.all(
+    // Get conversation loads for available agents
+    const getAgentLoads = async (pool: typeof members) => {
+      return Promise.all(
         pool.map(async (agent) => {
           const { count } = await supabase
             .from("conversations")
@@ -80,40 +140,103 @@ Deno.serve(async (req) => {
           return { ...agent, load: count || 0 };
         })
       );
-      agentLoads.sort((a, b) => a.load - b.load);
-      const chosen = agentLoads[0];
-      await supabase.from("conversations").update({ assigned_to: chosen.full_name }).eq("id", conversation_id);
+    };
+
+    const assignTo = async (agent: any, fallback = false) => {
+      await supabase.from("conversations").update({
+        assigned_to: agent.full_name,
+        assigned_team: targetTeam?.name || null,
+      }).eq("id", conversation_id);
 
       if (!fallback) {
         await supabase.from("messages").insert({
           conversation_id,
-          content: `تم إسناد المحادثة تلقائياً إلى ${chosen.full_name}`,
+          content: `تم إسناد المحادثة تلقائياً إلى ${agent.full_name}`,
           sender: "system",
           message_type: "text",
         });
       }
 
-      return new Response(JSON.stringify({ assigned: true, agent: chosen.full_name, fallback }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ assigned: true, agent: agent.full_name, strategy, fallback });
     };
 
+    const pickAgent = async (pool: typeof members, fallback = false) => {
+      if (pool.length === 0) return null;
+
+      let agentsWithLoad = await getAgentLoads(pool);
+
+      // Apply max conversations cap
+      if (maxConv && maxConv > 0) {
+        agentsWithLoad = agentsWithLoad.filter((a) => a.load < maxConv);
+        if (agentsWithLoad.length === 0) {
+          return null; // All agents at capacity
+        }
+      }
+
+      let chosen: any;
+
+      switch (strategy) {
+        case "round_robin": {
+          // Sort by name for consistent ordering, then pick next in rotation
+          agentsWithLoad.sort((a, b) => a.full_name.localeCompare(b.full_name));
+          const lastIdx = targetTeam?.last_assigned_index || 0;
+          const nextIdx = lastIdx % agentsWithLoad.length;
+          chosen = agentsWithLoad[nextIdx];
+
+          // Update round-robin index
+          if (targetTeam) {
+            await supabase.from("teams")
+              .update({ last_assigned_index: nextIdx + 1 })
+              .eq("id", targetTeam.id);
+          }
+          break;
+        }
+
+        case "least_busy": {
+          agentsWithLoad.sort((a, b) => a.load - b.load);
+          chosen = agentsWithLoad[0];
+          break;
+        }
+
+        case "skill_based": {
+          // Already routed to correct team, use least_busy within team
+          agentsWithLoad.sort((a, b) => a.load - b.load);
+          chosen = agentsWithLoad[0];
+          break;
+        }
+
+        default: {
+          // Fallback to least_busy
+          agentsWithLoad.sort((a, b) => a.load - b.load);
+          chosen = agentsWithLoad[0];
+          break;
+        }
+      }
+
+      if (chosen) {
+        return assignTo(chosen, fallback);
+      }
+      return null;
+    };
+
+    // Try available agents first
     if (available.length > 0) {
-      return await assignAgent(available);
+      const result = await pickAgent(available);
+      if (result) return result;
+      // All at capacity
+      return json({ assigned: false, reason: "all_agents_at_capacity" });
     }
 
-    // Fallback: anyone online regardless of hours
+    // Fallback: anyone online regardless of shift hours
     const onlineOnly = members.filter((m) => m.is_online);
     if (onlineOnly.length > 0) {
-      return await assignAgent(onlineOnly, true);
+      const result = await pickAgent(onlineOnly, true);
+      if (result) return result;
+      return json({ assigned: false, reason: "all_agents_at_capacity" });
     }
 
-    return new Response(JSON.stringify({ assigned: false, reason: "no_available_agents" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ assigned: false, reason: "no_available_agents" });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: err.message }, 500);
   }
 });

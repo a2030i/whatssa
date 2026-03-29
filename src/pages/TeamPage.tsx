@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Shield, MoreVertical, Trash2, Edit, Save, UserPlus, Users, Layers, Clock, Eye, CalendarDays, AlertTriangle, CheckCircle } from "lucide-react";
+import { Plus, Shield, MoreVertical, Trash2, Edit, Save, UserPlus, Users, Layers, Clock, Eye, CalendarDays, AlertTriangle, CheckCircle, Settings2, Zap, Hand, RotateCcw, Scale, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,20 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 
 const roleConfig: Record<string, { label: string; className: string }> = {
   admin: { label: "مدير", className: "bg-kpi-3/10 text-kpi-3" },
   supervisor: { label: "مشرف", className: "bg-warning/10 text-warning" },
   member: { label: "موظف", className: "bg-info/10 text-info" },
+};
+
+const strategyConfig: Record<string, { label: string; icon: typeof Zap; description: string; color: string }> = {
+  manual: { label: "يدوي", icon: Hand, description: "المدير يسند يدوياً", color: "text-muted-foreground" },
+  round_robin: { label: "بالدور", icon: RotateCcw, description: "توزيع بالتناوب", color: "text-primary" },
+  least_busy: { label: "الأقل ضغطاً", icon: Scale, description: "الأقل محادثات مفتوحة", color: "text-success" },
+  skill_based: { label: "حسب المهارة", icon: Target, description: "بناءً على كلمات مفتاحية", color: "text-warning" },
 };
 
 const TeamPage = () => {
@@ -37,6 +46,12 @@ const TeamPage = () => {
   const [workStart2, setWorkStart2] = useState("18:00");
   const [workEnd2, setWorkEnd2] = useState("02:00");
   const [workDays2, setWorkDays2] = useState<number[]>([]);
+
+  // Assignment config dialog
+  const [assignDialog, setAssignDialog] = useState<any>(null);
+  const [assignStrategy, setAssignStrategy] = useState("round_robin");
+  const [assignMaxConv, setAssignMaxConv] = useState<string>("");
+  const [assignKeywords, setAssignKeywords] = useState("");
 
   const dayLabels = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
@@ -132,6 +147,30 @@ const TeamPage = () => {
     setWorkDays2((d) => d.includes(day) ? d.filter((x) => x !== day) : [...d, day].sort());
   };
 
+  const openAssignDialog = (team: any) => {
+    setAssignDialog(team);
+    setAssignStrategy(team.assignment_strategy || "round_robin");
+    setAssignMaxConv(team.max_conversations_per_agent ? String(team.max_conversations_per_agent) : "");
+    const kw: string[] = Array.isArray(team.skill_keywords) ? team.skill_keywords : [];
+    setAssignKeywords(kw.join("، "));
+  };
+
+  const saveAssignConfig = async () => {
+    if (!assignDialog) return;
+    const keywords = assignKeywords
+      .split(/[,،\n]/)
+      .map((k: string) => k.trim())
+      .filter(Boolean);
+    await supabase.from("teams").update({
+      assignment_strategy: assignStrategy,
+      max_conversations_per_agent: assignMaxConv ? parseInt(assignMaxConv) : null,
+      skill_keywords: keywords,
+    }).eq("id", assignDialog.id);
+    toast.success("تم حفظ إعدادات الإسناد");
+    setAssignDialog(null);
+    load();
+  };
+
   const isAdmin = userRole === "admin" || userRole === "super_admin";
 
   return (
@@ -177,6 +216,8 @@ const TeamPage = () => {
           {teams.map((team) => {
             const teamMembers = profiles.filter((m) => m.team_id === team.id);
             const onlineCount = teamMembers.filter((m) => m.is_online).length;
+            const sc = strategyConfig[team.assignment_strategy] || strategyConfig.round_robin;
+            const StrategyIcon = sc.icon;
             return (
               <div key={team.id} className="bg-card rounded-lg p-4 shadow-card border border-border hover:shadow-card-hover transition-shadow">
                 <div className="flex items-start justify-between mb-2">
@@ -190,11 +231,24 @@ const TeamPage = () => {
                         <button className="p-1 rounded hover:bg-secondary"><MoreVertical className="w-3.5 h-3.5 text-muted-foreground" /></button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => openAssignDialog(team)} className="text-xs gap-2">
+                          <Settings2 className="w-3.5 h-3.5" /> إعدادات الإسناد
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDeleteTeam(team.id)} className="text-xs text-destructive gap-2">
                           <Trash2 className="w-3.5 h-3.5" /> حذف الفريق
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                  )}
+                </div>
+                {/* Strategy badge */}
+                <div className="flex items-center gap-1.5 mb-2">
+                  <StrategyIcon className={cn("w-3 h-3", sc.color)} />
+                  <span className={cn("text-[10px] font-medium", sc.color)}>{sc.label}</span>
+                  {team.max_conversations_per_agent && (
+                    <span className="text-[9px] bg-secondary px-1.5 py-0.5 rounded-full text-muted-foreground">
+                      حد: {team.max_conversations_per_agent} محادثة
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center justify-between mt-3">
@@ -655,6 +709,89 @@ const TeamPage = () => {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>إلغاء</Button>
             <Button onClick={handleCreateTeam} className="gap-1.5"><Layers className="w-4 h-4" /> إنشاء</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assignment Config Dialog */}
+      <Dialog open={!!assignDialog} onOpenChange={() => setAssignDialog(null)}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-primary" />
+              إعدادات الإسناد — {assignDialog?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            {/* Strategy Selection */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">طريقة الإسناد</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(strategyConfig).map(([key, cfg]) => {
+                  const Icon = cfg.icon;
+                  const isSelected = assignStrategy === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setAssignStrategy(key)}
+                      className={cn(
+                        "p-3 rounded-lg border text-right transition-all",
+                        isSelected
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-border bg-secondary/30 hover:border-primary/30"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Icon className={cn("w-4 h-4", isSelected ? cfg.color : "text-muted-foreground")} />
+                        <span className={cn("text-xs font-semibold", isSelected ? "text-foreground" : "text-muted-foreground")}>
+                          {cfg.label}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">{cfg.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Max Conversations */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">الحد الأقصى للمحادثات لكل موظف</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={assignMaxConv}
+                  onChange={(e) => setAssignMaxConv(e.target.value)}
+                  placeholder="بدون حد"
+                  className="bg-secondary border-0 text-sm w-28"
+                />
+                <span className="text-[10px] text-muted-foreground">
+                  {assignMaxConv ? `إذا وصل الموظف لـ ${assignMaxConv} محادثة لن يُسند له جديد` : "بدون حد أقصى"}
+                </span>
+              </div>
+            </div>
+
+            {/* Skill Keywords (only for skill_based) */}
+            {assignStrategy === "skill_based" && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">كلمات مفتاحية للتوجيه</Label>
+                <Textarea
+                  value={assignKeywords}
+                  onChange={(e) => setAssignKeywords(e.target.value)}
+                  placeholder="مثال: شكوى، إرجاع، استفسار&#10;افصل بفاصلة أو سطر جديد"
+                  className="bg-secondary border-0 text-sm min-h-[80px]"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  إذا احتوت رسالة العميل على أي من هذه الكلمات سيتم توجيهها لهذا الفريق تلقائياً
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAssignDialog(null)}>إلغاء</Button>
+            <Button onClick={saveAssignConfig} className="gap-1.5"><Save className="w-4 h-4" /> حفظ</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
