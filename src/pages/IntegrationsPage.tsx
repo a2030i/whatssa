@@ -624,9 +624,19 @@ const IntegrationsPage = () => {
                  </div>
                  <div className="flex items-center gap-1">
                    {(config.registration_status === "failed" || config.registration_status === "pending" || !config.registration_status) && (
-                     <Button variant="outline" size="sm" className="text-xs h-8 gap-1 text-primary" onClick={() => retryRegister(config)} disabled={isLoading}>
-                       <RefreshCw className="w-3 h-3" /> إعادة التسجيل
-                     </Button>
+                     <>
+                       <Input
+                         value={twoStepPin}
+                         onChange={(e) => setTwoStepPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                         placeholder="PIN (اختياري)"
+                         className="bg-secondary border-0 text-xs w-24 h-8 text-center"
+                         dir="ltr"
+                         maxLength={6}
+                       />
+                       <Button variant="outline" size="sm" className="text-xs h-8 gap-1 text-primary" onClick={() => retryRegister(config)} disabled={isLoading}>
+                         <RefreshCw className="w-3 h-3" /> تسجيل
+                       </Button>
+                     </>
                    )}
                    <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setExpandedId(expandedId === config.id ? null : config.id)}>
                      التفاصيل
