@@ -225,8 +225,10 @@ serve(async (req) => {
 
         // Build metadata with reply context
         const metadata: Record<string, unknown> = {};
-        if (conversationType === "group") {
+        if (senderName) {
           metadata.sender_name = senderName;
+        }
+        if (conversationType === "group") {
           metadata.participant = participant;
         }
         if (quotedStanzaId && quotedMessage) {
