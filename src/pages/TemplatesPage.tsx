@@ -108,6 +108,11 @@ const TemplatesPage = () => {
       headerUrl: template.headerUrl || "",
       body: template.body,
       footer: template.footer || "",
+      buttons: (template.buttons || []).map((b) => ({
+        type: b.type === "phone_number" ? "phone" : "url",
+        text: b.text,
+        value: b.value || "",
+      })),
     });
     setShowFormDialog(true);
   };
