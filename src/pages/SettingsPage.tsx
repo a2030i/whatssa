@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Building2, Bell, CreditCard, Shield, ChevronLeft } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, Bell, CreditCard, Shield, ChevronLeft, Hand, RotateCcw, Scale, Target, Save, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,55 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
+const strategyOptions = [
+  { key: "manual", label: "يدوي", icon: Hand, description: "المدير يسند المحادثات يدوياً لكل موظف", color: "text-muted-foreground" },
+  { key: "round_robin", label: "بالدور (Round Robin)", icon: RotateCcw, description: "توزيع بالتناوب على الموظفين المتاحين", color: "text-primary" },
+  { key: "least_busy", label: "الأقل ضغطاً (Load Balancing)", icon: Scale, description: "يُسند للموظف ذو أقل محادثات مفتوحة", color: "text-success" },
+  { key: "skill_based", label: "حسب المهارة / الفريق", icon: Target, description: "توجيه بناءً على كلمات مفتاحية لكل فريق", color: "text-warning" },
+];
+
 const SettingsPage = () => {
   const { orgId, profile } = useAuth();
   const navigate = useNavigate();
   const [companyName, setCompanyName] = useState(profile?.full_name || "");
   const [companyPhone, setCompanyPhone] = useState(profile?.phone || "");
 
+  // Assignment settings
+  const [defaultStrategy, setDefaultStrategy] = useState("round_robin");
+  const [defaultMaxConv, setDefaultMaxConv] = useState("");
+  const [loadingAssign, setLoadingAssign] = useState(true);
+  const [savingAssign, setSavingAssign] = useState(false);
+
+  useEffect(() => {
+    if (orgId) loadAssignSettings();
+  }, [orgId]);
+
+  const loadAssignSettings = async () => {
+    setLoadingAssign(true);
+    const { data } = await supabase
+      .from("organizations")
+      .select("default_assignment_strategy, default_max_conversations")
+      .eq("id", orgId)
+      .single();
+    if (data) {
+      setDefaultStrategy(data.default_assignment_strategy || "round_robin");
+      setDefaultMaxConv(data.default_max_conversations ? String(data.default_max_conversations) : "");
+    }
+    setLoadingAssign(false);
+  };
+
+  const saveAssignSettings = async () => {
+    setSavingAssign(true);
+    await supabase.from("organizations").update({
+      default_assignment_strategy: defaultStrategy,
+      default_max_conversations: defaultMaxConv ? parseInt(defaultMaxConv) : null,
+    }).eq("id", orgId);
+    toast.success("تم حفظ إعدادات الإسناد الافتراضية");
+    setSavingAssign(false);
+  };
+
   const saveCompanyInfo = async () => {
     if (!orgId) return;
-    // Update org name
     await supabase.from("organizations").update({ name: companyName }).eq("id", orgId);
     toast.success("تم حفظ البيانات");
   };
@@ -49,6 +89,71 @@ const SettingsPage = () => {
           </div>
           <div className="flex justify-end">
             <Button size="sm" onClick={saveCompanyInfo}>حفظ</Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Assignment Strategy */}
+      <div className="bg-card rounded-lg shadow-card">
+        <div className="p-5 border-b border-border flex items-center gap-2">
+          <Zap className="w-4 h-4 text-primary" />
+          <h3 className="font-semibold text-sm">استراتيجية الإسناد الافتراضية</h3>
+        </div>
+        <div className="p-5 space-y-5">
+          <p className="text-xs text-muted-foreground">
+            تُطبق هذه الاستراتيجية على الفرق التي لم يتم تعيين إعداد خاص لها. يمكنك تخصيص كل فريق بشكل مستقل من صفحة الفريق.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {strategyOptions.map((opt) => {
+              const Icon = opt.icon;
+              const isSelected = defaultStrategy === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => setDefaultStrategy(opt.key)}
+                  className={cn(
+                    "p-4 rounded-xl border text-right transition-all",
+                    isSelected
+                      ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                      : "border-border bg-secondary/30 hover:border-primary/30"
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Icon className={cn("w-4 h-4", isSelected ? opt.color : "text-muted-foreground")} />
+                    <span className={cn("text-sm font-semibold", isSelected ? "text-foreground" : "text-muted-foreground")}>
+                      {opt.label}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{opt.description}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">الحد الأقصى للمحادثات المفتوحة لكل موظف</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                min="1"
+                max="100"
+                value={defaultMaxConv}
+                onChange={(e) => setDefaultMaxConv(e.target.value)}
+                placeholder="بدون حد"
+                className="bg-secondary border-0 text-sm w-32"
+              />
+              <span className="text-[11px] text-muted-foreground">
+                {defaultMaxConv ? `عند وصول الموظف لـ ${defaultMaxConv} محادثة لن يُسند له جديد` : "بدون حد أقصى — التوزيع مستمر"}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button size="sm" onClick={saveAssignSettings} disabled={savingAssign || loadingAssign} className="gap-1.5">
+              <Save className="w-3.5 h-3.5" />
+              {savingAssign ? "جاري الحفظ..." : "حفظ الإعدادات"}
+            </Button>
           </div>
         </div>
       </div>
