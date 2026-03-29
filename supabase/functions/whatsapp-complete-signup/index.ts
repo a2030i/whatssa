@@ -26,7 +26,7 @@ serve(async (req) => {
       auto_register = true,
     } = body;
 
-    const appId = "1276045851157317";
+    const appId = "1239578701681497";
     const appSecret = Deno.env.get("META_APP_SECRET");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
