@@ -348,6 +348,24 @@ const AdminAccounts = () => {
           );
         })}
       </div>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف الحساب نهائياً؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف <strong>{deleteTarget?.name}</strong> وجميع بياناته (المحادثات، العملاء، الحملات، المحفظة) بشكل نهائي ولا يمكن التراجع.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteOrg} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? "جاري الحذف..." : "حذف نهائي"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
