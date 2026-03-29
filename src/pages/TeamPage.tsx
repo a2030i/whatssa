@@ -321,6 +321,13 @@ const TeamPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1",
+                    activeConvs > 0 ? "bg-warning/10 text-warning" : "bg-secondary text-muted-foreground"
+                  )}>
+                    <MessageSquare className="w-3 h-3" />
+                    {activeConvs}
+                  </span>
                   <Badge className={cn("text-[10px] border-0", rc.className)}>
                     {role === "admin" && <Shield className="w-3 h-3 ml-0.5" />}
                     {role === "supervisor" && <Eye className="w-3 h-3 ml-0.5" />}
