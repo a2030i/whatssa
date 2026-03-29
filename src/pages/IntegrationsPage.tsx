@@ -65,6 +65,7 @@ const IntegrationsPage = () => {
   const [connectedPhone, setConnectedPhone] = useState<string>("");
   const [testSending, setTestSending] = useState(false);
   const [testPhone, setTestPhone] = useState("");
+  const [twoStepPin, setTwoStepPin] = useState("");
 
   useEffect(() => {
     loadConfigs();
