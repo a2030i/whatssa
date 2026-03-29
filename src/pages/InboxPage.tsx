@@ -107,8 +107,8 @@ const InboxPage = () => {
 
   useEffect(() => {
     if (!selectedId) return;
-    if (allMessages[selectedId]) return;
 
+    // Fetch messages if not already loaded
     const fetchMessages = async () => {
       const { data, error } = await supabase
         .from("messages")
@@ -161,7 +161,7 @@ const InboxPage = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedId, allMessages]);
+  }, [selectedId]);
 
   const selected = conversations.find((conversation) => conversation.id === selectedId) || null;
   const currentMessages = selectedId ? allMessages[selectedId] || [] : [];
