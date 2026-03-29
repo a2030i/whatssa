@@ -117,35 +117,82 @@ serve(async (req) => {
 
     // ── GET QR CODE ──
     if (action === "connect" || action === "qr") {
-      const res = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+      // Step 1: Check current state
+      const stateRes = await fetch(`${EVOLUTION_URL}/instance/connectionState/${instanceName}`, {
         headers: evoHeaders,
       });
-      const rawText = await res.text();
-      console.log("Evolution connect raw response:", rawText);
+      const stateData = await stateRes.json();
+      const currentState = stateData.instance?.state || stateData.state || "unknown";
+      console.log("Current state:", currentState);
+
+      if (currentState === "open") {
+        return json({ success: true, qr_code: null, status: "open" });
+      }
+
+      // Step 2: If state is close/unknown, restart instance to generate new QR
+      if (currentState === "close" || currentState === "unknown") {
+        console.log("Instance closed, restarting to get QR...");
+        // First logout to reset
+        try {
+          await fetch(`${EVOLUTION_URL}/instance/logout/${instanceName}`, {
+            method: "DELETE",
+            headers: evoHeaders,
+          });
+        } catch (e) {
+          console.log("Logout before restart (ok to fail):", e);
+        }
+
+        // Small delay then reconnect
+        await new Promise(r => setTimeout(r, 1000));
+      }
+
+      // Step 3: Call connect to get QR
+      const connectRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+        headers: evoHeaders,
+      });
+      const rawText = await connectRes.text();
+      console.log("Connect response:", rawText);
+      
       let data: any;
       try { data = JSON.parse(rawText); } catch { data = {}; }
 
-      // Evolution API v2 may return different structures
-      const qr = data.base64 || data.qrcode?.base64 || data.code || data.pairingCode || null;
-      const state = data.instance?.state || data.state || "unknown";
+      const qr = data.base64 || data.qrcode?.base64 || data.code || null;
 
-      console.log("Parsed QR:", qr ? "found" : "null", "State:", state);
-
-      // If no QR and state is close/unknown, try fetchInstances to check if it needs restart
-      if (!qr && state !== "open") {
-        // Try to get QR via alternative endpoint
-        const fetchRes = await fetch(`${EVOLUTION_URL}/instance/fetchInstances?instanceName=${instanceName}`, {
+      if (!qr) {
+        // Try alternative: restart instance completely
+        console.log("No QR from connect, trying instance restart...");
+        const restartRes = await fetch(`${EVOLUTION_URL}/instance/restart/${instanceName}`, {
+          method: "PUT",
           headers: evoHeaders,
         });
-        const fetchText = await fetchRes.text();
-        console.log("fetchInstances response:", fetchText);
+        const restartText = await restartRes.text();
+        console.log("Restart response:", restartText);
+
+        // Wait and try connect again
+        await new Promise(r => setTimeout(r, 2000));
+        
+        const retryRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+          headers: evoHeaders,
+        });
+        const retryText = await retryRes.text();
+        console.log("Retry connect response:", retryText);
+        
+        let retryData: any;
+        try { retryData = JSON.parse(retryText); } catch { retryData = {}; }
+        
+        const retryQr = retryData.base64 || retryData.qrcode?.base64 || retryData.code || null;
+        
+        return json({
+          success: true,
+          qr_code: retryQr,
+          status: retryQr ? "qr_ready" : "no_qr",
+        });
       }
 
       return json({
         success: true,
         qr_code: qr,
-        status: state,
-        raw_keys: Object.keys(data),
+        status: "qr_ready",
       });
     }
 
