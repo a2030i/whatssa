@@ -65,7 +65,6 @@ const WalletPage = () => {
   const getUsagePercent = (used: number, limit: number) => limit >= 999999 ? 0 : Math.min((used / limit) * 100, 100);
 
   const usageItems = [
-    { label: "الرسائل المرسلة", value: usage?.messages_sent || 0, limit: plan?.max_messages_per_month || 0, icon: MessageSquare },
     { label: "المحادثات", value: usage?.conversations_count || 0, limit: plan?.max_conversations || 0, icon: BarChart3 },
     { label: "أعضاء الفريق", value: 1, limit: plan?.max_team_members || 1, icon: Users },
     { label: "أرقام واتساب", value: 1, limit: plan?.max_phone_numbers || 1, icon: Phone },

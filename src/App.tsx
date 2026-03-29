@@ -50,7 +50,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isSuperAdmin } = useAuth();
 
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -60,9 +60,9 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/auth" element={user ? <Navigate to="/" replace /> : <AuthPage />} />
+      <Route path="/auth" element={user ? (isSuperAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />) : <AuthPage />} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-      <Route path="/" element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/" element={isSuperAdmin ? <Navigate to="/admin" replace /> : <ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
       <Route path="/inbox" element={<ProtectedRoute><AppLayout><InboxPage /></AppLayout></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><AppLayout><CustomersPage /></AppLayout></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
