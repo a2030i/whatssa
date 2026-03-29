@@ -4,6 +4,7 @@ import {
   MessageSquare, KeyRound, Plus, Trash2, Instagram,
   Plug, Radio, Smartphone, Send, AlertTriangle, ExternalLink
 } from "lucide-react";
+import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -569,6 +570,9 @@ const IntegrationsPage = () => {
           ))}
         </div>
       </div>
+
+      {/* WhatsApp Web (Unofficial) */}
+      <WhatsAppWebSection orgId={orgId} />
 
       {/* Upcoming Channels */}
       <div className="space-y-3">
