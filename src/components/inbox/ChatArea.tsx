@@ -66,16 +66,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
       className="group relative max-w-[85%] md:max-w-[70%]"
     >
-      {/* Swipe reply icon indicator */}
-      {canReply && (
-        <div className={cn(
-          "absolute top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 md:transition-opacity z-10",
-          msg.sender === "agent" ? "-left-9" : "-right-9"
-        )}>
-          <Reply className="w-3.5 h-3.5 text-muted-foreground" />
-        </div>
-      )}
-      {/* Desktop click reply */}
+      {/* Desktop click reply button */}
       {canReply && (
         <button
           onClick={() => onReply(msg)}
