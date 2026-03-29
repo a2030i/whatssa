@@ -43,11 +43,12 @@ async function getUserContext(req: Request) {
     .select("business_account_id, access_token")
     .eq("org_id", profile.org_id)
     .eq("is_connected", true)
+    .eq("channel_type", "meta_api")
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  if (!config) return { error: json({ error: "لا يوجد رقم واتساب حقيقي مربوط حالياً" }, 400) };
+  if (!config) return { error: json({ error: "لا يوجد رقم واتساب مربوط عبر WhatsApp Cloud API. القوالب تتطلب ربط رقم عبر Meta API الرسمي" }, 400) };
 
   return { adminClient, userId, orgId: profile.org_id, config };
 }
