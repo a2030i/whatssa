@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Search, Building2, UserCheck, UserX, ShoppingBag, Store, Plus, Eye, X } from "lucide-react";
+import { Search, Building2, UserCheck, UserX, ShoppingBag, Store, Plus, Eye, Clock, MessageSquare } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -164,6 +164,26 @@ const AdminAccounts = () => {
           const wallet = wallets.find((w) => w.org_id === org.id);
           const isExpanded = expandedOrg === org.id;
 
+          // Activity data
+          const lastLogin = members
+            .filter((m: any) => m.last_seen_at)
+            .sort((a: any, b: any) => new Date(b.last_seen_at).getTime() - new Date(a.last_seen_at).getTime())[0]?.last_seen_at;
+          const lastMsg = conversations
+            .filter((c: any) => c.org_id === org.id && c.last_message_at)
+            .sort((a: any, b: any) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime())[0]?.last_message_at;
+
+          const timeAgo = (dateStr: string | null) => {
+            if (!dateStr) return "لم يسجل";
+            const diff = Date.now() - new Date(dateStr).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) return "الآن";
+            if (mins < 60) return `منذ ${mins} د`;
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return `منذ ${hrs} س`;
+            const days = Math.floor(hrs / 24);
+            return `منذ ${days} يوم`;
+          };
+
           return (
             <div key={org.id} className="bg-card rounded-xl shadow-card overflow-hidden">
               <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors" onClick={() => setExpandedOrg(isExpanded ? null : org.id)}>
@@ -174,6 +194,16 @@ const AdminAccounts = () => {
                   <div>
                     <p className="font-semibold text-sm">{org.name}</p>
                     <p className="text-[10px] text-muted-foreground">{org.id.slice(0, 12)}... · {members.length} عضو · رصيد: {wallet?.balance || 0} ر.س</p>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> آخر دخول: {timeAgo(lastLogin)}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <MessageSquare className="w-3 h-3" /> آخر رسالة: {timeAgo(lastMsg)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
