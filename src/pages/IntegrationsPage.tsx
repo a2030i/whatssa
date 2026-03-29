@@ -303,16 +303,18 @@ const IntegrationsPage = () => {
                         </div>
                       </>
                     )}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground">Phone Number ID</Label>
-                        <p className="text-xs mt-0.5 font-mono" dir="ltr">{config.phone_number_id}</p>
+                    {isSuperAdmin && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">Phone Number ID</Label>
+                          <p className="text-xs mt-0.5 font-mono" dir="ltr">{config.phone_number_id}</p>
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">WABA ID</Label>
+                          <p className="text-xs mt-0.5 font-mono" dir="ltr">{config.business_account_id}</p>
+                        </div>
                       </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground">WABA ID</Label>
-                        <p className="text-xs mt-0.5 font-mono" dir="ltr">{config.business_account_id}</p>
-                      </div>
-                    </div>
+                    )}
                     {isSuperAdmin && (
                       <p className="text-[10px] text-muted-foreground">
                         الصق بيانات Webhook في{" "}
@@ -424,35 +426,39 @@ const IntegrationsPage = () => {
                 </Button>
               </div>
 
-              <div className="text-center">
-                <button onClick={() => setShowManual(!showManual)} className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2">
-                  {showManual ? "إخفاء الربط اليدوي" : "أو اربط يدوياً بإدخال البيانات"}
-                </button>
-              </div>
+              {isSuperAdmin && (
+                <>
+                  <div className="text-center">
+                    <button onClick={() => setShowManual(!showManual)} className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2">
+                      {showManual ? "إخفاء الربط اليدوي" : "أو اربط يدوياً بإدخال البيانات"}
+                    </button>
+                  </div>
 
-              {showManual && (
-                <div className="border border-border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <KeyRound className="w-4 h-4 text-primary" />
-                    <h4 className="text-sm font-semibold">ربط يدوي</h4>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Access Token</Label>
-                    <Input value={manualToken} onChange={(e) => setManualToken(e.target.value)} placeholder="EAAxxxxxxx..." className="bg-secondary border-0 text-xs" dir="ltr" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Phone Number ID</Label>
-                    <Input value={manualPhoneId} onChange={(e) => setManualPhoneId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">WhatsApp Business Account ID</Label>
-                    <Input value={manualWabaId} onChange={(e) => setManualWabaId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
-                  </div>
-                  <Button onClick={handleManualConnect} disabled={isLoading || !manualToken || !manualPhoneId || !manualWabaId} className="w-full gap-2 text-sm">
-                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                    ربط يدوي
-                  </Button>
-                </div>
+                  {showManual && (
+                    <div className="border border-border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <KeyRound className="w-4 h-4 text-primary" />
+                        <h4 className="text-sm font-semibold">ربط يدوي</h4>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Access Token</Label>
+                        <Input value={manualToken} onChange={(e) => setManualToken(e.target.value)} placeholder="EAAxxxxxxx..." className="bg-secondary border-0 text-xs" dir="ltr" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Phone Number ID</Label>
+                        <Input value={manualPhoneId} onChange={(e) => setManualPhoneId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">WhatsApp Business Account ID</Label>
+                        <Input value={manualWabaId} onChange={(e) => setManualWabaId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
+                      </div>
+                      <Button onClick={handleManualConnect} disabled={isLoading || !manualToken || !manualPhoneId || !manualWabaId} className="w-full gap-2 text-sm">
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                        ربط يدوي
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ) : (
