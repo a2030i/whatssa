@@ -2,18 +2,28 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Copy, Webhook, Phone, CheckCircle2, XCircle, RefreshCw, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Copy, Webhook, Phone, CheckCircle2, XCircle, RefreshCw, Clock, AlertTriangle, ShieldCheck, Server, Wifi, Loader2, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
+
+const SYSTEM_KEY = "whatsapp_web_vps";
 
 const AdminMeta = () => {
   const [configs, setConfigs] = useState<any[]>([]);
   const [orgs, setOrgs] = useState<any[]>([]);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
+  // VPS config state
+  const [vpsUrl, setVpsUrl] = useState("");
+  const [vpsApiKey, setVpsApiKey] = useState("");
+  const [vpsConfigSaved, setVpsConfigSaved] = useState(false);
+  const [isSavingVps, setIsSavingVps] = useState(false);
+  const [isTestingVps, setIsTestingVps] = useState(false);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadVpsConfig(); }, []);
 
   const load = async () => {
     const [c, o] = await Promise.all([
@@ -22,6 +32,46 @@ const AdminMeta = () => {
     ]);
     setConfigs(c.data || []);
     setOrgs(o.data || []);
+  };
+
+  const loadVpsConfig = async () => {
+    const { data } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", SYSTEM_KEY)
+      .maybeSingle();
+    if (data?.value) {
+      const cfg = data.value as any;
+      setVpsUrl(cfg.url || "");
+      setVpsApiKey(cfg.api_key || "");
+      setVpsConfigSaved(true);
+    }
+  };
+
+  const saveVpsConfig = async () => {
+    if (!vpsUrl.trim()) { toast.error("أدخل رابط السيرفر"); return; }
+    setIsSavingVps(true);
+    const value = { url: vpsUrl.trim().replace(/\/$/, ""), api_key: vpsApiKey.trim() };
+    const { error } = await supabase
+      .from("system_settings")
+      .upsert({ key: SYSTEM_KEY, value: value as any, description: "WhatsApp Web VPS server configuration" }, { onConflict: "key" });
+    if (error) { toast.error("تعذر حفظ الإعدادات"); }
+    else { toast.success("✅ تم حفظ إعدادات السيرفر"); setVpsConfigSaved(true); }
+    setIsSavingVps(false);
+  };
+
+  const testVpsConnection = async () => {
+    const url = vpsUrl.trim().replace(/\/$/, "");
+    if (!url) { toast.error("لا يوجد رابط سيرفر"); return; }
+    setIsTestingVps(true);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (vpsApiKey.trim()) headers["x-api-key"] = vpsApiKey.trim();
+      const res = await fetch(`${url}/api/health`, { headers, signal: AbortSignal.timeout(10000) });
+      if (res.ok) toast.success("✅ السيرفر متصل ويعمل");
+      else toast.error(`السيرفر أرجع حالة ${res.status}`);
+    } catch { toast.error("تعذر الاتصال بالسيرفر"); }
+    setIsTestingVps(false);
   };
 
   const copy = (text: string, label: string) => {
@@ -162,6 +212,63 @@ const AdminMeta = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* WhatsApp Web VPS Server Config */}
+      <div className="bg-card rounded-xl shadow-card p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <QrCode className="w-4 h-4 text-warning" />
+          <h3 className="font-semibold text-sm">سيرفر واتساب ويب (QR)</h3>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-warning border-warning/30">غير رسمي</Badge>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          اضبط سيرفر VPS مركزي واحد. أدمن كل مؤسسة سيمسح QR مباشرة من صفحة التكامل بدون الحاجة لإعداد سيرفر خاص.
+        </p>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">رابط السيرفر (VPS URL)</Label>
+            <Input
+              value={vpsUrl}
+              onChange={(e) => setVpsUrl(e.target.value)}
+              placeholder="https://your-vps.example.com"
+              className="bg-secondary border-0 text-xs"
+              dir="ltr"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">مفتاح API (اختياري)</Label>
+            <Input
+              value={vpsApiKey}
+              onChange={(e) => setVpsApiKey(e.target.value)}
+              placeholder="api-key-here"
+              className="bg-secondary border-0 text-xs"
+              dir="ltr"
+              type="password"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button size="sm" className="gap-1.5 text-xs flex-1" onClick={saveVpsConfig} disabled={isSavingVps || !vpsUrl}>
+            {isSavingVps ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
+            حفظ الإعدادات
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" onClick={testVpsConnection} disabled={isTestingVps || !vpsUrl}>
+            {isTestingVps ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wifi className="w-3.5 h-3.5" />}
+            اختبار الاتصال
+          </Button>
+        </div>
+
+        {vpsConfigSaved && vpsUrl && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-primary">السيرفر مضبوط</p>
+              <p className="text-[10px] text-muted-foreground" dir="ltr">{vpsUrl}</p>
+            </div>
           </div>
         )}
       </div>
