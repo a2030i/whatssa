@@ -40,6 +40,9 @@ interface WhatsAppConfig {
   is_connected: boolean | null;
   webhook_verify_token: string;
   org_id: string | null;
+  registration_status: string | null;
+  registration_error: string | null;
+  registered_at: string | null;
 }
 
 type FlowStep = "idle" | "connecting" | "pick_phone" | "success" | "error";
