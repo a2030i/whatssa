@@ -103,14 +103,22 @@ const IntegrationsPage = () => {
     }
   };
 
-  const fetchMetaStatus = async (config: WhatsAppConfig) => {
-    setMetaStatus(p => ({ ...p, [config.id]: { isLoading: true } }));
+  const fetchMetaStatus = async (config: WhatsAppConfig, force = false) => {
+    // Skip if already fetched recently (within 60s) unless forced
+    const existing = metaStatus[config.id];
+    if (!force && existing && !existing.isLoading && existing.phoneStatus) return;
+
+    setMetaStatus(p => ({ ...p, [config.id]: { ...p[config.id], isLoading: true } }));
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-check-status", {
         body: { config_id: config.id },
       });
       if (error || !data) {
-        setMetaStatus(p => ({ ...p, [config.id]: { isLoading: false } }));
+        // Handle rate limit specifically
+        if (data?.error?.includes?.("rate") || data?.error?.includes?.("too many")) {
+          toast.error("طلبات كثيرة لـ Meta — انتظر دقيقة ثم حاول مرة أخرى");
+        }
+        setMetaStatus(p => ({ ...p, [config.id]: { ...p[config.id], isLoading: false } }));
         return;
       }
 
