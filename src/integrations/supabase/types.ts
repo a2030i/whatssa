@@ -1406,6 +1406,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_unread: { Args: { conv_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "member" | "supervisor"

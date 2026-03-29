@@ -154,12 +154,23 @@ serve(async (req) => {
         });
 
         // Update conversation
+        await supabase.rpc('increment_unread', { conv_id: conversation.id }).catch(() => {
+          // Fallback if RPC doesn't exist
+          supabase
+            .from("conversations")
+            .update({
+              last_message: content,
+              last_message_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", conversation.id);
+        });
+
         await supabase
           .from("conversations")
           .update({
             last_message: content,
             last_message_at: new Date().toISOString(),
-            unread_count: (await supabase.from("conversations").select("unread_count").eq("id", conversation.id).single()).data?.unread_count + 1 || 1,
             updated_at: new Date().toISOString(),
           })
           .eq("id", conversation.id);
