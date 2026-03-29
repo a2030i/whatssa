@@ -145,14 +145,20 @@ serve(async (req) => {
     // Step 2: Recreate with new content
     const category = String(body?.category || "UTILITY").trim().toUpperCase();
     const language = String(body?.language || "ar").trim();
+    const headerType = String(body?.header_type || "NONE").trim().toUpperCase();
     const header = String(body?.header || "").trim();
+    const headerUrl = String(body?.header_url || "").trim();
     const content = String(body?.body || "").trim();
     const footer = String(body?.footer || "").trim();
 
     if (!content) return json({ error: "محتوى الرسالة مطلوب" }, 400);
 
     const components: Array<Record<string, unknown>> = [];
-    if (header) components.push({ type: "HEADER", format: "TEXT", text: header });
+    if (headerType === "TEXT" && header) {
+      components.push({ type: "HEADER", format: "TEXT", text: header });
+    } else if ((headerType === "IMAGE" || headerType === "VIDEO") && headerUrl) {
+      components.push({ type: "HEADER", format: headerType, example: { header_url: [headerUrl] } });
+    }
     components.push({ type: "BODY", text: content });
     if (footer) components.push({ type: "FOOTER", text: footer });
 
@@ -178,7 +184,9 @@ serve(async (req) => {
   const name = String(body?.name || "").trim().toLowerCase();
   const category = String(body?.category || "UTILITY").trim().toUpperCase();
   const language = String(body?.language || "ar").trim();
+  const headerType = String(body?.header_type || "NONE").trim().toUpperCase();
   const header = String(body?.header || "").trim();
+  const headerUrl = String(body?.header_url || "").trim();
   const content = String(body?.body || "").trim();
   const footer = String(body?.footer || "").trim();
 
@@ -195,7 +203,11 @@ serve(async (req) => {
   }
 
   const components: Array<Record<string, unknown>> = [];
-  if (header) components.push({ type: "HEADER", format: "TEXT", text: header });
+  if (headerType === "TEXT" && header) {
+    components.push({ type: "HEADER", format: "TEXT", text: header });
+  } else if ((headerType === "IMAGE" || headerType === "VIDEO") && headerUrl) {
+    components.push({ type: "HEADER", format: headerType, example: { header_url: [headerUrl] } });
+  }
   components.push({ type: "BODY", text: content });
   if (footer) components.push({ type: "FOOTER", text: footer });
 

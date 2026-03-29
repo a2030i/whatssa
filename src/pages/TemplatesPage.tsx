@@ -301,7 +301,15 @@ const TemplatesPage = () => {
                 </div>
 
                 <div className="bg-secondary/50 rounded-lg p-3">
-                  {template.header && <p className="font-semibold text-xs mb-1">{template.header}</p>}
+                  {(template.headerFormat === "IMAGE" || template.headerFormat === "VIDEO") && (
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      {template.headerFormat === "IMAGE" ? <Image className="w-3.5 h-3.5 text-primary" /> : <Video className="w-3.5 h-3.5 text-primary" />}
+                      <span className="text-[10px] font-medium text-primary">{template.headerFormat === "IMAGE" ? "صورة" : "فيديو"}</span>
+                    </div>
+                  )}
+                  {template.header && template.headerFormat !== "IMAGE" && template.headerFormat !== "VIDEO" && (
+                    <p className="font-semibold text-xs mb-1">{template.header}</p>
+                  )}
                   <p className="text-xs text-muted-foreground line-clamp-3">{template.body}</p>
                   {template.footer && <p className="text-[10px] text-muted-foreground/60 mt-1">{template.footer}</p>}
                 </div>
