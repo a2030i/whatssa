@@ -12,6 +12,7 @@ export interface Conversation {
   notes?: string;
   lastSeen?: string;
   lastCustomerMessageAt?: string;
+  conversationType?: "private" | "group" | "broadcast";
 }
 
 export interface MessageTemplate {
