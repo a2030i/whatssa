@@ -33,6 +33,10 @@ const TeamPage = () => {
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("17:00");
   const [workDays, setWorkDays] = useState<number[]>([0, 1, 2, 3, 4]);
+  const [hasShift2, setHasShift2] = useState(false);
+  const [workStart2, setWorkStart2] = useState("18:00");
+  const [workEnd2, setWorkEnd2] = useState("02:00");
+  const [workDays2, setWorkDays2] = useState<number[]>([]);
 
   const dayLabels = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
