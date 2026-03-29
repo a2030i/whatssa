@@ -284,6 +284,83 @@ const TeamPage = () => {
         </div>
       </div>
 
+      {/* Weekly Schedule View */}
+      {profiles.length > 0 && (
+        <div className="bg-card rounded-lg shadow-card overflow-hidden">
+          <div className="p-4 md:p-5 border-b border-border flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <h3 className="font-semibold text-sm">الجدول الأسبوعي</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px]">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-right text-[11px] font-semibold text-muted-foreground p-3 w-[120px] sticky right-0 bg-card z-10">الموظف</th>
+                  {dayLabels.map((d, i) => (
+                    <th key={i} className="text-center text-[11px] font-semibold text-muted-foreground p-2">{d}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {profiles.map((p) => {
+                  const days1 = p.work_days || [];
+                  const days2 = p.work_days_2 || [];
+                  const s1 = p.work_start?.slice(0, 5) || "";
+                  const e1 = p.work_end?.slice(0, 5) || "";
+                  const s2 = p.work_start_2?.slice(0, 5) || "";
+                  const e2 = p.work_end_2?.slice(0, 5) || "";
+                  const isOvernight1 = e1 && s1 && e1 < s1;
+                  const isOvernight2 = e2 && s2 && e2 < s2;
+
+                  return (
+                    <tr key={p.id} className="hover:bg-secondary/30 transition-colors">
+                      <td className="p-3 sticky right-0 bg-card z-10">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                            {p.full_name?.slice(0, 2) || "؟"}
+                          </div>
+                          <span className="text-xs font-medium truncate max-w-[80px]">{p.full_name || "بدون اسم"}</span>
+                        </div>
+                      </td>
+                      {dayLabels.map((_, dayIdx) => {
+                        const hasShift1 = days1.includes(dayIdx) && s1;
+                        const hasShift2Day = days2.includes(dayIdx) && s2;
+                        return (
+                          <td key={dayIdx} className="p-1.5 text-center align-top">
+                            <div className="space-y-1">
+                              {hasShift1 && (
+                                <div className="bg-primary/10 text-primary rounded-md px-1 py-1.5 text-[9px] leading-tight font-medium">
+                                  {s1}-{e1}
+                                  {isOvernight1 && <span className="block text-[8px] opacity-70">🌙</span>}
+                                </div>
+                              )}
+                              {hasShift2Day && (
+                                <div className="bg-info/10 text-info rounded-md px-1 py-1.5 text-[9px] leading-tight font-medium">
+                                  {s2}-{e2}
+                                  {isOvernight2 && <span className="block text-[8px] opacity-70">🌙</span>}
+                                </div>
+                              )}
+                              {!hasShift1 && !hasShift2Day && (
+                                <div className="text-[9px] text-muted-foreground/40 py-1.5">—</div>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="p-3 border-t border-border flex items-center gap-4 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-primary/20" /> شفت 1</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-info/20" /> شفت 2</span>
+            <span>🌙 دوام ليلي (ينتهي اليوم التالي)</span>
+          </div>
+        </div>
+      )}
+
       {/* Info */}
       <div className="bg-card rounded-lg p-5 shadow-card">
         <h3 className="font-semibold text-sm mb-3">كيف تعمل الصلاحيات؟</h3>
