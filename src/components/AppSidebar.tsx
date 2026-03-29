@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug, ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ interface NavItem {
   icon: any;
   path: string;
   ecommerceOnly?: boolean;
+  metaApiOnly?: boolean;
 }
 
 interface NavGroup {
@@ -36,7 +37,7 @@ const buildGroups = (isEcommerce: boolean): (NavItem | NavGroup)[] => [
     icon: Megaphone,
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns" },
-      { label: "القوالب", icon: FileText, path: "/templates" },
+      { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true },
       { label: "الأتمتة", icon: Bot, path: "/automation" },
     ],
   },
