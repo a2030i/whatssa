@@ -898,7 +898,7 @@ const IntegrationsPage = () => {
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <p className="text-xs font-semibold text-muted-foreground">حالة الرقم من Meta</p>
-                          <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => fetchMetaStatus(config)}>
+                          <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => fetchMetaStatus(config, true)}>
                             <RefreshCw className="w-3 h-3" /> تحديث
                           </Button>
                         </div>
