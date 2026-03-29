@@ -37,13 +37,16 @@ const AutomationPage = () => {
 
   const loadRules = async () => {
     setLoading(true);
-    const { data, error } = await table.select("id, name, keywords, reply_text, enabled").order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("automation_rules" as any)
+      .select("id, name, keywords, reply_text, enabled")
+      .order("created_at", { ascending: false });
 
     if (error) {
       toast({ title: "خطأ", description: "تعذر جلب قواعد الأتمتة الحقيقية", variant: "destructive" });
       setRules([]);
     } else {
-      setRules((data || []) as AutomationRule[]);
+      setRules((data || []) as unknown as AutomationRule[]);
     }
 
     setLoading(false);
