@@ -18,6 +18,12 @@ const statusLabels: Record<string, string> = { approved: "معتمد", pending: 
 const statusIcons: Record<string, typeof Check> = { approved: Check, pending: Clock, rejected: XCircle, paused: Clock };
 const statusColors: Record<string, string> = { approved: "text-success", pending: "text-warning", rejected: "text-destructive", paused: "text-muted-foreground" };
 
+interface CtaButton {
+  type: "url" | "phone";
+  text: string;
+  value: string;
+}
+
 interface TemplateFormData {
   name: string;
   category: string;
@@ -26,9 +32,10 @@ interface TemplateFormData {
   headerUrl: string;
   body: string;
   footer: string;
+  buttons: CtaButton[];
 }
 
-const emptyForm: TemplateFormData = { name: "", category: "utility", headerType: "NONE", header: "", headerUrl: "", body: "", footer: "" };
+const emptyForm: TemplateFormData = { name: "", category: "utility", headerType: "NONE", header: "", headerUrl: "", body: "", footer: "", buttons: [] };
 
 const TemplatesPage = () => {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
