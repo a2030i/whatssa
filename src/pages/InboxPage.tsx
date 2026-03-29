@@ -40,6 +40,7 @@ const InboxPage = () => {
       if (!error && !data?.error) {
         setTemplates((data?.templates || []).map(mapMetaTemplate));
       }
+      // Silently ignore — templates only work with Meta Cloud API
     };
 
     loadTemplates();
