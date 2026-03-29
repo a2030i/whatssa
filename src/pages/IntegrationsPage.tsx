@@ -295,43 +295,47 @@ const IntegrationsPage = () => {
     setShowManual(false);
   };
 
-  // ============ EMPTY STATE: No numbers connected ============
+  // ============ EMPTY STATE: Show all channels ============
   if (configs.length === 0 && flowStep === "idle") {
     return (
-      <div className="p-4 md:p-6 max-w-[600px] mx-auto" dir="rtl">
-        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
-          {/* Hero */}
-          <div className="bg-gradient-to-b from-primary/5 to-transparent p-8 text-center">
-            <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
-              <MessageSquare className="w-10 h-10 text-primary" />
-            </div>
-            <h1 className="text-xl font-bold text-foreground">ربط واتساب</h1>
-            <p className="text-sm text-muted-foreground mt-2 max-w-[320px] mx-auto leading-relaxed">
-              اربط رقمك لإرسال واستقبال الرسائل من داخل المنصة
-            </p>
-          </div>
+      <div className="p-4 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <Plug className="w-5 h-5 text-primary" />
+            الربط والتكامل
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">اربط قنوات التواصل لإرسال واستقبال الرسائل</p>
+        </div>
 
-          {/* CTA */}
-          <div className="p-6 space-y-4">
+        {/* WhatsApp Official API */}
+        <div className="bg-card rounded-xl shadow-card border border-border overflow-hidden">
+          <div className="p-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <MessageSquare className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-bold text-sm">واتساب الرسمي (API)</h2>
+                <p className="text-[11px] text-muted-foreground mt-0.5">ربط عبر WhatsApp Business API — للأعمال والمنصات</p>
+              </div>
+            </div>
+            <Badge variant="outline" className="text-[10px] text-muted-foreground">غير مربوط</Badge>
+          </div>
+          <div className="px-5 pb-5 space-y-3">
+            <div className="bg-primary/5 rounded-lg p-3">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                💡 يتطلب حساب WhatsApp Business — ستفتح نافذة Meta لتسجيل الدخول واختيار رقمك. تستغرق أقل من دقيقة.
+              </p>
+            </div>
             <Button
               onClick={startConnect}
               disabled={isLoading || !sdkLoaded}
-              className="w-full gap-3 py-6 text-base font-bold rounded-xl"
-              size="lg"
+              className="w-full gap-2 py-5 text-sm font-bold rounded-xl"
             >
-              {!sdkLoaded ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <MessageSquare className="w-5 h-5" />
-              )}
-              {!sdkLoaded ? "جاري التحميل..." : "ربط واتساب"}
+              {!sdkLoaded ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+              {!sdkLoaded ? "جاري التحميل..." : "ربط واتساب الرسمي"}
             </Button>
 
-            <p className="text-[11px] text-center text-muted-foreground leading-relaxed">
-              ستفتح نافذة لتسجيل الدخول واختيار رقمك — تستغرق أقل من دقيقة
-            </p>
-
-            {/* Manual connect for super admin */}
             {isSuperAdmin && (
               <div className="pt-3 border-t border-border">
                 <button
@@ -340,7 +344,6 @@ const IntegrationsPage = () => {
                 >
                   {showManual ? "إخفاء الربط اليدوي" : "ربط يدوي (متقدم)"}
                 </button>
-
                 {showManual && (
                   <div className="mt-3 border border-border rounded-lg p-4 space-y-3">
                     <div className="space-y-2">
@@ -363,6 +366,34 @@ const IntegrationsPage = () => {
                 )}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* WhatsApp Web QR */}
+        <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} />
+
+        {/* Upcoming Channels */}
+        <div className="space-y-3">
+          <h2 className="font-semibold text-sm text-muted-foreground">قنوات أخرى</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { name: "انستغرام", icon: Instagram, desc: "تواصل عبر Instagram Direct" },
+              { name: "تيليغرام", icon: Radio, desc: "استقبل رسائل تيليغرام" },
+              { name: "SMS", icon: Smartphone, desc: "رسائل نصية قصيرة" },
+            ].map((ch) => (
+              <div key={ch.name} className="bg-card rounded-xl shadow-card p-4 border border-border opacity-60">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
+                    <ch.icon className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{ch.name}</p>
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">قريباً</Badge>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">{ch.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
