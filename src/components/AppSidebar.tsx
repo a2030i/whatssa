@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug, ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NavItem {
   label: string;
   icon: any;
   path: string;
   ecommerceOnly?: boolean;
+  metaApiOnly?: boolean;
 }
 
 interface NavGroup {
@@ -36,7 +38,7 @@ const buildGroups = (isEcommerce: boolean): (NavItem | NavGroup)[] => [
     icon: Megaphone,
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns" },
-      { label: "القوالب", icon: FileText, path: "/templates" },
+      { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true },
       { label: "الأتمتة", icon: Bot, path: "/automation" },
     ],
   },
@@ -64,8 +66,25 @@ const AppSidebar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, userRole, isSuperAdmin, isEcommerce, signOut } = useAuth();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [hasMetaApi, setHasMetaApi] = useState(false);
 
-  const navStructure = buildGroups(isEcommerce);
+  useEffect(() => {
+    supabase
+      .from("whatsapp_config")
+      .select("id")
+      .eq("channel_type", "meta_api")
+      .eq("is_connected", true)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => setHasMetaApi(!!data));
+  }, []);
+
+  const navStructure = buildGroups(isEcommerce).map(item => {
+    if (isGroup(item)) {
+      return { ...item, items: item.items.filter(i => !i.metaApiOnly || hasMetaApi) };
+    }
+    return (!item.metaApiOnly || hasMetaApi) ? item : null;
+  }).filter(Boolean) as (NavItem | NavGroup)[];
 
   // Auto-open group containing active route
   const isActive = (path: string) => location.pathname === path;
