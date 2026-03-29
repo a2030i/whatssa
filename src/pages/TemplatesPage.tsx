@@ -280,7 +280,18 @@ const TemplatesPage = () => {
       </div>
 
       {/* Templates Grid */}
-      {isLoading ? (
+      {noWhatsApp ? (
+        <div className="bg-card rounded-xl border border-border p-8 text-center space-y-3">
+          <AlertTriangle className="w-10 h-10 mx-auto text-warning" />
+          <h3 className="font-semibold">لا يوجد رقم واتساب مربوط</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            يجب ربط رقم واتساب من صفحة الإعدادات أولاً حتى تتمكن من إدارة القوالب
+          </p>
+          <Button variant="outline" className="mt-2" onClick={() => window.location.href = '/settings'}>
+            الذهاب للإعدادات
+          </Button>
+        </div>
+      ) : isLoading ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3" />
           <p className="text-sm">جاري جلب القوالب...</p>
