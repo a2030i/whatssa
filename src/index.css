@@ -88,4 +88,11 @@
   .shadow-card-hover {
     box-shadow: 0 4px 12px 0 hsl(220 20% 10% / 0.08);
   }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
