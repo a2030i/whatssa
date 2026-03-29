@@ -40,7 +40,7 @@ async function checkPhoneStatus(phoneId: string, accessToken: string): Promise<{
   }
 }
 
-async function registerPhone(phoneId: string, accessToken: string, retries = 2): Promise<{ success: boolean; data?: any; error?: string; details?: string }> {
+async function registerPhone(phoneId: string, accessToken: string, retries = 2, pin = "123456"): Promise<{ success: boolean; data?: any; error?: string; details?: string }> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     log("register", { attempt, phoneId });
     try {
