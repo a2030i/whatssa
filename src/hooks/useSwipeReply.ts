@@ -10,12 +10,20 @@ export function useSwipeReply({ onSwipe, direction = "right", threshold = 60 }: 
   const startX = useRef(0);
   const currentX = useRef(0);
   const isSwiping = useRef(false);
+  const didVibrate = useRef(false);
   const elRef = useRef<HTMLDivElement | null>(null);
+
+  const vibrate = () => {
+    if (navigator.vibrate) {
+      navigator.vibrate(15);
+    }
+  };
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
     currentX.current = 0;
     isSwiping.current = false;
+    didVibrate.current = false;
   }, []);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
@@ -33,6 +41,12 @@ export function useSwipeReply({ onSwipe, direction = "right", threshold = 60 }: 
     const dampened = absDiff > threshold ? threshold + (absDiff - threshold) * 0.3 : absDiff;
     currentX.current = diff;
     isSwiping.current = absDiff > 10;
+
+    // Vibrate once when crossing threshold
+    if (absDiff >= threshold && !didVibrate.current) {
+      didVibrate.current = true;
+      vibrate();
+    }
 
     if (elRef.current && isSwiping.current) {
       elRef.current.style.transform = `translateX(${direction === "right" ? dampened : -dampened}px)`;
