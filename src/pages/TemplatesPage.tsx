@@ -371,9 +371,54 @@ const TemplatesPage = () => {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">العنوان (اختياري)</Label>
-              <Input value={formData.header} onChange={(e) => setFormData({ ...formData, header: e.target.value })} placeholder="عنوان القالب" className="text-sm" />
+              <Label className="text-xs">نوع العنوان</Label>
+              <div className="flex gap-1.5">
+                {([
+                  { value: "NONE", label: "بدون", icon: null },
+                  { value: "TEXT", label: "نص", icon: Type },
+                  { value: "IMAGE", label: "صورة", icon: Image },
+                  { value: "VIDEO", label: "فيديو", icon: Video },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, headerType: opt.value, header: opt.value === "TEXT" ? formData.header : "", headerUrl: opt.value !== "TEXT" && opt.value !== "NONE" ? formData.headerUrl : "" })}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-medium border transition-all",
+                      formData.headerType === opt.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-secondary text-muted-foreground hover:border-primary/40"
+                    )}
+                  >
+                    {opt.icon && <opt.icon className="w-3.5 h-3.5" />}
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
+            {formData.headerType === "TEXT" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">نص العنوان</Label>
+                <Input value={formData.header} onChange={(e) => setFormData({ ...formData, header: e.target.value })} placeholder="عنوان القالب" className="text-sm" />
+              </div>
+            )}
+            {(formData.headerType === "IMAGE" || formData.headerType === "VIDEO") && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">رابط {formData.headerType === "IMAGE" ? "الصورة" : "الفيديو"} (مثال)</Label>
+                <Input
+                  value={formData.headerUrl}
+                  onChange={(e) => setFormData({ ...formData, headerUrl: e.target.value })}
+                  placeholder={formData.headerType === "IMAGE" ? "https://example.com/image.jpg" : "https://example.com/video.mp4"}
+                  className="text-sm"
+                  dir="ltr"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  {formData.headerType === "IMAGE"
+                    ? "رابط صورة عامة (JPEG/PNG) — تُستخدم كمثال عند مراجعة Meta"
+                    : "رابط فيديو عام (MP4) — يُستخدم كمثال عند مراجعة Meta"}
+                </p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label className="text-xs">محتوى الرسالة *</Label>
               <Textarea value={formData.body} onChange={(e) => setFormData({ ...formData, body: e.target.value })} placeholder="مرحباً {{1}}، تم تحديث طلبك..." className="text-sm min-h-[100px]" />
