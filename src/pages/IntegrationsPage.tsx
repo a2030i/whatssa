@@ -43,7 +43,7 @@ interface WhatsAppConfig {
 }
 
 const IntegrationsPage = () => {
-  const { orgId, isEcommerce } = useAuth();
+  const { orgId, isEcommerce, isSuperAdmin } = useAuth();
   const [configs, setConfigs] = useState<WhatsAppConfig[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sdkLoaded, setSdkLoaded] = useState(false);
@@ -281,24 +281,28 @@ const IntegrationsPage = () => {
                 {/* Expanded Details */}
                 {selectedConfig?.id === config.id && (
                   <div className="mt-4 pt-4 border-t border-border space-y-3 animate-fade-in">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Webhook URL</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Input value={WEBHOOK_URL} readOnly className="bg-secondary border-0 text-[11px] flex-1" dir="ltr" />
-                        <Button size="sm" variant="outline" className="shrink-0 h-8 w-8 p-0" onClick={() => copyToClipboard(WEBHOOK_URL, "URL")}>
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Verify Token</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Input value={config.webhook_verify_token} readOnly className="bg-secondary border-0 text-[11px] flex-1" dir="ltr" />
-                        <Button size="sm" variant="outline" className="shrink-0 h-8 w-8 p-0" onClick={() => copyToClipboard(config.webhook_verify_token, "Token")}>
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
+                    {isSuperAdmin && (
+                      <>
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">Webhook URL</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input value={WEBHOOK_URL} readOnly className="bg-secondary border-0 text-[11px] flex-1" dir="ltr" />
+                            <Button size="sm" variant="outline" className="shrink-0 h-8 w-8 p-0" onClick={() => copyToClipboard(WEBHOOK_URL, "URL")}>
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">Verify Token</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input value={config.webhook_verify_token} readOnly className="bg-secondary border-0 text-[11px] flex-1" dir="ltr" />
+                            <Button size="sm" variant="outline" className="shrink-0 h-8 w-8 p-0" onClick={() => copyToClipboard(config.webhook_verify_token, "Token")}>
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-[10px] text-muted-foreground">Phone Number ID</Label>
@@ -309,11 +313,13 @@ const IntegrationsPage = () => {
                         <p className="text-xs mt-0.5 font-mono" dir="ltr">{config.business_account_id}</p>
                       </div>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      الصق بيانات Webhook في{" "}
-                      <a href="https://developers.facebook.com/apps/" target="_blank" className="text-primary underline">Meta Developers</a>
-                      {" "}→ تطبيقك → WhatsApp → Configuration
-                    </p>
+                    {isSuperAdmin && (
+                      <p className="text-[10px] text-muted-foreground">
+                        الصق بيانات Webhook في{" "}
+                        <a href="https://developers.facebook.com/apps/" target="_blank" className="text-primary underline">Meta Developers</a>
+                        {" "}→ تطبيقك → WhatsApp → Configuration
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
