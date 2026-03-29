@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Square, Image as ImageIcon, Loader2, X } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Conversation, Message, quickReplies, agents } from "@/data/mockData";
@@ -39,6 +39,13 @@ const isWindowExpired = (lastCustomerMessageAt?: string): boolean => {
   if (!lastCustomerMessageAt) return true;
   const diff = Date.now() - new Date(lastCustomerMessageAt).getTime();
   return diff > 24 * 60 * 60 * 1000;
+};
+
+const isImageUrl = (url?: string | null) => !!url && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url);
+
+const getStorageUrlFromText = (text: string) => {
+  const match = text.match(/\n(https:\/\/[^\s]+)/i);
+  return match?.[1];
 };
 
 const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer }: ChatAreaProps) => {
@@ -357,14 +364,51 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </div>
                 )}
                 {(() => {
-                  const imgMatch = msg.text.match(/\n(https:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|svg)[^\s]*)/i) || msg.text.match(/\n(https:\/\/[^\s]*storage[^\s]*)/i);
-                  const textWithoutUrl = imgMatch ? msg.text.replace(imgMatch[0], "").trim() : msg.text;
+                  const textMediaUrl = getStorageUrlFromText(msg.text);
+                  const mediaUrl = msg.mediaUrl || textMediaUrl;
+                  const isImage = msg.type === "image" || isImageUrl(mediaUrl);
+                  const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
+
                   return (
                     <>
-                      {imgMatch && (
-                        <img src={imgMatch[1]} alt="صورة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(imgMatch[1], "_blank")} />
+                      {isImage && mediaUrl && (
+                        <img src={mediaUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(mediaUrl, "_blank")} />
                       )}
-                      {textWithoutUrl && (
+
+                      {msg.type === "audio" && mediaUrl && (
+                        <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
+                          <div className="mb-2 flex items-center gap-2 text-xs font-medium">
+                            <Play className="h-3.5 w-3.5" />
+                            <span>مقطع صوتي</span>
+                          </div>
+                          <audio controls preload="none" className="w-full">
+                            <source src={mediaUrl} />
+                            متصفحك لا يدعم تشغيل الصوت.
+                          </audio>
+                        </div>
+                      )}
+
+                      {msg.type === "video" && mediaUrl && (
+                        <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
+                          <div className="mb-2 flex items-center gap-2 text-xs font-medium">
+                            <Video className="h-3.5 w-3.5" />
+                            <span>مقطع فيديو</span>
+                          </div>
+                          <video controls preload="metadata" className="max-h-[240px] w-full rounded-md">
+                            <source src={mediaUrl} />
+                            متصفحك لا يدعم تشغيل الفيديو.
+                          </video>
+                        </div>
+                      )}
+
+                      {msg.type === "document" && mediaUrl && (
+                        <a href={mediaUrl} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 rounded-lg bg-background/40 p-2 text-xs font-medium hover:bg-background/60">
+                          <FileText className="h-4 w-4" />
+                          <span>فتح الملف المرفق</span>
+                        </a>
+                      )}
+
+                      {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImage) || textWithoutUrl) && textWithoutUrl && (
                         <p className="whitespace-pre-wrap">
                           {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
                             part.startsWith("@") ? (

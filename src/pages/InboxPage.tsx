@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Conversation, Message } from "@/data/mockData";
@@ -28,8 +28,13 @@ const InboxPage = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const selectedIdRef = useRef<string | null>(null);
 
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   useEffect(() => {
     const loadTemplates = async () => {
@@ -85,7 +90,7 @@ const InboxPage = () => {
       }));
 
       setConversations(mapped);
-      if (!isMobile && mapped.length > 0 && !selectedId) {
+      if (!isMobile && mapped.length > 0 && !selectedIdRef.current) {
         setSelectedId(mapped[0].id);
       }
       setLoading(false);
@@ -129,6 +134,7 @@ const InboxPage = () => {
         timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
         status: message.status as "sent" | "delivered" | "read" | undefined,
         type: (message.message_type as Message["type"]) || "text",
+        mediaUrl: message.media_url || undefined,
         senderName: (message.metadata as any)?.sender_name || undefined,
       }));
 
@@ -149,6 +155,7 @@ const InboxPage = () => {
           timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
           status: message.status,
           type: message.message_type || "text",
+          mediaUrl: message.media_url || undefined,
           senderName: message.metadata?.sender_name || undefined,
         };
         setAllMessages((prev) => ({
