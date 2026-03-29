@@ -75,6 +75,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
       className="group relative max-w-[85%] md:max-w-[70%]"
       data-message-id={msg.id}
+      data-wa-message-id={msg.waMessageId || undefined}
     >
       {/* Desktop click reply button */}
       {canReply && (
