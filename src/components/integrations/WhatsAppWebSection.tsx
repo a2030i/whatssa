@@ -39,9 +39,11 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
 
   const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
+    if (!orgId) { setIsLoadingConfig(false); return; }
     const { data } = await supabase
       .from("whatsapp_config")
       .select("*")
+      .eq("org_id", orgId)
       .eq("channel_type", "evolution")
       .order("created_at", { ascending: false })
       .limit(1)
