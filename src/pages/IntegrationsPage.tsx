@@ -618,6 +618,23 @@ const IntegrationsPage = () => {
                       </div>
                     </>
                   )}
+                  {/* Registration error */}
+                  {config.registration_status === "failed" && config.registration_error && (
+                    <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-semibold text-destructive">سبب فشل التسجيل</p>
+                          <p className="text-[11px] text-muted-foreground mt-1" dir="ltr">{config.registration_error}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {config.registered_at && (
+                    <div className="text-[10px] text-muted-foreground">
+                      آخر تسجيل ناجح: {new Date(config.registered_at).toLocaleString("ar-SA")}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
