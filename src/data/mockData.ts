@@ -39,6 +39,12 @@ export interface Message {
   type?: "text" | "image" | "document" | "note" | "template" | "audio" | "video";
   mediaUrl?: string;
   senderName?: string;
+  quoted?: {
+    stanza_id?: string;
+    message_id?: string;
+    sender_name?: string;
+    text?: string;
+  };
 }
 
 export interface Agent {
