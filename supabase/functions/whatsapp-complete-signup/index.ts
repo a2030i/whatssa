@@ -6,6 +6,63 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function error(msg: string, status: number) {
+  return new Response(
+    JSON.stringify({ error: msg }),
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+function log(step: string, detail: unknown) {
+  console.log(`[whatsapp-complete-signup] [${step}]`, JSON.stringify(detail));
+}
+
+async function registerPhone(phoneId: string, accessToken: string, retries = 2): Promise<{ success: boolean; data?: any; error?: string }> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    log("register", { attempt, phoneId });
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/v19.0/${phoneId}/register`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ messaging_product: "whatsapp", pin: "123456" }),
+        }
+      );
+      const data = await res.json();
+      log("register_response", { attempt, status: res.status, data });
+
+      if (res.ok && data.success) {
+        return { success: true, data };
+      }
+
+      const errMsg = data?.error?.message || JSON.stringify(data);
+
+      // If it's a non-retryable error, stop
+      if (res.status === 400 || res.status === 403) {
+        return { success: false, error: errMsg };
+      }
+
+      // Retryable — wait before next attempt
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 2000 * attempt));
+      } else {
+        return { success: false, error: errMsg };
+      }
+    } catch (err: any) {
+      log("register_error", { attempt, error: err.message });
+      if (attempt >= retries) {
+        return { success: false, error: err.message };
+      }
+      await new Promise((r) => setTimeout(r, 2000 * attempt));
+    }
+  }
+  return { success: false, error: "Max retries exceeded" };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -17,12 +74,9 @@ serve(async (req) => {
       code,
       access_token: directToken,
       redirect_uri: redirectUri,
-      // From Embedded Signup sessionInfoListener
       waba_id: sessionWabaId,
       phone_number_id: sessionPhoneId,
-      // For saving config
       org_id,
-      // Whether to auto-register phone & subscribe webhook
       auto_register = true,
     } = body;
 
@@ -31,45 +85,40 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    if (!appSecret) {
-      return error("META_APP_SECRET not configured", 500);
-    }
+    if (!appSecret) return error("META_APP_SECRET not configured", 500);
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // ── Step 1: Obtain access token ──
+    log("step1_token", { hasCode: !!code, hasDirect: !!directToken });
     let accessToken = directToken;
 
     if (code) {
-      // Exchange authorization code → short-lived → long-lived token
       const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}${redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ""}`;
       const tokenRes = await fetch(tokenUrl);
       const tokenData = await tokenRes.json();
 
       if (tokenData.error) {
-        console.error("Token exchange error:", tokenData.error);
+        log("token_exchange_error", tokenData.error);
         return error(tokenData.error.message || "Failed to exchange token", 400);
       }
 
       const shortLived = tokenData.access_token;
-
-      // Exchange for long-lived token
       const longUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLived}`;
       const longRes = await fetch(longUrl);
       const longData = await longRes.json();
       accessToken = longData.access_token || shortLived;
+      log("step1_token_obtained", { longLived: !!longData.access_token });
     }
 
-    if (!accessToken) {
-      return error("code or access_token is required", 400);
-    }
+    if (!accessToken) return error("code or access_token is required", 400);
 
     // ── Step 2: Resolve WABA ID & phone numbers ──
+    log("step2_resolve", { sessionWabaId, sessionPhoneId });
     let wabaIds: string[] = sessionWabaId ? [sessionWabaId] : [];
     let resolvedPhones: any[] = [];
 
     if (wabaIds.length === 0) {
-      // Discover WABAs from token debug info
       const debugRes = await fetch(
         `https://graph.facebook.com/v21.0/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
       );
@@ -77,9 +126,9 @@ serve(async (req) => {
       const granularScopes = debugData.data?.granular_scopes || [];
       const waScope = granularScopes.find((s: any) => s.scope === "whatsapp_business_management");
       wabaIds = waScope?.target_ids || [];
+      log("step2_discovered_wabas", { wabaIds });
     }
 
-    // Fetch phone numbers for each WABA
     const results = [];
     for (const wabaId of wabaIds) {
       const phonesRes = await fetch(
@@ -92,70 +141,74 @@ serve(async (req) => {
       resolvedPhones.push(...phones.map((p: any) => ({ ...p, waba_id: wabaId })));
     }
 
-    // If Embedded Signup gave us a specific phone_number_id, auto-select it
+    log("step2_phones", { count: resolvedPhones.length });
+
     let selectedPhone = sessionPhoneId
       ? resolvedPhones.find((p: any) => p.id === sessionPhoneId)
       : null;
 
-    // ── Step 3: If phone selected and org provided, save config ──
+    // ── Step 3: Save config ──
     let savedConfig = null;
+    let registrationResult: { success: boolean; error?: string } = { success: false, error: "Not attempted" };
+
     if (selectedPhone && org_id) {
       const wabaId = selectedPhone.waba_id;
       const phoneId = selectedPhone.id;
       const displayPhone = selectedPhone.display_phone_number || "";
       const businessName = selectedPhone.verified_name || "";
 
-      // Upsert whatsapp_config for this org
+      log("step3_save", { orgId: org_id, phoneId, wabaId });
+
       const { data: existingConfig } = await supabase
         .from("whatsapp_config")
         .select("id, webhook_verify_token")
         .eq("org_id", org_id)
         .maybeSingle();
 
+      const configPayload = {
+        phone_number_id: phoneId,
+        business_account_id: wabaId,
+        access_token: accessToken,
+        display_phone: displayPhone,
+        business_name: businessName,
+        is_connected: false, // Will be set to true after successful register
+        registration_status: "registering",
+        registration_error: null,
+        last_register_attempt_at: new Date().toISOString(),
+      };
+
       if (existingConfig) {
-        await supabase.from("whatsapp_config").update({
-          phone_number_id: phoneId,
-          business_account_id: wabaId,
-          access_token: accessToken,
-          display_phone: displayPhone,
-          business_name: businessName,
-          is_connected: true,
-        }).eq("id", existingConfig.id);
-        savedConfig = { ...existingConfig, phone_number_id: phoneId, display_phone: displayPhone };
+        await supabase.from("whatsapp_config").update(configPayload).eq("id", existingConfig.id);
+        savedConfig = { ...existingConfig, ...configPayload };
       } else {
         const { data: newConfig } = await supabase.from("whatsapp_config").insert({
           org_id,
-          phone_number_id: phoneId,
-          business_account_id: wabaId,
-          access_token: accessToken,
-          display_phone: displayPhone,
-          business_name: businessName,
-          is_connected: true,
+          ...configPayload,
         }).select().single();
         savedConfig = newConfig;
       }
 
-      // ── Step 4: Register phone number (if new from Embedded Signup) ──
+      // ── Step 4: Register phone number ──
       if (auto_register) {
-        try {
-          const registerRes = await fetch(
-            `https://graph.facebook.com/v21.0/${phoneId}/register`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                messaging_product: "whatsapp",
-                pin: "123456", // Default 2FA pin for Cloud API
-              }),
-            }
-          );
-          const registerData = await registerRes.json();
-          console.log("Phone registration result:", registerData);
-        } catch (regError) {
-          console.error("Phone registration error (non-fatal):", regError);
+        registrationResult = await registerPhone(phoneId, accessToken, 3);
+
+        const configId = savedConfig?.id || existingConfig?.id;
+
+        if (registrationResult.success) {
+          log("step4_register_success", { phoneId });
+          await supabase.from("whatsapp_config").update({
+            is_connected: true,
+            registration_status: "connected",
+            registration_error: null,
+            registered_at: new Date().toISOString(),
+          }).eq("id", configId);
+        } else {
+          log("step4_register_failed", { phoneId, error: registrationResult.error });
+          await supabase.from("whatsapp_config").update({
+            is_connected: false,
+            registration_status: "failed",
+            registration_error: registrationResult.error || "Unknown error",
+          }).eq("id", configId);
         }
       }
 
@@ -172,9 +225,9 @@ serve(async (req) => {
           }
         );
         const subscribeData = await subscribeRes.json();
-        console.log("Webhook subscription result:", subscribeData);
-      } catch (subError) {
-        console.error("Webhook subscription error (non-fatal):", subError);
+        log("step5_webhook_subscribe", { ok: subscribeRes.ok, data: subscribeData });
+      } catch (subError: any) {
+        log("step5_webhook_error", { error: subError.message });
       }
     }
 
@@ -186,18 +239,12 @@ serve(async (req) => {
         selected_phone: selectedPhone || null,
         saved_config: savedConfig,
         auto_registered: !!(selectedPhone && org_id && auto_register),
+        registration: registrationResult,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
-    console.error("Error:", err);
+  } catch (err: any) {
+    log("fatal_error", { error: err.message, stack: err.stack });
     return error("Internal error", 500);
   }
 });
-
-function error(msg: string, status: number) {
-  return new Response(
-    JSON.stringify({ error: msg }),
-    { status, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Content-Type": "application/json" } }
-  );
-}
