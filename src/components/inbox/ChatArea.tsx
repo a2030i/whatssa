@@ -346,10 +346,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
                   : msg.sender === "agent"
                     ? "bg-card shadow-card text-foreground rounded-bl-sm"
-                    : "gradient-whatsapp text-whatsapp-foreground rounded-br-sm"
+                    : "gradient-whatsapp text-white rounded-br-sm shadow-md"
               )}>
                 {msg.senderName && msg.sender === "customer" && conversation.conversationType === "group" && (
-                  <div className="text-[11px] font-semibold text-emerald-700 mb-1">{msg.senderName}</div>
+                  <div className="text-[11px] font-bold text-white/90 mb-1">{msg.senderName}</div>
                 )}
                 {msg.type === "template" && (
                   <div className="flex items-center gap-1 mb-1 text-primary">
@@ -422,7 +422,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     </>
                   );
                 })()}
-                <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-whatsapp-foreground/70")}>
+                <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-white/60")}>
                   <span className="text-[10px]">{msg.timestamp}</span>
                   {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
                 </div>
