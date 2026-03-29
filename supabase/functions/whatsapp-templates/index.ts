@@ -48,7 +48,7 @@ async function getUserContext(req: Request) {
     .limit(1)
     .maybeSingle();
 
-  if (!config) return { error: json({ error: "لا يوجد رقم واتساب مربوط عبر WhatsApp Cloud API. القوالب تتطلب ربط رقم عبر Meta API الرسمي" }, 400) };
+  if (!config) return { error: json({ error: "لا يوجد رقم واتساب مربوط عبر WhatsApp Cloud API. القوالب تتطلب ربط رقم عبر Meta API الرسمي", meta_configured: false, templates: [] }) };
 
   return { adminClient, userId, orgId: profile.org_id, config };
 }
