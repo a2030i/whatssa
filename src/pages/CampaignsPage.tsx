@@ -650,4 +650,290 @@ const CampaignsPage = () => {
   );
 };
 
+// ═══════════════════════════════════════════════
+// Campaign Detail with Advanced Analytics
+// ═══════════════════════════════════════════════
+
+function CampaignDetailContent({
+  campaign,
+  recipients,
+  recipientStatusBadge,
+  exportReport,
+}: {
+  campaign: any;
+  recipients: any[];
+  recipientStatusBadge: (status: string) => JSX.Element;
+  exportReport: () => void;
+}) {
+  const total = campaign.total_recipients || 0;
+  const sent = campaign.sent_count || 0;
+  const delivered = campaign.delivered_count || 0;
+  const read = campaign.read_count || 0;
+  const failed = campaign.failed_count || 0;
+
+  const deliveryRate = sent > 0 ? ((delivered / sent) * 100) : 0;
+  const openRate = delivered > 0 ? ((read / delivered) * 100) : 0;
+  const failRate = sent > 0 ? ((failed / sent) * 100) : 0;
+
+  // Count replied recipients (those with status containing 'replied' or messages back)
+  const replied = recipients.filter((r) => r.status === "replied").length;
+  const replyRate = delivered > 0 ? ((replied / delivered) * 100) : 0;
+
+  // Failure breakdown
+  const failureBreakdown = useMemo(() => {
+    const map: Record<string, number> = {};
+    recipients.filter((r) => r.status === "failed").forEach((r) => {
+      const reason = r.error_code || r.error_message || "خطأ غير محدد";
+      map[reason] = (map[reason] || 0) + 1;
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+  }, [recipients]);
+
+  // Funnel data
+  const funnelSteps = [
+    { label: "الجمهور", value: total, color: "bg-muted-foreground" },
+    { label: "مُرسلة", value: sent, color: "bg-info" },
+    { label: "تم التوصيل", value: delivered, color: "bg-success" },
+    { label: "تمت القراءة", value: read, color: "bg-primary" },
+  ];
+  const maxFunnel = Math.max(total, 1);
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="flex items-center justify-between">
+          <span>تفاصيل: {campaign.name}</span>
+          <Button size="sm" variant="outline" className="text-xs gap-1" onClick={exportReport}>
+            <Download className="w-3 h-3" /> تصدير التقرير
+          </Button>
+        </DialogTitle>
+      </DialogHeader>
+
+      <Tabs defaultValue="analytics" className="mt-2">
+        <TabsList className="w-full grid grid-cols-3 h-9">
+          <TabsTrigger value="analytics" className="text-xs gap-1"><BarChart3 className="w-3 h-3" /> التحليلات</TabsTrigger>
+          <TabsTrigger value="recipients" className="text-xs gap-1"><Users className="w-3 h-3" /> المستلمون</TabsTrigger>
+          <TabsTrigger value="info" className="text-xs gap-1"><FileText className="w-3 h-3" /> معلومات</TabsTrigger>
+        </TabsList>
+
+        {/* ── Analytics Tab ── */}
+        <TabsContent value="analytics" className="space-y-4 mt-3">
+
+          {/* Rate Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-card border border-border rounded-xl p-3 text-center">
+              <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center mx-auto mb-2">
+                <Send className="w-4 h-4 text-info" />
+              </div>
+              <p className="text-xl font-bold text-info">{deliveryRate.toFixed(1)}%</p>
+              <p className="text-[10px] text-muted-foreground">معدل التوصيل</p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">{delivered.toLocaleString()} / {sent.toLocaleString()}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-3 text-center">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                <MailOpen className="w-4 h-4 text-primary" />
+              </div>
+              <p className="text-xl font-bold text-primary">{openRate.toFixed(1)}%</p>
+              <p className="text-[10px] text-muted-foreground">معدل الفتح</p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">{read.toLocaleString()} / {delivered.toLocaleString()}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-3 text-center">
+              <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center mx-auto mb-2">
+                <Reply className="w-4 h-4 text-success" />
+              </div>
+              <p className="text-xl font-bold text-success">{replyRate.toFixed(1)}%</p>
+              <p className="text-[10px] text-muted-foreground">معدل الرد</p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">{replied.toLocaleString()} / {delivered.toLocaleString()}</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-3 text-center">
+              <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center mx-auto mb-2">
+                <XCircle className="w-4 h-4 text-destructive" />
+              </div>
+              <p className="text-xl font-bold text-destructive">{failRate.toFixed(1)}%</p>
+              <p className="text-[10px] text-muted-foreground">معدل الفشل</p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">{failed.toLocaleString()} / {sent.toLocaleString()}</p>
+            </div>
+          </div>
+
+          {/* Visual Funnel */}
+          <div className="bg-card border border-border rounded-xl p-4">
+            <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" /> قمع التحويل
+            </h3>
+            <div className="space-y-3">
+              {funnelSteps.map((step, i) => {
+                const pct = (step.value / maxFunnel) * 100;
+                const dropoff = i > 0 ? funnelSteps[i - 1].value - step.value : 0;
+                const dropoffPct = i > 0 && funnelSteps[i - 1].value > 0 ? ((dropoff / funnelSteps[i - 1].value) * 100) : 0;
+                return (
+                  <div key={step.label}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="font-medium">{step.label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{step.value.toLocaleString()}</span>
+                        {i > 0 && dropoff > 0 && (
+                          <span className="text-[10px] text-destructive/70">-{dropoff.toLocaleString()} ({dropoffPct.toFixed(0)}%)</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="h-6 bg-secondary rounded-lg overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-lg transition-all duration-700", step.color)}
+                        style={{ width: `${Math.max(pct, 2)}%`, opacity: 0.8 }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Failure Breakdown */}
+          {failureBreakdown.length > 0 && (
+            <div className="bg-card border border-border rounded-xl p-4">
+              <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive" /> تفصيل أسباب الفشل
+              </h3>
+              <div className="space-y-2">
+                {failureBreakdown.map(([reason, count]) => {
+                  const pct = failed > 0 ? ((count / failed) * 100) : 0;
+                  return (
+                    <div key={reason} className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between text-xs mb-0.5">
+                          <span className="text-muted-foreground truncate font-mono text-[10px]" dir="ltr">{reason}</span>
+                          <span className="text-destructive font-bold shrink-0 mr-2">{count}</span>
+                        </div>
+                        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                          <div className="h-full bg-destructive/60 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0 w-10 text-left">{pct.toFixed(0)}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Summary Numbers */}
+          <div className="grid grid-cols-5 gap-2">
+            <div className="bg-secondary rounded-lg p-2.5 text-center">
+              <p className="text-base font-bold">{total.toLocaleString()}</p>
+              <p className="text-[9px] text-muted-foreground">الإجمالي</p>
+            </div>
+            <div className="bg-info/5 rounded-lg p-2.5 text-center">
+              <p className="text-base font-bold text-info">{sent.toLocaleString()}</p>
+              <p className="text-[9px] text-muted-foreground">مُرسلة</p>
+            </div>
+            <div className="bg-success/5 rounded-lg p-2.5 text-center">
+              <p className="text-base font-bold text-success">{delivered.toLocaleString()}</p>
+              <p className="text-[9px] text-muted-foreground">وصلت</p>
+            </div>
+            <div className="bg-primary/5 rounded-lg p-2.5 text-center">
+              <p className="text-base font-bold text-primary">{read.toLocaleString()}</p>
+              <p className="text-[9px] text-muted-foreground">مقروءة</p>
+            </div>
+            <div className="bg-destructive/5 rounded-lg p-2.5 text-center">
+              <p className="text-base font-bold text-destructive">{failed.toLocaleString()}</p>
+              <p className="text-[9px] text-muted-foreground">فشل</p>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── Recipients Tab ── */}
+        <TabsContent value="recipients" className="mt-3">
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/50 text-muted-foreground text-[11px]">
+                  <th className="text-right p-2.5">الرقم</th>
+                  <th className="text-right p-2.5">الاسم</th>
+                  <th className="text-right p-2.5">الحالة</th>
+                  <th className="text-right p-2.5 hidden md:table-cell">وقت الإرسال</th>
+                  <th className="text-right p-2.5 hidden md:table-cell">وقت التوصيل</th>
+                  <th className="text-right p-2.5 hidden lg:table-cell">الخطأ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recipients.map((r) => (
+                  <tr key={r.id} className="border-b border-border/50 hover:bg-secondary/20">
+                    <td className="p-2.5 font-mono text-xs" dir="ltr">{r.phone}</td>
+                    <td className="p-2.5 text-xs">{r.customer_name || "-"}</td>
+                    <td className="p-2.5">{recipientStatusBadge(r.status)}</td>
+                    <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.sent_at ? new Date(r.sent_at).toLocaleString("ar-SA") : "-"}</td>
+                    <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.delivered_at ? new Date(r.delivered_at).toLocaleString("ar-SA") : "-"}</td>
+                    <td className="p-2.5 text-[10px] text-destructive hidden lg:table-cell">
+                      {r.error_code && <span className="font-mono">{r.error_code}: </span>}
+                      {r.error_message || "-"}
+                    </td>
+                  </tr>
+                ))}
+                {recipients.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-6 text-muted-foreground text-xs">لا يوجد مستلمين</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {recipients.length >= 500 && (
+            <p className="text-[10px] text-muted-foreground text-center mt-2">يتم عرض أول 500 مستلم — صدّر التقرير للقائمة الكاملة</p>
+          )}
+        </TabsContent>
+
+        {/* ── Info Tab ── */}
+        <TabsContent value="info" className="mt-3 space-y-3">
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="bg-secondary rounded-lg p-3">
+              <p className="text-muted-foreground text-[10px]">القالب</p>
+              <p className="font-semibold mt-0.5">{campaign.template_name || "-"}</p>
+            </div>
+            <div className="bg-secondary rounded-lg p-3">
+              <p className="text-muted-foreground text-[10px]">نوع الجمهور</p>
+              <p className="font-semibold mt-0.5">
+                {campaign.audience_type === "all" ? "الكل" : campaign.audience_type === "tags" ? "تصنيفات" : campaign.audience_type === "upload" ? "إكسل" : campaign.audience_type === "select" ? "يدوي" : campaign.audience_type === "orders" ? "طلبات" : campaign.audience_type}
+              </p>
+            </div>
+            <div className="bg-secondary rounded-lg p-3">
+              <p className="text-muted-foreground text-[10px]">تاريخ الإنشاء</p>
+              <p className="font-semibold mt-0.5">{new Date(campaign.created_at).toLocaleString("ar-SA")}</p>
+            </div>
+            <div className="bg-secondary rounded-lg p-3">
+              <p className="text-muted-foreground text-[10px]">تاريخ الإرسال</p>
+              <p className="font-semibold mt-0.5">{campaign.sent_at ? new Date(campaign.sent_at).toLocaleString("ar-SA") : "-"}</p>
+            </div>
+          </div>
+          {campaign.audience_tags?.length > 0 && (
+            <div className="bg-secondary rounded-lg p-3">
+              <p className="text-muted-foreground text-[10px] mb-1">التصنيفات المستهدفة</p>
+              <div className="flex flex-wrap gap-1">
+                {campaign.audience_tags.map((t: string) => (
+                  <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {campaign.exclude_tags?.length > 0 && (
+            <div className="bg-destructive/5 rounded-lg p-3">
+              <p className="text-destructive text-[10px] mb-1">التصنيفات المستثناة</p>
+              <div className="flex flex-wrap gap-1">
+                {campaign.exclude_tags.map((t: string) => (
+                  <Badge key={t} variant="outline" className="text-[10px] border-destructive/30 text-destructive">{t}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {campaign.notes && (
+            <div className="bg-secondary rounded-lg p-3">
+              <p className="text-muted-foreground text-[10px]">ملاحظات</p>
+              <p className="text-xs mt-0.5">{campaign.notes}</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </>
+  );
+}
+
 export default CampaignsPage;
