@@ -326,12 +326,20 @@ const AdminAccounts = () => {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.stopPropagation(); impersonateOrg(org.id); }}>
                       <Eye className="w-3 h-3" /> عرض كعميل
                     </Button>
                     <Button size="sm" variant={org.is_active ? "destructive" : "default"} className="text-xs" onClick={() => toggleActive(org.id, org.is_active)}>
                       {org.is_active ? "تعطيل المنظمة" : "تفعيل المنظمة"}
+                    </Button>
+                    {org.is_active && (
+                      <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => archiveOrg(org.id)}>
+                        <Archive className="w-3 h-3" /> أرشفة
+                      </Button>
+                    )}
+                    <Button size="sm" variant="destructive" className="text-xs gap-1" onClick={() => setDeleteTarget({ id: org.id, name: org.name })}>
+                      <Trash2 className="w-3 h-3" /> حذف نهائي
                     </Button>
                   </div>
                 </div>
