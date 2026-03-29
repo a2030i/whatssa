@@ -1318,8 +1318,11 @@ export type Database = {
           access_token: string
           business_account_id: string
           business_name: string | null
+          channel_type: string
           created_at: string | null
           display_phone: string | null
+          evolution_instance_name: string | null
+          evolution_instance_status: string | null
           id: string
           is_connected: boolean | null
           last_register_attempt_at: string | null
@@ -1338,8 +1341,11 @@ export type Database = {
           access_token: string
           business_account_id: string
           business_name?: string | null
+          channel_type?: string
           created_at?: string | null
           display_phone?: string | null
+          evolution_instance_name?: string | null
+          evolution_instance_status?: string | null
           id?: string
           is_connected?: boolean | null
           last_register_attempt_at?: string | null
@@ -1358,8 +1364,11 @@ export type Database = {
           access_token?: string
           business_account_id?: string
           business_name?: string | null
+          channel_type?: string
           created_at?: string | null
           display_phone?: string | null
+          evolution_instance_name?: string | null
+          evolution_instance_status?: string | null
           id?: string
           is_connected?: boolean | null
           last_register_attempt_at?: string | null

@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   AlertTriangle, CheckCircle2, Loader2, QrCode,
-  Server, Trash2, Wifi, Settings, Smartphone
+  Server, Trash2, Wifi, Settings, Smartphone, RefreshCw,
+  LogOut, Send
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,124 +16,187 @@ interface Props {
   isSuperAdmin: boolean;
 }
 
-interface VpsConfig {
-  url: string;
-  api_key: string;
-}
-
-const SYSTEM_KEY = "whatsapp_web_vps";
+type InstanceStatus = "idle" | "connecting" | "qr_pending" | "connected" | "disconnected";
 
 const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
   const [showSetup, setShowSetup] = useState(false);
-  const [vpsConfig, setVpsConfig] = useState<VpsConfig | null>(null);
-  const [vpsUrl, setVpsUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-
-  // QR flow for org admin
-  const [sessionName, setSessionName] = useState("");
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
-  const [sessionStatus, setSessionStatus] = useState<"idle" | "connected" | "qr_pending">("idle");
-  const [connectedPhone, setConnectedPhone] = useState("");
+  const [instanceStatus, setInstanceStatus] = useState<InstanceStatus>("idle");
+  const [instanceName, setInstanceName] = useState("");
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [testPhone, setTestPhone] = useState("");
+  const [testSending, setTestSending] = useState(false);
+  const [existingConfig, setExistingConfig] = useState<any>(null);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    loadVpsConfig();
+    loadExistingConfig();
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  const loadVpsConfig = async () => {
+  const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
     const { data } = await supabase
-      .from("system_settings")
-      .select("value")
-      .eq("key", SYSTEM_KEY)
+      .from("whatsapp_config")
+      .select("*")
+      .eq("channel_type", "evolution")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    if (data?.value) {
-      const cfg = data.value as unknown as VpsConfig;
-      setVpsConfig(cfg);
-      setVpsUrl(cfg.url || "");
-      setApiKey(cfg.api_key || "");
+    if (data) {
+      setExistingConfig(data);
+      setInstanceName(data.evolution_instance_name || "");
+      if (data.evolution_instance_status === "connected" && data.is_connected) {
+        setInstanceStatus("connected");
+      } else if (data.evolution_instance_name) {
+        setInstanceStatus("disconnected");
+      }
     }
     setIsLoadingConfig(false);
   };
 
-  // ── Super Admin: Save VPS config ──
-  const saveVpsConfig = async () => {
-    if (!vpsUrl.trim()) { toast.error("أدخل رابط السيرفر"); return; }
-    setIsSaving(true);
-
-    const value = { url: vpsUrl.trim().replace(/\/$/, ""), api_key: apiKey.trim() };
-
-    const { error } = await supabase
-      .from("system_settings")
-      .upsert({ key: SYSTEM_KEY, value: value as any, description: "WhatsApp Web VPS server configuration" }, { onConflict: "key" });
-
-    if (error) {
-      toast.error("تعذر حفظ الإعدادات");
-    } else {
-      toast.success("✅ تم حفظ إعدادات السيرفر");
-      setVpsConfig(value);
-    }
-    setIsSaving(false);
-  };
-
-  const testConnection = async () => {
-    const url = vpsConfig?.url || vpsUrl.trim().replace(/\/$/, "");
-    if (!url) { toast.error("لا يوجد سيرفر مضبوط"); return; }
-    setIsTesting(true);
+  const createInstance = async () => {
+    setIsCreating(true);
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      const key = vpsConfig?.api_key || apiKey.trim();
-      if (key) headers["x-api-key"] = key;
-
-      const res = await fetch(`${url}/api/health`, { headers, signal: AbortSignal.timeout(10000) });
-      if (res.ok) {
-        toast.success("✅ السيرفر متصل ويعمل بشكل صحيح");
-      } else {
-        toast.error(`السيرفر أرجع حالة ${res.status}`);
-      }
-    } catch {
-      toast.error("تعذر الاتصال بالسيرفر — تأكد من الرابط");
-    }
-    setIsTesting(false);
-  };
-
-  // ── Org Admin: Start session & get QR ──
-  const startSession = async () => {
-    if (!vpsConfig?.url) { toast.error("السيرفر غير مضبوط — تواصل مع مدير المنصة"); return; }
-    const name = sessionName.trim() || orgId || "default";
-    setIsConnecting(true);
-    try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (vpsConfig.api_key) headers["x-api-key"] = vpsConfig.api_key;
-
-      const res = await fetch(`${vpsConfig.url}/api/sessions/${name}/start`, {
-        method: "POST",
-        headers,
-        signal: AbortSignal.timeout(30000),
+      const { data, error } = await supabase.functions.invoke("evolution-manage", {
+        body: { action: "create" },
       });
 
-      const data = await res.json();
+      if (error || !data?.success) {
+        toast.error(data?.error || "فشل إنشاء الجلسة");
+        setIsCreating(false);
+        return;
+      }
 
-      if (data.qr) {
-        setQrCode(data.qr);
-        setSessionStatus("qr_pending");
-        toast.success("امسح رمز QR بهاتفك لإتمام الربط");
-      } else if (data.status === "connected") {
-        toast.success("✅ الجلسة متصلة بالفعل");
-        setQrCode(null);
-        setSessionStatus("connected");
-        setConnectedPhone(data.phone || name);
+      setInstanceName(data.instance_name);
+
+      if (data.qr_code) {
+        setQrCode(`data:image/png;base64,${data.qr_code}`);
+        setInstanceStatus("qr_pending");
+        startPolling(data.instance_name);
       } else {
-        toast.error(data.error || "فشل في بدء الجلسة");
+        // No QR yet, fetch it
+        await fetchQR(data.instance_name);
       }
     } catch {
-      toast.error("تعذر الاتصال بالسيرفر");
+      toast.error("خطأ في الاتصال بالسيرفر");
     }
-    setIsConnecting(false);
+    setIsCreating(false);
+  };
+
+  const fetchQR = async (name?: string) => {
+    const iName = name || instanceName;
+    if (!iName) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("evolution-manage", {
+        body: { action: "connect", instance_name: iName },
+      });
+
+      if (data?.qr_code) {
+        setQrCode(`data:image/png;base64,${data.qr_code}`);
+        setInstanceStatus("qr_pending");
+        startPolling(iName);
+      } else if (data?.status === "open") {
+        setInstanceStatus("connected");
+        setQrCode(null);
+        toast.success("✅ الرقم متصل بالفعل");
+        loadExistingConfig();
+      }
+    } catch {
+      toast.error("فشل جلب رمز QR");
+    }
+  };
+
+  const startPolling = (name: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      if (attempts > 60) { // Stop after 2 minutes
+        if (pollRef.current) clearInterval(pollRef.current);
+        return;
+      }
+
+      const { data } = await supabase.functions.invoke("evolution-manage", {
+        body: { action: "status", instance_name: name },
+      });
+
+      if (data?.status === "open") {
+        setInstanceStatus("connected");
+        setQrCode(null);
+        if (pollRef.current) clearInterval(pollRef.current);
+        toast.success("✅ تم ربط الرقم بنجاح!");
+        loadExistingConfig();
+      }
+    }, 3000);
+  };
+
+  const checkStatus = async () => {
+    if (!instanceName) return;
+    setIsCheckingStatus(true);
+    const { data } = await supabase.functions.invoke("evolution-manage", {
+      body: { action: "status", instance_name: instanceName },
+    });
+
+    if (data?.status === "open") {
+      setInstanceStatus("connected");
+      toast.success("✅ متصل");
+    } else {
+      setInstanceStatus("disconnected");
+      toast.info(`الحالة: ${data?.status || "غير معروف"}`);
+    }
+    setIsCheckingStatus(false);
+    loadExistingConfig();
+  };
+
+  const logout = async () => {
+    if (!instanceName || !confirm("هل تريد فصل الرقم؟")) return;
+    const { data } = await supabase.functions.invoke("evolution-manage", {
+      body: { action: "logout", instance_name: instanceName },
+    });
+    if (data?.success) {
+      setInstanceStatus("disconnected");
+      setQrCode(null);
+      toast.success("تم فصل الرقم");
+      loadExistingConfig();
+    }
+  };
+
+  const deleteInstance = async () => {
+    if (!instanceName || !confirm("هل تريد حذف الجلسة نهائياً؟")) return;
+    setIsDeleting(true);
+    const { data } = await supabase.functions.invoke("evolution-manage", {
+      body: { action: "delete", instance_name: instanceName },
+    });
+    if (data?.success) {
+      setInstanceStatus("idle");
+      setQrCode(null);
+      setInstanceName("");
+      setExistingConfig(null);
+      toast.success("تم حذف الجلسة");
+    }
+    setIsDeleting(false);
+  };
+
+  const sendTestMessage = async () => {
+    if (!testPhone.trim()) { toast.error("أدخل رقم الهاتف"); return; }
+    setTestSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("evolution-send", {
+        body: { to: testPhone.trim(), message: "✅ تم الربط بنجاح! هذه رسالة اختبار من واتس ديسك (WhatsApp Web)." },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error || "فشل إرسال الرسالة");
+      } else {
+        toast.success("✅ تم إرسال الرسالة!");
+      }
+    } catch { toast.error("خطأ"); }
+    setTestSending(false);
   };
 
   if (isLoadingConfig) return null;
@@ -148,9 +212,14 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-sm">واتساب ويب</h2>
               <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-warning border-warning/30">غير رسمي</Badge>
+              {instanceStatus === "connected" && (
+                <Badge className="bg-success/10 text-success border-0 text-[9px] gap-0.5">
+                  <CheckCircle2 className="w-2.5 h-2.5" /> متصل
+                </Badge>
+              )}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              {vpsConfig?.url ? "ربط عبر مسح QR — السيرفر مضبوط" : "ربط عبر مسح QR — السيرفر غير مضبوط"}
+              ربط عبر مسح QR — Evolution API
             </p>
           </div>
         </div>
@@ -160,8 +229,8 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
           className="gap-1.5 text-xs"
           onClick={() => setShowSetup(!showSetup)}
         >
-          {isSuperAdmin ? <Settings className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
-          {showSetup ? "إخفاء" : isSuperAdmin ? "إعداد السيرفر" : "ربط رقم"}
+          <Smartphone className="w-3.5 h-3.5" />
+          {showSetup ? "إخفاء" : instanceStatus === "connected" ? "إدارة" : "ربط رقم"}
         </Button>
       </div>
 
@@ -176,9 +245,6 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
               <li>قد يتم <strong>حظر رقمك نهائياً</strong> بدون إنذار مسبق</li>
               <li>لا تدعم قوالب الرسائل أو الإرسال خارج نافذة 24 ساعة</li>
             </ul>
-            <p className="text-[10px] text-warning/80 pt-1">
-              💡 ننصح باستخدام الربط الرسمي (WhatsApp Business API) للاستقرار والأمان
-            </p>
           </div>
         </div>
       </div>
@@ -186,143 +252,117 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
       {showSetup && (
         <div className="bg-card rounded-xl shadow-card border border-border p-4 space-y-4 animate-fade-in">
 
-          {/* ═══ SUPER ADMIN: Server Configuration ═══ */}
-          {isSuperAdmin && (
-            <>
-              <div className="flex items-center gap-2 pb-2 border-b border-border">
-                <Server className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-bold">إعدادات السيرفر المركزي</h3>
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0">سوبر أدمن</Badge>
-              </div>
-
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                اضبط سيرفر VPS مركزي واحد. أدمن كل مؤسسة سيمسح QR مباشرة بدون الحاجة لإعداد سيرفر خاص.
-              </p>
-
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">رابط السيرفر (VPS URL)</Label>
-                  <Input
-                    value={vpsUrl}
-                    onChange={(e) => setVpsUrl(e.target.value)}
-                    placeholder="https://your-vps.example.com"
-                    className="bg-secondary border-0 text-xs"
-                    dir="ltr"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">مفتاح API (اختياري)</Label>
-                  <Input
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="api-key-here"
-                    className="bg-secondary border-0 text-xs"
-                    dir="ltr"
-                    type="password"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  className="gap-1.5 text-xs flex-1"
-                  onClick={saveVpsConfig}
-                  disabled={isSaving || !vpsUrl}
-                >
-                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
-                  حفظ الإعدادات
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs flex-1"
-                  onClick={testConnection}
-                  disabled={isTesting || !vpsUrl}
-                >
-                  {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wifi className="w-3.5 h-3.5" />}
-                  اختبار الاتصال
-                </Button>
-              </div>
-
-              {vpsConfig?.url && (
-                <div className="bg-success/5 border border-success/20 rounded-lg p-3 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+          {/* ═══ CONNECTED STATE ═══ */}
+          {instanceStatus === "connected" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between bg-success/5 border border-success/20 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-success" />
                   <div>
-                    <p className="text-xs font-semibold text-success">السيرفر مضبوط</p>
-                    <p className="text-[10px] text-muted-foreground" dir="ltr">{vpsConfig.url}</p>
+                    <p className="text-xs font-bold text-success">الرقم متصل</p>
+                    <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">
+                      {existingConfig?.display_phone || instanceName}
+                    </p>
                   </div>
                 </div>
-              )}
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={checkStatus} disabled={isCheckingStatus}>
+                    {isCheckingStatus ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                    تحقق
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 text-destructive" onClick={logout}>
+                    <LogOut className="w-3 h-3" /> فصل
+                  </Button>
+                </div>
+              </div>
 
-              <div className="border-t border-border pt-3" />
-            </>
+              {/* Test Message */}
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                <p className="text-xs font-semibold flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5 text-primary" /> إرسال رسالة اختبار
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    placeholder="966535195202"
+                    className="bg-card border border-border text-xs flex-1"
+                    dir="ltr"
+                  />
+                  <Button size="sm" className="gap-1 text-xs" onClick={sendTestMessage} disabled={testSending || !testPhone}>
+                    {testSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                    إرسال
+                  </Button>
+                </div>
+              </div>
+
+              {/* Delete Instance */}
+              {isSuperAdmin && (
+                <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={deleteInstance} disabled={isDeleting}>
+                  {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  حذف الجلسة نهائياً
+                </Button>
+              )}
+            </div>
           )}
 
-          {/* ═══ ORG ADMIN: QR Scan ═══ */}
-          {!vpsConfig?.url ? (
-            <div className="text-center py-6">
-              <Server className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
-              <p className="text-sm text-muted-foreground">السيرفر غير مضبوط بعد</p>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {isSuperAdmin ? "اضبط إعدادات السيرفر أعلاه أولاً" : "تواصل مع مدير المنصة لإعداد السيرفر"}
-              </p>
+          {/* ═══ QR PENDING STATE ═══ */}
+          {instanceStatus === "qr_pending" && qrCode && (
+            <div className="space-y-3">
+              <div className="bg-white rounded-xl p-6 text-center space-y-3 border border-border">
+                <p className="text-sm font-bold text-foreground">امسح رمز QR بهاتفك</p>
+                <p className="text-[11px] text-muted-foreground">واتساب → الأجهزة المرتبطة → ربط جهاز</p>
+                <div className="flex justify-center">
+                  <img src={qrCode} alt="QR Code" className="w-52 h-52 rounded-lg" />
+                </div>
+                <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  جاري انتظار المسح...
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => fetchQR()}>
+                  <RefreshCw className="w-3 h-3" /> تحديث QR
+                </Button>
+                <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => { setQrCode(null); setInstanceStatus("disconnected"); if (pollRef.current) clearInterval(pollRef.current); }}>
+                  إلغاء
+                </Button>
+              </div>
             </div>
-          ) : (
+          )}
+
+          {/* ═══ IDLE / DISCONNECTED STATE ═══ */}
+          {(instanceStatus === "idle" || instanceStatus === "disconnected") && !qrCode && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 pb-2 border-b border-border">
                 <QrCode className="w-4 h-4 text-primary" />
                 <h3 className="text-sm font-bold">ربط رقم عبر QR</h3>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">اسم الجلسة (اختياري)</Label>
-                <Input
-                  value={sessionName}
-                  onChange={(e) => setSessionName(e.target.value)}
-                  placeholder={orgId || "my-session"}
-                  className="bg-secondary border-0 text-xs"
-                  dir="ltr"
-                />
-                <p className="text-[10px] text-muted-foreground">اتركه فارغاً ليُستخدم معرّف مؤسستك</p>
-              </div>
-
-              <Button
-                className="w-full gap-1.5 text-xs"
-                onClick={startSession}
-                disabled={isConnecting}
-              >
-                {isConnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <QrCode className="w-3.5 h-3.5" />}
-                عرض رمز QR
-              </Button>
-
-              {/* QR Code Display */}
-              {qrCode && (
-                <div className="bg-white rounded-xl p-6 text-center space-y-3 border border-border">
-                  <p className="text-sm font-bold text-foreground">امسح رمز QR</p>
-                  <p className="text-[11px] text-muted-foreground">افتح واتساب على هاتفك → الأجهزة المرتبطة → ربط جهاز</p>
-                  <div className="flex justify-center">
-                    <img src={qrCode} alt="QR Code" className="w-48 h-48 rounded-lg" />
+              {instanceStatus === "disconnected" && instanceName && (
+                <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-warning">الجلسة غير متصلة</p>
+                    <p className="text-[10px] text-muted-foreground">اضغط "إعادة الربط" لعرض QR جديد</p>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setQrCode(null); setSessionStatus("idle"); }}>
-                    إغلاق
-                  </Button>
                 </div>
               )}
 
-              {/* Connected */}
-              {sessionStatus === "connected" && (
-                <div className="flex items-center justify-between bg-success/5 border border-success/20 rounded-lg p-3">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-success" />
-                    <div>
-                      <p className="text-xs font-semibold text-success">متصل</p>
-                      <p className="text-[10px] text-muted-foreground" dir="ltr">{connectedPhone}</p>
-                    </div>
-                  </div>
-                  <Badge className="bg-success/10 text-success border-0 text-[10px]">نشط</Badge>
-                </div>
+              <Button
+                className="w-full gap-1.5 text-xs py-5 font-bold"
+                onClick={instanceName ? () => fetchQR() : createInstance}
+                disabled={isCreating}
+              >
+                {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                {instanceName ? "إعادة الربط — عرض QR" : "إنشاء جلسة جديدة"}
+              </Button>
+
+              {instanceName && isSuperAdmin && (
+                <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={deleteInstance} disabled={isDeleting}>
+                  {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  حذف الجلسة
+                </Button>
               )}
             </div>
           )}
