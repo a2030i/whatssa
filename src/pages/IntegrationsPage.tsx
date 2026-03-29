@@ -270,6 +270,7 @@ const IntegrationsPage = () => {
           waba_id: config.business_account_id,
           org_id: config.org_id,
           auto_register: true,
+          ...(twoStepPin ? { pin: twoStepPin } : {}),
         },
       });
       if (error || data?.error) {
