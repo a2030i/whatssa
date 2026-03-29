@@ -1021,8 +1021,11 @@ export type Database = {
           team_id: string | null
           updated_at: string | null
           work_days: number[] | null
+          work_days_2: number[] | null
           work_end: string | null
+          work_end_2: string | null
           work_start: string | null
+          work_start_2: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1037,8 +1040,11 @@ export type Database = {
           team_id?: string | null
           updated_at?: string | null
           work_days?: number[] | null
+          work_days_2?: number[] | null
           work_end?: string | null
+          work_end_2?: string | null
           work_start?: string | null
+          work_start_2?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -1053,8 +1059,11 @@ export type Database = {
           team_id?: string | null
           updated_at?: string | null
           work_days?: number[] | null
+          work_days_2?: number[] | null
           work_end?: string | null
+          work_end_2?: string | null
           work_start?: string | null
+          work_start_2?: string | null
         }
         Relationships: [
           {

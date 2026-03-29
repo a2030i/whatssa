@@ -5,6 +5,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Check if currentTime falls within a shift, supporting overnight (e.g. 22:00→06:00) */
+function isInShift(currentTime: string, currentDay: number, start: string, end: string, days: number[]): boolean {
+  if (!days.includes(currentDay)) return false;
+  if (start <= end) {
+    // Normal shift: e.g. 09:00→17:00
+    return currentTime >= start && currentTime <= end;
+  } else {
+    // Overnight shift: e.g. 22:00→06:00
+    // Either current time is after start (same day) OR before end (next morning)
+    return currentTime >= start || currentTime <= end;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -21,16 +34,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get current day (0=Sun) and time
     const now = new Date();
     const currentDay = now.getDay();
-    // Convert to HH:MM for comparison
     const currentTime = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
 
-    // Get all active members in this org who are available
     const { data: members, error: membersErr } = await supabase
       .from("profiles")
-      .select("id, full_name, is_online, work_start, work_end, work_days")
+      .select("id, full_name, is_online, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2")
       .eq("org_id", org_id)
       .eq("is_active", true);
 
@@ -40,27 +50,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Filter available agents: online AND within work hours
+    // Filter available agents: online AND within any of their work shifts
     const available = members.filter((m) => {
-      const workDays: number[] = m.work_days || [0, 1, 2, 3, 4];
-      const inWorkDay = workDays.includes(currentDay);
-      const workStart = m.work_start || "09:00";
-      const workEnd = m.work_end || "17:00";
-      const inWorkHours = currentTime >= workStart && currentTime <= workEnd;
-      return m.is_online && inWorkDay && inWorkHours;
+      if (!m.is_online) return false;
+
+      const shift1Days: number[] = m.work_days || [0, 1, 2, 3, 4];
+      const shift1Start = m.work_start || "09:00";
+      const shift1End = m.work_end || "17:00";
+      const inShift1 = isInShift(currentTime, currentDay, shift1Start, shift1End, shift1Days);
+
+      let inShift2 = false;
+      if (m.work_start_2 && m.work_end_2) {
+        const shift2Days: number[] = m.work_days_2 || shift1Days;
+        inShift2 = isInShift(currentTime, currentDay, m.work_start_2, m.work_end_2, shift2Days);
+      }
+
+      return inShift1 || inShift2;
     });
 
-    if (available.length === 0) {
-      // Fallback: try anyone who is online regardless of hours
-      const onlineOnly = members.filter((m) => m.is_online);
-      if (onlineOnly.length === 0) {
-        return new Response(JSON.stringify({ assigned: false, reason: "no_available_agents" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      // Assign to online agent with fewest active conversations
+    const assignAgent = async (pool: typeof members, fallback = false) => {
       const agentLoads = await Promise.all(
-        onlineOnly.map(async (agent) => {
+        pool.map(async (agent) => {
           const { count } = await supabase
             .from("conversations")
             .select("*", { count: "exact", head: true })
@@ -73,37 +83,32 @@ Deno.serve(async (req) => {
       agentLoads.sort((a, b) => a.load - b.load);
       const chosen = agentLoads[0];
       await supabase.from("conversations").update({ assigned_to: chosen.full_name }).eq("id", conversation_id);
-      return new Response(JSON.stringify({ assigned: true, agent: chosen.full_name, fallback: true }), {
+
+      if (!fallback) {
+        await supabase.from("messages").insert({
+          conversation_id,
+          content: `تم إسناد المحادثة تلقائياً إلى ${chosen.full_name}`,
+          sender: "system",
+          message_type: "text",
+        });
+      }
+
+      return new Response(JSON.stringify({ assigned: true, agent: chosen.full_name, fallback }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    };
+
+    if (available.length > 0) {
+      return await assignAgent(available);
     }
 
-    // Round-robin by load: assign to agent with fewest active conversations
-    const agentLoads = await Promise.all(
-      available.map(async (agent) => {
-        const { count } = await supabase
-          .from("conversations")
-          .select("*", { count: "exact", head: true })
-          .eq("org_id", org_id)
-          .eq("assigned_to", agent.full_name)
-          .eq("status", "active");
-        return { ...agent, load: count || 0 };
-      })
-    );
-    agentLoads.sort((a, b) => a.load - b.load);
-    const chosen = agentLoads[0];
+    // Fallback: anyone online regardless of hours
+    const onlineOnly = members.filter((m) => m.is_online);
+    if (onlineOnly.length > 0) {
+      return await assignAgent(onlineOnly, true);
+    }
 
-    await supabase.from("conversations").update({ assigned_to: chosen.full_name }).eq("id", conversation_id);
-
-    // Insert system message
-    await supabase.from("messages").insert({
-      conversation_id,
-      content: `تم إسناد المحادثة تلقائياً إلى ${chosen.full_name}`,
-      sender: "system",
-      message_type: "text",
-    });
-
-    return new Response(JSON.stringify({ assigned: true, agent: chosen.full_name }), {
+    return new Response(JSON.stringify({ assigned: false, reason: "no_available_agents" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

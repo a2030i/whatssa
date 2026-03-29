@@ -33,6 +33,10 @@ const TeamPage = () => {
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("17:00");
   const [workDays, setWorkDays] = useState<number[]>([0, 1, 2, 3, 4]);
+  const [hasShift2, setHasShift2] = useState(false);
+  const [workStart2, setWorkStart2] = useState("18:00");
+  const [workEnd2, setWorkEnd2] = useState("02:00");
+  const [workDays2, setWorkDays2] = useState<number[]>([]);
 
   const dayLabels = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
@@ -97,15 +101,24 @@ const TeamPage = () => {
     setWorkStart(profile.work_start || "09:00");
     setWorkEnd(profile.work_end || "17:00");
     setWorkDays(profile.work_days || [0, 1, 2, 3, 4]);
+    const has2 = !!(profile.work_start_2 || profile.work_end_2);
+    setHasShift2(has2);
+    setWorkStart2(profile.work_start_2 || "18:00");
+    setWorkEnd2(profile.work_end_2 || "02:00");
+    setWorkDays2(profile.work_days_2 || []);
   };
 
   const saveSchedule = async () => {
     if (!scheduleDialog) return;
-    await supabase.from("profiles").update({
+    const update: any = {
       work_start: workStart,
       work_end: workEnd,
       work_days: workDays,
-    }).eq("id", scheduleDialog.id);
+      work_start_2: hasShift2 ? workStart2 : null,
+      work_end_2: hasShift2 ? workEnd2 : null,
+      work_days_2: hasShift2 ? workDays2 : null,
+    };
+    await supabase.from("profiles").update(update).eq("id", scheduleDialog.id);
     toast.success("تم حفظ أوقات العمل");
     setScheduleDialog(null);
     load();
@@ -113,6 +126,10 @@ const TeamPage = () => {
 
   const toggleDay = (day: number) => {
     setWorkDays((d) => d.includes(day) ? d.filter((x) => x !== day) : [...d, day].sort());
+  };
+
+  const toggleDay2 = (day: number) => {
+    setWorkDays2((d) => d.includes(day) ? d.filter((x) => x !== day) : [...d, day].sort());
   };
 
   const isAdmin = userRole === "admin" || userRole === "super_admin";
@@ -221,12 +238,17 @@ const TeamPage = () => {
                   </div>
                   <div>
                     <p className="font-medium text-sm">{profile.full_name || "بدون اسم"}</p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {team && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{team.name}</span>}
                       {profile.work_start && (
                         <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                           <Clock className="w-2.5 h-2.5" />
                           {profile.work_start?.slice(0, 5)} - {profile.work_end?.slice(0, 5)}
+                        </span>
+                      )}
+                      {profile.work_start_2 && (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 bg-secondary px-1.5 py-0.5 rounded-full">
+                          شفت 2: {profile.work_start_2?.slice(0, 5)} - {profile.work_end_2?.slice(0, 5)}
                         </span>
                       )}
                     </div>
@@ -313,38 +335,100 @@ const TeamPage = () => {
 
       {/* Schedule Dialog */}
       <Dialog open={!!scheduleDialog} onOpenChange={() => setScheduleDialog(null)}>
-        <DialogContent className="max-w-sm" dir="rtl">
+        <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle>أوقات عمل {scheduleDialog?.full_name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-xs">بداية العمل</Label>
-                <Input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} className="bg-secondary border-0" />
+          <div className="space-y-5 py-2">
+            {/* Shift 1 */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-primary" /> الشفت الأول
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px]">بداية العمل</Label>
+                  <Input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} className="bg-secondary border-0 text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px]">نهاية العمل</Label>
+                  <Input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} className="bg-secondary border-0 text-sm" />
+                  {workEnd < workStart && (
+                    <p className="text-[9px] text-info">⏳ ينتهي صباح اليوم التالي</p>
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs">نهاية العمل</Label>
-                <Input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} className="bg-secondary border-0" />
+              <div className="space-y-1.5">
+                <Label className="text-[10px]">أيام العمل</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {dayLabels.map((label, i) => (
+                    <button
+                      key={i}
+                      onClick={() => toggleDay(i)}
+                      className={cn(
+                        "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
+                        workDays.includes(i) ? "bg-primary text-primary-foreground border-primary" : "bg-secondary border-border"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs">أيام العمل</Label>
-              <div className="flex flex-wrap gap-2">
-                {dayLabels.map((label, i) => (
-                  <button
-                    key={i}
-                    onClick={() => toggleDay(i)}
-                    className={cn(
-                      "text-[11px] px-3 py-1.5 rounded-full border transition-colors",
-                      workDays.includes(i) ? "bg-primary text-primary-foreground border-primary" : "bg-secondary border-border"
+
+            {/* Shift 2 Toggle */}
+            <div className="border-t border-border pt-4">
+              <button
+                onClick={() => setHasShift2(!hasShift2)}
+                className={cn(
+                  "w-full text-xs font-semibold py-2 rounded-lg border transition-colors flex items-center justify-center gap-2",
+                  hasShift2 ? "bg-primary/10 border-primary text-primary" : "bg-secondary border-border text-muted-foreground hover:border-primary/50"
+                )}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {hasShift2 ? "إزالة الشفت الثاني" : "إضافة شفت ثاني"}
+              </button>
+            </div>
+
+            {/* Shift 2 */}
+            {hasShift2 && (
+              <div className="space-y-3 bg-secondary/30 rounded-lg p-3">
+                <p className="text-xs font-semibold flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-info" /> الشفت الثاني
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px]">بداية العمل</Label>
+                    <Input type="time" value={workStart2} onChange={(e) => setWorkStart2(e.target.value)} className="bg-card border-0 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px]">نهاية العمل</Label>
+                    <Input type="time" value={workEnd2} onChange={(e) => setWorkEnd2(e.target.value)} className="bg-card border-0 text-sm" />
+                    {workEnd2 < workStart2 && (
+                      <p className="text-[9px] text-info">⏳ ينتهي صباح اليوم التالي</p>
                     )}
-                  >
-                    {label}
-                  </button>
-                ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px]">أيام العمل</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {dayLabels.map((label, i) => (
+                      <button
+                        key={i}
+                        onClick={() => toggleDay2(i)}
+                        className={cn(
+                          "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
+                          workDays2.includes(i) ? "bg-info text-info-foreground border-info" : "bg-card border-border"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setScheduleDialog(null)}>إلغاء</Button>
