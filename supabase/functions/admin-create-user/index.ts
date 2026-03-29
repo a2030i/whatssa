@@ -25,17 +25,25 @@ Deno.serve(async (req) => {
     const { data: roleData } = await adminClient.from("user_roles").select("role").eq("user_id", caller.id).eq("role", "super_admin").maybeSingle();
     if (!roleData) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
 
-    const { email, password, full_name, org_name } = await req.json();
-    if (!email || !password || !full_name) {
+    const { email, full_name, org_name } = await req.json();
+    if (!email || !full_name) {
       return new Response(JSON.stringify({ error: "Missing fields" }), { status: 400, headers: corsHeaders });
     }
 
-    // Create user with admin API (doesn't affect caller session)
+    // Create user without password — they'll set it on first login via invite link
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
-      password,
       email_confirm: true,
       user_metadata: { full_name },
+    });
+
+    if (createError) throw createError;
+
+    // Generate password reset link so user can set their password
+    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: { redirectTo: `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/auth` },
     });
 
     if (createError) throw createError;
@@ -48,7 +56,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, user_id: newUser.user?.id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: true, user_id: newUser.user?.id, invite_sent: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
   }

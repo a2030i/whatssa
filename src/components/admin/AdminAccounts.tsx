@@ -22,7 +22,7 @@ const AdminAccounts = () => {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
-  const [newAccount, setNewAccount] = useState({ email: "", password: "", full_name: "", org_name: "" });
+  const [newAccount, setNewAccount] = useState({ email: "", full_name: "", org_name: "" });
   const navigate = useNavigate();
 
   useEffect(() => { load(); }, []);
@@ -79,21 +79,21 @@ const AdminAccounts = () => {
   };
 
   const createAccount = async () => {
-    if (!newAccount.email || !newAccount.password || !newAccount.full_name) {
-      toast.error("جميع الحقول مطلوبة");
+    if (!newAccount.email || !newAccount.full_name) {
+      toast.error("الاسم والبريد الإلكتروني مطلوبين");
       return;
     }
     setCreating(true);
     try {
       const { data, error } = await supabase.functions.invoke("admin-create-user", {
-        body: newAccount,
+        body: { email: newAccount.email, full_name: newAccount.full_name, org_name: newAccount.org_name },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.success("تم إنشاء الحساب بنجاح");
+      toast.success("تم إنشاء الحساب — العميل سيستلم رابط لتعيين كلمة المرور");
       setShowCreate(false);
-      setNewAccount({ email: "", password: "", full_name: "", org_name: "" });
+      setNewAccount({ email: "", full_name: "", org_name: "" });
       setTimeout(() => load(), 1000);
     } catch (e: any) {
       toast.error(e.message || "فشل إنشاء الحساب");
@@ -168,10 +168,7 @@ const AdminAccounts = () => {
             <div>
               <Label className="text-xs">البريد الإلكتروني</Label>
               <Input value={newAccount.email} onChange={(e) => setNewAccount({ ...newAccount, email: e.target.value })} placeholder="client@example.com" className="mt-1 text-sm" dir="ltr" type="email" />
-            </div>
-            <div>
-              <Label className="text-xs">كلمة المرور</Label>
-              <Input value={newAccount.password} onChange={(e) => setNewAccount({ ...newAccount, password: e.target.value })} placeholder="••••••••" className="mt-1 text-sm" dir="ltr" type="password" />
+              <p className="text-[10px] text-muted-foreground mt-1">سيستلم العميل رابط لتعيين كلمة المرور على هذا البريد</p>
             </div>
             <div>
               <Label className="text-xs">اسم المنظمة (اختياري)</Label>
