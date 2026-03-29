@@ -332,6 +332,47 @@ const AdminAccounts = () => {
                     </div>
                   </div>
 
+                  {/* WhatsApp Numbers */}
+                  {(() => {
+                    const orgWa = waConfigs.filter((w) => w.org_id === org.id);
+                    return orgWa.length > 0 ? (
+                      <div>
+                        <p className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                          <Smartphone className="w-3.5 h-3.5 text-primary" /> أرقام الواتساب ({orgWa.length})
+                        </p>
+                        <div className="space-y-1">
+                          {orgWa.map((w) => (
+                            <div key={w.id} className="flex items-center justify-between bg-secondary/50 rounded-lg px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-3.5 h-3.5 text-primary" />
+                                <div>
+                                  <span className="text-xs font-medium" dir="ltr">{w.display_phone || w.phone_number_id}</span>
+                                  {w.business_name && <span className="text-[10px] text-muted-foreground mr-2">({w.business_name})</span>}
+                                </div>
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${w.is_connected ? "bg-green-100 text-green-700" : "bg-destructive/10 text-destructive"}`}>
+                                  {w.is_connected ? "متصل" : "غير متصل"}
+                                </span>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => deleteWhatsAppConfig(w.id)}
+                                title="حذف الرقم"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-secondary/30 rounded-lg px-3 py-2">
+                        <Phone className="w-3 h-3" /> لا توجد أرقام واتساب مربوطة
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex gap-2 flex-wrap">
                     <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.stopPropagation(); impersonateOrg(org.id); }}>
                       <Eye className="w-3 h-3" /> عرض كعميل
