@@ -570,6 +570,9 @@ const IntegrationsPage = () => {
         </div>
       </div>
 
+      {/* WhatsApp Web (Unofficial) */}
+      <WhatsAppWebSection orgId={orgId} />
+
       {/* Upcoming Channels */}
       <div className="space-y-3">
         <h2 className="font-semibold text-sm text-muted-foreground">قنوات أخرى</h2>
