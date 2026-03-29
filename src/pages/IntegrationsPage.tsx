@@ -50,6 +50,7 @@ type FlowStep = "idle" | "connecting" | "pick_phone" | "success" | "error";
 const IntegrationsPage = () => {
   const { orgId, isSuperAdmin } = useAuth();
   const [configs, setConfigs] = useState<WhatsAppConfig[]>([]);
+  const [maxPhones, setMaxPhones] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [sdkLoaded, setSdkLoaded] = useState(false);
   const [flowStep, setFlowStep] = useState<FlowStep>("idle");
@@ -82,8 +83,14 @@ const IntegrationsPage = () => {
   }, []);
 
   const loadConfigs = async () => {
-    const { data } = await supabase.from("whatsapp_config").select("*").order("created_at", { ascending: true });
-    setConfigs(data || []);
+    const [configsRes, orgRes] = await Promise.all([
+      supabase.from("whatsapp_config").select("*").order("created_at", { ascending: true }),
+      orgId ? supabase.from("organizations").select("plans(max_phone_numbers)").eq("id", orgId).maybeSingle() : null,
+    ]);
+    const data = configsRes.data || [];
+    setConfigs(data);
+    const planData = orgRes?.data as any;
+    if (planData?.plans?.max_phone_numbers) setMaxPhones(planData.plans.max_phone_numbers);
     // Fetch Meta status for connected configs
     if (data) {
       data.filter(c => c.is_connected && c.access_token && c.phone_number_id).forEach(c => fetchMetaStatus(c));
@@ -131,6 +138,10 @@ const IntegrationsPage = () => {
   };
 
   const startConnect = useCallback(() => {
+    if (configs.length >= maxPhones && !isSuperAdmin) {
+      toast.error(`وصلت للحد الأقصى (${maxPhones} رقم). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
+      return;
+    }
     const FB = (window as any).FB;
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
@@ -624,9 +635,15 @@ const IntegrationsPage = () => {
               <p className="text-[11px] text-muted-foreground">{configs.length} رقم مربوط</p>
             </div>
           </div>
-          <Button size="sm" className="gap-1.5 text-xs" onClick={startConnect} disabled={!sdkLoaded}>
-            <Plus className="w-3.5 h-3.5" /> إضافة رقم
-          </Button>
+          {configs.length >= maxPhones && !isSuperAdmin ? (
+            <div className="text-[11px] text-destructive bg-destructive/5 rounded-lg px-3 py-2">
+              وصلت للحد الأقصى ({maxPhones} رقم) — <span className="font-semibold">ترقّ لباقة أعلى</span>
+            </div>
+          ) : (
+            <Button size="sm" className="gap-1.5 text-xs" onClick={startConnect} disabled={!sdkLoaded}>
+              <Plus className="w-3.5 h-3.5" /> إضافة رقم
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-3">
