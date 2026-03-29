@@ -194,6 +194,62 @@ serve(async (req) => {
         const senderName = msg.pushName || "";
         const participant = key.participant || key.participantAlt || "";
 
+        // Extract reply/quote context
+        const contextInfo =
+          messageContent.extendedTextMessage?.contextInfo ||
+          messageContent.imageMessage?.contextInfo ||
+          messageContent.videoMessage?.contextInfo ||
+          messageContent.audioMessage?.contextInfo ||
+          messageContent.documentMessage?.contextInfo ||
+          messageContent.contextInfo ||
+          null;
+
+        const quotedMessage = contextInfo?.quotedMessage || null;
+        const quotedStanzaId = contextInfo?.stanzaId || null;
+        const quotedParticipant = contextInfo?.participant || "";
+        const quotedSenderName = quotedParticipant
+          ? quotedParticipant.replace("@s.whatsapp.net", "").replace("@lid", "")
+          : "";
+
+        let quotedText = "";
+        if (quotedMessage) {
+          quotedText =
+            quotedMessage.conversation ||
+            quotedMessage.extendedTextMessage?.text ||
+            quotedMessage.imageMessage?.caption ||
+            quotedMessage.videoMessage?.caption ||
+            quotedMessage.audioMessage ? "[مقطع صوتي]" :
+            quotedMessage.documentMessage?.caption ||
+            "[مرفق]";
+        }
+
+        // Build metadata with reply context
+        const metadata: Record<string, unknown> = {};
+        if (conversationType === "group") {
+          metadata.sender_name = senderName;
+          metadata.participant = participant;
+        }
+        if (quotedStanzaId && quotedMessage) {
+          metadata.quoted = {
+            stanza_id: quotedStanzaId,
+            sender_name: quotedSenderName,
+            text: quotedText,
+          };
+          // Try to find the original message in DB to link
+          const { data: originalMsg } = await supabase
+            .from("messages")
+            .select("id, content, sender, metadata")
+            .eq("wa_message_id", quotedStanzaId)
+            .limit(1)
+            .maybeSingle();
+          if (originalMsg) {
+            metadata.quoted.message_id = originalMsg.id;
+            metadata.quoted.text = originalMsg.content;
+            metadata.quoted.sender_name =
+              (originalMsg.metadata as any)?.sender_name || (originalMsg.sender === "agent" ? "أنت" : quotedSenderName);
+          }
+        }
+
         const { error: messageInsertError } = await supabase.from("messages").insert({
           conversation_id: conversation.id,
           content,
@@ -202,7 +258,7 @@ serve(async (req) => {
           media_url: mediaUrl,
           wa_message_id: key.id || null,
           status: "received",
-          metadata: conversationType === "group" ? { sender_name: senderName, participant } : {},
+          metadata,
         });
 
         if (messageInsertError) {
