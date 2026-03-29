@@ -52,7 +52,7 @@ async function registerPhone(phoneId: string, accessToken: string, retries = 2, 
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ messaging_product: "whatsapp", pin: "123456" }),
+          body: JSON.stringify({ messaging_product: "whatsapp", pin }),
         }
       );
       const data = await res.json();
