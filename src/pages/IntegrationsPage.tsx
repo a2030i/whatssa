@@ -46,7 +46,7 @@ interface WhatsAppConfig {
   registered_at: string | null;
 }
 
-type FlowStep = "idle" | "connecting" | "pick_phone" | "success" | "error";
+type FlowStep = "idle" | "checklist" | "connecting" | "pick_phone" | "success" | "error";
 
 const IntegrationsPage = () => {
   const { orgId, isSuperAdmin } = useAuth();
@@ -195,6 +195,15 @@ const IntegrationsPage = () => {
       toast.error(`وصلت للحد الأقصى (${maxPhones} رقم). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
       return;
     }
+    // Show checklist first if there are already connected numbers
+    if (configs.length > 0) {
+      setFlowStep("checklist");
+      return;
+    }
+    proceedToMetaLogin();
+  }, [configs, maxPhones, isSuperAdmin]);
+
+  const proceedToMetaLogin = useCallback(() => {
     const FB = (window as any).FB;
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
@@ -597,6 +606,93 @@ const IntegrationsPage = () => {
                 <p className="text-[11px] text-muted-foreground">{ch.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============ CHECKLIST BEFORE ADDING NEW NUMBER ============
+  if (flowStep === "checklist") {
+    return (
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
+          <div className="p-6 border-b border-border">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              قائمة التحقق قبل الربط
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">تأكد من استيفاء هذه المتطلبات في Meta Business Suite قبل إضافة رقم جديد</p>
+          </div>
+          <div className="p-5 space-y-3">
+            {[
+              {
+                icon: Building2,
+                title: "توثيق النشاط التجاري",
+                desc: "وثّق حافظة الأعمال (Business Verification) لرفع حدود الإرسال وتفعيل المحادثات",
+                link: "https://business.facebook.com/settings/security",
+                linkLabel: "تحقق من التوثيق",
+                required: false,
+              },
+              {
+                icon: CreditCard,
+                title: "وسيلة الدفع",
+                desc: "أضف بطاقة ائتمان صالحة في إعدادات الدفع — مطلوبة لإرسال الرسائل التسويقية",
+                link: "https://business.facebook.com/billing_hub/payment_methods",
+                linkLabel: "إدارة وسائل الدفع",
+                required: true,
+              },
+              {
+                icon: PhoneCall,
+                title: "رقم واتساب جاهز",
+                desc: "رقم غير مربوط بتطبيق واتساب على الهاتف — يجب فصله أولاً قبل ربطه بالمنصة",
+                required: true,
+              },
+              {
+                icon: MessageSquare,
+                title: "حساب WABA مفعّل",
+                desc: "أنشئ حساب WhatsApp Business Account من Meta Business Suite إن لم يكن موجوداً",
+                link: "https://business.facebook.com/wa/manage/home",
+                linkLabel: "إدارة حسابات WhatsApp",
+                required: true,
+              },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-2.5 bg-muted/30 rounded-lg border border-border p-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <item.icon className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-semibold text-foreground">{item.title}</p>
+                    {item.required ? (
+                      <Badge className="bg-destructive/10 text-destructive border-0 text-[9px] px-1.5 py-0">مطلوب</Badge>
+                    ) : (
+                      <Badge className="bg-warning/10 text-warning border-0 text-[9px] px-1.5 py-0">موصى به</Badge>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
+                  {item.link && (
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-primary hover:underline underline-offset-2 mt-1 inline-flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-2.5 h-2.5" />
+                      {item.linkLabel}
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            <div className="pt-3 space-y-2">
+              <Button onClick={proceedToMetaLogin} disabled={!sdkLoaded} className="w-full gap-2 py-5 text-sm font-bold rounded-xl">
+                {!sdkLoaded ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                تأكدت — متابعة الربط
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetFlow}>← رجوع</Button>
+            </div>
           </div>
         </div>
       </div>
