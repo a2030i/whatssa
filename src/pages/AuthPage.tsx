@@ -46,20 +46,10 @@ const AuthPage = () => {
 
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
-      return;
-    }
-    if (password !== confirmPassword) {
-      toast.error("كلمات المرور غير متطابقة");
-      return;
-    }
     setIsLoading(true);
     try {
-      // Use Supabase's built-in password update via OTP/nonce flow
-      // First send a recovery email, user clicks link, then sets password
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth?set_password=true`,
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
       setResetSent(true);
@@ -105,14 +95,6 @@ const AuthPage = () => {
     setResetSent(false);
   };
 
-  // Check if returning from password reset link
-  useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("set_password") === "true") {
-      // User came back from reset link, they can now update password
-      setStep("password");
-    }
-  });
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4" dir="rtl">
