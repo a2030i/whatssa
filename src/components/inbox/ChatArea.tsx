@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Conversation, Message, quickReplies, agents } from "@/data/mockData";
@@ -350,6 +350,29 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               )}>
                 {msg.senderName && msg.sender === "customer" && conversation.conversationType === "group" && (
                   <div className="text-[11px] font-bold text-white/90 mb-1">{msg.senderName}</div>
+                )}
+                {msg.quoted && msg.quoted.text && (
+                  <div className={cn(
+                    "rounded-lg px-3 py-2 mb-2 border-r-4 text-[12px] leading-relaxed cursor-pointer",
+                    msg.sender === "customer"
+                      ? "bg-white/15 border-white/50"
+                      : "bg-secondary border-primary/40"
+                  )}>
+                    {msg.quoted.sender_name && (
+                      <p className={cn(
+                        "text-[11px] font-bold mb-0.5",
+                        msg.sender === "customer" ? "text-white/90" : "text-primary"
+                      )}>
+                        {msg.quoted.sender_name}
+                      </p>
+                    )}
+                    <p className={cn(
+                      "line-clamp-2",
+                      msg.sender === "customer" ? "text-white/70" : "text-muted-foreground"
+                    )}>
+                      {msg.quoted.text}
+                    </p>
+                  </div>
                 )}
                 {msg.type === "template" && (
                   <div className="flex items-center gap-1 mb-1 text-primary">
