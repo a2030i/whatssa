@@ -31,8 +31,8 @@ Deno.serve(async (req) => {
     const callerId = claimsData.claims.sub;
 
     const adminClient = createClient(supabaseUrl, serviceKey);
-    const { data: roleData } = await adminClient.from("user_roles").select("role").eq("user_id", caller.id).eq("role", "super_admin").maybeSingle();
-    if (!roleData) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
+    const { data: roleData } = await adminClient.from("user_roles").select("role").eq("user_id", callerId).eq("role", "super_admin").maybeSingle();
+    if (!roleData) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const { email, full_name, org_name } = await req.json();
     if (!email || !full_name) {
