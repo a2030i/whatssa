@@ -10,7 +10,14 @@ export function useSwipeReply({ onSwipe, direction = "right", threshold = 60 }: 
   const startX = useRef(0);
   const currentX = useRef(0);
   const isSwiping = useRef(false);
+  const didVibrate = useRef(false);
   const elRef = useRef<HTMLDivElement | null>(null);
+
+  const vibrate = () => {
+    if (navigator.vibrate) {
+      navigator.vibrate(15);
+    }
+  };
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
