@@ -853,7 +853,27 @@ const IntegrationsPage = () => {
                           )}
                         </div>
 
-                        {/* Issues / Warnings */}
+                        {/* Health Issues from Meta API */}
+                        {ms.healthIssues && ms.healthIssues.length > 0 && (
+                          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
+                            <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                              <AlertTriangle className="w-3.5 h-3.5" /> مشاكل يجب حلها ({ms.healthIssues.length})
+                            </p>
+                            {ms.healthIssues.map((issue, i) => (
+                              <div key={i} className="text-[11px] space-y-0.5">
+                                <p className="text-foreground/80 flex items-start gap-1.5">
+                                  <span className="text-destructive mt-0.5 shrink-0">•</span>
+                                  <span><span className="font-semibold">[{issue.entity}]</span> {issue.error}</span>
+                                </p>
+                                {issue.solution && (
+                                  <p className="text-muted-foreground mr-4">💡 {issue.solution}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* General warnings */}
                         {issues.length > 0 && (
                           <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 space-y-1.5">
                             <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
