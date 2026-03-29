@@ -137,7 +137,7 @@ const AutomationPage = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold">الأتمتة</h1>

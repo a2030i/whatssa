@@ -45,7 +45,7 @@ const PlanUpgradePage = () => {
   const currentPlanId = currentOrg?.plan_id;
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-[1000px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[1000px]" dir="rtl">
       <div>
         <h1 className="text-xl font-bold">الباقات والترقية</h1>
         <p className="text-sm text-muted-foreground mt-1">
