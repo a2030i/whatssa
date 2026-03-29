@@ -4,6 +4,7 @@ import SmartAlerts from "@/components/dashboard/SmartAlerts";
 import OperationalMetrics from "@/components/dashboard/OperationalMetrics";
 import AccountHealth from "@/components/dashboard/AccountHealth";
 import SmartInsight from "@/components/dashboard/SmartInsight";
+import VerificationCard from "@/components/dashboard/VerificationCard";
 import { Loader2 } from "lucide-react";
 
 const DashboardPage = () => {
@@ -31,16 +32,19 @@ const DashboardPage = () => {
       {/* 1. Status Bar */}
       <StatusBar data={data} />
 
-      {/* 2. Smart Alerts */}
+      {/* 2. Verification Card */}
+      <VerificationCard data={data} />
+
+      {/* 3. Smart Alerts */}
       <SmartAlerts data={data} />
 
-      {/* 3. Smart Insight */}
+      {/* 4. Smart Insight */}
       <SmartInsight data={data} />
 
-      {/* 4. Operational Metrics */}
+      {/* 5. Operational Metrics */}
       <OperationalMetrics data={data} />
 
-      {/* 5. Account Health */}
+      {/* 6. Account Health */}
       <AccountHealth data={data} />
     </div>
   );
