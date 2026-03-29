@@ -51,7 +51,7 @@ const getStorageUrlFromText = (text: string) => {
 
 const scrollToMessage = (messageId?: string) => {
   if (!messageId) return;
-  const el = document.querySelector(`[data-message-id="${messageId}"]`);
+  const el = document.querySelector(`[data-message-id="${messageId}"]`) || document.querySelector(`[data-wa-message-id="${messageId}"]`);
   if (!el) return;
   el.scrollIntoView({ behavior: "smooth", block: "center" });
   el.classList.add("ring-2", "ring-primary/60", "rounded-xl");
