@@ -136,6 +136,7 @@ const InboxPage = () => {
         type: (message.message_type as Message["type"]) || "text",
         mediaUrl: message.media_url || undefined,
         senderName: (message.metadata as any)?.sender_name || undefined,
+        quoted: (message.metadata as any)?.quoted || undefined,
       }));
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
@@ -157,6 +158,7 @@ const InboxPage = () => {
           type: message.message_type || "text",
           mediaUrl: message.media_url || undefined,
           senderName: message.metadata?.sender_name || undefined,
+          quoted: message.metadata?.quoted || undefined,
         };
         setAllMessages((prev) => ({
           ...prev,
