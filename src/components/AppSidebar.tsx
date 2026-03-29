@@ -3,6 +3,7 @@ import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, Fil
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NavItem {
   label: string;
@@ -65,8 +66,25 @@ const AppSidebar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, userRole, isSuperAdmin, isEcommerce, signOut } = useAuth();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [hasMetaApi, setHasMetaApi] = useState(false);
 
-  const navStructure = buildGroups(isEcommerce);
+  useEffect(() => {
+    supabase
+      .from("whatsapp_config")
+      .select("id")
+      .eq("channel_type", "meta_api")
+      .eq("is_connected", true)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => setHasMetaApi(!!data));
+  }, []);
+
+  const navStructure = buildGroups(isEcommerce).map(item => {
+    if (isGroup(item)) {
+      return { ...item, items: item.items.filter(i => !i.metaApiOnly || hasMetaApi) };
+    }
+    return (!item.metaApiOnly || hasMetaApi) ? item : null;
+  }).filter(Boolean) as (NavItem | NavGroup)[];
 
   // Auto-open group containing active route
   const isActive = (path: string) => location.pathname === path;
