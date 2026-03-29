@@ -115,7 +115,7 @@ const IntegrationsPage = () => {
   const handleCodeExchange = async (code: string) => {
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", {
-        body: { code, redirect_uri: window.location.origin },
+        body: { code },
       });
       if (error || data?.error) {
         toast.error(data?.error || "فشل في تبادل الرمز");
