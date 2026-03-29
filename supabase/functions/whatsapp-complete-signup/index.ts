@@ -40,7 +40,7 @@ async function checkPhoneStatus(phoneId: string, accessToken: string): Promise<{
   }
 }
 
-async function registerPhone(phoneId: string, accessToken: string, retries = 2): Promise<{ success: boolean; data?: any; error?: string; details?: string }> {
+async function registerPhone(phoneId: string, accessToken: string, retries = 2, pin = "123456"): Promise<{ success: boolean; data?: any; error?: string; details?: string }> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     log("register", { attempt, phoneId });
     try {
@@ -52,7 +52,7 @@ async function registerPhone(phoneId: string, accessToken: string, retries = 2):
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ messaging_product: "whatsapp", pin: "123456" }),
+          body: JSON.stringify({ messaging_product: "whatsapp", pin }),
         }
       );
       const data = await res.json();
@@ -101,6 +101,7 @@ serve(async (req) => {
       phone_number_id: sessionPhoneId,
       org_id,
       auto_register = true,
+      pin: userPin,
     } = body;
 
     const appId = "1239578701681497";
@@ -220,7 +221,7 @@ serve(async (req) => {
 
       // ── Step 4: Register phone number (only if not already registered) ──
       if (auto_register && !alreadyRegistered) {
-        registrationResult = await registerPhone(phoneId, accessToken, 3);
+        registrationResult = await registerPhone(phoneId, accessToken, 3, userPin || "123456");
 
         const configId = savedConfig?.id || existingConfig?.id;
 
