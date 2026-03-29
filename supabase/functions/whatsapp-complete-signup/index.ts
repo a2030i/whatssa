@@ -101,6 +101,7 @@ serve(async (req) => {
       phone_number_id: sessionPhoneId,
       org_id,
       auto_register = true,
+      pin: userPin,
     } = body;
 
     const appId = "1239578701681497";
