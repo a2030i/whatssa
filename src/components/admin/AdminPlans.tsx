@@ -11,7 +11,7 @@ const AdminPlans = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [showNew, setShowNew] = useState(false);
-  const [newPlan, setNewPlan] = useState({ name: "", name_ar: "", price: 0, max_conversations: 100, max_messages_per_month: 1000, max_team_members: 1, max_phone_numbers: 1 });
+  const [newPlan, setNewPlan] = useState({ name: "", name_ar: "", price: 0, max_conversations: 100, max_team_members: 1, max_phone_numbers: 1, max_messages_per_month: 999999 });
 
   useEffect(() => { load(); }, []);
 
@@ -55,7 +55,6 @@ const AdminPlans = () => {
             <div><Label className="text-[10px]">الاسم (AR)</Label><Input value={newPlan.name_ar} onChange={(e) => setNewPlan({ ...newPlan, name_ar: e.target.value })} className="h-8 text-sm" /></div>
             <div><Label className="text-[10px]">السعر (ر.س)</Label><Input type="number" value={newPlan.price} onChange={(e) => setNewPlan({ ...newPlan, price: +e.target.value })} className="h-8 text-sm" /></div>
             <div><Label className="text-[10px]">حد المحادثات</Label><Input type="number" value={newPlan.max_conversations} onChange={(e) => setNewPlan({ ...newPlan, max_conversations: +e.target.value })} className="h-8 text-sm" /></div>
-            <div><Label className="text-[10px]">حد الرسائل/شهر</Label><Input type="number" value={newPlan.max_messages_per_month} onChange={(e) => setNewPlan({ ...newPlan, max_messages_per_month: +e.target.value })} className="h-8 text-sm" /></div>
             <div><Label className="text-[10px]">حد الأعضاء</Label><Input type="number" value={newPlan.max_team_members} onChange={(e) => setNewPlan({ ...newPlan, max_team_members: +e.target.value })} className="h-8 text-sm" /></div>
             <div><Label className="text-[10px]">حد الأرقام</Label><Input type="number" value={newPlan.max_phone_numbers} onChange={(e) => setNewPlan({ ...newPlan, max_phone_numbers: +e.target.value })} className="h-8 text-sm" /></div>
           </div>
@@ -91,16 +90,15 @@ const AdminPlans = () => {
                   <div><Label className="text-[10px]">الاسم AR</Label><Input value={d.name_ar} onChange={(e) => setEditData({ ...d, name_ar: e.target.value })} className="h-7 text-[11px]" /></div>
                   <div><Label className="text-[10px]">السعر</Label><Input type="number" value={d.price} onChange={(e) => setEditData({ ...d, price: +e.target.value })} className="h-7 text-[11px]" /></div>
                   <div><Label className="text-[10px]">محادثات</Label><Input type="number" value={d.max_conversations} onChange={(e) => setEditData({ ...d, max_conversations: +e.target.value })} className="h-7 text-[11px]" /></div>
-                  <div><Label className="text-[10px]">رسائل/شهر</Label><Input type="number" value={d.max_messages_per_month} onChange={(e) => setEditData({ ...d, max_messages_per_month: +e.target.value })} className="h-7 text-[11px]" /></div>
                   <div><Label className="text-[10px]">أعضاء</Label><Input type="number" value={d.max_team_members} onChange={(e) => setEditData({ ...d, max_team_members: +e.target.value })} className="h-7 text-[11px]" /></div>
                   <div><Label className="text-[10px]">أرقام</Label><Input type="number" value={d.max_phone_numbers} onChange={(e) => setEditData({ ...d, max_phone_numbers: +e.target.value })} className="h-7 text-[11px]" /></div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <p className="text-muted-foreground">محادثات: <span className="text-foreground font-medium">{d.max_conversations}</span></p>
-                  <p className="text-muted-foreground">رسائل: <span className="text-foreground font-medium">{d.max_messages_per_month}</span></p>
                   <p className="text-muted-foreground">أعضاء: <span className="text-foreground font-medium">{d.max_team_members}</span></p>
                   <p className="text-muted-foreground">أرقام: <span className="text-foreground font-medium">{d.max_phone_numbers}</span></p>
+                  <p className="text-muted-foreground text-[10px] col-span-2">الرسائل غير محدودة (رسوم Meta على العميل)</p>
                 </div>
               )}
             </div>

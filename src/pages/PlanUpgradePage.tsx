@@ -91,15 +91,15 @@ const PlanUpgradePage = () => {
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <Check className="w-3 h-3 text-primary" />
-                  <span>{plan.max_messages_per_month.toLocaleString()} رسالة/شهر</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <Check className="w-3 h-3 text-primary" />
                   <span>{plan.max_team_members} عضو فريق</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <Check className="w-3 h-3 text-primary" />
                   <span>{plan.max_phone_numbers} رقم واتساب</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="w-3 h-3" />
+                  <span>رسائل غير محدودة (رسوم Meta على العميل)</span>
                 </div>
               </div>
 
