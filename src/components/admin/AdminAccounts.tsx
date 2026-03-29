@@ -204,8 +204,6 @@ const AdminAccounts = () => {
                     </div>
                   </div>
                 </div>
-                  </div>
-                </div>
                 <div className="flex items-center gap-2">
                   {org.is_ecommerce && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium flex items-center gap-1">
