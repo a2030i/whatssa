@@ -152,41 +152,85 @@ const IntegrationsPage = () => {
   };
 
 
+  const completeWhatsAppSignup = async ({
+    token,
+    phoneId,
+    wabaId,
+    successMessage,
+  }: {
+    token: string;
+    phoneId: string;
+    wabaId: string;
+    successMessage: string;
+  }) => {
+    if (!orgId) {
+      toast.error("تعذر تحديد المؤسسة الحالية");
+      return false;
+    }
+
+    const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", {
+      body: {
+        access_token: token,
+        phone_number_id: phoneId,
+        waba_id: wabaId,
+        org_id: orgId,
+        auto_register: true,
+      },
+    });
+
+    if (error || data?.error) {
+      toast.error(data?.error || "فشل في إكمال ربط الرقم");
+      return false;
+    }
+
+    if (!data?.selected_phone || !data?.saved_config) {
+      toast.error("تم جلب الحساب لكن تعذر تسجيل هذا الرقم لدى Meta");
+      return false;
+    }
+
+    setShowPhones(false);
+    setShowManual(false);
+    setShowAddDialog(false);
+    setManualToken("");
+    setManualPhoneId("");
+    setManualWabaId("");
+    toast.success(successMessage);
+    await loadConfigs();
+    return true;
+  };
+
   const handleSelectPhone = async (phone: PhoneNumber) => {
     setIsLoading(true);
     try {
-      const { data } = await supabase.from("whatsapp_config").insert({
-        phone_number_id: phone.id, business_account_id: businessAccountId, access_token: accessToken,
-        display_phone: phone.display_phone_number, business_name: phone.verified_name, is_connected: true, org_id: orgId,
-      }).select().single();
-      if (data) {
-        setShowPhones(false);
-        setShowAddDialog(false);
-        toast.success(`✅ تم ربط الرقم ${phone.display_phone_number} بنجاح!`);
-        loadConfigs();
-      }
-    } catch { toast.error("حدث خطأ"); }
+      await completeWhatsAppSignup({
+        token: accessToken,
+        phoneId: phone.id,
+        wabaId: businessAccountId,
+        successMessage: `✅ تم ربط الرقم ${phone.display_phone_number} وتسجيله بنجاح!`,
+      });
+    } catch {
+      toast.error("حدث خطأ");
+    }
     setIsLoading(false);
   };
 
   const handleManualConnect = async () => {
-    if (!manualToken.trim() || !manualPhoneId.trim() || !manualWabaId.trim()) { toast.error("يرجى تعبئة جميع الحقول"); return; }
+    if (!manualToken.trim() || !manualPhoneId.trim() || !manualWabaId.trim()) {
+      toast.error("يرجى تعبئة جميع الحقول");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const res = await fetch(`https://graph.facebook.com/v21.0/${manualPhoneId.trim()}?fields=display_phone_number,verified_name,quality_rating`, { headers: { Authorization: `Bearer ${manualToken.trim()}` } });
-      const phoneData = await res.json();
-      if (phoneData.error) { toast.error(phoneData.error.message || "بيانات غير صحيحة"); setIsLoading(false); return; }
-      await supabase.from("whatsapp_config").insert({
-        phone_number_id: manualPhoneId.trim(), business_account_id: manualWabaId.trim(), access_token: manualToken.trim(),
-        display_phone: phoneData.display_phone_number || manualPhoneId, business_name: phoneData.verified_name || "",
-        is_connected: true, org_id: orgId,
+      await completeWhatsAppSignup({
+        token: manualToken.trim(),
+        phoneId: manualPhoneId.trim(),
+        wabaId: manualWabaId.trim(),
+        successMessage: "✅ تم ربط الرقم وتسجيله بنجاح!",
       });
-      toast.success(`✅ تم ربط الرقم بنجاح!`);
-      setShowManual(false);
-      setShowAddDialog(false);
-      setManualToken(""); setManualPhoneId(""); setManualWabaId("");
-      loadConfigs();
-    } catch { toast.error("حدث خطأ في الربط"); }
+    } catch {
+      toast.error("حدث خطأ في الربط");
+    }
     setIsLoading(false);
   };
 
