@@ -5,54 +5,89 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function jsonRes(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     // Verify caller is authenticated
     const authHeader = req.headers.get("authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonRes({ error: "Unauthorized" }, 401);
     }
-
-    const callerClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await callerClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims?.sub) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const callerId = claimsData.claims.sub;
-
     const adminClient = createClient(supabaseUrl, serviceKey);
-    const { data: roleData } = await adminClient.from("user_roles").select("role").eq("user_id", callerId).eq("role", "super_admin").maybeSingle();
-    if (!roleData) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // Verify token and get user
+    const { data: { user: caller }, error: userError } = await adminClient.auth.getUser(token);
+    if (userError || !caller) {
+      return jsonRes({ error: "Unauthorized" }, 401);
+    }
+
+    // Check super_admin role
+    const { data: roleData } = await adminClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.id)
+      .eq("role", "super_admin")
+      .maybeSingle();
+
+    if (!roleData) return jsonRes({ error: "Forbidden" }, 403);
 
     const { org_id } = await req.json();
-    if (!org_id) return new Response(JSON.stringify({ error: "org_id required" }), { status: 400, headers: corsHeaders });
+    if (!org_id) return jsonRes({ error: "org_id required" }, 400);
+
+    console.log(`[admin-delete-org] Deleting org ${org_id}`);
 
     // Get all users in this org
     const { data: members } = await adminClient.from("profiles").select("id").eq("org_id", org_id);
 
-    // Delete each user from auth (cascade will handle profiles, user_roles)
-    for (const member of (members || [])) {
-      await adminClient.auth.admin.deleteUser(member.id);
+    // Delete messages (via conversations)
+    const { data: convos } = await adminClient.from("conversations").select("id").eq("org_id", org_id);
+    const convoIds = (convos || []).map((c: any) => c.id);
+    if (convoIds.length > 0) {
+      await adminClient.from("messages").delete().in("conversation_id", convoIds);
+    }
+
+    // Delete campaign recipients (via campaigns)
+    const { data: camps } = await adminClient.from("campaigns").select("id").eq("org_id", org_id);
+    const campIds = (camps || []).map((c: any) => c.id);
+    if (campIds.length > 0) {
+      await adminClient.from("campaign_recipients").delete().in("campaign_id", campIds);
+    }
+
+    // Delete order items (via orders)
+    const { data: ords } = await adminClient.from("orders").select("id").eq("org_id", org_id);
+    const ordIds = (ords || []).map((o: any) => o.id);
+    if (ordIds.length > 0) {
+      await adminClient.from("order_items").delete().in("order_id", ordIds);
     }
 
     // Delete org-related data
     await adminClient.from("conversations").delete().eq("org_id", org_id);
     await adminClient.from("customers").delete().eq("org_id", org_id);
     await adminClient.from("campaigns").delete().eq("org_id", org_id);
+    await adminClient.from("orders").delete().eq("org_id", org_id);
+    await adminClient.from("products").delete().eq("org_id", org_id);
+    await adminClient.from("abandoned_carts").delete().eq("org_id", org_id);
     await adminClient.from("automation_rules").delete().eq("org_id", org_id);
+    await adminClient.from("closure_reasons").delete().eq("org_id", org_id);
+    await adminClient.from("customer_tag_definitions").delete().eq("org_id", org_id);
+    await adminClient.from("teams").delete().eq("org_id", org_id);
     await adminClient.from("whatsapp_config").delete().eq("org_id", org_id);
     await adminClient.from("usage_tracking").delete().eq("org_id", org_id);
-    
+    await adminClient.from("coupon_redemptions").delete().eq("org_id", org_id);
+
     // Delete wallet transactions then wallet
     const { data: wallet } = await adminClient.from("wallets").select("id").eq("org_id", org_id).maybeSingle();
     if (wallet) {
@@ -60,11 +95,22 @@ Deno.serve(async (req) => {
       await adminClient.from("wallets").delete().eq("org_id", org_id);
     }
 
-    // Finally delete the org
-    await adminClient.from("organizations").delete().eq("id", org_id);
+    // Delete each user from auth (cascade handles profiles, user_roles)
+    for (const member of (members || [])) {
+      await adminClient.auth.admin.deleteUser(member.id);
+    }
 
-    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Finally delete the org
+    const { error: delErr } = await adminClient.from("organizations").delete().eq("id", org_id);
+    if (delErr) {
+      console.error(`[admin-delete-org] Failed to delete org: ${delErr.message}`);
+      return jsonRes({ error: delErr.message }, 500);
+    }
+
+    console.log(`[admin-delete-org] Successfully deleted org ${org_id}`);
+    return jsonRes({ success: true });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+    console.error(`[admin-delete-org] Error: ${e.message}`);
+    return jsonRes({ error: e.message }, 500);
   }
 });
