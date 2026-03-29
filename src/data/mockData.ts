@@ -37,6 +37,7 @@ export interface Message {
   timestamp: string;
   status?: "sent" | "delivered" | "read";
   type?: "text" | "image" | "document" | "note" | "template";
+  senderName?: string;
 }
 
 export interface Agent {
