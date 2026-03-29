@@ -45,6 +45,7 @@ export interface Message {
     sender_name?: string;
     text?: string;
   };
+  waMessageId?: string;
 }
 
 export interface Agent {
