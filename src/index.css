@@ -77,7 +77,7 @@
 
 @layer utilities {
   .gradient-whatsapp {
-    background: linear-gradient(135deg, hsl(142 60% 40%), hsl(152 58% 30%));
+    background: linear-gradient(135deg, hsl(142 52% 36%), hsl(152 48% 28%));
   }
   .gradient-sidebar {
     background: linear-gradient(180deg, hsl(220 25% 13%), hsl(220 25% 9%));

@@ -349,7 +349,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     : "gradient-whatsapp text-white rounded-br-sm shadow-md"
               )}>
                 {msg.senderName && msg.sender === "customer" && conversation.conversationType === "group" && (
-                  <div className="text-[11px] font-bold text-white/90 mb-1">{msg.senderName}</div>
+                  <div className="text-[11px] font-bold mb-1" style={{ color: "#a8f0c8" }}>{msg.senderName}</div>
                 )}
                 {msg.quoted && msg.quoted.text && (
                   <div className={cn(
