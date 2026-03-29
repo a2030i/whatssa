@@ -74,6 +74,7 @@ const IntegrationsPage = () => {
     messagingLimit?: string;
     businessVerification?: string;
     accountReviewStatus?: string;
+    healthIssues?: { entity: string; error: string; solution: string }[];
     isLoading: boolean;
   }>>({});
 
