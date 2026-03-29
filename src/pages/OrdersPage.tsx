@@ -177,13 +177,13 @@ const OrdersPage = () => {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="بحث بالاسم أو الرقم أو رقم الطلب..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 bg-card border-0 shadow-card text-sm" />
+          <Input placeholder="بحث بالاسم أو الرقم..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 bg-card border-0 shadow-card text-sm" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="الحالة" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-40 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="الحالة" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">كل الحالات</SelectItem>
             {Object.entries(statusConfig).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
