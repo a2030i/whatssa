@@ -93,20 +93,32 @@ const IntegrationsPage = () => {
     setConfigs(data);
     const planData = orgRes?.data as any;
     if (planData?.plans?.max_phone_numbers) setMaxPhones(planData.plans.max_phone_numbers);
-    // Fetch Meta status for connected configs
+    // Fetch Meta status for connected configs — sequentially with delay to avoid rate limits
     if (data) {
-      data.filter(c => c.is_connected && c.access_token && c.phone_number_id).forEach(c => fetchMetaStatus(c));
+      const connected = data.filter(c => c.is_connected && c.access_token && c.phone_number_id);
+      for (let i = 0; i < connected.length; i++) {
+        if (i > 0) await new Promise(r => setTimeout(r, 2000));
+        fetchMetaStatus(connected[i]);
+      }
     }
   };
 
-  const fetchMetaStatus = async (config: WhatsAppConfig) => {
-    setMetaStatus(p => ({ ...p, [config.id]: { isLoading: true } }));
+  const fetchMetaStatus = async (config: WhatsAppConfig, force = false) => {
+    // Skip if already fetched recently (within 60s) unless forced
+    const existing = metaStatus[config.id];
+    if (!force && existing && !existing.isLoading && existing.phoneStatus) return;
+
+    setMetaStatus(p => ({ ...p, [config.id]: { ...p[config.id], isLoading: true } }));
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-check-status", {
         body: { config_id: config.id },
       });
       if (error || !data) {
-        setMetaStatus(p => ({ ...p, [config.id]: { isLoading: false } }));
+        // Handle rate limit specifically
+        if (data?.error?.includes?.("rate") || data?.error?.includes?.("too many")) {
+          toast.error("طلبات كثيرة لـ Meta — انتظر دقيقة ثم حاول مرة أخرى");
+        }
+        setMetaStatus(p => ({ ...p, [config.id]: { ...p[config.id], isLoading: false } }));
         return;
       }
 
@@ -886,7 +898,7 @@ const IntegrationsPage = () => {
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <p className="text-xs font-semibold text-muted-foreground">حالة الرقم من Meta</p>
-                          <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => fetchMetaStatus(config)}>
+                          <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => fetchMetaStatus(config, true)}>
                             <RefreshCw className="w-3 h-3" /> تحديث
                           </Button>
                         </div>

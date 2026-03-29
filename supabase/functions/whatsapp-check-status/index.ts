@@ -49,6 +49,14 @@ serve(async (req) => {
     );
     const phoneData = await phoneRes.json();
 
+    // Handle Meta rate limit
+    if (phoneData.error?.code === 4 || phoneData.error?.code === 80004 || phoneRes.status === 429) {
+      return new Response(
+        JSON.stringify({ error: "rate_limit", message: "تم إرسال طلبات كثيرة. انتظر بضع دقائق ثم أعد المحاولة" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Fetch WABA status
     const wabaRes = await fetch(
       `https://graph.facebook.com/v21.0/${wabaId}?fields=id,name,currency,timezone_id,message_template_namespace,account_review_status,business_verification_status,ownership_type,on_behalf_of_business_info`,
