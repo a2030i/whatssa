@@ -215,6 +215,63 @@ const AdminMeta = () => {
           </div>
         )}
       </div>
+
+      {/* WhatsApp Web VPS Server Config */}
+      <div className="bg-card rounded-xl shadow-card p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <QrCode className="w-4 h-4 text-warning" />
+          <h3 className="font-semibold text-sm">سيرفر واتساب ويب (QR)</h3>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-warning border-warning/30">غير رسمي</Badge>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          اضبط سيرفر VPS مركزي واحد. أدمن كل مؤسسة سيمسح QR مباشرة من صفحة التكامل بدون الحاجة لإعداد سيرفر خاص.
+        </p>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">رابط السيرفر (VPS URL)</Label>
+            <Input
+              value={vpsUrl}
+              onChange={(e) => setVpsUrl(e.target.value)}
+              placeholder="https://your-vps.example.com"
+              className="bg-secondary border-0 text-xs"
+              dir="ltr"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">مفتاح API (اختياري)</Label>
+            <Input
+              value={vpsApiKey}
+              onChange={(e) => setVpsApiKey(e.target.value)}
+              placeholder="api-key-here"
+              className="bg-secondary border-0 text-xs"
+              dir="ltr"
+              type="password"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button size="sm" className="gap-1.5 text-xs flex-1" onClick={saveVpsConfig} disabled={isSavingVps || !vpsUrl}>
+            {isSavingVps ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
+            حفظ الإعدادات
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs flex-1" onClick={testVpsConnection} disabled={isTestingVps || !vpsUrl}>
+            {isTestingVps ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wifi className="w-3.5 h-3.5" />}
+            اختبار الاتصال
+          </Button>
+        </div>
+
+        {vpsConfigSaved && vpsUrl && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-primary">السيرفر مضبوط</p>
+              <p className="text-[10px] text-muted-foreground" dir="ltr">{vpsUrl}</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
