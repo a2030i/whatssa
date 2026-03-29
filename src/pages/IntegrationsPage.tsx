@@ -851,9 +851,9 @@ const IntegrationsPage = () => {
 
       {/* WhatsApp Numbers */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <MessageSquare className="w-4 h-4 text-primary" />
             </div>
             <div>
@@ -862,11 +862,11 @@ const IntegrationsPage = () => {
             </div>
           </div>
           {configs.length >= maxPhones && !isSuperAdmin ? (
-            <div className="text-[11px] text-destructive bg-destructive/5 rounded-lg px-3 py-2">
+            <div className="text-[11px] text-destructive bg-destructive/5 rounded-lg px-3 py-2 text-center">
               وصلت للحد الأقصى ({maxPhones} رقم) — <span className="font-semibold">ترقّ لباقة أعلى</span>
             </div>
           ) : (
-            <Button size="sm" className="gap-1.5 text-xs" onClick={startConnect} disabled={!sdkLoaded}>
+            <Button size="sm" className="gap-1.5 text-xs w-full sm:w-auto" onClick={startConnect} disabled={!sdkLoaded}>
               <Plus className="w-3.5 h-3.5" /> إضافة رقم
             </Button>
           )}
