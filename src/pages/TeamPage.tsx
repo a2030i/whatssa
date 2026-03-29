@@ -238,12 +238,17 @@ const TeamPage = () => {
                   </div>
                   <div>
                     <p className="font-medium text-sm">{profile.full_name || "بدون اسم"}</p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {team && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{team.name}</span>}
                       {profile.work_start && (
                         <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                           <Clock className="w-2.5 h-2.5" />
                           {profile.work_start?.slice(0, 5)} - {profile.work_end?.slice(0, 5)}
+                        </span>
+                      )}
+                      {profile.work_start_2 && (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 bg-secondary px-1.5 py-0.5 rounded-full">
+                          شفت 2: {profile.work_start_2?.slice(0, 5)} - {profile.work_end_2?.slice(0, 5)}
                         </span>
                       )}
                     </div>
