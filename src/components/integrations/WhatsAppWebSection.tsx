@@ -69,6 +69,16 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
       });
 
       if (error || !data?.success) {
+        // If instance already exists on server, show reconnect options
+        if (data?.error?.toLowerCase?.()?.includes?.("already")) {
+          toast.info("جلسة موجودة مسبقاً — يمكنك إعادة الاتصال أو حذفها");
+          setInstanceStatus("disconnected");
+          // Try to get instance name from server
+          const guessName = `org_${(orgId || "").replace(/-/g, "").slice(0, 12)}`;
+          setInstanceName(guessName);
+          setIsCreating(false);
+          return;
+        }
         toast.error(data?.error || "فشل إنشاء الجلسة");
         setIsCreating(false);
         return;
