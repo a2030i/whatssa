@@ -149,6 +149,7 @@ serve(async (req) => {
     const headerUrl = String(body?.header_url || "").trim();
     const content = String(body?.body || "").trim();
     const footer = String(body?.footer || "").trim();
+    const buttons: Array<{type: string; text: string; value: string}> = Array.isArray(body?.buttons) ? body.buttons : [];
 
     if (!content) return json({ error: "محتوى الرسالة مطلوب" }, 400);
 
@@ -160,6 +161,16 @@ serve(async (req) => {
     }
     components.push({ type: "BODY", text: content });
     if (footer) components.push({ type: "FOOTER", text: footer });
+
+    if (buttons.length > 0) {
+      components.push({
+        type: "BUTTONS",
+        buttons: buttons.map((b: any) => {
+          if (b.type === "phone") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.value };
+          return { type: "URL", text: b.text, url: b.value };
+        }),
+      });
+    }
 
     const createRes = await fetch(
       `https://graph.facebook.com/v21.0/${config.business_account_id}/message_templates`,
@@ -188,6 +199,7 @@ serve(async (req) => {
   const headerUrl = String(body?.header_url || "").trim();
   const content = String(body?.body || "").trim();
   const footer = String(body?.footer || "").trim();
+  const buttons: Array<{type: string; text: string; value: string}> = Array.isArray(body?.buttons) ? body.buttons : [];
 
   if (!name || !content) {
     return json({ error: "الاسم ومحتوى الرسالة مطلوبان" }, 400);
@@ -209,6 +221,16 @@ serve(async (req) => {
   }
   components.push({ type: "BODY", text: content });
   if (footer) components.push({ type: "FOOTER", text: footer });
+
+  if (buttons.length > 0) {
+    components.push({
+      type: "BUTTONS",
+      buttons: buttons.map((b: any) => {
+        if (b.type === "phone") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.value };
+        return { type: "URL", text: b.text, url: b.value };
+      }),
+    });
+  }
 
   const response = await fetch(
     `https://graph.facebook.com/v21.0/${config.business_account_id}/message_templates`,

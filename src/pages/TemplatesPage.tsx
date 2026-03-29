@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, FileText, Check, Clock, XCircle, Eye, Globe, RefreshCw, Loader2, Pencil, Trash2, AlertTriangle, Image, Video, Type } from "lucide-react";
+import { Plus, Search, FileText, Check, Clock, XCircle, Eye, Globe, RefreshCw, Loader2, Pencil, Trash2, AlertTriangle, Image, Video, Type, Link, Phone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,12 @@ const statusLabels: Record<string, string> = { approved: "معتمد", pending: 
 const statusIcons: Record<string, typeof Check> = { approved: Check, pending: Clock, rejected: XCircle, paused: Clock };
 const statusColors: Record<string, string> = { approved: "text-success", pending: "text-warning", rejected: "text-destructive", paused: "text-muted-foreground" };
 
+interface CtaButton {
+  type: "url" | "phone";
+  text: string;
+  value: string;
+}
+
 interface TemplateFormData {
   name: string;
   category: string;
@@ -26,9 +32,10 @@ interface TemplateFormData {
   headerUrl: string;
   body: string;
   footer: string;
+  buttons: CtaButton[];
 }
 
-const emptyForm: TemplateFormData = { name: "", category: "utility", headerType: "NONE", header: "", headerUrl: "", body: "", footer: "" };
+const emptyForm: TemplateFormData = { name: "", category: "utility", headerType: "NONE", header: "", headerUrl: "", body: "", footer: "", buttons: [] };
 
 const TemplatesPage = () => {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
@@ -101,6 +108,11 @@ const TemplatesPage = () => {
       headerUrl: template.headerUrl || "",
       body: template.body,
       footer: template.footer || "",
+      buttons: (template.buttons || []).map((b) => ({
+        type: b.type === "phone_number" ? "phone" : "url",
+        text: b.text,
+        value: b.value || "",
+      })),
     });
     setShowFormDialog(true);
   };
@@ -125,6 +137,7 @@ const TemplatesPage = () => {
         header_url: formData.headerType !== "TEXT" && formData.headerType !== "NONE" ? formData.headerUrl.trim() : "",
         body: formData.body.trim(),
         footer: formData.footer.trim(),
+        buttons: formData.buttons.filter((b) => b.text.trim() && b.value.trim()),
         language: editingTemplate?.language || "ar",
       },
     });
@@ -435,6 +448,78 @@ const TemplatesPage = () => {
             <div className="space-y-1.5">
               <Label className="text-xs">التذييل (اختياري)</Label>
               <Input value={formData.footer} onChange={(e) => setFormData({ ...formData, footer: e.target.value })} placeholder="مثال: شكراً لتواصلك معنا" className="text-sm" />
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">أزرار CTA (اختياري)</Label>
+                {formData.buttons.length < 3 && (
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[10px] gap-1"
+                      onClick={() => setFormData({ ...formData, buttons: [...formData.buttons, { type: "url", text: "", value: "" }] })}
+                    >
+                      <Link className="w-3 h-3" /> رابط URL
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[10px] gap-1"
+                      onClick={() => setFormData({ ...formData, buttons: [...formData.buttons, { type: "phone", text: "", value: "" }] })}
+                    >
+                      <Phone className="w-3 h-3" /> رقم هاتف
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {formData.buttons.map((btn, idx) => (
+                <div key={idx} className="flex items-start gap-2 bg-secondary/50 rounded-lg p-2.5">
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      {btn.type === "url" ? <Link className="w-3 h-3 text-primary shrink-0" /> : <Phone className="w-3 h-3 text-primary shrink-0" />}
+                      <span className="text-[10px] font-medium text-primary">{btn.type === "url" ? "رابط URL" : "رقم هاتف"}</span>
+                    </div>
+                    <Input
+                      value={btn.text}
+                      onChange={(e) => {
+                        const updated = [...formData.buttons];
+                        updated[idx] = { ...updated[idx], text: e.target.value };
+                        setFormData({ ...formData, buttons: updated });
+                      }}
+                      placeholder="نص الزر"
+                      className="text-xs h-8"
+                    />
+                    <Input
+                      value={btn.value}
+                      onChange={(e) => {
+                        const updated = [...formData.buttons];
+                        updated[idx] = { ...updated[idx], value: e.target.value };
+                        setFormData({ ...formData, buttons: updated });
+                      }}
+                      placeholder={btn.type === "url" ? "https://example.com/page" : "+966500000000"}
+                      className="text-xs h-8"
+                      dir="ltr"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                    onClick={() => setFormData({ ...formData, buttons: formData.buttons.filter((_, i) => i !== idx) })}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
+              {formData.buttons.length > 0 && (
+                <p className="text-[10px] text-muted-foreground">يمكنك إضافة حتى 3 أزرار. Meta تدعم زر واحد من نوع رقم هاتف وزر واحد من نوع رابط.</p>
+              )}
             </div>
 
             {isEditing && (
