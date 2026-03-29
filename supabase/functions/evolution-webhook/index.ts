@@ -163,7 +163,7 @@ serve(async (req) => {
             .from("conversations")
             .insert({
               customer_phone: phone,
-              customer_name: pushName,
+              customer_name: convName,
               org_id: config.org_id,
               status: "active",
               conversation_type: conversationType,
@@ -178,8 +178,11 @@ serve(async (req) => {
 
         if (!conversation) continue;
 
-        // Insert message
+        // Insert message with sender info for groups
         const content = text || `[${messageType}]`;
+        const senderName = msg.pushName || "";
+        const participant = key.participant || key.participantAlt || "";
+        
         await supabase.from("messages").insert({
           conversation_id: conversation.id,
           content,
@@ -188,6 +191,7 @@ serve(async (req) => {
           media_url: mediaUrl,
           wa_message_id: key.id || null,
           status: "received",
+          metadata: conversationType === "group" ? { sender_name: senderName, participant } : {},
         });
 
         // Update conversation
