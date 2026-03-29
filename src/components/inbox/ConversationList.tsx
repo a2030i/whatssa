@@ -47,11 +47,16 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
     unread: conversations.filter(c => c.unread > 0).length,
     waiting: conversations.filter(c => c.status === "waiting").length,
     closed: conversations.filter(c => c.status === "closed").length,
+    private: conversations.filter(c => !c.conversationType || c.conversationType === "private").length,
+    group: conversations.filter(c => c.conversationType === "group").length,
+    broadcast: conversations.filter(c => c.conversationType === "broadcast").length,
   }), [conversations]);
 
   const quickFilters: QuickFilter[] = [
     { id: "all", label: "جميع المحادثات", icon: MessageSquare, count: counts.all },
-    { id: "active", label: "محادثاتي", icon: User, count: counts.active },
+    { id: "private", label: "خاصة", icon: User, count: counts.private },
+    { id: "group", label: "قروبات", icon: Users, count: counts.group },
+    { id: "broadcast", label: "بث", icon: Radio, count: counts.broadcast },
     { id: "unassigned", label: "غير المعينة", icon: UserX, count: counts.unassigned },
     { id: "unread", label: "غير المقروءة", icon: Eye, count: counts.unread },
     { id: "waiting", label: "في انتظار رد العميل", icon: Clock, count: counts.waiting },
@@ -65,6 +70,9 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
       // Quick filter
       switch (activeQuickFilter) {
         case "active": if (conv.status !== "active") return false; break;
+        case "private": if (conv.conversationType && conv.conversationType !== "private") return false; break;
+        case "group": if (conv.conversationType !== "group") return false; break;
+        case "broadcast": if (conv.conversationType !== "broadcast") return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
         case "unread": if (conv.unread <= 0) return false; break;
         case "waiting": if (conv.status !== "waiting") return false; break;
