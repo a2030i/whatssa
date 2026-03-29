@@ -66,7 +66,12 @@ const TemplatesPage = () => {
     });
 
     if (error || data?.error) {
-      toast.error(data?.error || "تعذر جلب القوالب من Meta");
+      const errMsg = data?.error || "";
+      if (errMsg.includes("واتساب") || errMsg.includes("whatsapp")) {
+        setNoWhatsApp(true);
+      } else {
+        toast.error(errMsg || "تعذر جلب القوالب من Meta");
+      }
       setTemplates([]);
     } else {
       setTemplates((data?.templates || []).map(mapMetaTemplate));
