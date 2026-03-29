@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug, ShoppingCart, ShoppingBag, ChevronDown } from "lucide-react";
+import { MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X, FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug, ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,7 +18,8 @@ interface NavGroup {
 }
 
 const buildGroups = (isEcommerce: boolean): (NavItem | NavGroup)[] => [
-  { label: "المحادثات", icon: MessageSquare, path: "/" },
+  { label: "لوحة التحكم", icon: LayoutDashboard, path: "/" },
+  { label: "المحادثات", icon: MessageSquare, path: "/inbox" },
   { label: "العملاء", icon: UserCircle, path: "/customers" },
   // E-commerce group
   ...(isEcommerce ? [{
