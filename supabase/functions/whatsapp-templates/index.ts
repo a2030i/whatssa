@@ -20,24 +20,23 @@ const json = (body: unknown, status = 200) =>
 
 async function getUserContext(req: Request) {
   const authorization = req.headers.get("Authorization") || "";
-  if (!authorization) return { error: json({ error: "Unauthorized" }, 401) };
+  if (!authorization.startsWith("Bearer ")) return { error: json({ error: "Unauthorized" }, 401) };
 
   const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authorization } },
   });
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  const {
-    data: { user },
-    error: userError,
-  } = await authClient.auth.getUser();
+  const token = authorization.replace("Bearer ", "");
+  const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+  if (claimsError || !claimsData?.claims?.sub) return { error: json({ error: "Unauthorized" }, 401) };
 
-  if (userError || !user) return { error: json({ error: "Unauthorized" }, 401) };
+  const userId = claimsData.claims.sub;
 
   const { data: profile } = await adminClient
     .from("profiles")
     .select("org_id")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
 
   if (!profile?.org_id) return { error: json({ error: "لا توجد مؤسسة مرتبطة بهذا الحساب" }, 400) };
@@ -53,7 +52,7 @@ async function getUserContext(req: Request) {
 
   if (!config) return { error: json({ error: "لا يوجد رقم واتساب حقيقي مربوط حالياً" }, 400) };
 
-  return { adminClient, user, orgId: profile.org_id, config };
+  return { adminClient, userId, orgId: profile.org_id, config };
 }
 
 serve(async (req) => {
