@@ -80,8 +80,13 @@ serve(async (req) => {
         if (key.fromMe) continue;
 
         const remoteJid = key.remoteJid || "";
+        // Skip group messages — only handle private chats (@s.whatsapp.net)
+        if (remoteJid.endsWith("@g.us") || remoteJid.endsWith("@broadcast")) {
+          console.log(`Skipping group/broadcast message from: ${remoteJid}`);
+          continue;
+        }
         // Extract phone number from JID (e.g., "966535195202@s.whatsapp.net")
-        const phone = remoteJid.replace("@s.whatsapp.net", "").replace("@g.us", "");
+        const phone = remoteJid.replace("@s.whatsapp.net", "");
         if (!phone || phone.includes("status")) continue;
 
         // Get message text

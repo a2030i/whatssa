@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown } from "lucide-react";
+import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Conversation } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,8 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
   const [agentFilter, setAgentFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
 
   const allAgents = useMemo(() => [...new Set(conversations.map((c) => c.assignedTo))], [conversations]);
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
@@ -112,12 +114,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
 
       {/* Quick Filters - Vertical List */}
       <div className="border-b border-border">
-        {quickFilters.map((qf) => (
+        {/* Active filter always visible */}
+        <button
+          onClick={() => setFiltersCollapsed(!filtersCollapsed)}
+          className="w-full flex items-center justify-between px-4 py-2 text-xs text-muted-foreground hover:bg-secondary/50"
+        >
+          <span>الفلاتر</span>
+          {filtersCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+        </button>
+        {!filtersCollapsed && quickFilters.map((qf) => (
           <button
             key={qf.id}
             onClick={() => setActiveQuickFilter(qf.id)}
             className={cn(
-              "w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors",
+              "w-full flex items-center justify-between px-4 py-2 text-sm transition-colors",
               activeQuickFilter === qf.id
                 ? "bg-accent text-accent-foreground font-medium"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
