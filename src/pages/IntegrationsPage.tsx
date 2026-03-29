@@ -3,7 +3,7 @@ import {
   CheckCircle2, Copy, Loader2, Phone, RefreshCw,
   MessageSquare, KeyRound, Plus, Trash2, Instagram,
   Plug, Radio, Smartphone, Send, AlertTriangle, ExternalLink,
-  ShieldCheck, CreditCard, PhoneCall, Building2, Circle
+  ShieldCheck, CreditCard, PhoneCall, Building2, Circle, QrCode
 } from "lucide-react";
 import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import { cn } from "@/lib/utils";
@@ -431,184 +431,300 @@ const IntegrationsPage = () => {
     setShowManual(false);
   };
 
-  // ============ EMPTY STATE: Show all channels ============
-  if (configs.length === 0 && flowStep === "idle") {
+  const renderConfigCard = (config: WhatsAppConfig) => {
+    const isConnected = config.registration_status === "connected";
+    const isFailed = config.registration_status === "failed";
+    const isPending = !config.registration_status || config.registration_status === "pending";
+    const isExpanded = expandedId === config.id;
+    const ms = metaStatus[config.id];
+
     return (
-      <div className="p-3 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
+      <div key={config.id} className="bg-card rounded-2xl border border-border p-5 flex flex-col items-center text-center gap-3 hover:shadow-md transition-shadow">
+        <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+          <MessageSquare className="w-7 h-7 text-emerald-600" />
+        </div>
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Plug className="w-5 h-5 text-primary" />
-            الربط والتكامل
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">اربط قنوات التواصل لإرسال واستقبال الرسائل</p>
+          <h3 className="font-bold text-sm">واتساب</h3>
+          <p className="text-xs text-muted-foreground mt-0.5 font-mono" dir="ltr">
+            {config.display_phone || config.phone_number_id}
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          تواصل مع المستخدمين من خلال WhatsApp Business API
+        </p>
+        <div className="flex items-center gap-2 flex-wrap justify-center mt-auto">
+          {isConnected && (
+            <Badge className="bg-success/10 text-success border-0 text-xs gap-1 px-3 py-1">
+              <CheckCircle2 className="w-3 h-3" /> متصل
+            </Badge>
+          )}
+          {isFailed && (
+            <Badge className="bg-destructive/10 text-destructive border-0 text-xs gap-1 px-3 py-1">
+              <AlertTriangle className="w-3 h-3" /> فشل التسجيل
+            </Badge>
+          )}
+          {isPending && (
+            <Badge className="bg-warning/10 text-warning border-0 text-xs gap-1 px-3 py-1">
+              <AlertTriangle className="w-3 h-3" /> معلّق
+            </Badge>
+          )}
+          <Button variant="outline" size="sm" className="text-xs h-8 gap-1 rounded-lg" onClick={() => setExpandedId(isExpanded ? null : config.id)}>
+            عرض التفاصيل
+          </Button>
         </div>
 
-        {/* WhatsApp Official API */}
-        <div className="bg-card rounded-xl shadow-card border border-border overflow-hidden">
-          <div className="p-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <MessageSquare className="w-6 h-6 text-primary" />
+        {/* Expanded Details */}
+        {isExpanded && (
+          <div className="w-full mt-3 pt-3 border-t border-border space-y-3 text-right animate-fade-in">
+            {(isFailed || isPending) && (
+              <div className="flex items-center gap-2 justify-center">
+                <Input
+                  value={twoStepPin}
+                  onChange={(e) => setTwoStepPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="PIN (اختياري)"
+                  className="bg-secondary border-0 text-xs w-24 h-8 text-center"
+                  dir="ltr"
+                  maxLength={6}
+                />
+                <Button variant="outline" size="sm" className="text-xs h-8 gap-1 text-primary" onClick={() => retryRegister(config)} disabled={isLoading}>
+                  <RefreshCw className="w-3 h-3" /> تسجيل
+                </Button>
               </div>
-              <div>
-                <h2 className="font-bold text-sm">واتساب الرسمي (API)</h2>
-                <p className="text-[11px] text-muted-foreground mt-0.5">ربط عبر WhatsApp Business API — للأعمال والمنصات</p>
-              </div>
-            </div>
-            <Badge variant="outline" className="text-[10px] text-muted-foreground">غير مربوط</Badge>
-          </div>
-          <div className="px-5 pb-5 space-y-3">
-            {/* Pre-connection Checklist */}
-            <div className="bg-muted/30 rounded-xl p-4 space-y-3">
-              <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                قائمة التحقق قبل الربط
-              </h3>
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                تأكد من استيفاء هذه المتطلبات في{" "}
-                <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
-                  Meta Business Suite
-                </a>{" "}
-                قبل البدء:
-              </p>
-              <div className="space-y-2">
-                {[
-                  {
-                    icon: Building2,
-                    title: "توثيق النشاط التجاري",
-                    desc: "وثّق حافظة الأعمال (Business Verification) لرفع حدود الإرسال وتفعيل المحادثات",
-                    link: "https://business.facebook.com/settings/security",
-                    linkLabel: "تحقق من التوثيق",
-                    required: false,
-                  },
-                  {
-                    icon: CreditCard,
-                    title: "وسيلة الدفع",
-                    desc: "أضف بطاقة ائتمان صالحة في إعدادات الدفع — مطلوبة لإرسال الرسائل التسويقية",
-                    link: "https://business.facebook.com/billing_hub/payment_methods",
-                    linkLabel: "إدارة وسائل الدفع",
-                    required: true,
-                  },
-                  {
-                    icon: PhoneCall,
-                    title: "رقم واتساب جاهز",
-                    desc: "رقم غير مربوط بتطبيق واتساب على الهاتف — يجب فصله أولاً قبل ربطه بالمنصة",
-                    required: true,
-                  },
-                  {
-                    icon: MessageSquare,
-                    title: "حساب WABA مفعّل",
-                    desc: "أنشئ حساب WhatsApp Business Account من Meta Business Suite إن لم يكن موجوداً",
-                    link: "https://business.facebook.com/wa/manage/home",
-                    linkLabel: "إدارة حسابات WhatsApp",
-                    required: true,
-                  },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2.5 bg-card rounded-lg border border-border p-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <item.icon className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-xs font-semibold text-foreground">{item.title}</p>
-                        {item.required ? (
-                          <Badge className="bg-destructive/10 text-destructive border-0 text-[9px] px-1.5 py-0">مطلوب</Badge>
-                        ) : (
-                          <Badge className="bg-warning/10 text-warning border-0 text-[9px] px-1.5 py-0">موصى به</Badge>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
-                      {item.link && (
-                        <a
-                          href={item.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-primary hover:underline underline-offset-2 mt-1 inline-flex items-center gap-1"
-                        >
-                          <ExternalLink className="w-2.5 h-2.5" />
-                          {item.linkLabel}
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
 
-            <div className="bg-primary/5 rounded-lg p-3">
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                💡 يتطلب حساب WhatsApp Business — ستفتح نافذة Meta لتسجيل الدخول واختيار رقمك. تستغرق أقل من دقيقة.
-              </p>
-            </div>
-            <Button
-              onClick={startConnect}
-              disabled={isLoading || !sdkLoaded}
-              className="w-full gap-2 py-5 text-sm font-bold rounded-xl"
-            >
-              {!sdkLoaded ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-              {!sdkLoaded ? "جاري التحميل..." : "ربط واتساب الرسمي"}
-            </Button>
+            {/* Meta Status */}
+            {ms && !ms.isLoading && renderMetaStatus(config, ms)}
+            {ms?.isLoading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 justify-center">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري جلب حالة الرقم...
+              </div>
+            )}
 
             {isSuperAdmin && (
-              <div className="pt-3 border-t border-border">
-                <button
-                  onClick={() => setShowManual(!showManual)}
-                  className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2 w-full text-center"
-                >
-                  {showManual ? "إخفاء الربط اليدوي" : "ربط يدوي (متقدم)"}
-                </button>
-                {showManual && (
-                  <div className="mt-3 border border-border rounded-lg p-4 space-y-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs">Access Token</Label>
-                      <Input value={manualToken} onChange={(e) => setManualToken(e.target.value)} placeholder="EAAxxxxxxx..." className="bg-secondary border-0 text-xs" dir="ltr" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Phone Number ID</Label>
-                      <Input value={manualPhoneId} onChange={(e) => setManualPhoneId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">WABA ID</Label>
-                      <Input value={manualWabaId} onChange={(e) => setManualWabaId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
-                    </div>
-                    <Button onClick={handleManualConnect} disabled={isLoading || !manualToken || !manualPhoneId || !manualWabaId} className="w-full gap-2 text-sm">
-                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                      ربط
-                    </Button>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Input value={WEBHOOK_URL} readOnly className="bg-secondary border-0 text-[11px] flex-1" dir="ltr" />
+                  <Button size="sm" variant="outline" className="shrink-0 h-8 w-8 p-0" onClick={() => copyToClipboard(WEBHOOK_URL, "URL")}>
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground">
+                  <div><span className="font-medium">Phone ID:</span> <span className="font-mono" dir="ltr">{config.phone_number_id}</span></div>
+                  <div><span className="font-medium">WABA ID:</span> <span className="font-mono" dir="ltr">{config.business_account_id}</span></div>
+                </div>
+              </div>
+            )}
+
+            {config.registration_status === "failed" && config.registration_error && (
+              <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 text-right">
+                <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" /> سبب الفشل
+                </p>
+                <p className="text-[11px] text-foreground mt-1">{friendlyError(config.registration_error)}</p>
+              </div>
+            )}
+
+            {config.registered_at && (
+              <p className="text-[10px] text-muted-foreground text-center">
+                آخر تسجيل: {new Date(config.registered_at).toLocaleString("ar-SA")}
+              </p>
+            )}
+
+            <Button variant="ghost" size="sm" className="w-full text-xs text-destructive gap-1" onClick={() => handleDisconnect(config.id)}>
+              <Trash2 className="w-3 h-3" /> فصل الرقم
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderMetaStatus = (config: WhatsAppConfig, ms: any) => {
+    const qualityMap: Record<string, { label: string; color: string }> = {
+      GREEN: { label: "عالية", color: "text-success" }, YELLOW: { label: "متوسطة", color: "text-warning" }, RED: { label: "منخفضة", color: "text-destructive" },
+    };
+    const phoneStatusMap: Record<string, { label: string; color: string }> = {
+      VERIFIED: { label: "نشط", color: "text-success" }, NOT_VERIFIED: { label: "غير مفعّل", color: "text-warning" }, PENDING: { label: "معلّق", color: "text-warning" },
+      FLAGGED: { label: "مُبلَّغ عنه", color: "text-destructive" }, RESTRICTED: { label: "مقيّد", color: "text-destructive" }, CONNECTED: { label: "متصل", color: "text-success" },
+    };
+    const quality = ms.qualityRating ? qualityMap[ms.qualityRating] : null;
+    const phoneStatus = ms.phoneStatus ? phoneStatusMap[ms.phoneStatus] : null;
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-semibold text-muted-foreground">حالة Meta</p>
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={() => fetchMetaStatus(config, true)}>
+            <RefreshCw className="w-2.5 h-2.5" /> تحديث
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {phoneStatus && (
+            <div className="bg-muted/50 rounded-lg p-2">
+              <p className="text-[10px] text-muted-foreground">الحالة</p>
+              <p className={cn("text-xs font-bold", phoneStatus.color)}>{phoneStatus.label}</p>
+            </div>
+          )}
+          {quality && (
+            <div className="bg-muted/50 rounded-lg p-2">
+              <p className="text-[10px] text-muted-foreground">الجودة</p>
+              <p className={cn("text-xs font-bold", quality.color)}>{quality.label}</p>
+            </div>
+          )}
+        </div>
+        {ms.healthIssues && ms.healthIssues.length > 0 && (
+          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-2.5 space-y-1">
+            {ms.healthIssues.map((issue: any, i: number) => (
+              <p key={i} className="text-[10px] text-foreground/80">
+                <span className="text-destructive">•</span> [{issue.entity}] {issue.error}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderAllChannelsView = (currentConfigs: WhatsAppConfig[]) => {
+    const connectedOfficialConfigs = currentConfigs.filter(c => !(c as any).channel_type || (c as any).channel_type !== "evolution");
+    const hasConnected = connectedOfficialConfigs.length > 0;
+
+    return (
+      <>
+        {/* Connected Section */}
+        {hasConnected && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-bold text-foreground">متصل</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {connectedOfficialConfigs.map(renderConfigCard)}
+            </div>
+          </div>
+        )}
+
+        {/* All Channels */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-foreground">جميع القنوات</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* WhatsApp Official */}
+            <ChannelCard
+              icon={MessageSquare}
+              iconBg="bg-emerald-500/10 text-emerald-600"
+              name="واتساب"
+              description="تواصل مع المستخدمين من خلال WhatsApp Business API"
+              actions={
+                hasConnected ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Badge className="bg-success/10 text-success border-0 text-xs gap-1 px-3 py-1">
+                      <CheckCircle2 className="w-3 h-3" /> متصل ({connectedOfficialConfigs.length})
+                    </Badge>
+                    {(connectedOfficialConfigs.length < maxPhones || isSuperAdmin) && (
+                      <Button size="sm" variant="outline" className="text-xs h-8 gap-1 rounded-lg" onClick={startConnect} disabled={!sdkLoaded}>
+                        <Plus className="w-3 h-3" /> إضافة رقم
+                      </Button>
+                    )}
                   </div>
-                )}
+                ) : (
+                  <Button size="sm" className="text-xs h-9 gap-1.5 rounded-lg px-5" onClick={startConnect} disabled={!sdkLoaded || isLoading}>
+                    {!sdkLoaded ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    يتصل
+                  </Button>
+                )
+              }
+            />
+
+            {/* WhatsApp Web */}
+            <div className="bg-card rounded-2xl border border-border p-5 flex flex-col items-center text-center gap-3 hover:shadow-md transition-shadow min-h-[180px]">
+              <div className="w-14 h-14 rounded-2xl bg-warning/10 flex items-center justify-center">
+                <QrCode className="w-7 h-7 text-warning" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm">واتساب ويب</h3>
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-warning border-warning/30 mt-1">غير رسمي</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">ربط عبر مسح QR — Evolution API</p>
+              <div className="w-full mt-auto">
+                <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} />
+              </div>
+            </div>
+
+            {/* Instagram */}
+            <ChannelCard
+              icon={Instagram}
+              iconBg="bg-pink-500/10 text-pink-500"
+              name="انستغرام"
+              description="تواصل مع المستخدمين من خلال Instagram Business API"
+              actions={<Badge variant="outline" className="text-[10px] px-2.5 py-1">قريباً</Badge>}
+            />
+
+            {/* Telegram */}
+            <ChannelCard
+              icon={Radio}
+              iconBg="bg-blue-500/10 text-blue-500"
+              name="تيليغرام"
+              description="استقبل رسائل تيليغرام عبر المنصة"
+              actions={<Badge variant="outline" className="text-[10px] px-2.5 py-1">قريباً</Badge>}
+            />
+
+            {/* SMS */}
+            <ChannelCard
+              icon={Smartphone}
+              iconBg="bg-violet-500/10 text-violet-500"
+              name="رسالة قصيرة"
+              description="دمج إمكانيات الرسائل القصيرة في النظام الأساسي"
+              actions={<Badge variant="outline" className="text-[10px] px-2.5 py-1">قريباً</Badge>}
+            />
+
+            {/* Phone */}
+            <ChannelCard
+              icon={PhoneCall}
+              iconBg="bg-sky-500/10 text-sky-500"
+              name="هاتف"
+              description="التواصل مع المستخدمين من خلال الهاتف"
+              actions={<Badge variant="outline" className="text-[10px] px-2.5 py-1">قريباً</Badge>}
+            />
+          </div>
+        </div>
+
+        {/* Manual Connect for Super Admin */}
+        {isSuperAdmin && (
+          <div className="pt-2">
+            <button
+              onClick={() => setShowManual(!showManual)}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
+            >
+              {showManual ? "إخفاء الربط اليدوي" : "ربط يدوي (متقدم)"}
+            </button>
+            {showManual && (
+              <div className="mt-3 bg-card border border-border rounded-xl p-4 space-y-3 max-w-md">
+                <div className="space-y-2">
+                  <Label className="text-xs">Access Token</Label>
+                  <Input value={manualToken} onChange={(e) => setManualToken(e.target.value)} placeholder="EAAxxxxxxx..." className="bg-secondary border-0 text-xs" dir="ltr" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Phone Number ID</Label>
+                  <Input value={manualPhoneId} onChange={(e) => setManualPhoneId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">WABA ID</Label>
+                  <Input value={manualWabaId} onChange={(e) => setManualWabaId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
+                </div>
+                <Button onClick={handleManualConnect} disabled={isLoading || !manualToken || !manualPhoneId || !manualWabaId} className="w-full gap-2 text-sm">
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                  ربط
+                </Button>
               </div>
             )}
           </div>
-        </div>
+        )}
+      </>
+    );
+  };
 
-        {/* WhatsApp Web QR */}
-        <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} />
-
-        {/* Upcoming Channels */}
-        <div className="space-y-3">
-          <h2 className="font-semibold text-sm text-muted-foreground">قنوات أخرى</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[
-              { name: "انستغرام", icon: Instagram, desc: "تواصل عبر Instagram Direct" },
-              { name: "تيليغرام", icon: Radio, desc: "استقبل رسائل تيليغرام" },
-              { name: "SMS", icon: Smartphone, desc: "رسائل نصية قصيرة" },
-            ].map((ch) => (
-              <div key={ch.name} className="bg-card rounded-xl shadow-card p-4 border border-border opacity-60">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
-                    <ch.icon className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">{ch.name}</p>
-                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">قريباً</Badge>
-                  </div>
-                </div>
-                <p className="text-[11px] text-muted-foreground">{ch.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+  // ============ EMPTY STATE: Show all channels ============
+  if (configs.length === 0 && flowStep === "idle") {
+    return (
+      <div className="p-3 md:p-6 space-y-8 max-w-[900px]" dir="rtl">
+        {renderAllChannelsView([])}
       </div>
     );
   }
@@ -839,330 +955,34 @@ const IntegrationsPage = () => {
 
   // ============ MAIN: Connected Numbers Management ============
   return (
-    <div className="p-3 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Plug className="w-5 h-5 text-primary" />
-            الربط والتكامل
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">إدارة قنوات التواصل وأرقام واتساب</p>
-        </div>
-      </div>
-
-      {/* WhatsApp Numbers */}
-      <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <MessageSquare className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-sm">أرقام واتساب</h2>
-              <p className="text-[11px] text-muted-foreground">{configs.length} رقم مربوط</p>
-            </div>
-          </div>
-          {configs.length >= maxPhones && !isSuperAdmin ? (
-            <div className="text-[11px] text-destructive bg-destructive/5 rounded-lg px-3 py-2 text-center">
-              وصلت للحد الأقصى ({maxPhones} رقم) — <span className="font-semibold">ترقّ لباقة أعلى</span>
-            </div>
-          ) : (
-            <Button size="sm" className="gap-1.5 text-xs w-full sm:w-auto" onClick={startConnect} disabled={!sdkLoaded}>
-              <Plus className="w-3.5 h-3.5" /> إضافة رقم
-            </Button>
-          )}
-        </div>
-
-        <div className="grid gap-3">
-          {configs.map((config) => (
-            <div key={config.id} className="bg-card rounded-xl shadow-card p-3 md:p-4 border border-border hover:shadow-card-hover transition-shadow">
-              <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                     <Phone className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-                   </div>
-                   <div className="flex-1 min-w-0">
-                     <div className="flex items-center gap-1.5 flex-wrap">
-                       <p className="font-semibold text-xs md:text-sm truncate" dir="ltr">{config.display_phone || config.phone_number_id}</p>
-                       {config.registration_status === "connected" ? (
-                         <Badge className="bg-success/10 text-success border-0 text-[10px] gap-0.5">
-                           <CheckCircle2 className="w-2.5 h-2.5" /> متصل
-                         </Badge>
-                       ) : config.registration_status === "failed" ? (
-                         <Badge className="bg-destructive/10 text-destructive border-0 text-[10px] gap-0.5">
-                           <AlertTriangle className="w-2.5 h-2.5" /> فشل التسجيل
-                         </Badge>
-                       ) : config.registration_status === "registering" ? (
-                         <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-0.5">
-                           <Loader2 className="w-2.5 h-2.5 animate-spin" /> جاري التسجيل
-                         </Badge>
-                       ) : (
-                         <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-0.5">
-                           <AlertTriangle className="w-2.5 h-2.5" /> معلّق
-                         </Badge>
-                       )}
-                     </div>
-                     <p className="text-[11px] text-muted-foreground truncate">{config.business_name || "واتساب للأعمال"}</p>
-                   </div>
-              </div>
-              <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-                   {(config.registration_status === "failed" || config.registration_status === "pending" || !config.registration_status) && (
-                     <>
-                       <Input
-                         value={twoStepPin}
-                         onChange={(e) => setTwoStepPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                         placeholder="PIN (اختياري)"
-                         className="bg-secondary border-0 text-xs w-20 h-8 text-center"
-                         dir="ltr"
-                         maxLength={6}
-                       />
-                       <Button variant="outline" size="sm" className="text-xs h-8 gap-1 text-primary" onClick={() => retryRegister(config)} disabled={isLoading}>
-                         <RefreshCw className="w-3 h-3" /> تسجيل
-                       </Button>
-                     </>
-                   )}
-                   <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setExpandedId(expandedId === config.id ? null : config.id)}>
-                     التفاصيل
-                   </Button>
-                   <Button variant="ghost" size="sm" className="text-destructive h-8 w-8 p-0 mr-auto" onClick={() => handleDisconnect(config.id)}>
-                     <Trash2 className="w-3.5 h-3.5" />
-                   </Button>
-              </div>
-
-              {/* Expanded */}
-              {expandedId === config.id && (
-                <div className="mt-4 pt-4 border-t border-border space-y-3 animate-fade-in">
-                  {/* Meta API Status */}
-                  {(() => {
-                    const ms = metaStatus[config.id];
-                    if (!ms) return null;
-                    if (ms.isLoading) return (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري جلب حالة الرقم من Meta...
-                      </div>
-                    );
-
-                    const qualityMap: Record<string, { label: string; color: string }> = {
-                      GREEN: { label: "عالية", color: "text-success" },
-                      YELLOW: { label: "متوسطة", color: "text-warning" },
-                      RED: { label: "منخفضة", color: "text-destructive" },
-                    };
-                    const verificationMap: Record<string, { label: string; color: string }> = {
-                      verified: { label: "موثّق ✓", color: "text-success" },
-                      not_verified: { label: "غير موثّق", color: "text-destructive" },
-                      pending: { label: "قيد المراجعة", color: "text-warning" },
-                      rejected: { label: "مرفوض", color: "text-destructive" },
-                    };
-                    const nameMap: Record<string, { label: string; color: string }> = {
-                      APPROVED: { label: "معتمد", color: "text-success" },
-                      PENDING_REVIEW: { label: "قيد المراجعة", color: "text-warning" },
-                      DECLINED: { label: "مرفوض", color: "text-destructive" },
-                      AVAILABLE_WITHOUT_REVIEW: { label: "متاح", color: "text-success" },
-                    };
-                    const tierMap: Record<string, string> = {
-                      TIER_1K: "1,000 / يوم",
-                      TIER_10K: "10,000 / يوم",
-                      TIER_100K: "100,000 / يوم",
-                      TIER_250: "250 / يوم",
-                      UNLIMITED: "غير محدود",
-                    };
-                    const phoneStatusMap: Record<string, { label: string; color: string }> = {
-                      VERIFIED: { label: "نشط", color: "text-success" },
-                      NOT_VERIFIED: { label: "غير مفعّل", color: "text-warning" },
-                      PENDING: { label: "معلّق", color: "text-warning" },
-                      FLAGGED: { label: "مُبلَّغ عنه", color: "text-destructive" },
-                      RESTRICTED: { label: "مقيّد", color: "text-destructive" },
-                      CONNECTED: { label: "متصل", color: "text-success" },
-                    };
-
-                    const quality = ms.qualityRating ? qualityMap[ms.qualityRating] : null;
-                    const verification = ms.businessVerification ? verificationMap[ms.businessVerification] : null;
-                    const nameStatus = ms.nameStatus ? nameMap[ms.nameStatus] : null;
-                    const phoneStatus = ms.phoneStatus ? phoneStatusMap[ms.phoneStatus] : null;
-
-                    // Determine issues
-                    const issues: string[] = [];
-                    if (ms.businessVerification === "not_verified") issues.push("حافظة الأعمال غير موثّقة — وثّقها من Meta Business Suite لرفع حدود الإرسال");
-                    if (ms.qualityRating === "RED") issues.push("جودة الرقم منخفضة — قد يتم تقييد الإرسال");
-                    if (ms.qualityRating === "YELLOW") issues.push("جودة الرقم متوسطة — تجنّب الرسائل العشوائية للحفاظ على الجودة");
-                    if (ms.phoneStatus === "FLAGGED") issues.push("الرقم مُبلَّغ عنه — تواصل مع دعم Meta");
-                    if (ms.phoneStatus === "RESTRICTED") issues.push("الرقم مقيّد — لا يمكن إرسال رسائل حالياً");
-                    if (ms.nameStatus === "DECLINED") issues.push("اسم النشاط التجاري مرفوض — أعد تقديم الاسم");
-                    if (ms.accountReviewStatus === "PENDING") issues.push("حساب WABA قيد المراجعة من Meta");
-
-                    return (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-semibold text-muted-foreground">حالة الرقم من Meta</p>
-                          <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => fetchMetaStatus(config, true)}>
-                            <RefreshCw className="w-3 h-3" /> تحديث
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                          {phoneStatus && (
-                            <div className="bg-muted/50 rounded-lg p-2.5">
-                              <p className="text-[10px] text-muted-foreground">حالة الرقم</p>
-                              <p className={cn("text-xs font-bold mt-0.5", phoneStatus.color)}>{phoneStatus.label}</p>
-                            </div>
-                          )}
-                          {quality && (
-                            <div className="bg-muted/50 rounded-lg p-2.5">
-                              <p className="text-[10px] text-muted-foreground">جودة الرقم</p>
-                              <p className={cn("text-xs font-bold mt-0.5", quality.color)}>{quality.label}</p>
-                            </div>
-                          )}
-                          {verification && (
-                            <div className="bg-muted/50 rounded-lg p-2.5">
-                              <p className="text-[10px] text-muted-foreground">حافظة الأعمال</p>
-                              <p className={cn("text-xs font-bold mt-0.5", verification.color)}>{verification.label}</p>
-                            </div>
-                          )}
-                          {nameStatus && (
-                            <div className="bg-muted/50 rounded-lg p-2.5">
-                              <p className="text-[10px] text-muted-foreground">اسم النشاط</p>
-                              <p className={cn("text-xs font-bold mt-0.5", nameStatus.color)}>{nameStatus.label}</p>
-                            </div>
-                          )}
-                          {ms.messagingLimit && (
-                            <div className="bg-muted/50 rounded-lg p-2.5">
-                              <p className="text-[10px] text-muted-foreground">حد الإرسال</p>
-                              <p className="text-xs font-bold mt-0.5">{tierMap[ms.messagingLimit] || ms.messagingLimit}</p>
-                            </div>
-                          )}
-                          {ms.accountReviewStatus && (
-                            <div className="bg-muted/50 rounded-lg p-2.5">
-                              <p className="text-[10px] text-muted-foreground">مراجعة WABA</p>
-                              <p className={cn("text-xs font-bold mt-0.5", ms.accountReviewStatus === "APPROVED" ? "text-success" : "text-warning")}>
-                                {ms.accountReviewStatus === "APPROVED" ? "مُعتمد" : ms.accountReviewStatus === "PENDING" ? "قيد المراجعة" : ms.accountReviewStatus}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Health Issues from Meta API */}
-                        {ms.healthIssues && ms.healthIssues.length > 0 && (
-                          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
-                            <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
-                              <AlertTriangle className="w-3.5 h-3.5" /> مشاكل يجب حلها ({ms.healthIssues.length})
-                            </p>
-                            {ms.healthIssues.map((issue, i) => (
-                              <div key={i} className="text-[11px] space-y-0.5">
-                                <p className="text-foreground/80 flex items-start gap-1.5">
-                                  <span className="text-destructive mt-0.5 shrink-0">•</span>
-                                  <span><span className="font-semibold">[{issue.entity}]</span> {issue.error}</span>
-                                </p>
-                                {issue.solution && (
-                                  <p className="text-muted-foreground mr-4">💡 {issue.solution}</p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* General warnings */}
-                        {issues.length > 0 && (
-                          <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 space-y-1.5">
-                            <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
-                              <AlertTriangle className="w-3.5 h-3.5" /> تنبيهات ({issues.length})
-                            </p>
-                            {issues.map((issue, i) => (
-                              <p key={i} className="text-[11px] text-foreground/80 flex items-start gap-1.5">
-                                <span className="text-warning mt-0.5">•</span> {issue}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {isSuperAdmin && (
-                    <>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground">Webhook URL</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Input value={WEBHOOK_URL} readOnly className="bg-secondary border-0 text-[11px] flex-1" dir="ltr" />
-                          <Button size="sm" variant="outline" className="shrink-0 h-8 w-8 p-0" onClick={() => copyToClipboard(WEBHOOK_URL, "URL")}>
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground">Verify Token</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Input value={config.webhook_verify_token} readOnly className="bg-secondary border-0 text-[11px] flex-1" dir="ltr" />
-                          <Button size="sm" variant="outline" className="shrink-0 h-8 w-8 p-0" onClick={() => copyToClipboard(config.webhook_verify_token, "Token")}>
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-[10px] text-muted-foreground">Phone Number ID</Label>
-                          <p className="text-xs mt-0.5 font-mono" dir="ltr">{config.phone_number_id}</p>
-                        </div>
-                        <div>
-                          <Label className="text-[10px] text-muted-foreground">WABA ID</Label>
-                          <p className="text-xs mt-0.5 font-mono" dir="ltr">{config.business_account_id}</p>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  {/* Registration error */}
-                  {config.registration_status === "failed" && config.registration_error && (
-                    <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-semibold text-destructive">سبب فشل التسجيل</p>
-                          <p className="text-[11px] text-foreground mt-1">{friendlyError(config.registration_error)}</p>
-                          <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
-                            💡 جرّب: واتساب → الإعدادات → الحساب → التحقق بخطوتين → إيقاف، ثم أعد التسجيل
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {config.registered_at && (
-                    <div className="text-[10px] text-muted-foreground">
-                      آخر تسجيل ناجح: {new Date(config.registered_at).toLocaleString("ar-SA")}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* WhatsApp Web (Unofficial) */}
-      <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} />
-
-      {/* Upcoming Channels */}
-      <div className="space-y-3">
-        <h2 className="font-semibold text-sm text-muted-foreground">قنوات أخرى</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { name: "انستغرام", icon: Instagram, desc: "تواصل عبر Instagram Direct" },
-            { name: "تيليغرام", icon: Radio, desc: "استقبل رسائل تيليغرام" },
-            { name: "SMS", icon: Smartphone, desc: "رسائل نصية قصيرة" },
-          ].map((ch) => (
-            <div key={ch.name} className="bg-card rounded-xl shadow-card p-4 border border-border opacity-60">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center">
-                  <ch.icon className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{ch.name}</p>
-                  <Badge variant="outline" className="text-[9px] px-1.5 py-0">قريباً</Badge>
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground">{ch.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="p-3 md:p-6 space-y-8 max-w-[900px]" dir="rtl">
+      {renderAllChannelsView(configs)}
     </div>
   );
 };
+
+function ChannelCard({ icon: Icon, iconBg, name, description, status, statusLabel, statusColor, actions, children }: {
+  icon: any; iconBg: string; name: string; description: string;
+  status?: "connected" | "pending" | "disconnected";
+  statusLabel?: string; statusColor?: string;
+  actions?: React.ReactNode; children?: React.ReactNode;
+}) {
+  return (
+    <div className="bg-card rounded-2xl border border-border p-5 flex flex-col items-center text-center gap-3 hover:shadow-md transition-shadow min-h-[180px]">
+      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", iconBg)}>
+        <Icon className="w-7 h-7" />
+      </div>
+      <div>
+        <h3 className="font-bold text-sm">{name}</h3>
+        {statusLabel && (
+          <p className={cn("text-xs mt-0.5 font-medium", statusColor || "text-muted-foreground")}>{statusLabel}</p>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+      {actions && <div className="flex items-center gap-2 flex-wrap justify-center mt-auto">{actions}</div>}
+      {children}
+    </div>
+  );
+}
 
 export default IntegrationsPage;
