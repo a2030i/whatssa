@@ -64,10 +64,26 @@ const WalletPage = () => {
 
   const getUsagePercent = (used: number, limit: number) => limit >= 999999 ? 0 : Math.min((used / limit) * 100, 100);
 
+  const [teamCount, setTeamCount] = useState(0);
+  const [phoneCount, setPhoneCount] = useState(0);
+
+  useEffect(() => {
+    if (!orgId) return;
+    const loadCounts = async () => {
+      const [team, phones] = await Promise.all([
+        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_active", true),
+        supabase.from("whatsapp_config").select("id", { count: "exact", head: true }).eq("org_id", orgId),
+      ]);
+      setTeamCount(team.count || 0);
+      setPhoneCount(phones.count || 0);
+    };
+    loadCounts();
+  }, [orgId]);
+
   const usageItems = [
     { label: "المحادثات", value: usage?.conversations_count || 0, limit: plan?.max_conversations || 0, icon: BarChart3 },
-    { label: "أعضاء الفريق", value: 1, limit: plan?.max_team_members || 1, icon: Users },
-    { label: "أرقام واتساب", value: 1, limit: plan?.max_phone_numbers || 1, icon: Phone },
+    { label: "أعضاء الفريق", value: teamCount, limit: plan?.max_team_members || 1, icon: Users },
+    { label: "أرقام واتساب", value: phoneCount, limit: plan?.max_phone_numbers || 1, icon: Phone },
   ];
 
   return (
