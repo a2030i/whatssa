@@ -137,6 +137,7 @@ const TemplatesPage = () => {
         header_url: formData.headerType !== "TEXT" && formData.headerType !== "NONE" ? formData.headerUrl.trim() : "",
         body: formData.body.trim(),
         footer: formData.footer.trim(),
+        buttons: formData.buttons.filter((b) => b.text.trim() && b.value.trim()),
         language: editingTemplate?.language || "ar",
       },
     });
