@@ -238,6 +238,32 @@ const IntegrationsPage = () => {
     loadConfigs();
   };
 
+  const retryRegister = async (config: WhatsAppConfig) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", {
+        body: {
+          access_token: config.access_token,
+          phone_number_id: config.phone_number_id,
+          waba_id: config.business_account_id,
+          org_id: config.org_id,
+          auto_register: true,
+        },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error || "فشل إعادة التسجيل");
+      } else if (data?.registration?.success) {
+        toast.success("✅ تم تسجيل الرقم بنجاح!");
+      } else {
+        toast.error(`فشل التسجيل: ${data?.registration?.error || "خطأ غير معروف"}`);
+      }
+      await loadConfigs();
+    } catch {
+      toast.error("حدث خطأ");
+    }
+    setIsLoading(false);
+  };
+
   const sendTestMessage = async () => {
     if (!testPhone.trim()) { toast.error("أدخل رقم الهاتف"); return; }
     setTestSending(true);
