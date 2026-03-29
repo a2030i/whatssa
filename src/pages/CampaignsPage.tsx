@@ -357,7 +357,22 @@ const CampaignsPage = () => {
           const status = statusConfig[campaign.status] || statusConfig.draft;
           const deliveryRate = campaign.sent_count > 0 ? Math.round((campaign.delivered_count / campaign.sent_count) * 100) : 0;
           return (
-            <div key={campaign.id} className="bg-card rounded-lg p-5 shadow-card hover:shadow-card-hover transition-shadow cursor-pointer" onClick={() => openDetail(campaign)}>
+            <div
+              key={campaign.id}
+              className={cn(
+                "bg-card rounded-lg p-5 shadow-card hover:shadow-card-hover transition-shadow cursor-pointer",
+                compareMode && compareIds.includes(campaign.id) && "ring-2 ring-primary"
+              )}
+              onClick={() => {
+                if (compareMode) {
+                  setCompareIds((prev) =>
+                    prev.includes(campaign.id) ? prev.filter((x) => x !== campaign.id) : prev.length < 2 ? [...prev, campaign.id] : prev
+                  );
+                } else {
+                  openDetail(campaign);
+                }
+              }}
+            >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
