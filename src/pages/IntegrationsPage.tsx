@@ -190,6 +190,25 @@ const IntegrationsPage = () => {
     setIsLoading(false);
   };
 
+  const friendlyError = (raw: string): string => {
+    const lower = raw.toLowerCase();
+    if (lower.includes("#100") || lower.includes("invalid parameter"))
+      return "الرقم مستخدم حالياً على تطبيق واتساب آخر. يجب حذف حساب واتساب من الهاتف أولاً ثم إعادة المحاولة.";
+    if (lower.includes("#10") || lower.includes("permission"))
+      return "لا توجد صلاحيات كافية. تأكد من منح جميع الأذونات المطلوبة أثناء تسجيل الدخول.";
+    if (lower.includes("rate limit") || lower.includes("too many"))
+      return "تم إرسال طلبات كثيرة. انتظر بضع دقائق ثم أعد المحاولة.";
+    if (lower.includes("already registered") || lower.includes("already been registered"))
+      return "الرقم مسجّل بالفعل! لا تحتاج إعادة التسجيل — يمكنك استخدامه مباشرة.";
+    if (lower.includes("token") || lower.includes("expired") || lower.includes("session"))
+      return "انتهت صلاحية الجلسة. أعد ربط الرقم من جديد.";
+    if (lower.includes("phone number") && lower.includes("not found"))
+      return "لم يتم العثور على الرقم في حسابك. تأكد من إضافته في Meta Business Suite.";
+    if (lower.includes("two step") || lower.includes("two-step") || lower.includes("pin"))
+      return "الرقم محمي بالتحقق بخطوتين. أزل رمز PIN من إعدادات واتساب على هاتفك ثم أعد المحاولة.";
+    return raw;
+  };
+
   const completeSignup = async ({ token, phoneId, wabaId }: { token: string; phoneId: string; wabaId: string }) => {
     if (!orgId) { handleError("تعذر تحديد المؤسسة"); return false; }
 
@@ -197,13 +216,13 @@ const IntegrationsPage = () => {
       body: { access_token: token, phone_number_id: phoneId, waba_id: wabaId, org_id: orgId, auto_register: true },
     });
 
-    if (error || data?.error) { handleError(data?.error || "فشل في إكمال الربط"); return false; }
-    if (!data?.selected_phone || !data?.saved_config) { handleError("تعذر تسجيل الرقم"); return false; }
+    if (error || data?.error) { handleError(friendlyError(data?.error || "فشل في إكمال الربط")); return false; }
+    if (!data?.selected_phone || !data?.saved_config) { handleError("تعذر تسجيل الرقم — حاول مرة أخرى"); return false; }
 
     // Check registration result
     if (data.registration && !data.registration.success) {
-      const regError = data.registration.error || "فشل تسجيل الرقم في WhatsApp Cloud API";
-      toast.error(`تحذير: تم حفظ البيانات لكن فشل التسجيل: ${regError}`);
+      const regError = friendlyError(data.registration.error || "فشل تسجيل الرقم");
+      toast.error(regError);
     }
 
     await loadConfigs();
