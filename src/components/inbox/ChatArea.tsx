@@ -49,6 +49,15 @@ const getStorageUrlFromText = (text: string) => {
   return match?.[1];
 };
 
+const scrollToMessage = (messageId?: string) => {
+  if (!messageId) return;
+  const el = document.querySelector(`[data-message-id="${messageId}"]`) || document.querySelector(`[data-wa-message-id="${messageId}"]`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("ring-2", "ring-primary/60", "rounded-xl");
+  setTimeout(() => el.classList.remove("ring-2", "ring-primary/60", "rounded-xl"), 1500);
+};
+
 const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note";
@@ -65,6 +74,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
       onTouchMove={canReply ? swipe.onTouchMove : undefined}
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
       className="group relative max-w-[85%] md:max-w-[70%]"
+      data-message-id={msg.id}
+      data-wa-message-id={msg.waMessageId || undefined}
     >
       {/* Desktop click reply button */}
       {canReply && (
@@ -91,11 +102,13 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
           <div className="text-[11px] font-bold mb-1" style={{ color: "#a8f0c8" }}>{msg.senderName}</div>
         )}
         {msg.quoted && msg.quoted.text && (
-          <div className={cn(
-            "rounded-lg px-3 py-2 mb-2 border-r-4 text-[12px] leading-relaxed cursor-pointer",
-            msg.sender === "customer"
-              ? "bg-white/15 border-white/50"
-              : "bg-secondary border-primary/40"
+          <div
+            onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
+            className={cn(
+              "rounded-lg px-3 py-2 mb-2 border-r-4 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity",
+              msg.sender === "customer"
+                ? "bg-white/15 border-white/50"
+                : "bg-secondary border-primary/40"
           )}>
             {msg.quoted.sender_name && (
               <p className={cn(
