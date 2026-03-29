@@ -141,8 +141,8 @@ const CustomersPage = () => {
         <Input placeholder="بحث بالاسم أو الرقم..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm" />
       </div>
 
-      <div className="bg-card rounded-xl shadow-card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-card rounded-xl shadow-card overflow-x-auto">
+        <table className="w-full text-sm min-w-[500px]">
           <thead>
             <tr className="border-b border-border text-muted-foreground text-[11px]">
               <th className="text-right p-3">الاسم</th>
