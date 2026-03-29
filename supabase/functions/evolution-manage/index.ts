@@ -117,15 +117,95 @@ serve(async (req) => {
 
     // ── GET QR CODE ──
     if (action === "connect" || action === "qr") {
-      const res = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+      // Check current state first
+      const stateRes = await fetch(`${EVOLUTION_URL}/instance/connectionState/${instanceName}`, {
         headers: evoHeaders,
       });
-      const data = await res.json();
+      const stateText = await stateRes.text();
+      console.log("State check:", stateText);
+      let stateData: any;
+      try { stateData = JSON.parse(stateText); } catch { stateData = {}; }
+      const currentState = stateData.instance?.state || stateData.state || "unknown";
 
+      if (currentState === "open") {
+        return json({ success: true, qr_code: null, status: "open" });
+      }
+
+      // If instance is in 'close' state, delete and recreate to get fresh QR
+      console.log("Instance state:", currentState, "- deleting and recreating for fresh QR...");
+      
+      // Delete existing instance
+      try {
+        await fetch(`${EVOLUTION_URL}/instance/delete/${instanceName}`, {
+          method: "DELETE",
+          headers: evoHeaders,
+        });
+        console.log("Deleted old instance");
+      } catch (e) {
+        console.log("Delete failed (ok):", e);
+      }
+
+      // Wait briefly
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Recreate with QR
+      const createRes = await fetch(`${EVOLUTION_URL}/instance/create`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          instanceName,
+          integration: "WHATSAPP-BAILEYS",
+          qrcode: true,
+          webhook: {
+            url: webhookUrl,
+            byEvents: true,
+            webhookBase64: false,
+            events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE", "QRCODE_UPDATED"],
+          },
+        }),
+      });
+
+      const createText = await createRes.text();
+      console.log("Recreate response:", createText);
+      
+      let createData: any;
+      try { createData = JSON.parse(createText); } catch { createData = {}; }
+
+      // Update config
+      await upsertConfig(adminClient, profile.org_id, instanceName);
+
+      // QR may not be available immediately - poll connect endpoint
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await new Promise(r => setTimeout(r, 2000));
+        console.log(`QR poll attempt ${attempt + 1}...`);
+        
+        const connectRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+          headers: evoHeaders,
+        });
+        const connectText = await connectRes.text();
+        console.log(`Connect attempt ${attempt + 1}:`, connectText.substring(0, 200));
+        
+        let connectData: any;
+        try { connectData = JSON.parse(connectText); } catch { connectData = {}; }
+        
+        const qr = connectData.base64 || connectData.qrcode?.base64 || connectData.code || null;
+        
+        if (qr) {
+          console.log("QR found on attempt", attempt + 1);
+          return json({ success: true, qr_code: qr, status: "qr_ready" });
+        }
+        
+        // Check if qrcode object has pairingCode
+        if (connectData.pairingCode) {
+          return json({ success: true, qr_code: null, pairing_code: connectData.pairingCode, status: "pairing" });
+        }
+      }
+      
       return json({
         success: true,
-        qr_code: data.base64 || data.qrcode?.base64 || null,
-        status: data.instance?.state || "unknown",
+        qr_code: null,
+        status: "qr_timeout",
+        message: "لم يتم توليد QR بعد. حاول مرة أخرى بعد ثوانٍ."
       });
     }
 

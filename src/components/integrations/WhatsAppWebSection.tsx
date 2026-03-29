@@ -92,24 +92,46 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     const iName = name || instanceName;
     if (!iName) return;
 
-    try {
-      const { data, error } = await supabase.functions.invoke("evolution-manage", {
-        body: { action: "connect", instance_name: iName },
-      });
+    setInstanceStatus("connecting");
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    const tryFetch = async (): Promise<boolean> => {
+      attempts++;
+      try {
+        const { data, error } = await supabase.functions.invoke("evolution-manage", {
+          body: { action: "connect", instance_name: iName },
+        });
 
-      if (data?.qr_code) {
-        setQrCode(`data:image/png;base64,${data.qr_code}`);
-        setInstanceStatus("qr_pending");
-        startPolling(iName);
-      } else if (data?.status === "open") {
-        setInstanceStatus("connected");
-        setQrCode(null);
-        toast.success("✅ الرقم متصل بالفعل");
-        loadExistingConfig();
+        if (data?.qr_code) {
+          setQrCode(`data:image/png;base64,${data.qr_code}`);
+          setInstanceStatus("qr_pending");
+          startPolling(iName);
+          return true;
+        } else if (data?.status === "open") {
+          setInstanceStatus("connected");
+          setQrCode(null);
+          toast.success("✅ الرقم متصل بالفعل");
+          loadExistingConfig();
+          return true;
+        } else if (data?.status === "qr_timeout" && attempts < maxAttempts) {
+          toast.info(`محاولة ${attempts}/${maxAttempts} — جاري توليد QR...`);
+          return false;
+        }
+      } catch {
+        // continue
       }
-    } catch {
-      toast.error("فشل جلب رمز QR");
+      return false;
+    };
+
+    for (let i = 0; i < maxAttempts; i++) {
+      const success = await tryFetch();
+      if (success) return;
+      if (i < maxAttempts - 1) await new Promise(r => setTimeout(r, 3000));
     }
+
+    setInstanceStatus("disconnected");
+    toast.error("⚠️ لم يتم توليد QR — تأكد أن سيرفر Evolution يعمل بشكل صحيح وأن الاتصال بسيرفرات واتساب متاح");
   };
 
   const startPolling = (name: string) => {
@@ -328,6 +350,15 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
                   إلغاء
                 </Button>
               </div>
+            </div>
+          )}
+
+          {/* ═══ CONNECTING STATE ═══ */}
+          {instanceStatus === "connecting" && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 text-center space-y-3">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+              <p className="text-sm font-bold">جاري توليد رمز QR...</p>
+              <p className="text-[11px] text-muted-foreground">يتم إعادة إنشاء الجلسة والاتصال بسيرفرات واتساب</p>
             </div>
           )}
 
