@@ -90,19 +90,50 @@ const IntegrationsPage = () => {
     FB.login(
       (response: any) => {
         if (response.authResponse) {
+          const code = response.authResponse.code;
           const token = response.authResponse.accessToken;
-          if (token) handleDirectToken(token);
-          else { setIsLoading(false); toast.error("لم يتم الحصول على بيانات المصادقة"); }
+          if (code) {
+            // Exchange authorization code for token via edge function
+            handleCodeExchange(code);
+          } else if (token) {
+            handleDirectToken(token);
+          } else {
+            setIsLoading(false);
+            toast.error("لم يتم الحصول على بيانات المصادقة");
+          }
         } else { setIsLoading(false); toast.error("تم إلغاء عملية الربط"); }
       },
       {
         config_id: "913936624804564",
-        response_type: "token",
+        response_type: "code",
         override_default_response_type: true,
         scope: "whatsapp_business_management,whatsapp_business_messaging",
       }
     );
   }, []);
+
+  const handleCodeExchange = async (code: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", {
+        body: { code, redirect_uri: window.location.origin },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error || "فشل في تبادل الرمز");
+        setIsLoading(false);
+        return;
+      }
+      const token = data.access_token;
+      if (token) {
+        handleDirectToken(token);
+      } else {
+        toast.error("لم يتم الحصول على التوكن");
+        setIsLoading(false);
+      }
+    } catch {
+      toast.error("حدث خطأ في تبادل الرمز");
+      setIsLoading(false);
+    }
+  };
 
   const handleDirectToken = async (token: string) => {
     try {
