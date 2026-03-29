@@ -40,6 +40,9 @@ interface WhatsAppConfig {
   is_connected: boolean | null;
   webhook_verify_token: string;
   org_id: string | null;
+  registration_status: string | null;
+  registration_error: string | null;
+  registered_at: string | null;
 }
 
 type FlowStep = "idle" | "connecting" | "pick_phone" | "success" | "error";
@@ -197,6 +200,12 @@ const IntegrationsPage = () => {
     if (error || data?.error) { handleError(data?.error || "فشل في إكمال الربط"); return false; }
     if (!data?.selected_phone || !data?.saved_config) { handleError("تعذر تسجيل الرقم"); return false; }
 
+    // Check registration result
+    if (data.registration && !data.registration.success) {
+      const regError = data.registration.error || "فشل تسجيل الرقم في WhatsApp Cloud API";
+      toast.error(`تحذير: تم حفظ البيانات لكن فشل التسجيل: ${regError}`);
+    }
+
     await loadConfigs();
     return true;
   };
@@ -227,6 +236,32 @@ const IntegrationsPage = () => {
     await supabase.from("whatsapp_config").delete().eq("id", configId);
     toast.success("تم فصل الرقم");
     loadConfigs();
+  };
+
+  const retryRegister = async (config: WhatsAppConfig) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", {
+        body: {
+          access_token: config.access_token,
+          phone_number_id: config.phone_number_id,
+          waba_id: config.business_account_id,
+          org_id: config.org_id,
+          auto_register: true,
+        },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error || "فشل إعادة التسجيل");
+      } else if (data?.registration?.success) {
+        toast.success("✅ تم تسجيل الرقم بنجاح!");
+      } else {
+        toast.error(`فشل التسجيل: ${data?.registration?.error || "خطأ غير معروف"}`);
+      }
+      await loadConfigs();
+    } catch {
+      toast.error("حدث خطأ");
+    }
+    setIsLoading(false);
   };
 
   const sendTestMessage = async () => {
@@ -505,28 +540,47 @@ const IntegrationsPage = () => {
           {configs.map((config) => (
             <div key={config.id} className="bg-card rounded-xl shadow-card p-4 border border-border hover:shadow-card-hover transition-shadow">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Phone className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-sm" dir="ltr">{config.display_phone || config.phone_number_id}</p>
-                      <Badge className="bg-success/10 text-success border-0 text-[10px] gap-0.5">
-                        <CheckCircle2 className="w-2.5 h-2.5" /> متصل
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{config.business_name || "واتساب للأعمال"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setExpandedId(expandedId === config.id ? null : config.id)}>
-                    التفاصيل
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive h-8 w-8 p-0" onClick={() => handleDisconnect(config.id)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                 <div className="flex items-center gap-3">
+                   <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+                     <Phone className="w-5 h-5 text-primary" />
+                   </div>
+                   <div>
+                     <div className="flex items-center gap-2">
+                       <p className="font-semibold text-sm" dir="ltr">{config.display_phone || config.phone_number_id}</p>
+                       {config.registration_status === "connected" ? (
+                         <Badge className="bg-success/10 text-success border-0 text-[10px] gap-0.5">
+                           <CheckCircle2 className="w-2.5 h-2.5" /> متصل
+                         </Badge>
+                       ) : config.registration_status === "failed" ? (
+                         <Badge className="bg-destructive/10 text-destructive border-0 text-[10px] gap-0.5">
+                           <AlertTriangle className="w-2.5 h-2.5" /> فشل التسجيل
+                         </Badge>
+                       ) : config.registration_status === "registering" ? (
+                         <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-0.5">
+                           <Loader2 className="w-2.5 h-2.5 animate-spin" /> جاري التسجيل
+                         </Badge>
+                       ) : (
+                         <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-0.5">
+                           <AlertTriangle className="w-2.5 h-2.5" /> معلّق
+                         </Badge>
+                       )}
+                     </div>
+                     <p className="text-xs text-muted-foreground">{config.business_name || "واتساب للأعمال"}</p>
+                   </div>
+                 </div>
+                 <div className="flex items-center gap-1">
+                   {(config.registration_status === "failed" || config.registration_status === "pending" || !config.registration_status) && (
+                     <Button variant="outline" size="sm" className="text-xs h-8 gap-1 text-primary" onClick={() => retryRegister(config)} disabled={isLoading}>
+                       <RefreshCw className="w-3 h-3" /> إعادة التسجيل
+                     </Button>
+                   )}
+                   <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setExpandedId(expandedId === config.id ? null : config.id)}>
+                     التفاصيل
+                   </Button>
+                   <Button variant="ghost" size="sm" className="text-destructive h-8 w-8 p-0" onClick={() => handleDisconnect(config.id)}>
+                     <Trash2 className="w-3.5 h-3.5" />
+                   </Button>
+                 </div>
               </div>
 
               {/* Expanded */}
@@ -563,6 +617,23 @@ const IntegrationsPage = () => {
                         </div>
                       </div>
                     </>
+                  )}
+                  {/* Registration error */}
+                  {config.registration_status === "failed" && config.registration_error && (
+                    <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-semibold text-destructive">سبب فشل التسجيل</p>
+                          <p className="text-[11px] text-muted-foreground mt-1" dir="ltr">{config.registration_error}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {config.registered_at && (
+                    <div className="text-[10px] text-muted-foreground">
+                      آخر تسجيل ناجح: {new Date(config.registered_at).toLocaleString("ar-SA")}
+                    </div>
                   )}
                 </div>
               )}

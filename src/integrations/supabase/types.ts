@@ -1295,8 +1295,12 @@ export type Database = {
           display_phone: string | null
           id: string
           is_connected: boolean | null
+          last_register_attempt_at: string | null
           org_id: string | null
           phone_number_id: string
+          registered_at: string | null
+          registration_error: string | null
+          registration_status: string | null
           token_expires_at: string | null
           token_last_refreshed_at: string | null
           token_refresh_error: string | null
@@ -1311,8 +1315,12 @@ export type Database = {
           display_phone?: string | null
           id?: string
           is_connected?: boolean | null
+          last_register_attempt_at?: string | null
           org_id?: string | null
           phone_number_id: string
+          registered_at?: string | null
+          registration_error?: string | null
+          registration_status?: string | null
           token_expires_at?: string | null
           token_last_refreshed_at?: string | null
           token_refresh_error?: string | null
@@ -1327,8 +1335,12 @@ export type Database = {
           display_phone?: string | null
           id?: string
           is_connected?: boolean | null
+          last_register_attempt_at?: string | null
           org_id?: string | null
           phone_number_id?: string
+          registered_at?: string | null
+          registration_error?: string | null
+          registration_status?: string | null
           token_expires_at?: string | null
           token_last_refreshed_at?: string | null
           token_refresh_error?: string | null
