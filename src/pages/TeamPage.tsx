@@ -11,11 +11,20 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 
 const roleConfig: Record<string, { label: string; className: string }> = {
   admin: { label: "مدير", className: "bg-kpi-3/10 text-kpi-3" },
   supervisor: { label: "مشرف", className: "bg-warning/10 text-warning" },
   member: { label: "موظف", className: "bg-info/10 text-info" },
+};
+
+const strategyConfig: Record<string, { label: string; icon: typeof Zap; description: string; color: string }> = {
+  manual: { label: "يدوي", icon: Hand, description: "المدير يسند يدوياً", color: "text-muted-foreground" },
+  round_robin: { label: "بالدور", icon: RotateCcw, description: "توزيع بالتناوب", color: "text-primary" },
+  least_busy: { label: "الأقل ضغطاً", icon: Scale, description: "الأقل محادثات مفتوحة", color: "text-success" },
+  skill_based: { label: "حسب المهارة", icon: Target, description: "بناءً على كلمات مفتاحية", color: "text-warning" },
 };
 
 const TeamPage = () => {
