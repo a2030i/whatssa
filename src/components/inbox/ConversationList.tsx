@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Conversation } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
@@ -47,11 +47,16 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
     unread: conversations.filter(c => c.unread > 0).length,
     waiting: conversations.filter(c => c.status === "waiting").length,
     closed: conversations.filter(c => c.status === "closed").length,
+    private: conversations.filter(c => !c.conversationType || c.conversationType === "private").length,
+    group: conversations.filter(c => c.conversationType === "group").length,
+    broadcast: conversations.filter(c => c.conversationType === "broadcast").length,
   }), [conversations]);
 
   const quickFilters: QuickFilter[] = [
     { id: "all", label: "جميع المحادثات", icon: MessageSquare, count: counts.all },
-    { id: "active", label: "محادثاتي", icon: User, count: counts.active },
+    { id: "private", label: "خاصة", icon: User, count: counts.private },
+    { id: "group", label: "قروبات", icon: Users, count: counts.group },
+    { id: "broadcast", label: "بث", icon: Radio, count: counts.broadcast },
     { id: "unassigned", label: "غير المعينة", icon: UserX, count: counts.unassigned },
     { id: "unread", label: "غير المقروءة", icon: Eye, count: counts.unread },
     { id: "waiting", label: "في انتظار رد العميل", icon: Clock, count: counts.waiting },
@@ -65,6 +70,9 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
       // Quick filter
       switch (activeQuickFilter) {
         case "active": if (conv.status !== "active") return false; break;
+        case "private": if (conv.conversationType && conv.conversationType !== "private") return false; break;
+        case "group": if (conv.conversationType !== "group") return false; break;
+        case "broadcast": if (conv.conversationType !== "broadcast") return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
         case "unread": if (conv.unread <= 0) return false; break;
         case "waiting": if (conv.status !== "waiting") return false; break;
@@ -208,6 +216,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
                   <div className="flex items-center gap-1.5 mt-1.5">
+                    {conv.conversationType && conv.conversationType !== "private" && (
+                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 border-0",
+                        conv.conversationType === "group" ? "bg-blue-500/10 text-blue-600" : "bg-orange-500/10 text-orange-600"
+                      )}>
+                        {conv.conversationType === "group" ? "قروب" : "بث"}
+                      </Badge>
+                    )}
                     <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 border-0", statusColors[conv.status])}>
                       {statusLabels[conv.status]}
                     </Badge>

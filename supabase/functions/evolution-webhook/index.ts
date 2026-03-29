@@ -79,14 +79,19 @@ serve(async (req) => {
         // Skip outgoing messages (fromMe)
         if (key.fromMe) continue;
 
-        const remoteJid = key.remoteJid || "";
-        // Skip group messages — only handle private chats (@s.whatsapp.net)
-        if (remoteJid.endsWith("@g.us") || remoteJid.endsWith("@broadcast")) {
-          console.log(`Skipping group/broadcast message from: ${remoteJid}`);
-          continue;
+      const remoteJid = key.remoteJid || "";
+        // Determine conversation type from JID
+        let conversationType = "private";
+        let phone = "";
+        if (remoteJid.endsWith("@g.us")) {
+          conversationType = "group";
+          phone = remoteJid.replace("@g.us", "");
+        } else if (remoteJid.endsWith("@broadcast")) {
+          conversationType = "broadcast";
+          phone = remoteJid.replace("@broadcast", "");
+        } else {
+          phone = remoteJid.replace("@s.whatsapp.net", "");
         }
-        // Extract phone number from JID (e.g., "966535195202@s.whatsapp.net")
-        const phone = remoteJid.replace("@s.whatsapp.net", "");
         if (!phone || phone.includes("status")) continue;
 
         // Get message text
@@ -120,13 +125,16 @@ serve(async (req) => {
           .select("id")
           .eq("customer_phone", phone)
           .eq("org_id", config.org_id)
+          .eq("conversation_type", conversationType)
           .neq("status", "closed")
           .limit(1)
           .maybeSingle();
 
         if (!conversation) {
-          // Get push name for customer name
-          const pushName = msg.pushName || phone;
+          // Get push name / group subject for conversation name
+          const pushName = conversationType === "group"
+            ? (body.data?.subject || msg.pushName || `قروب ${phone}`)
+            : (msg.pushName || phone);
 
           const { data: newConv } = await supabase
             .from("conversations")
@@ -135,6 +143,7 @@ serve(async (req) => {
               customer_name: pushName,
               org_id: config.org_id,
               status: "active",
+              conversation_type: conversationType,
               last_message: text || `[${messageType}]`,
               last_message_at: new Date().toISOString(),
             })
