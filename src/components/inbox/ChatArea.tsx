@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Conversation, Message, quickReplies, agents, messageTemplates, MessageTemplate } from "@/data/mockData";
+import { Conversation, Message, quickReplies, agents } from "@/data/mockData";
+import type { WhatsAppTemplate } from "@/types/whatsapp";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -17,9 +18,10 @@ const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", 
 interface ChatAreaProps {
   conversation: Conversation;
   messages: Message[];
+  templates: WhatsAppTemplate[];
   onBack: () => void;
   onSendMessage: (convId: string, text: string, type?: "text" | "note") => void;
-  onSendTemplate: (convId: string, template: MessageTemplate, variables: string[]) => void;
+  onSendTemplate: (convId: string, template: WhatsAppTemplate, variables: string[]) => void;
   onStatusChange: (convId: string, status: "active" | "waiting" | "closed") => void;
   onTransfer: (convId: string, agent: string) => void;
 }
@@ -38,11 +40,11 @@ const isWindowExpired = (lastCustomerMessageAt?: string): boolean => {
   return diff > 24 * 60 * 60 * 1000;
 };
 
-const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer }: ChatAreaProps) => {
+const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer }: ChatAreaProps) => {
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null);
   const [templateVars, setTemplateVars] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isNoteMode, setIsNoteMode] = useState(false);
@@ -57,8 +59,8 @@ const ChatArea = ({ conversation, messages, onBack, onSendMessage, onSendTemplat
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const windowExpired = isWindowExpired(conversation.lastCustomerMessageAt);
-  const approvedTemplates = messageTemplates.filter((t) => t.status === "approved");
-  const filteredMentionAgents = agents.filter((a) => a.name.includes(mentionFilter));
+  const approvedTemplates = templates.filter((template) => template.status === "approved");
+  const filteredMentionAgents = agents.filter((agent) => agent.name.includes(mentionFilter));
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

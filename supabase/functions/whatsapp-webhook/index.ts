@@ -13,19 +13,17 @@ serve(async (req) => {
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
   const url = new URL(req.url);
 
-  // GET = Webhook verification from Meta
   if (req.method === "GET") {
     const mode = url.searchParams.get("hub.mode");
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
 
     if (mode === "subscribe" && token) {
-      // Multi-tenant: find any config matching this verify token
       const { data: config } = await supabase
         .from("whatsapp_config")
         .select("webhook_verify_token")
@@ -34,7 +32,6 @@ serve(async (req) => {
         .maybeSingle();
 
       if (config) {
-        console.log("Webhook verified successfully");
         return new Response(challenge, { status: 200 });
       }
     }
@@ -42,12 +39,9 @@ serve(async (req) => {
     return new Response("Forbidden", { status: 403 });
   }
 
-  // POST = Incoming messages from Meta
   if (req.method === "POST") {
     try {
       const body = await req.json();
-      console.log("Webhook received:", JSON.stringify(body).substring(0, 500));
-
       const entry = body?.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;
@@ -59,7 +53,6 @@ serve(async (req) => {
         });
       }
 
-      // Multi-tenant: resolve org from phone_number_id in metadata
       const metadataPhoneId = value.metadata?.phone_number_id;
       let orgId: string | null = null;
 
@@ -75,21 +68,17 @@ serve(async (req) => {
       }
 
       if (!orgId) {
-        console.warn("No org found for phone_number_id:", metadataPhoneId);
-        // Still return 200 to Meta
         return new Response(JSON.stringify({ status: "no org matched" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Handle incoming messages
       if (value.messages && value.messages.length > 0) {
-        for (const message of value.messages) {
-          const customerPhone = message.from;
+        for (const incomingMessage of value.messages) {
+          const customerPhone = incomingMessage.from;
           const contactName = value.contacts?.[0]?.profile?.name || customerPhone;
 
-          // Find or create conversation scoped to org
           let { data: conversation } = await supabase
             .from("conversations")
             .select("id, unread_count")
@@ -99,10 +88,10 @@ serve(async (req) => {
             .limit(1)
             .maybeSingle();
 
-          const messageContent = message.text?.body || `[${message.type}]`;
+          const messageContent = incomingMessage.text?.body || `[${incomingMessage.type}]`;
 
           if (!conversation) {
-            const { data: newConv } = await supabase
+            const { data: newConversation } = await supabase
               .from("conversations")
               .insert({
                 customer_phone: customerPhone,
@@ -114,24 +103,21 @@ serve(async (req) => {
               })
               .select("id, unread_count")
               .single();
-            conversation = newConv;
 
-            // Auto-assign new conversation
+            conversation = newConversation;
+
             if (conversation) {
               try {
-                await fetch(
-                  `${Deno.env.get("SUPABASE_URL")}/functions/v1/auto-assign`,
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-                    },
-                    body: JSON.stringify({ conversation_id: conversation.id, org_id: orgId }),
-                  }
-                );
-              } catch (e) {
-                console.error("Auto-assign failed:", e);
+                await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/auto-assign`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                  },
+                  body: JSON.stringify({ conversation_id: conversation.id, org_id: orgId }),
+                });
+              } catch (error) {
+                console.error("Auto-assign failed:", error);
               }
             }
           } else {
@@ -147,41 +133,101 @@ serve(async (req) => {
               .eq("id", conversation.id);
           }
 
-          if (conversation) {
-            let content = "";
-            let messageType = message.type || "text";
-            let mediaUrl = null;
+          if (!conversation) continue;
 
-            if (message.type === "text") {
-              content = message.text.body;
-            } else if (["image", "audio", "video", "document"].includes(message.type)) {
-              content = message[message.type]?.caption || `[${message.type}]`;
-              mediaUrl = message[message.type]?.id;
-              messageType = message.type;
-            } else {
-              content = `[${message.type}]`;
+          let content = "";
+          let messageType = incomingMessage.type || "text";
+          let mediaUrl = null;
+
+          if (incomingMessage.type === "text") {
+            content = incomingMessage.text.body;
+          } else if (["image", "audio", "video", "document"].includes(incomingMessage.type)) {
+            content = incomingMessage[incomingMessage.type]?.caption || `[${incomingMessage.type}]`;
+            mediaUrl = incomingMessage[incomingMessage.type]?.id;
+          } else {
+            content = `[${incomingMessage.type}]`;
+          }
+
+          await supabase.from("messages").insert({
+            conversation_id: conversation.id,
+            wa_message_id: incomingMessage.id,
+            sender: "customer",
+            message_type: messageType,
+            content,
+            media_url: mediaUrl,
+            status: "delivered",
+          });
+
+          if (incomingMessage.type === "text") {
+            const normalizedContent = content.trim().toLowerCase();
+            const { data: rules } = await supabase
+              .from("automation_rules")
+              .select("id, name, keywords, reply_text")
+              .eq("org_id", orgId)
+              .eq("enabled", true)
+              .order("created_at", { ascending: true });
+
+            const matchedRule = (rules || []).find((rule: any) =>
+              Array.isArray(rule.keywords) &&
+              rule.keywords.some((keyword: string) => keyword?.trim() && normalizedContent.includes(keyword.trim().toLowerCase())),
+            );
+
+            if (matchedRule) {
+              const { data: config } = await supabase
+                .from("whatsapp_config")
+                .select("phone_number_id, access_token")
+                .eq("org_id", orgId)
+                .eq("is_connected", true)
+                .order("created_at", { ascending: true })
+                .limit(1)
+                .maybeSingle();
+
+              if (config) {
+                const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${config.access_token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    messaging_product: "whatsapp",
+                    to: customerPhone,
+                    type: "text",
+                    text: { body: matchedRule.reply_text },
+                  }),
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                  await supabase.from("messages").insert({
+                    conversation_id: conversation.id,
+                    wa_message_id: result.messages?.[0]?.id || null,
+                    sender: "agent",
+                    message_type: "text",
+                    content: matchedRule.reply_text,
+                    status: "sent",
+                  });
+
+                  await supabase
+                    .from("conversations")
+                    .update({
+                      last_message: matchedRule.reply_text,
+                      last_message_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", conversation.id);
+                } else {
+                  console.error("Automation send failed:", result);
+                }
+              }
             }
-
-            await supabase.from("messages").insert({
-              conversation_id: conversation.id,
-              wa_message_id: message.id,
-              sender: "customer",
-              message_type: messageType,
-              content,
-              media_url: mediaUrl,
-              status: "delivered",
-            });
           }
         }
       }
 
-      // Handle status updates
       if (value.statuses && value.statuses.length > 0) {
         for (const status of value.statuses) {
-          await supabase
-            .from("messages")
-            .update({ status: status.status })
-            .eq("wa_message_id", status.id);
+          await supabase.from("messages").update({ status: status.status }).eq("wa_message_id", status.id);
         }
       }
 
@@ -189,10 +235,10 @@ serve(async (req) => {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    } catch (err) {
-      console.error("Webhook error:", err);
+    } catch (error) {
+      console.error("Webhook error:", error);
       return new Response(JSON.stringify({ error: "Internal error" }), {
-        status: 200, // Always 200 to Meta
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
