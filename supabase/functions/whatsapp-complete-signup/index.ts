@@ -17,7 +17,30 @@ function log(step: string, detail: unknown) {
   console.log(`[whatsapp-complete-signup] [${step}]`, JSON.stringify(detail));
 }
 
-async function registerPhone(phoneId: string, accessToken: string, retries = 2): Promise<{ success: boolean; data?: any; error?: string }> {
+/** Check if the phone number is already registered by requesting its status */
+async function checkPhoneStatus(phoneId: string, accessToken: string): Promise<{ registered: boolean; status?: string; error?: string }> {
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${phoneId}?fields=id,display_phone_number,verified_name,code_verification_status,account_mode`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const data = await res.json();
+    log("check_phone_status", { status: res.status, data });
+
+    if (!res.ok) {
+      return { registered: false, error: data?.error?.message };
+    }
+
+    // If verified_name exists and code_verification_status is VERIFIED, the phone is registered
+    const isRegistered = !!(data.verified_name && data.id);
+    return { registered: isRegistered, status: data.code_verification_status || "unknown" };
+  } catch (err: any) {
+    log("check_phone_status_error", { error: err.message });
+    return { registered: false, error: err.message };
+  }
+}
+
+async function registerPhone(phoneId: string, accessToken: string, retries = 2): Promise<{ success: boolean; data?: any; error?: string; details?: string }> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     log("register", { attempt, phoneId });
     try {
@@ -40,17 +63,17 @@ async function registerPhone(phoneId: string, accessToken: string, retries = 2):
       }
 
       const errMsg = data?.error?.message || JSON.stringify(data);
+      const errDetails = data?.error?.error_data?.details || "";
 
-      // If it's a non-retryable error, stop
+      // Non-retryable errors
       if (res.status === 400 || res.status === 403) {
-        return { success: false, error: errMsg };
+        return { success: false, error: errMsg, details: errDetails };
       }
 
-      // Retryable — wait before next attempt
       if (attempt < retries) {
         await new Promise((r) => setTimeout(r, 2000 * attempt));
       } else {
-        return { success: false, error: errMsg };
+        return { success: false, error: errMsg, details: errDetails };
       }
     } catch (err: any) {
       log("register_error", { attempt, error: err.message });
@@ -149,7 +172,7 @@ serve(async (req) => {
 
     // ── Step 3: Save config ──
     let savedConfig = null;
-    let registrationResult: { success: boolean; error?: string } = { success: false, error: "Not attempted" };
+    let registrationResult: { success: boolean; error?: string; skipped?: boolean; details?: string } = { success: false, error: "Not attempted" };
 
     if (selectedPhone && org_id) {
       const wabaId = selectedPhone.waba_id;
@@ -165,16 +188,23 @@ serve(async (req) => {
         .eq("org_id", org_id)
         .maybeSingle();
 
+      // ── Step 3.5: Check if phone is already registered ──
+      const phoneStatus = await checkPhoneStatus(phoneId, accessToken);
+      log("step3_phone_check", phoneStatus);
+
+      const alreadyRegistered = phoneStatus.registered;
+
       const configPayload = {
         phone_number_id: phoneId,
         business_account_id: wabaId,
         access_token: accessToken,
         display_phone: displayPhone,
         business_name: businessName,
-        is_connected: false, // Will be set to true after successful register
-        registration_status: "registering",
+        is_connected: alreadyRegistered,
+        registration_status: alreadyRegistered ? "connected" : "registering",
         registration_error: null,
         last_register_attempt_at: new Date().toISOString(),
+        ...(alreadyRegistered ? { registered_at: new Date().toISOString() } : {}),
       };
 
       if (existingConfig) {
@@ -188,8 +218,8 @@ serve(async (req) => {
         savedConfig = newConfig;
       }
 
-      // ── Step 4: Register phone number ──
-      if (auto_register) {
+      // ── Step 4: Register phone number (only if not already registered) ──
+      if (auto_register && !alreadyRegistered) {
         registrationResult = await registerPhone(phoneId, accessToken, 3);
 
         const configId = savedConfig?.id || existingConfig?.id;
@@ -203,13 +233,18 @@ serve(async (req) => {
             registered_at: new Date().toISOString(),
           }).eq("id", configId);
         } else {
-          log("step4_register_failed", { phoneId, error: registrationResult.error });
+          // Store the detailed error for better user messaging
+          const detailedError = registrationResult.details || registrationResult.error || "Unknown error";
+          log("step4_register_failed", { phoneId, error: detailedError });
           await supabase.from("whatsapp_config").update({
             is_connected: false,
             registration_status: "failed",
-            registration_error: registrationResult.error || "Unknown error",
+            registration_error: detailedError,
           }).eq("id", configId);
         }
+      } else if (alreadyRegistered) {
+        log("step4_skipped", { phoneId, reason: "already_registered" });
+        registrationResult = { success: true, skipped: true };
       }
 
       // ── Step 5: Subscribe app to WABA webhooks ──
