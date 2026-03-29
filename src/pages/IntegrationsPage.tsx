@@ -192,14 +192,16 @@ const IntegrationsPage = () => {
 
   const friendlyError = (raw: string): string => {
     const lower = raw.toLowerCase();
+    if (lower.includes("unverified waba") || lower.includes("not verified"))
+      return "حساب واتساب بزنس (WABA) غير موثّق. يجب توثيق حسابك من خلال Meta Business Suite أولاً. زر صفحة Business Support Home على فيسبوك لحل المشكلة.";
+    if (lower.includes("already") && lower.includes("registered"))
+      return "الرقم مسجّل بالفعل وجاهز للاستخدام! لا تحتاج إعادة تسجيل.";
     if (lower.includes("#100") || lower.includes("invalid parameter"))
-      return "فشل تسجيل الرقم. قد يكون السبب: تفعيل التحقق بخطوتين برمز PIN مختلف، أو أن الرقم مسجّل مسبقاً. جرّب إزالة التحقق بخطوتين من إعدادات واتساب ثم أعد المحاولة.";
+      return "فشل تسجيل الرقم. السبب المحتمل: حساب واتساب بزنس غير موثّق أو الرقم يحتاج إعداد إضافي في Meta Business Suite.";
     if (lower.includes("#10") || lower.includes("permission"))
       return "لا توجد صلاحيات كافية. تأكد من منح جميع الأذونات المطلوبة أثناء تسجيل الدخول.";
     if (lower.includes("rate limit") || lower.includes("too many"))
       return "تم إرسال طلبات كثيرة. انتظر بضع دقائق ثم أعد المحاولة.";
-    if (lower.includes("already registered") || lower.includes("already been registered"))
-      return "الرقم مسجّل بالفعل! لا تحتاج إعادة التسجيل — يمكنك استخدامه مباشرة.";
     if (lower.includes("token") || lower.includes("expired") || lower.includes("session"))
       return "انتهت صلاحية الجلسة. أعد ربط الرقم من جديد.";
     if (lower.includes("phone number") && lower.includes("not found"))
