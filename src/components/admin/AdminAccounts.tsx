@@ -226,7 +226,12 @@ const AdminAccounts = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-sm">{org.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{org.id.slice(0, 12)}... · {members.length} عضو · رصيد: {wallet?.balance || 0} ر.س</p>
+                     <p className="text-[10px] text-muted-foreground">
+                       {org.id.slice(0, 12)}... · {members.length} عضو · رصيد: {wallet?.balance || 0} ر.س
+                       {waConfigs.filter((w) => w.org_id === org.id).length > 0 && (
+                         <> · <Smartphone className="w-3 h-3 inline" /> {waConfigs.filter((w) => w.org_id === org.id).length} رقم</>
+                       )}
+                     </p>
                     <div className="flex items-center gap-3 mt-0.5">
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                         <Clock className="w-3 h-3" /> آخر دخول: {timeAgo(lastLogin)}
