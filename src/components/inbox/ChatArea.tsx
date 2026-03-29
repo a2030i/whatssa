@@ -55,8 +55,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [recordingTime, setRecordingTime] = useState(0);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showClosureReason, setShowClosureReason] = useState(false);
+  const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const windowExpired = isWindowExpired(conversation.lastCustomerMessageAt);
