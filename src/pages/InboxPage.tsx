@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { MessageSquare } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Conversation, Message } from "@/data/mockData";
 import { supabase } from "@/integrations/supabase/client";
 import ConversationList from "@/components/inbox/ConversationList";
@@ -28,7 +29,7 @@ const InboxPage = () => {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isMobile = window.innerWidth < 768;
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const loadTemplates = async () => {

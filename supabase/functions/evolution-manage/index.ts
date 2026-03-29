@@ -81,6 +81,8 @@ serve(async (req) => {
 
       if (!createRes.ok && !createData?.instance) {
         if (createData?.message?.includes?.("already") || createData?.error?.includes?.("already")) {
+          // Re-set webhook for existing instance
+          await setWebhook(EVOLUTION_URL, evoHeaders, instanceName, webhookUrl);
           const connectRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
             headers: evoHeaders,
           });
@@ -96,6 +98,9 @@ serve(async (req) => {
         }
         return json({ error: createData?.message || "فشل إنشاء الجلسة" }, 400);
       }
+
+      // Explicitly set webhook after creation (v2.3.7 sometimes ignores inline webhook config)
+      await setWebhook(EVOLUTION_URL, evoHeaders, instanceName, webhookUrl);
 
       await upsertConfig(adminClient, profile.org_id, instanceName);
 
@@ -213,6 +218,30 @@ serve(async (req) => {
     return json({ error: err.message }, 500);
   }
 });
+
+async function setWebhook(evolutionUrl: string, headers: Record<string, string>, instanceName: string, webhookUrl: string) {
+  try {
+    const res = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        url: webhookUrl,
+        webhook_by_events: true,
+        webhook_base64: false,
+        events: [
+          "MESSAGES_UPSERT",
+          "CONNECTION_UPDATE",
+          "QRCODE_UPDATED",
+          "MESSAGES_UPDATE",
+        ],
+      }),
+    });
+    const data = await res.json();
+    console.log("Webhook set response:", JSON.stringify(data).substring(0, 300));
+  } catch (e) {
+    console.error("Failed to set webhook:", e);
+  }
+}
 
 async function upsertConfig(adminClient: any, orgId: string, instanceName: string) {
   // Check if config exists
