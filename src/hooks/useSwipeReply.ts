@@ -42,6 +42,12 @@ export function useSwipeReply({ onSwipe, direction = "right", threshold = 60 }: 
     currentX.current = diff;
     isSwiping.current = absDiff > 10;
 
+    // Vibrate once when crossing threshold
+    if (absDiff >= threshold && !didVibrate.current) {
+      didVibrate.current = true;
+      vibrate();
+    }
+
     if (elRef.current && isSwiping.current) {
       elRef.current.style.transform = `translateX(${direction === "right" ? dampened : -dampened}px)`;
       elRef.current.style.transition = "none";
