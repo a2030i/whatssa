@@ -180,6 +180,15 @@ serve(async (req) => {
 
         if (!conversation) continue;
 
+        if (messageType !== "text") {
+          mediaUrl = await uploadMediaFromEvolution({
+            instanceName,
+            key,
+            conversationId: conversation.id,
+            messageType,
+          });
+        }
+
         // Insert message with sender info for groups
         const content = text || `[${messageType}]`;
         const senderName = msg.pushName || "";
