@@ -20,6 +20,8 @@ const AdminAccounts = () => {
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [newAccount, setNewAccount] = useState({ email: "", password: "", full_name: "", org_name: "" });
   const navigate = useNavigate();
 
@@ -100,8 +102,32 @@ const AdminAccounts = () => {
     }
   };
 
+  const archiveOrg = async (orgId: string) => {
+    await supabase.from("organizations").update({ is_active: false, subscription_status: "cancelled" }).eq("id", orgId);
+    toast.success("تم أرشفة الحساب");
+    load();
+  };
+
+  const deleteOrg = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-delete-org", {
+        body: { org_id: deleteTarget.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("تم حذف الحساب نهائياً");
+      setDeleteTarget(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "فشل الحذف");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const impersonateOrg = (orgId: string) => {
-    // Store impersonation in sessionStorage and navigate to client dashboard
     sessionStorage.setItem("impersonate_org_id", orgId);
     const org = orgs.find(o => o.id === orgId);
     toast.success(`دخول كعميل: ${org?.name || orgId.slice(0, 8)}`);
