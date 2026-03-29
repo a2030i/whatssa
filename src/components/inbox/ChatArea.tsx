@@ -21,7 +21,7 @@ interface ChatAreaProps {
   messages: Message[];
   templates: WhatsAppTemplate[];
   onBack: () => void;
-  onSendMessage: (convId: string, text: string, type?: "text" | "note") => void;
+  onSendMessage: (convId: string, text: string, type?: "text" | "note", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }) => void;
   onSendTemplate: (convId: string, template: WhatsAppTemplate, variables: string[]) => void;
   onStatusChange: (convId: string, status: "active" | "waiting" | "closed") => void;
   onTransfer: (convId: string, agent: string) => void;
@@ -64,6 +64,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showClosureReason, setShowClosureReason] = useState(false);
   const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -97,9 +98,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     onSendMessage(conversation.id, inputText.trim());
     setInputText("");
+    setReplyTo(null);
     setIsTyping(true);
     setTimeout(() => setIsTyping(false), 2000);
   };
+
+  const handleReply = (msg: Message) => {
+    setReplyTo(msg);
+    setIsNoteMode(false);
+    inputRef.current?.focus();
+  };
+
+  const cancelReply = () => setReplyTo(null);
 
   const handleInputChange = (value: string) => {
     setInputText(value);
@@ -340,14 +350,28 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {msg.text}
               </div>
             ) : (
-              <div className={cn(
-                "max-w-[85%] md:max-w-[70%] rounded-xl px-4 py-2.5 text-sm",
-                msg.type === "note"
-                  ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
-                  : msg.sender === "agent"
-                    ? "bg-card shadow-card text-foreground rounded-bl-sm"
-                    : "gradient-whatsapp text-white rounded-br-sm shadow-md"
-              )}>
+              <div className="group relative max-w-[85%] md:max-w-[70%]">
+                {/* Reply action button */}
+                {msg.type !== "note" && (
+                  <button
+                    onClick={() => handleReply(msg)}
+                    className={cn(
+                      "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent",
+                      msg.sender === "agent" ? "-left-9" : "-right-9"
+                    )}
+                    title="رد"
+                  >
+                    <Reply className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                )}
+                <div className={cn(
+                  "rounded-xl px-4 py-2.5 text-sm",
+                  msg.type === "note"
+                    ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
+                    : msg.sender === "agent"
+                      ? "bg-card shadow-card text-foreground rounded-bl-sm"
+                      : "gradient-whatsapp text-white rounded-br-sm shadow-md"
+                )}>
                 {msg.senderName && msg.sender === "customer" && conversation.conversationType === "group" && (
                   <div className="text-[11px] font-bold mb-1" style={{ color: "#a8f0c8" }}>{msg.senderName}</div>
                 )}
