@@ -712,6 +712,89 @@ const TeamPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Assignment Config Dialog */}
+      <Dialog open={!!assignDialog} onOpenChange={() => setAssignDialog(null)}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-primary" />
+              إعدادات الإسناد — {assignDialog?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            {/* Strategy Selection */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">طريقة الإسناد</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(strategyConfig).map(([key, cfg]) => {
+                  const Icon = cfg.icon;
+                  const isSelected = assignStrategy === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setAssignStrategy(key)}
+                      className={cn(
+                        "p-3 rounded-lg border text-right transition-all",
+                        isSelected
+                          ? "border-primary bg-primary/5 shadow-sm"
+                          : "border-border bg-secondary/30 hover:border-primary/30"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Icon className={cn("w-4 h-4", isSelected ? cfg.color : "text-muted-foreground")} />
+                        <span className={cn("text-xs font-semibold", isSelected ? "text-foreground" : "text-muted-foreground")}>
+                          {cfg.label}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">{cfg.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Max Conversations */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">الحد الأقصى للمحادثات لكل موظف</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={assignMaxConv}
+                  onChange={(e) => setAssignMaxConv(e.target.value)}
+                  placeholder="بدون حد"
+                  className="bg-secondary border-0 text-sm w-28"
+                />
+                <span className="text-[10px] text-muted-foreground">
+                  {assignMaxConv ? `إذا وصل الموظف لـ ${assignMaxConv} محادثة لن يُسند له جديد` : "بدون حد أقصى"}
+                </span>
+              </div>
+            </div>
+
+            {/* Skill Keywords (only for skill_based) */}
+            {assignStrategy === "skill_based" && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">كلمات مفتاحية للتوجيه</Label>
+                <Textarea
+                  value={assignKeywords}
+                  onChange={(e) => setAssignKeywords(e.target.value)}
+                  placeholder="مثال: شكوى، إرجاع، استفسار&#10;افصل بفاصلة أو سطر جديد"
+                  className="bg-secondary border-0 text-sm min-h-[80px]"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  إذا احتوت رسالة العميل على أي من هذه الكلمات سيتم توجيهها لهذا الفريق تلقائياً
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAssignDialog(null)}>إلغاء</Button>
+            <Button onClick={saveAssignConfig} className="gap-1.5"><Save className="w-4 h-4" /> حفظ</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
