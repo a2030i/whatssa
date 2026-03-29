@@ -32,7 +32,7 @@ const TeamPage = () => {
   const [teams, setTeams] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [convCounts, setConvCounts] = useState<Record<string, number>>({});
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [scheduleDialog, setScheduleDialog] = useState<any>(null);
   const [editingProfile, setEditingProfile] = useState<any>(null);
