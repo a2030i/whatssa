@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Copy, Webhook, Phone, CheckCircle2, XCircle, RefreshCw, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Copy, Webhook, Phone, CheckCircle2, XCircle, RefreshCw, Clock, AlertTriangle, ShieldCheck, Server, Wifi, Loader2, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
