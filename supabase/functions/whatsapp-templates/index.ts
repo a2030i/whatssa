@@ -68,7 +68,7 @@ serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const action = body?.action;
 
-  if (!["list", "create"].includes(action)) {
+  if (!["list", "create", "edit", "delete", "get"].includes(action)) {
     return json({ error: "Invalid action" }, 400);
   }
 
