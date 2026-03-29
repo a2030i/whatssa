@@ -193,7 +193,7 @@ const IntegrationsPage = () => {
   const friendlyError = (raw: string): string => {
     const lower = raw.toLowerCase();
     if (lower.includes("#100") || lower.includes("invalid parameter"))
-      return "الرقم مستخدم حالياً على تطبيق واتساب آخر. يجب حذف حساب واتساب من الهاتف أولاً ثم إعادة المحاولة.";
+      return "فشل تسجيل الرقم. قد يكون السبب: تفعيل التحقق بخطوتين برمز PIN مختلف، أو أن الرقم مسجّل مسبقاً. جرّب إزالة التحقق بخطوتين من إعدادات واتساب ثم أعد المحاولة.";
     if (lower.includes("#10") || lower.includes("permission"))
       return "لا توجد صلاحيات كافية. تأكد من منح جميع الأذونات المطلوبة أثناء تسجيل الدخول.";
     if (lower.includes("rate limit") || lower.includes("too many"))
