@@ -66,6 +66,15 @@ const IntegrationsPage = () => {
   const [testSending, setTestSending] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [twoStepPin, setTwoStepPin] = useState("");
+  const [metaStatus, setMetaStatus] = useState<Record<string, {
+    phoneStatus?: string;
+    nameStatus?: string;
+    qualityRating?: string;
+    messagingLimit?: string;
+    businessVerification?: string;
+    accountReviewStatus?: string;
+    isLoading: boolean;
+  }>>({});
 
   useEffect(() => {
     loadConfigs();
@@ -75,6 +84,36 @@ const IntegrationsPage = () => {
   const loadConfigs = async () => {
     const { data } = await supabase.from("whatsapp_config").select("*").order("created_at", { ascending: true });
     setConfigs(data || []);
+    // Fetch Meta status for connected configs
+    if (data) {
+      data.filter(c => c.is_connected && c.access_token && c.phone_number_id).forEach(c => fetchMetaStatus(c));
+    }
+  };
+
+  const fetchMetaStatus = async (config: WhatsAppConfig) => {
+    setMetaStatus(p => ({ ...p, [config.id]: { isLoading: true } }));
+    try {
+      const [phoneRes, wabaRes] = await Promise.all([
+        fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}?fields=code_verification_status,quality_rating,messaging_limit_tier,name_status,status,account_mode&access_token=${config.access_token}`),
+        fetch(`https://graph.facebook.com/v21.0/${config.business_account_id}?fields=account_review_status,business_verification_status&access_token=${config.access_token}`),
+      ]);
+      const phoneData = phoneRes.ok ? await phoneRes.json() : {};
+      const wabaData = wabaRes.ok ? await wabaRes.json() : {};
+      setMetaStatus(p => ({
+        ...p,
+        [config.id]: {
+          phoneStatus: phoneData.code_verification_status || phoneData.status || null,
+          nameStatus: phoneData.name_status || null,
+          qualityRating: phoneData.quality_rating || null,
+          messagingLimit: phoneData.messaging_limit_tier || null,
+          businessVerification: wabaData.business_verification_status || null,
+          accountReviewStatus: wabaData.account_review_status || null,
+          isLoading: false,
+        },
+      }));
+    } catch {
+      setMetaStatus(p => ({ ...p, [config.id]: { isLoading: false } }));
+    }
   };
 
   const loadFacebookSDK = () => {
@@ -650,6 +689,130 @@ const IntegrationsPage = () => {
               {/* Expanded */}
               {expandedId === config.id && (
                 <div className="mt-4 pt-4 border-t border-border space-y-3 animate-fade-in">
+                  {/* Meta API Status */}
+                  {(() => {
+                    const ms = metaStatus[config.id];
+                    if (!ms) return null;
+                    if (ms.isLoading) return (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري جلب حالة الرقم من Meta...
+                      </div>
+                    );
+
+                    const qualityMap: Record<string, { label: string; color: string }> = {
+                      GREEN: { label: "عالية", color: "text-success" },
+                      YELLOW: { label: "متوسطة", color: "text-warning" },
+                      RED: { label: "منخفضة", color: "text-destructive" },
+                    };
+                    const verificationMap: Record<string, { label: string; color: string }> = {
+                      verified: { label: "موثّق ✓", color: "text-success" },
+                      not_verified: { label: "غير موثّق", color: "text-destructive" },
+                      pending: { label: "قيد المراجعة", color: "text-warning" },
+                      rejected: { label: "مرفوض", color: "text-destructive" },
+                    };
+                    const nameMap: Record<string, { label: string; color: string }> = {
+                      APPROVED: { label: "معتمد", color: "text-success" },
+                      PENDING_REVIEW: { label: "قيد المراجعة", color: "text-warning" },
+                      DECLINED: { label: "مرفوض", color: "text-destructive" },
+                      AVAILABLE_WITHOUT_REVIEW: { label: "متاح", color: "text-success" },
+                    };
+                    const tierMap: Record<string, string> = {
+                      TIER_1K: "1,000 / يوم",
+                      TIER_10K: "10,000 / يوم",
+                      TIER_100K: "100,000 / يوم",
+                      TIER_250: "250 / يوم",
+                      UNLIMITED: "غير محدود",
+                    };
+                    const phoneStatusMap: Record<string, { label: string; color: string }> = {
+                      VERIFIED: { label: "نشط", color: "text-success" },
+                      NOT_VERIFIED: { label: "غير مفعّل", color: "text-warning" },
+                      PENDING: { label: "معلّق", color: "text-warning" },
+                      FLAGGED: { label: "مُبلَّغ عنه", color: "text-destructive" },
+                      RESTRICTED: { label: "مقيّد", color: "text-destructive" },
+                      CONNECTED: { label: "متصل", color: "text-success" },
+                    };
+
+                    const quality = ms.qualityRating ? qualityMap[ms.qualityRating] : null;
+                    const verification = ms.businessVerification ? verificationMap[ms.businessVerification] : null;
+                    const nameStatus = ms.nameStatus ? nameMap[ms.nameStatus] : null;
+                    const phoneStatus = ms.phoneStatus ? phoneStatusMap[ms.phoneStatus] : null;
+
+                    // Determine issues
+                    const issues: string[] = [];
+                    if (ms.businessVerification === "not_verified") issues.push("حافظة الأعمال غير موثّقة — وثّقها من Meta Business Suite لرفع حدود الإرسال");
+                    if (ms.qualityRating === "RED") issues.push("جودة الرقم منخفضة — قد يتم تقييد الإرسال");
+                    if (ms.qualityRating === "YELLOW") issues.push("جودة الرقم متوسطة — تجنّب الرسائل العشوائية للحفاظ على الجودة");
+                    if (ms.phoneStatus === "FLAGGED") issues.push("الرقم مُبلَّغ عنه — تواصل مع دعم Meta");
+                    if (ms.phoneStatus === "RESTRICTED") issues.push("الرقم مقيّد — لا يمكن إرسال رسائل حالياً");
+                    if (ms.nameStatus === "DECLINED") issues.push("اسم النشاط التجاري مرفوض — أعد تقديم الاسم");
+                    if (ms.accountReviewStatus === "PENDING") issues.push("حساب WABA قيد المراجعة من Meta");
+
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-muted-foreground">حالة الرقم من Meta</p>
+                          <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => fetchMetaStatus(config)}>
+                            <RefreshCw className="w-3 h-3" /> تحديث
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {phoneStatus && (
+                            <div className="bg-muted/50 rounded-lg p-2.5">
+                              <p className="text-[10px] text-muted-foreground">حالة الرقم</p>
+                              <p className={cn("text-xs font-bold mt-0.5", phoneStatus.color)}>{phoneStatus.label}</p>
+                            </div>
+                          )}
+                          {quality && (
+                            <div className="bg-muted/50 rounded-lg p-2.5">
+                              <p className="text-[10px] text-muted-foreground">جودة الرقم</p>
+                              <p className={cn("text-xs font-bold mt-0.5", quality.color)}>{quality.label}</p>
+                            </div>
+                          )}
+                          {verification && (
+                            <div className="bg-muted/50 rounded-lg p-2.5">
+                              <p className="text-[10px] text-muted-foreground">حافظة الأعمال</p>
+                              <p className={cn("text-xs font-bold mt-0.5", verification.color)}>{verification.label}</p>
+                            </div>
+                          )}
+                          {nameStatus && (
+                            <div className="bg-muted/50 rounded-lg p-2.5">
+                              <p className="text-[10px] text-muted-foreground">اسم النشاط</p>
+                              <p className={cn("text-xs font-bold mt-0.5", nameStatus.color)}>{nameStatus.label}</p>
+                            </div>
+                          )}
+                          {ms.messagingLimit && (
+                            <div className="bg-muted/50 rounded-lg p-2.5">
+                              <p className="text-[10px] text-muted-foreground">حد الإرسال</p>
+                              <p className="text-xs font-bold mt-0.5">{tierMap[ms.messagingLimit] || ms.messagingLimit}</p>
+                            </div>
+                          )}
+                          {ms.accountReviewStatus && (
+                            <div className="bg-muted/50 rounded-lg p-2.5">
+                              <p className="text-[10px] text-muted-foreground">مراجعة WABA</p>
+                              <p className={cn("text-xs font-bold mt-0.5", ms.accountReviewStatus === "APPROVED" ? "text-success" : "text-warning")}>
+                                {ms.accountReviewStatus === "APPROVED" ? "مُعتمد" : ms.accountReviewStatus === "PENDING" ? "قيد المراجعة" : ms.accountReviewStatus}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Issues / Warnings */}
+                        {issues.length > 0 && (
+                          <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 space-y-1.5">
+                            <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
+                              <AlertTriangle className="w-3.5 h-3.5" /> تنبيهات ({issues.length})
+                            </p>
+                            {issues.map((issue, i) => (
+                              <p key={i} className="text-[11px] text-foreground/80 flex items-start gap-1.5">
+                                <span className="text-warning mt-0.5">•</span> {issue}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {isSuperAdmin && (
                     <>
                       <div>
