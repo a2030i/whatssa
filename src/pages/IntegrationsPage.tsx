@@ -120,21 +120,6 @@ const IntegrationsPage = () => {
     setIsLoading(false);
   };
 
-  const exchangeToken = async (code: string, redirectUri: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", { body: { code, redirect_uri: redirectUri } });
-      if (error || data?.error) { toast.error(data?.error || "فشل في تبادل التوكن"); setIsLoading(false); return; }
-      setAccessToken(data.access_token);
-      const allPhones: PhoneNumber[] = [];
-      let firstWabaId = "";
-      if (data.results?.length > 0) {
-        data.results.forEach((r: WabaResult) => { if (!firstWabaId) firstWabaId = r.waba_id; allPhones.push(...r.phone_numbers); });
-      }
-      if (allPhones.length > 0) { setBusinessAccountId(firstWabaId); setPhoneNumbers(allPhones); setShowPhones(true); toast.success(`تم العثور على ${allPhones.length} رقم`); }
-      else toast.error("لا توجد أرقام واتساب.");
-    } catch { toast.error("حدث خطأ في الربط"); }
-    setIsLoading(false);
-  };
 
   const handleSelectPhone = async (phone: PhoneNumber) => {
     setIsLoading(true);
