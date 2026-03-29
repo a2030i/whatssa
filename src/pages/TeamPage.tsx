@@ -292,6 +292,7 @@ const TeamPage = () => {
             const role = getRole(profile.id);
             const team = teams.find((t) => t.id === profile.team_id);
             const rc = roleConfig[role] || roleConfig.member;
+            const activeConvs = convCounts[profile.full_name] || 0;
             return (
               <div key={profile.id} className="p-4 md:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
                 <div className="flex items-center gap-3">
