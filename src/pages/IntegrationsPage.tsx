@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import {
   CheckCircle2, Copy, Loader2, Phone, RefreshCw,
   MessageSquare, KeyRound, Plus, Trash2, Instagram,
-  Plug, Radio, Smartphone, Send, AlertTriangle, ExternalLink
+  Plug, Radio, Smartphone, Send, AlertTriangle, ExternalLink,
+  ShieldCheck, CreditCard, PhoneCall, Building2, Circle
 } from "lucide-react";
 import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import { cn } from "@/lib/utils";
@@ -435,6 +436,83 @@ const IntegrationsPage = () => {
             <Badge variant="outline" className="text-[10px] text-muted-foreground">غير مربوط</Badge>
           </div>
           <div className="px-5 pb-5 space-y-3">
+            {/* Pre-connection Checklist */}
+            <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+              <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                قائمة التحقق قبل الربط
+              </h3>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                تأكد من استيفاء هذه المتطلبات في{" "}
+                <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+                  Meta Business Suite
+                </a>{" "}
+                قبل البدء:
+              </p>
+              <div className="space-y-2">
+                {[
+                  {
+                    icon: Building2,
+                    title: "توثيق النشاط التجاري",
+                    desc: "وثّق حافظة الأعمال (Business Verification) لرفع حدود الإرسال وتفعيل المحادثات",
+                    link: "https://business.facebook.com/settings/security",
+                    linkLabel: "تحقق من التوثيق",
+                    required: false,
+                  },
+                  {
+                    icon: CreditCard,
+                    title: "وسيلة الدفع",
+                    desc: "أضف بطاقة ائتمان صالحة في إعدادات الدفع — مطلوبة لإرسال الرسائل التسويقية",
+                    link: "https://business.facebook.com/billing_hub/payment_methods",
+                    linkLabel: "إدارة وسائل الدفع",
+                    required: true,
+                  },
+                  {
+                    icon: PhoneCall,
+                    title: "رقم واتساب جاهز",
+                    desc: "رقم غير مربوط بتطبيق واتساب على الهاتف — يجب فصله أولاً قبل ربطه بالمنصة",
+                    required: true,
+                  },
+                  {
+                    icon: MessageSquare,
+                    title: "حساب WABA مفعّل",
+                    desc: "أنشئ حساب WhatsApp Business Account من Meta Business Suite إن لم يكن موجوداً",
+                    link: "https://business.facebook.com/wa/manage/home",
+                    linkLabel: "إدارة حسابات WhatsApp",
+                    required: true,
+                  },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-2.5 bg-card rounded-lg border border-border p-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <item.icon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-semibold text-foreground">{item.title}</p>
+                        {item.required ? (
+                          <Badge className="bg-destructive/10 text-destructive border-0 text-[9px] px-1.5 py-0">مطلوب</Badge>
+                        ) : (
+                          <Badge className="bg-warning/10 text-warning border-0 text-[9px] px-1.5 py-0">موصى به</Badge>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
+                      {item.link && (
+                        <a
+                          href={item.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-primary hover:underline underline-offset-2 mt-1 inline-flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-2.5 h-2.5" />
+                          {item.linkLabel}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-primary/5 rounded-lg p-3">
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 💡 يتطلب حساب WhatsApp Business — ستفتح نافذة Meta لتسجيل الدخول واختيار رقمك. تستغرق أقل من دقيقة.
