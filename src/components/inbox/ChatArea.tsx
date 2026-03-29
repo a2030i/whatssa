@@ -474,6 +474,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
                 </div>
               </div>
+              </div>
             )}
           </div>
         ))}
