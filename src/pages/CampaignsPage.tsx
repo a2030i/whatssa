@@ -289,9 +289,27 @@ const CampaignsPage = () => {
           <h1 className="text-xl font-bold">الحملات</h1>
           <p className="text-sm text-muted-foreground mt-1">إدارة حملات WhatsApp وتتبع نتائجها</p>
         </div>
-        <Button className="gap-2 gradient-whatsapp text-whatsapp-foreground" onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4" /> حملة جديدة
-        </Button>
+        <div className="flex items-center gap-2">
+          {compareMode ? (
+            <>
+              <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => { setCompareMode(false); setCompareIds([]); }}>
+                <X className="w-3 h-3" /> إلغاء
+              </Button>
+              <Button size="sm" className="gap-2 text-xs" disabled={compareIds.length !== 2} onClick={() => setShowCompare(true)}>
+                <GitCompareArrows className="w-3 h-3" /> مقارنة ({compareIds.length}/2)
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" className="gap-2 text-xs" onClick={() => setCompareMode(true)}>
+                <GitCompareArrows className="w-4 h-4" /> مقارنة
+              </Button>
+              <Button className="gap-2 gradient-whatsapp text-whatsapp-foreground" onClick={() => setShowCreate(true)}>
+                <Plus className="w-4 h-4" /> حملة جديدة
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
