@@ -13,17 +13,26 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Verify caller is super_admin
+    // Verify caller is authenticated
     const authHeader = req.headers.get("authorization") || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const callerClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { authorization: authHeader } },
+      global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user: caller } } = await callerClient.auth.getUser();
-    if (!caller) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await callerClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const callerId = claimsData.claims.sub;
 
     const adminClient = createClient(supabaseUrl, serviceKey);
-    const { data: roleData } = await adminClient.from("user_roles").select("role").eq("user_id", caller.id).eq("role", "super_admin").maybeSingle();
-    if (!roleData) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
+    const { data: roleData } = await adminClient.from("user_roles").select("role").eq("user_id", callerId).eq("role", "super_admin").maybeSingle();
+    if (!roleData) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const { org_id } = await req.json();
     if (!org_id) return new Response(JSON.stringify({ error: "org_id required" }), { status: 400, headers: corsHeaders });
