@@ -118,7 +118,7 @@ const IntegrationsPage = () => {
 
   const exchangeToken = async (code: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", { body: { code, redirect_uri: getOAuthRedirectUri() } });
+      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", { body: { code, redirect_uri: OAUTH_REDIRECT_URI } });
       if (error || data?.error) { toast.error(data?.error || "فشل في تبادل التوكن"); setIsLoading(false); return; }
       setAccessToken(data.access_token);
       const allPhones: PhoneNumber[] = [];
