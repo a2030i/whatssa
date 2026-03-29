@@ -3,9 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Search, Building2, UserCheck, UserX, ShoppingBag, Store } from "lucide-react";
+import { Search, Building2, UserCheck, UserX, ShoppingBag, Store, Plus, Eye, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
 
 const AdminAccounts = () => {
   const [orgs, setOrgs] = useState<any[]>([]);
@@ -14,6 +16,10 @@ const AdminAccounts = () => {
   const [wallets, setWallets] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newAccount, setNewAccount] = useState({ email: "", password: "", full_name: "", org_name: "" });
+  const navigate = useNavigate();
 
   useEffect(() => { load(); }, []);
 
@@ -66,6 +72,47 @@ const AdminAccounts = () => {
     load();
   };
 
+  const createAccount = async () => {
+    if (!newAccount.email || !newAccount.password || !newAccount.full_name) {
+      toast.error("جميع الحقول مطلوبة");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: newAccount.email,
+        password: newAccount.password,
+        options: { data: { full_name: newAccount.full_name } },
+      });
+      if (error) throw error;
+
+      // Update org name if provided
+      if (data.user && newAccount.org_name) {
+        const profile = await supabase.from("profiles").select("org_id").eq("id", data.user.id).maybeSingle();
+        if (profile.data?.org_id) {
+          await supabase.from("organizations").update({ name: newAccount.org_name }).eq("id", profile.data.org_id);
+        }
+      }
+
+      toast.success("تم إنشاء الحساب بنجاح");
+      setShowCreate(false);
+      setNewAccount({ email: "", password: "", full_name: "", org_name: "" });
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "فشل إنشاء الحساب");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const impersonateOrg = (orgId: string) => {
+    // Store impersonation in sessionStorage and navigate to client dashboard
+    sessionStorage.setItem("impersonate_org_id", orgId);
+    const org = orgs.find(o => o.id === orgId);
+    toast.success(`دخول كعميل: ${org?.name || orgId.slice(0, 8)}`);
+    window.open(`/?impersonate=${orgId}`, "_blank");
+  };
+
   const statusColor = (s: string) => {
     const m: Record<string, string> = { trial: "bg-blue-100 text-blue-700", active: "bg-green-100 text-green-700", expired: "bg-destructive/10 text-destructive", cancelled: "bg-muted text-muted-foreground" };
     return m[s] || m.trial;
@@ -81,7 +128,40 @@ const AdminAccounts = () => {
           <Input placeholder="بحث بالاسم أو ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm" />
         </div>
         <span className="text-xs text-muted-foreground">{filtered.length} منظمة</span>
+        <Button size="sm" className="text-xs gap-1" onClick={() => setShowCreate(true)}>
+          <Plus className="w-3 h-3" /> إضافة عميل
+        </Button>
       </div>
+
+      {/* Create Account Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-sm">إضافة عميل جديد</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">الاسم الكامل</Label>
+              <Input value={newAccount.full_name} onChange={(e) => setNewAccount({ ...newAccount, full_name: e.target.value })} placeholder="أحمد محمد" className="mt-1 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">البريد الإلكتروني</Label>
+              <Input value={newAccount.email} onChange={(e) => setNewAccount({ ...newAccount, email: e.target.value })} placeholder="client@example.com" className="mt-1 text-sm" dir="ltr" type="email" />
+            </div>
+            <div>
+              <Label className="text-xs">كلمة المرور</Label>
+              <Input value={newAccount.password} onChange={(e) => setNewAccount({ ...newAccount, password: e.target.value })} placeholder="••••••••" className="mt-1 text-sm" dir="ltr" type="password" />
+            </div>
+            <div>
+              <Label className="text-xs">اسم المنظمة (اختياري)</Label>
+              <Input value={newAccount.org_name} onChange={(e) => setNewAccount({ ...newAccount, org_name: e.target.value })} placeholder="شركة أبجد" className="mt-1 text-sm" />
+            </div>
+            <Button className="w-full text-sm" onClick={createAccount} disabled={creating}>
+              {creating ? "جاري الإنشاء..." : "إنشاء الحساب"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="space-y-3">
         {filtered.map((org) => {
@@ -198,6 +278,9 @@ const AdminAccounts = () => {
                   </div>
 
                   <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.stopPropagation(); impersonateOrg(org.id); }}>
+                      <Eye className="w-3 h-3" /> عرض كعميل
+                    </Button>
                     <Button size="sm" variant={org.is_active ? "destructive" : "default"} className="text-xs" onClick={() => toggleActive(org.id, org.is_active)}>
                       {org.is_active ? "تعطيل المنظمة" : "تفعيل المنظمة"}
                     </Button>

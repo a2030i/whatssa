@@ -100,20 +100,6 @@ const AdminSettings = () => {
               </Button>
             </div>
           </div>
-          <div>
-            <Label className="text-xs">حد الرسائل في الدقيقة</Label>
-            <div className="flex gap-2 mt-1">
-              <Input
-                type="number"
-                value={settings.message_rate_limit?.value || 100}
-                onChange={(e) => setSettings({ ...settings, message_rate_limit: { ...settings.message_rate_limit, value: +e.target.value } })}
-                className="h-9 text-sm"
-              />
-              <Button size="sm" variant="outline" className="h-9" onClick={() => updateSetting("message_rate_limit", settings.message_rate_limit?.value)}>
-                <Save className="w-3 h-3" />
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

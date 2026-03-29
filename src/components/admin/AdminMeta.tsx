@@ -123,15 +123,6 @@ const AdminMeta = () => {
                     <span className="mr-1 font-medium font-mono">{config.business_account_id}</span>
                   </div>
                 </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground">Verify Token</label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input value={config.webhook_verify_token} readOnly className="bg-secondary border-0 text-[10px] flex-1 h-7" dir="ltr" />
-                    <Button size="sm" variant="outline" className="shrink-0 h-7 w-7 p-0" onClick={() => copy(config.webhook_verify_token, "Verify Token")}>
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
               </div>
             ))}
           </div>
