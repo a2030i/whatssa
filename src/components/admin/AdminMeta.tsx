@@ -23,7 +23,7 @@ const AdminMeta = () => {
   const [isSavingVps, setIsSavingVps] = useState(false);
   const [isTestingVps, setIsTestingVps] = useState(false);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadVpsConfig(); }, []);
 
   const load = async () => {
     const [c, o] = await Promise.all([
@@ -32,6 +32,46 @@ const AdminMeta = () => {
     ]);
     setConfigs(c.data || []);
     setOrgs(o.data || []);
+  };
+
+  const loadVpsConfig = async () => {
+    const { data } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", SYSTEM_KEY)
+      .maybeSingle();
+    if (data?.value) {
+      const cfg = data.value as any;
+      setVpsUrl(cfg.url || "");
+      setVpsApiKey(cfg.api_key || "");
+      setVpsConfigSaved(true);
+    }
+  };
+
+  const saveVpsConfig = async () => {
+    if (!vpsUrl.trim()) { toast.error("أدخل رابط السيرفر"); return; }
+    setIsSavingVps(true);
+    const value = { url: vpsUrl.trim().replace(/\/$/, ""), api_key: vpsApiKey.trim() };
+    const { error } = await supabase
+      .from("system_settings")
+      .upsert({ key: SYSTEM_KEY, value: value as any, description: "WhatsApp Web VPS server configuration" }, { onConflict: "key" });
+    if (error) { toast.error("تعذر حفظ الإعدادات"); }
+    else { toast.success("✅ تم حفظ إعدادات السيرفر"); setVpsConfigSaved(true); }
+    setIsSavingVps(false);
+  };
+
+  const testVpsConnection = async () => {
+    const url = vpsUrl.trim().replace(/\/$/, "");
+    if (!url) { toast.error("لا يوجد رابط سيرفر"); return; }
+    setIsTestingVps(true);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (vpsApiKey.trim()) headers["x-api-key"] = vpsApiKey.trim();
+      const res = await fetch(`${url}/api/health`, { headers, signal: AbortSignal.timeout(10000) });
+      if (res.ok) toast.success("✅ السيرفر متصل ويعمل");
+      else toast.error(`السيرفر أرجع حالة ${res.status}`);
+    } catch { toast.error("تعذر الاتصال بالسيرفر"); }
+    setIsTestingVps(false);
   };
 
   const copy = (text: string, label: string) => {
