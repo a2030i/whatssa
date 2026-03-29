@@ -21,7 +21,7 @@ function log(step: string, detail: unknown) {
 async function checkPhoneStatus(phoneId: string, accessToken: string): Promise<{ registered: boolean; status?: string; error?: string }> {
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v21.0/${phoneId}?fields=id,display_phone_number,verified_name,code_verification_status,account_mode`,
+      `https://graph.facebook.com/v21.0/${phoneId}?fields=id,display_phone_number,verified_name,code_verification_status,account_mode,status,health_status`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const data = await res.json();
@@ -31,9 +31,20 @@ async function checkPhoneStatus(phoneId: string, accessToken: string): Promise<{
       return { registered: false, error: data?.error?.message };
     }
 
-    // If verified_name exists and code_verification_status is VERIFIED, the phone is registered
-    const isRegistered = !!(data.verified_name && data.id);
-    return { registered: isRegistered, status: data.code_verification_status || "unknown" };
+    // Use the actual 'status' field from Meta — CONNECTED means registered, PENDING means not
+    const phoneStatus = data.status || "UNKNOWN";
+    const isRegistered = phoneStatus === "CONNECTED";
+    
+    // Also check health_status for PHONE_NUMBER entity — if can_send_message is BLOCKED with error 141000, not registered
+    if (!isRegistered && data.health_status?.entities) {
+      const phoneEntity = data.health_status.entities.find((e: any) => e.entity_type === "PHONE_NUMBER");
+      if (phoneEntity?.errors?.some((e: any) => e.error_code === 141000)) {
+        log("check_phone_status_not_registered", { phoneId, reason: "error_141000" });
+        return { registered: false, status: phoneStatus };
+      }
+    }
+
+    return { registered: isRegistered, status: phoneStatus };
   } catch (err: any) {
     log("check_phone_status_error", { error: err.message });
     return { registered: false, error: err.message };

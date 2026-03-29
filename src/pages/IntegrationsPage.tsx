@@ -74,6 +74,7 @@ const IntegrationsPage = () => {
     messagingLimit?: string;
     businessVerification?: string;
     accountReviewStatus?: string;
+    healthIssues?: { entity: string; error: string; solution: string }[];
     isLoading: boolean;
   }>>({});
 
@@ -100,24 +101,63 @@ const IntegrationsPage = () => {
   const fetchMetaStatus = async (config: WhatsAppConfig) => {
     setMetaStatus(p => ({ ...p, [config.id]: { isLoading: true } }));
     try {
-      const [phoneRes, wabaRes] = await Promise.all([
-        fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}?fields=code_verification_status,quality_rating,messaging_limit_tier,name_status,status,account_mode&access_token=${config.access_token}`),
-        fetch(`https://graph.facebook.com/v21.0/${config.business_account_id}?fields=account_review_status,business_verification_status&access_token=${config.access_token}`),
-      ]);
-      const phoneData = phoneRes.ok ? await phoneRes.json() : {};
-      const wabaData = wabaRes.ok ? await wabaRes.json() : {};
+      const { data, error } = await supabase.functions.invoke("whatsapp-check-status", {
+        body: { config_id: config.id },
+      });
+      if (error || !data) {
+        setMetaStatus(p => ({ ...p, [config.id]: { isLoading: false } }));
+        return;
+      }
+
+      // Extract health issues from all entities
+      const healthIssues: { entity: string; error: string; solution: string }[] = [];
+      const entityLabels: Record<string, string> = {
+        PHONE_NUMBER: "الرقم",
+        WABA: "حساب WABA",
+        BUSINESS: "حافظة الأعمال",
+        APP: "التطبيق",
+      };
+      (data.phone?.health_status || []).forEach((entity: any) => {
+        (entity.errors || []).forEach((err: any) => {
+          healthIssues.push({
+            entity: entityLabels[entity.entity_type] || entity.entity_type,
+            error: err.error_description || "",
+            solution: err.possible_solution || "",
+          });
+        });
+      });
+
       setMetaStatus(p => ({
         ...p,
         [config.id]: {
-          phoneStatus: phoneData.code_verification_status || phoneData.status || null,
-          nameStatus: phoneData.name_status || null,
-          qualityRating: phoneData.quality_rating || null,
-          messagingLimit: phoneData.messaging_limit_tier || null,
-          businessVerification: wabaData.business_verification_status || null,
-          accountReviewStatus: wabaData.account_review_status || null,
+          phoneStatus: data.phone?.status || data.phone?.code_verification_status || null,
+          nameStatus: data.phone?.name_status || null,
+          qualityRating: data.phone?.quality_rating || null,
+          messagingLimit: data.phone?.messaging_limit_tier || null,
+          businessVerification: data.waba?.business_verification_status || null,
+          accountReviewStatus: data.waba?.account_review_status || null,
+          healthIssues,
           isLoading: false,
         },
       }));
+
+      // Sync local DB status if Meta says phone is actually PENDING but we have "connected"
+      if (data.phone?.status === "PENDING" && config.registration_status === "connected") {
+        await supabase.from("whatsapp_config").update({
+          is_connected: false,
+          registration_status: "pending",
+          registration_error: "الرقم غير مسجّل في Cloud API — يحتاج إعادة تسجيل (Register)",
+        }).eq("id", config.id);
+        loadConfigs();
+      } else if (data.phone?.status === "CONNECTED" && config.registration_status !== "connected") {
+        await supabase.from("whatsapp_config").update({
+          is_connected: true,
+          registration_status: "connected",
+          registration_error: null,
+          registered_at: new Date().toISOString(),
+        }).eq("id", config.id);
+        loadConfigs();
+      }
     } catch {
       setMetaStatus(p => ({ ...p, [config.id]: { isLoading: false } }));
     }
@@ -813,7 +853,27 @@ const IntegrationsPage = () => {
                           )}
                         </div>
 
-                        {/* Issues / Warnings */}
+                        {/* Health Issues from Meta API */}
+                        {ms.healthIssues && ms.healthIssues.length > 0 && (
+                          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
+                            <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                              <AlertTriangle className="w-3.5 h-3.5" /> مشاكل يجب حلها ({ms.healthIssues.length})
+                            </p>
+                            {ms.healthIssues.map((issue, i) => (
+                              <div key={i} className="text-[11px] space-y-0.5">
+                                <p className="text-foreground/80 flex items-start gap-1.5">
+                                  <span className="text-destructive mt-0.5 shrink-0">•</span>
+                                  <span><span className="font-semibold">[{issue.entity}]</span> {issue.error}</span>
+                                </p>
+                                {issue.solution && (
+                                  <p className="text-muted-foreground mr-4">💡 {issue.solution}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* General warnings */}
                         {issues.length > 0 && (
                           <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 space-y-1.5">
                             <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
