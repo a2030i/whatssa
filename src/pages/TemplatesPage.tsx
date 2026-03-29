@@ -96,7 +96,7 @@ const TemplatesPage = () => {
     setFormData({
       name: template.name,
       category: template.category,
-      headerType: template.headerFormat || (template.header ? "TEXT" : "NONE"),
+      headerType: (template.headerFormat === "DOCUMENT" ? "NONE" : template.headerFormat) || (template.header ? "TEXT" : "NONE"),
       header: template.header || "",
       headerUrl: template.headerUrl || "",
       body: template.body,
