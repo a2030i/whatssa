@@ -50,6 +50,7 @@ type FlowStep = "idle" | "connecting" | "pick_phone" | "success" | "error";
 const IntegrationsPage = () => {
   const { orgId, isSuperAdmin } = useAuth();
   const [configs, setConfigs] = useState<WhatsAppConfig[]>([]);
+  const [maxPhones, setMaxPhones] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [sdkLoaded, setSdkLoaded] = useState(false);
   const [flowStep, setFlowStep] = useState<FlowStep>("idle");
