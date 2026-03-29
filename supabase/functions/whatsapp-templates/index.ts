@@ -22,16 +22,13 @@ async function getUserContext(req: Request) {
   const authorization = req.headers.get("Authorization") || "";
   if (!authorization.startsWith("Bearer ")) return { error: json({ error: "Unauthorized" }, 401) };
 
-  const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authorization } },
-  });
+  const token = authorization.replace("Bearer ", "");
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  const token = authorization.replace("Bearer ", "");
-  const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
-  if (claimsError || !claimsData?.claims?.sub) return { error: json({ error: "Unauthorized" }, 401) };
+  const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
+  if (userError || !user) return { error: json({ error: "Unauthorized" }, 401) };
 
-  const userId = claimsData.claims.sub;
+  const userId = user.id;
 
   const { data: profile } = await adminClient
     .from("profiles")
