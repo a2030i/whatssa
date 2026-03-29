@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
 const META_APP_ID = "1239578701681497";
-const getOAuthRedirectUri = () => `${window.location.origin}/integrations`;
+
 
 interface PhoneNumber {
   id: string;
