@@ -495,6 +495,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             )}
           </div>
 
+          {/* Image Preview */}
+          {imagePreview && (
+            <div className="relative mb-2 inline-block">
+              <img src={imagePreview.url} alt="معاينة" className="max-h-32 rounded-lg border border-border object-cover" />
+              <button
+                onClick={cancelImagePreview}
+                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+
           {/* Input + send row */}
           <div className="flex items-center gap-2">
             {windowExpired && !isNoteMode ? (
@@ -504,15 +517,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             ) : (
               <Input
                 ref={inputRef}
-                placeholder={isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "اكتب رسالة..."}
+                placeholder={imagePreview ? "أضف تعليقاً (اختياري)..." : isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "اكتب رسالة..."}
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
                 className={cn("flex-1 border-0", isNoteMode ? "bg-amber-500/5" : "bg-secondary")}
               />
             )}
             {(isNoteMode || !windowExpired) && (
-              inputText.trim() ? (
+              imagePreview ? (
+                <button onClick={handleSendImage} disabled={isUploading} className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 gradient-whatsapp hover:opacity-90 transition-opacity">
+                  {isUploading ? <Loader2 className="w-4 h-4 text-whatsapp-foreground animate-spin" /> : <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />}
+                </button>
+              ) : inputText.trim() ? (
                 <button onClick={handleSend} className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-opacity", isNoteMode ? "bg-amber-500 hover:opacity-90" : "gradient-whatsapp hover:opacity-90")}>
                   <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
