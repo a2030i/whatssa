@@ -341,6 +341,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     ? "bg-card shadow-card text-foreground rounded-bl-sm"
                     : "gradient-whatsapp text-whatsapp-foreground rounded-br-sm"
               )}>
+                {msg.senderName && msg.sender === "customer" && conversation.conversationType === "group" && (
+                  <div className="text-[11px] font-semibold text-emerald-700 mb-1">{msg.senderName}</div>
+                )}
                 {msg.type === "template" && (
                   <div className="flex items-center gap-1 mb-1 text-primary">
                     <FileText className="w-3 h-3" />

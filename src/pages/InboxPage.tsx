@@ -118,6 +118,7 @@ const InboxPage = () => {
         timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
         status: message.status as "sent" | "delivered" | "read" | undefined,
         type: (message.message_type as Message["type"]) || "text",
+        senderName: (message.metadata as any)?.sender_name || undefined,
       }));
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
@@ -137,6 +138,7 @@ const InboxPage = () => {
           timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
           status: message.status,
           type: message.message_type || "text",
+          senderName: message.metadata?.sender_name || undefined,
         };
         setAllMessages((prev) => ({
           ...prev,
