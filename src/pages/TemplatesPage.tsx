@@ -283,12 +283,13 @@ const TemplatesPage = () => {
       {noWhatsApp ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center space-y-3">
           <AlertTriangle className="w-10 h-10 mx-auto text-warning" />
-          <h3 className="font-semibold">لا يوجد رقم واتساب مربوط</h3>
+          <h3 className="font-semibold">القوالب تتطلب ربط رقم عبر WhatsApp Cloud API</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            يجب ربط رقم واتساب من صفحة الإعدادات أولاً حتى تتمكن من إدارة القوالب
+            ميزة القوالب متاحة فقط عبر Meta Cloud API الرسمي. إذا كنت تستخدم واتساب ويب (Evolution) فلن تتمكن من إدارة القوالب.
+            اربط رقم عبر WhatsApp Cloud API من صفحة التكاملات.
           </p>
-          <Button variant="outline" className="mt-2" onClick={() => window.location.href = '/settings'}>
-            الذهاب للإعدادات
+          <Button variant="outline" className="mt-2" onClick={() => window.location.href = '/integrations'}>
+            الذهاب للتكاملات
           </Button>
         </div>
       ) : isLoading ? (
