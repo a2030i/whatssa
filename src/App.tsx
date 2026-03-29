@@ -22,6 +22,7 @@ import OrdersPage from "./pages/OrdersPage";
 import AbandonedCartsPage from "./pages/AbandonedCartsPage";
 import NotFound from "./pages/NotFound";
 import DashboardPage from "./pages/DashboardPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/auth" element={user ? (isSuperAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />) : <AuthPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       <Route path="/" element={isSuperAdmin ? <Navigate to="/admin" replace /> : <ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
       <Route path="/inbox" element={<ProtectedRoute><AppLayout><InboxPage /></AppLayout></ProtectedRoute>} />

@@ -95,14 +95,6 @@ const AuthPage = () => {
     setResetSent(false);
   };
 
-  // Check if returning from password reset link
-  useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("set_password") === "true") {
-      // User came back from reset link, they can now update password
-      setStep("password");
-    }
-  });
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4" dir="rtl">
