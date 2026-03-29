@@ -353,6 +353,15 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
             </div>
           )}
 
+          {/* ═══ CONNECTING STATE ═══ */}
+          {instanceStatus === "connecting" && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 text-center space-y-3">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+              <p className="text-sm font-bold">جاري توليد رمز QR...</p>
+              <p className="text-[11px] text-muted-foreground">يتم إعادة إنشاء الجلسة والاتصال بسيرفرات واتساب</p>
+            </div>
+          )}
+
           {/* ═══ IDLE / DISCONNECTED STATE ═══ */}
           {(instanceStatus === "idle" || instanceStatus === "disconnected") && !qrCode && (
             <div className="space-y-3">
