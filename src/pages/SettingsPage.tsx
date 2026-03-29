@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Bell, CreditCard, Shield, ChevronLeft, Hand, RotateCcw, Scale, Target, Save, Zap } from "lucide-react";
+import { Building2, Bell, CreditCard, Shield, ChevronLeft, Hand, RotateCcw, Scale, Target, Save, Zap, Code2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import ApiTokensSection from "@/components/settings/ApiTokensSection";
 
 const strategyOptions = [
   { key: "manual", label: "يدوي", icon: Hand, description: "المدير يسند المحادثات يدوياً لكل موظف", color: "text-muted-foreground" },
@@ -181,9 +182,15 @@ const SettingsPage = () => {
         </div>
       </div>
 
+      {/* API Tokens */}
+      <div className="bg-card rounded-lg shadow-card p-5">
+        <ApiTokensSection />
+      </div>
+
       {/* Quick Links */}
       <div className="bg-card rounded-lg shadow-card">
         {[
+          { id: "api-docs", icon: Code2, title: "توثيق API", description: "دليل شامل لجميع نقاط النهاية مع أمثلة كود", onClick: () => navigate("/api-docs") },
           { id: "integrations", icon: CreditCard, title: "الربط والتكامل", description: "إدارة قنوات التواصل وأرقام واتساب", onClick: () => navigate("/integrations") },
           { id: "billing", icon: CreditCard, title: "الاشتراك والفواتير", description: "إدارة الاشتراك والدفع", onClick: () => navigate("/wallet") },
           { id: "security", icon: Shield, title: "الأمان", description: "كلمة المرور والمصادقة", onClick: () => {} },
