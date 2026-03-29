@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import {
   CheckCircle2, Copy, Loader2, Phone, RefreshCw,
   MessageSquare, KeyRound, Plus, Trash2, Instagram,
-  Plug, Radio, Smartphone, Send, AlertTriangle, ExternalLink
+  Plug, Radio, Smartphone, Send, AlertTriangle, ExternalLink,
+  ShieldCheck, CreditCard, PhoneCall, Building2, Circle
 } from "lucide-react";
 import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import { cn } from "@/lib/utils";
