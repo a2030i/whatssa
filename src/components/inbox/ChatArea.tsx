@@ -21,7 +21,7 @@ interface ChatAreaProps {
   messages: Message[];
   templates: WhatsAppTemplate[];
   onBack: () => void;
-  onSendMessage: (convId: string, text: string, type?: "text" | "note") => void;
+  onSendMessage: (convId: string, text: string, type?: "text" | "note", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }) => void;
   onSendTemplate: (convId: string, template: WhatsAppTemplate, variables: string[]) => void;
   onStatusChange: (convId: string, status: "active" | "waiting" | "closed") => void;
   onTransfer: (convId: string, agent: string) => void;
@@ -64,6 +64,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showClosureReason, setShowClosureReason] = useState(false);
   const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -95,11 +96,21 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       setShowTemplates(true);
       return;
     }
-    onSendMessage(conversation.id, inputText.trim());
+    const replyData = replyTo ? { id: replyTo.id, waMessageId: replyTo.waMessageId, senderName: replyTo.sender === "agent" ? "أنت" : (replyTo.senderName || conversation.customerName), text: replyTo.text } : undefined;
+    onSendMessage(conversation.id, inputText.trim(), "text", replyData);
     setInputText("");
+    setReplyTo(null);
     setIsTyping(true);
     setTimeout(() => setIsTyping(false), 2000);
   };
+
+  const handleReply = (msg: Message) => {
+    setReplyTo(msg);
+    setIsNoteMode(false);
+    inputRef.current?.focus();
+  };
+
+  const cancelReply = () => setReplyTo(null);
 
   const handleInputChange = (value: string) => {
     setInputText(value);
@@ -340,14 +351,28 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {msg.text}
               </div>
             ) : (
-              <div className={cn(
-                "max-w-[85%] md:max-w-[70%] rounded-xl px-4 py-2.5 text-sm",
-                msg.type === "note"
-                  ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
-                  : msg.sender === "agent"
-                    ? "bg-card shadow-card text-foreground rounded-bl-sm"
-                    : "gradient-whatsapp text-white rounded-br-sm shadow-md"
-              )}>
+              <div className="group relative max-w-[85%] md:max-w-[70%]">
+                {/* Reply action button */}
+                {msg.type !== "note" && (
+                  <button
+                    onClick={() => handleReply(msg)}
+                    className={cn(
+                      "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent",
+                      msg.sender === "agent" ? "-left-9" : "-right-9"
+                    )}
+                    title="رد"
+                  >
+                    <Reply className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                )}
+                <div className={cn(
+                  "rounded-xl px-4 py-2.5 text-sm",
+                  msg.type === "note"
+                    ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
+                    : msg.sender === "agent"
+                      ? "bg-card shadow-card text-foreground rounded-bl-sm"
+                      : "gradient-whatsapp text-white rounded-br-sm shadow-md"
+                )}>
                 {msg.senderName && msg.sender === "customer" && conversation.conversationType === "group" && (
                   <div className="text-[11px] font-bold mb-1" style={{ color: "#a8f0c8" }}>{msg.senderName}</div>
                 )}
@@ -450,6 +475,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
                 </div>
               </div>
+              </div>
             )}
           </div>
         ))}
@@ -518,6 +544,21 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       {/* Input Area */}
       {!isRecording && (
         <div className={cn("border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
+          {/* Reply Preview Bar */}
+          {replyTo && (
+            <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
+              <Reply className="w-4 h-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-primary truncate">
+                  {replyTo.sender === "agent" ? "أنت" : replyTo.senderName || conversation.customerName}
+                </p>
+                <p className="text-[12px] text-muted-foreground truncate">{replyTo.text}</p>
+              </div>
+              <button onClick={cancelReply} className="w-6 h-6 rounded-full hover:bg-muted flex items-center justify-center shrink-0">
+                <X className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
+          )}
           {/* Tool buttons row */}
           <div className="flex items-center gap-0.5 mb-2 overflow-x-auto pb-1">
             {(!windowExpired || isNoteMode) && (

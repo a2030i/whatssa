@@ -55,7 +55,7 @@ serve(async (req) => {
       return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
     }
 
-    const { to, message, conversation_id } = await req.json();
+    const { to, message, conversation_id, reply_to } = await req.json();
     if (!to || !message) return json({ error: "الرقم والرسالة مطلوبان" }, 400);
 
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
@@ -67,16 +67,32 @@ serve(async (req) => {
 
     // Send via Evolution API
     const instanceName = config.evolution_instance_name;
+    // Build send payload with optional quoted reply
+    const sendBody: Record<string, unknown> = {
+      number: to,
+      text: message,
+    };
+
+    if (reply_to?.wa_message_id) {
+      sendBody.quoted = {
+        key: {
+          remoteJid: to.includes("@") ? to : `${to}@s.whatsapp.net`,
+          fromMe: false,
+          id: reply_to.wa_message_id,
+        },
+        message: {
+          conversation: reply_to.text || "",
+        },
+      };
+    }
+
     const response = await fetch(`${EVOLUTION_URL}/message/sendText/${instanceName}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         apikey: EVOLUTION_KEY,
       },
-      body: JSON.stringify({
-        number: to,
-        text: message,
-      }),
+      body: JSON.stringify(sendBody),
     });
 
     const result = await response.json();
@@ -113,6 +129,15 @@ serve(async (req) => {
     }
 
     if (conversation) {
+      const msgMetadata: Record<string, unknown> = {};
+      if (reply_to) {
+        msgMetadata.quoted = {
+          message_id: reply_to.message_id,
+          sender_name: reply_to.sender_name || "",
+          text: reply_to.text || "",
+        };
+      }
+
       await adminClient.from("messages").insert({
         conversation_id: conversation.id,
         wa_message_id: waMessageId,
@@ -120,6 +145,7 @@ serve(async (req) => {
         message_type: "text",
         content: message,
         status: "sent",
+        metadata: Object.keys(msgMetadata).length > 0 ? msgMetadata : {},
       });
 
       await adminClient.from("conversations").update({

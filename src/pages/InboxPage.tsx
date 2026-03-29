@@ -137,6 +137,7 @@ const InboxPage = () => {
         mediaUrl: message.media_url || undefined,
         senderName: (message.metadata as any)?.sender_name || undefined,
         quoted: (message.metadata as any)?.quoted || undefined,
+        waMessageId: message.wa_message_id || undefined,
       }));
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
@@ -159,6 +160,7 @@ const InboxPage = () => {
           mediaUrl: message.media_url || undefined,
           senderName: message.metadata?.sender_name || undefined,
           quoted: message.metadata?.quoted || undefined,
+          waMessageId: message.wa_message_id || undefined,
         };
         setAllMessages((prev) => ({
           ...prev,
@@ -175,7 +177,7 @@ const InboxPage = () => {
   const selected = conversations.find((conversation) => conversation.id === selectedId) || null;
   const currentMessages = selectedId ? allMessages[selectedId] || [] : [];
 
-  const handleSendMessage = useCallback(async (convId: string, text: string, type: "text" | "note" = "text") => {
+  const handleSendMessage = useCallback(async (convId: string, text: string, type: "text" | "note" = "text", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }) => {
     if (type === "note") {
       const { error } = await supabase.from("messages").insert({
         conversation_id: convId,
@@ -183,6 +185,7 @@ const InboxPage = () => {
         sender: "agent",
         message_type: "note",
         status: "sent",
+        metadata: replyTo ? { quoted: { message_id: replyTo.id, sender_name: replyTo.senderName || "أنت", text: replyTo.text } } : {},
       });
 
       if (error) {
@@ -216,6 +219,7 @@ const InboxPage = () => {
         to: conversation.customerPhone,
         message: text,
         conversation_id: convId,
+        reply_to: replyTo ? { wa_message_id: replyTo.waMessageId, sender_name: replyTo.senderName, text: replyTo.text, message_id: replyTo.id } : undefined,
       },
     });
 
