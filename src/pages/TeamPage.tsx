@@ -216,6 +216,8 @@ const TeamPage = () => {
           {teams.map((team) => {
             const teamMembers = profiles.filter((m) => m.team_id === team.id);
             const onlineCount = teamMembers.filter((m) => m.is_online).length;
+            const sc = strategyConfig[team.assignment_strategy] || strategyConfig.round_robin;
+            const StrategyIcon = sc.icon;
             return (
               <div key={team.id} className="bg-card rounded-lg p-4 shadow-card border border-border hover:shadow-card-hover transition-shadow">
                 <div className="flex items-start justify-between mb-2">
@@ -229,11 +231,24 @@ const TeamPage = () => {
                         <button className="p-1 rounded hover:bg-secondary"><MoreVertical className="w-3.5 h-3.5 text-muted-foreground" /></button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => openAssignDialog(team)} className="text-xs gap-2">
+                          <Settings2 className="w-3.5 h-3.5" /> إعدادات الإسناد
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDeleteTeam(team.id)} className="text-xs text-destructive gap-2">
                           <Trash2 className="w-3.5 h-3.5" /> حذف الفريق
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                  )}
+                </div>
+                {/* Strategy badge */}
+                <div className="flex items-center gap-1.5 mb-2">
+                  <StrategyIcon className={cn("w-3 h-3", sc.color)} />
+                  <span className={cn("text-[10px] font-medium", sc.color)}>{sc.label}</span>
+                  {team.max_conversations_per_agent && (
+                    <span className="text-[9px] bg-secondary px-1.5 py-0.5 rounded-full text-muted-foreground">
+                      حد: {team.max_conversations_per_agent} محادثة
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center justify-between mt-3">
