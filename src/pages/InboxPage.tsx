@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from "react";
 import { MessageSquare } from "lucide-react";
-import { Conversation, Message, MessageTemplate } from "@/data/mockData";
+import { Conversation, Message } from "@/data/mockData";
 import { supabase } from "@/integrations/supabase/client";
 import ConversationList from "@/components/inbox/ConversationList";
 import ChatArea from "@/components/inbox/ChatArea";
 import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";
 import { toast } from "sonner";
+import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
 
 const formatTimestamp = (isoStr: string | null): string => {
   if (!isoStr) return "";
@@ -24,11 +25,25 @@ const InboxPage = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [allMessages, setAllMessages] = useState<Record<string, Message[]>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isMobile = window.innerWidth < 768;
 
-  // Fetch conversations from DB
+  useEffect(() => {
+    const loadTemplates = async () => {
+      const { data, error } = await supabase.functions.invoke("whatsapp-templates", {
+        body: { action: "list" },
+      });
+
+      if (!error && !data?.error) {
+        setTemplates((data?.templates || []).map(mapMetaTemplate));
+      }
+    };
+
+    loadTemplates();
+  }, []);
+
   useEffect(() => {
     const fetchConversations = async () => {
       const { data, error } = await supabase
@@ -42,18 +57,18 @@ const InboxPage = () => {
         return;
       }
 
-      const mapped: Conversation[] = (data || []).map((c) => ({
-        id: c.id,
-        customerName: c.customer_name || c.customer_phone,
-        customerPhone: c.customer_phone,
-        lastMessage: c.last_message || "",
-        timestamp: formatTimestamp(c.last_message_at),
-        unread: c.unread_count || 0,
-        assignedTo: c.assigned_to || "غير معيّن",
-        status: (c.status as "active" | "waiting" | "closed") || "active",
-        tags: c.tags || [],
-        notes: c.notes || "",
-        lastCustomerMessageAt: c.last_message_at || undefined,
+      const mapped: Conversation[] = (data || []).map((conversation) => ({
+        id: conversation.id,
+        customerName: conversation.customer_name || conversation.customer_phone,
+        customerPhone: conversation.customer_phone,
+        lastMessage: conversation.last_message || "",
+        timestamp: formatTimestamp(conversation.last_message_at),
+        unread: conversation.unread_count || 0,
+        assignedTo: conversation.assigned_to || "غير معيّن",
+        status: (conversation.status as "active" | "waiting" | "closed") || "active",
+        tags: conversation.tags || [],
+        notes: conversation.notes || "",
+        lastCustomerMessageAt: conversation.last_message_at || undefined,
       }));
 
       setConversations(mapped);
@@ -65,7 +80,6 @@ const InboxPage = () => {
 
     fetchConversations();
 
-    // Realtime subscription for conversations
     const channel = supabase
       .channel("conversations-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {
@@ -73,13 +87,14 @@ const InboxPage = () => {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  // Fetch messages for selected conversation
   useEffect(() => {
     if (!selectedId) return;
-    if (allMessages[selectedId]) return; // already loaded
+    if (allMessages[selectedId]) return;
 
     const fetchMessages = async () => {
       const { data, error } = await supabase
@@ -93,14 +108,14 @@ const InboxPage = () => {
         return;
       }
 
-      const mapped: Message[] = (data || []).map((m) => ({
-        id: m.id,
-        conversationId: m.conversation_id,
-        text: m.content,
-        sender: m.sender as "customer" | "agent" | "system",
-        timestamp: new Date(m.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
-        status: m.status as "sent" | "delivered" | "read" | undefined,
-        type: (m.message_type as Message["type"]) || "text",
+      const mapped: Message[] = (data || []).map((message) => ({
+        id: message.id,
+        conversationId: message.conversation_id,
+        text: message.content,
+        sender: message.sender as "customer" | "agent" | "system",
+        timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+        status: message.status as "sent" | "delivered" | "read" | undefined,
+        type: (message.message_type as Message["type"]) || "text",
       }));
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
@@ -108,69 +123,74 @@ const InboxPage = () => {
 
     fetchMessages();
 
-    // Realtime for messages
     const channel = supabase
       .channel(`messages-${selectedId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selectedId}` }, (payload) => {
-        const m = payload.new as any;
-        const newMsg: Message = {
-          id: m.id,
-          conversationId: m.conversation_id,
-          text: m.content,
-          sender: m.sender,
-          timestamp: new Date(m.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
-          status: m.status,
-          type: m.message_type || "text",
+        const message = payload.new as any;
+        const newMessage: Message = {
+          id: message.id,
+          conversationId: message.conversation_id,
+          text: message.content,
+          sender: message.sender,
+          timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+          status: message.status,
+          type: message.message_type || "text",
         };
         setAllMessages((prev) => ({
           ...prev,
-          [selectedId]: [...(prev[selectedId] || []), newMsg],
+          [selectedId]: [...(prev[selectedId] || []), newMessage],
         }));
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [selectedId]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedId, allMessages]);
 
-  const selected = conversations.find((c) => c.id === selectedId) || null;
-  const currentMessages = selectedId ? (allMessages[selectedId] || []) : [];
+  const selected = conversations.find((conversation) => conversation.id === selectedId) || null;
+  const currentMessages = selectedId ? allMessages[selectedId] || [] : [];
 
   const handleSendMessage = useCallback(async (convId: string, text: string, type: "text" | "note" = "text") => {
-    // Insert message to DB
-    const { error } = await supabase.from("messages").insert({
-      conversation_id: convId,
-      content: text,
-      sender: "agent",
-      message_type: type,
-      status: "sent",
-    });
+    if (type === "note") {
+      const { error } = await supabase.from("messages").insert({
+        conversation_id: convId,
+        content: text,
+        sender: "agent",
+        message_type: "note",
+        status: "sent",
+      });
 
-    if (error) {
-      toast.error("فشل إرسال الرسالة");
-      console.error(error);
+      if (error) {
+        toast.error("فشل حفظ الملاحظة");
+        return;
+      }
+
       return;
     }
 
-    // Update conversation last message
-    await supabase.from("conversations").update({
-      last_message: text,
-      last_message_at: new Date().toISOString(),
-    }).eq("id", convId);
+    const conversation = conversations.find((item) => item.id === convId);
+    if (!conversation) {
+      toast.error("تعذر تحديد المحادثة");
+      return;
+    }
 
-    // Also send via WhatsApp API if not a note
-    if (type !== "note") {
-      const conv = conversations.find(c => c.id === convId);
-      if (conv) {
-        supabase.functions.invoke("whatsapp-send", {
-          body: { to: conv.customerPhone, message: text },
-        }).catch(err => console.error("WhatsApp send error:", err));
-      }
+    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+      body: {
+        to: conversation.customerPhone,
+        message: text,
+        conversation_id: convId,
+      },
+    });
+
+    if (error || data?.error) {
+      toast.error(data?.error || "فشل إرسال الرسالة");
     }
   }, [conversations]);
 
   const handleStatusChange = useCallback(async (convId: string, status: "active" | "waiting" | "closed") => {
     await supabase.from("conversations").update({ status }).eq("id", convId);
-    setConversations((prev) => prev.map((c) => c.id === convId ? { ...c, status } : c));
+    setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, status } : conversation)));
     if (status === "closed") {
       await supabase.from("messages").insert({
         conversation_id: convId,
@@ -183,7 +203,7 @@ const InboxPage = () => {
 
   const handleTransfer = useCallback(async (convId: string, agent: string) => {
     await supabase.from("conversations").update({ assigned_to: agent }).eq("id", convId);
-    setConversations((prev) => prev.map((c) => c.id === convId ? { ...c, assignedTo: agent } : c));
+    setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, assignedTo: agent } : conversation)));
     await supabase.from("messages").insert({
       conversation_id: convId,
       content: `تم تحويل المحادثة إلى ${agent}`,
@@ -194,29 +214,34 @@ const InboxPage = () => {
 
   const handleUpdateNotes = useCallback(async (convId: string, notes: string) => {
     await supabase.from("conversations").update({ notes }).eq("id", convId);
-    setConversations((prev) => prev.map((c) => c.id === convId ? { ...c, notes } : c));
+    setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, notes } : conversation)));
   }, []);
 
-  const handleSendTemplate = useCallback(async (convId: string, template: MessageTemplate, variables: string[]) => {
-    let text = template.body;
-    variables.forEach((v, i) => { text = text.replace(`{{${i + 1}}}`, v); });
-    let header = template.header || "";
-    variables.forEach((v, i) => { header = header.replace(`{{${i + 1}}}`, v); });
-    const fullText = header ? `${header}\n\n${text}${template.footer ? `\n\n${template.footer}` : ""}` : `${text}${template.footer ? `\n\n${template.footer}` : ""}`;
+  const handleSendTemplate = useCallback(async (convId: string, template: WhatsAppTemplate, variables: string[]) => {
+    const conversation = conversations.find((item) => item.id === convId);
+    if (!conversation) {
+      toast.error("تعذر تحديد المحادثة");
+      return;
+    }
 
-    await supabase.from("messages").insert({
-      conversation_id: convId,
-      content: fullText,
-      sender: "agent",
-      message_type: "template",
-      status: "sent",
+    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+      body: {
+        to: conversation.customerPhone,
+        type: "template",
+        template_name: template.name,
+        template_language: template.language,
+        template_components: buildTemplateComponents(template, variables),
+        conversation_id: convId,
+      },
     });
 
-    await supabase.from("conversations").update({
-      last_message: `[قالب] ${template.name}`,
-      last_message_at: new Date().toISOString(),
-    }).eq("id", convId);
-  }, []);
+    if (error || data?.error) {
+      toast.error(data?.error || "فشل إرسال القالب");
+      return;
+    }
+
+    toast.success("تم إرسال القالب الحقيقي");
+  }, [conversations]);
 
   if (loading) {
     return (
@@ -236,7 +261,6 @@ const InboxPage = () => {
         selectedId={selectedId}
         onSelect={(id) => {
           setSelectedId(id);
-          // Reset unread
           supabase.from("conversations").update({ unread_count: 0 }).eq("id", id).then();
         }}
         hasSelection={!!selected}
@@ -246,6 +270,7 @@ const InboxPage = () => {
         <ChatArea
           conversation={selected}
           messages={currentMessages}
+          templates={templates}
           onBack={() => setSelectedId(null)}
           onSendMessage={handleSendMessage}
           onSendTemplate={handleSendTemplate}
@@ -257,20 +282,13 @@ const InboxPage = () => {
           <div className="text-center text-muted-foreground">
             <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm">
-              {conversations.length === 0
-                ? "لا توجد محادثات بعد — اربط واتساب وابدأ باستقبال الرسائل"
-                : "اختر محادثة للبدء"}
+              {conversations.length === 0 ? "لا توجد محادثات بعد — اربط واتساب وابدأ باستقبال الرسائل" : "اختر محادثة للبدء"}
             </p>
           </div>
         </div>
       )}
 
-      {selected && (
-        <CustomerInfoPanel
-          conversation={selected}
-          onUpdateNotes={handleUpdateNotes}
-        />
-      )}
+      {selected && <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} />}
     </div>
   );
 };
