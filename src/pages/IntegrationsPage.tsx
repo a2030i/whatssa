@@ -46,7 +46,7 @@ interface WhatsAppConfig {
   registered_at: string | null;
 }
 
-type FlowStep = "idle" | "connecting" | "pick_phone" | "success" | "error";
+type FlowStep = "idle" | "checklist" | "connecting" | "pick_phone" | "success" | "error";
 
 const IntegrationsPage = () => {
   const { orgId, isSuperAdmin } = useAuth();
