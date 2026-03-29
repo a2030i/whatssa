@@ -166,7 +166,23 @@ const TemplatesPage = () => {
 
   const renderTemplatePreview = (template: WhatsAppTemplate) => (
     <div className="bg-secondary rounded-xl p-4 max-w-[300px] mx-auto space-y-2">
-      {template.header && <p className="font-bold text-sm">{template.header}</p>}
+      {template.headerFormat === "IMAGE" && (
+        <div className="bg-muted rounded-lg h-32 flex items-center justify-center">
+          {template.headerUrl ? (
+            <img src={template.headerUrl} alt="Header" className="w-full h-32 object-cover rounded-lg" />
+          ) : (
+            <Image className="w-8 h-8 text-muted-foreground" />
+          )}
+        </div>
+      )}
+      {template.headerFormat === "VIDEO" && (
+        <div className="bg-muted rounded-lg h-32 flex items-center justify-center">
+          <Video className="w-8 h-8 text-muted-foreground" />
+        </div>
+      )}
+      {template.header && template.headerFormat !== "IMAGE" && template.headerFormat !== "VIDEO" && (
+        <p className="font-bold text-sm">{template.header}</p>
+      )}
       <p className="text-sm whitespace-pre-wrap">{template.body}</p>
       {template.footer && <p className="text-[11px] text-muted-foreground">{template.footer}</p>}
       {template.buttons && template.buttons.length > 0 && (
