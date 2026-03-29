@@ -61,14 +61,24 @@ const TeamPage = () => {
   }, [orgId]);
 
   const load = async () => {
-    const [t, p, r] = await Promise.all([
+    const [t, p, r, conv] = await Promise.all([
       supabase.from("teams").select("*").eq("org_id", orgId),
       supabase.from("profiles").select("*").eq("org_id", orgId),
       supabase.from("user_roles").select("*"),
+      supabase.from("conversations").select("assigned_to, status").eq("org_id", orgId).eq("status", "active"),
     ]);
     setTeams(t.data || []);
     setProfiles(p.data || []);
     setRoles(r.data || []);
+
+    // Build conversation count map by assigned_to (full_name)
+    const counts: Record<string, number> = {};
+    (conv.data || []).forEach((c: any) => {
+      if (c.assigned_to) {
+        counts[c.assigned_to] = (counts[c.assigned_to] || 0) + 1;
+      }
+    });
+    setConvCounts(counts);
   };
 
   const getRole = (userId: string) => {
