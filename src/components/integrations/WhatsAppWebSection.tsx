@@ -75,7 +75,8 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
       setInstanceName(data.instance_name);
 
       if (data.qr_code) {
-        setQrCode(`data:image/png;base64,${data.qr_code}`);
+        const qrSrc = data.qr_code.startsWith("data:") ? data.qr_code : `data:image/png;base64,${data.qr_code}`;
+        setQrCode(qrSrc);
         setInstanceStatus("qr_pending");
         startPolling(data.instance_name);
       } else {
@@ -104,7 +105,8 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
         });
 
         if (data?.qr_code) {
-          setQrCode(`data:image/png;base64,${data.qr_code}`);
+          const qrSrc = data.qr_code.startsWith("data:") ? data.qr_code : `data:image/png;base64,${data.qr_code}`;
+          setQrCode(qrSrc);
           setInstanceStatus("qr_pending");
           startPolling(iName);
           return true;
