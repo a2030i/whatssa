@@ -55,6 +55,7 @@ const TemplatesPage = () => {
   // Delete dialog
   const [deleteTarget, setDeleteTarget] = useState<WhatsAppTemplate | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [noWhatsApp, setNoWhatsApp] = useState(false);
 
   const loadTemplates = useCallback(async (showRefreshState = false) => {
     if (showRefreshState) setIsRefreshing(true);
