@@ -135,8 +135,8 @@ const OrdersPage = () => {
   if (loading) return <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="p-4 md:p-6 space-y-5" dir="rtl">
-      <div className="flex items-center justify-between">
+    <div className="p-3 md:p-6 space-y-5" dir="rtl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2"><ShoppingCart className="w-5 h-5 text-primary" /> الطلبات</h1>
           <p className="text-sm text-muted-foreground mt-0.5">إدارة ومتابعة طلبات المتجر</p>
