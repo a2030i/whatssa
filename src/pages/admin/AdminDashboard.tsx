@@ -56,9 +56,6 @@ const AdminDashboard = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => navigate("/")}>
-            <ChevronLeft className="w-3 h-3" /> لوحة العميل
-          </Button>
           <Button variant="ghost" size="sm" className="text-xs gap-1 text-destructive" onClick={signOut}>
             <LogOut className="w-3 h-3" /> خروج
           </Button>
