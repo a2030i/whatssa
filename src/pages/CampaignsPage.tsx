@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows } from "lucide-react";
+import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
   draft: { label: "مسودة", icon: FileText, className: "bg-muted text-muted-foreground" },
@@ -312,25 +313,128 @@ const CampaignsPage = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-card rounded-lg p-4 shadow-card text-center">
-          <p className="text-2xl font-bold">{campaigns.length}</p>
-          <p className="text-xs text-muted-foreground">إجمالي الحملات</p>
-        </div>
-        <div className="bg-card rounded-lg p-4 shadow-card text-center">
-          <p className="text-2xl font-bold text-success">{campaigns.filter((c) => c.status === "sent").length}</p>
-          <p className="text-xs text-muted-foreground">تم إرسالها</p>
-        </div>
-        <div className="bg-card rounded-lg p-4 shadow-card text-center">
-          <p className="text-2xl font-bold text-info">{totalSent.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">رسائل مرسلة</p>
-        </div>
-        <div className="bg-card rounded-lg p-4 shadow-card text-center">
-          <p className="text-2xl font-bold text-primary">{totalSent > 0 ? Math.round((totalDelivered / totalSent) * 100) : 0}%</p>
-          <p className="text-xs text-muted-foreground">معدل التوصيل</p>
-        </div>
-      </div>
+      {/* Analytics Dashboard */}
+      {(() => {
+        const totalRead = campaigns.reduce((s, c) => s + (c.read_count || 0), 0);
+        const totalFailed = campaigns.reduce((s, c) => s + (c.failed_count || 0), 0);
+        const totalRecipients = campaigns.reduce((s, c) => s + (c.total_recipients || 0), 0);
+        const deliveryRate = totalSent > 0 ? Math.round((totalDelivered / totalSent) * 100) : 0;
+        const readRate = totalDelivered > 0 ? Math.round((totalRead / totalDelivered) * 100) : 0;
+        const failRate = totalRecipients > 0 ? Math.round((totalFailed / totalRecipients) * 100) : 0;
+
+        // Build monthly time series from campaigns
+        const monthlyMap: Record<string, { month: string; sent: number; delivered: number; read: number; failed: number; campaigns: number }> = {};
+        campaigns.forEach((c) => {
+          const d = c.sent_at || c.created_at;
+          if (!d) return;
+          const key = d.slice(0, 7); // YYYY-MM
+          if (!monthlyMap[key]) monthlyMap[key] = { month: key, sent: 0, delivered: 0, read: 0, failed: 0, campaigns: 0 };
+          monthlyMap[key].sent += c.sent_count || 0;
+          monthlyMap[key].delivered += c.delivered_count || 0;
+          monthlyMap[key].read += c.read_count || 0;
+          monthlyMap[key].failed += c.failed_count || 0;
+          monthlyMap[key].campaigns += 1;
+        });
+        const timeData = Object.values(monthlyMap).sort((a, b) => a.month.localeCompare(b.month)).map((m) => ({
+          ...m,
+          label: new Date(m.month + "-01").toLocaleDateString("ar-SA", { month: "short", year: "2-digit" }),
+        }));
+
+        // Pie data for status distribution
+        const statusDist = [
+          { name: "مسودة", value: campaigns.filter((c) => c.status === "draft").length, color: "hsl(var(--muted-foreground))" },
+          { name: "مجدولة", value: campaigns.filter((c) => c.status === "scheduled").length, color: "hsl(var(--info))" },
+          { name: "تم الإرسال", value: campaigns.filter((c) => c.status === "sent").length, color: "hsl(var(--success))" },
+          { name: "جاري الإرسال", value: campaigns.filter((c) => c.status === "sending").length, color: "hsl(var(--warning))" },
+          { name: "فشل", value: campaigns.filter((c) => c.status === "failed").length, color: "hsl(var(--destructive))" },
+        ].filter((d) => d.value > 0);
+
+        return (
+          <div className="space-y-4">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              {[
+                { label: "إجمالي الحملات", value: campaigns.length, color: "" },
+                { label: "تم إرسالها", value: campaigns.filter((c) => c.status === "sent").length, color: "text-success" },
+                { label: "رسائل مرسلة", value: totalSent.toLocaleString(), color: "text-info" },
+                { label: "معدل التوصيل", value: `${deliveryRate}%`, color: "text-primary" },
+                { label: "معدل القراءة", value: `${readRate}%`, color: "text-primary" },
+                { label: "معدل الفشل", value: `${failRate}%`, color: "text-destructive" },
+              ].map((kpi) => (
+                <div key={kpi.label} className="bg-card rounded-lg p-3 shadow-card text-center">
+                  <p className={cn("text-xl font-bold", kpi.color)}>{kpi.value}</p>
+                  <p className="text-[10px] text-muted-foreground">{kpi.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Charts Row */}
+            {timeData.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Line Chart - Performance Over Time */}
+                <div className="lg:col-span-2 bg-card rounded-xl shadow-card p-4">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary" /> أداء الحملات عبر الزمن
+                  </h3>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={timeData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                        labelStyle={{ fontWeight: 600 }}
+                      />
+                      <Line type="monotone" dataKey="sent" stroke="hsl(var(--info))" strokeWidth={2} name="مُرسلة" dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="delivered" stroke="hsl(var(--success))" strokeWidth={2} name="تم التوصيل" dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="read" stroke="hsl(var(--primary))" strokeWidth={2} name="تمت القراءة" dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="failed" stroke="hsl(var(--destructive))" strokeWidth={2} name="فشل" dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Pie Chart - Status Distribution */}
+                <div className="bg-card rounded-xl shadow-card p-4">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-primary" /> توزيع الحالات
+                  </h3>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={statusDist} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3}>
+                        {statusDist.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
+            {/* Bar Chart - Campaigns per Month */}
+            {timeData.length > 1 && (
+              <div className="bg-card rounded-xl shadow-card p-4">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Megaphone className="w-4 h-4 text-primary" /> عدد الحملات والرسائل شهرياً
+                </h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={timeData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                    <Bar dataKey="sent" fill="hsl(var(--info))" name="مُرسلة" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="delivered" fill="hsl(var(--success))" name="تم التوصيل" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="read" fill="hsl(var(--primary))" name="تمت القراءة" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
