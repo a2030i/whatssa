@@ -1297,6 +1297,9 @@ export type Database = {
           is_connected: boolean | null
           org_id: string | null
           phone_number_id: string
+          token_expires_at: string | null
+          token_last_refreshed_at: string | null
+          token_refresh_error: string | null
           updated_at: string | null
           webhook_verify_token: string
         }
@@ -1310,6 +1313,9 @@ export type Database = {
           is_connected?: boolean | null
           org_id?: string | null
           phone_number_id: string
+          token_expires_at?: string | null
+          token_last_refreshed_at?: string | null
+          token_refresh_error?: string | null
           updated_at?: string | null
           webhook_verify_token?: string
         }
@@ -1323,6 +1329,9 @@ export type Database = {
           is_connected?: boolean | null
           org_id?: string | null
           phone_number_id?: string
+          token_expires_at?: string | null
+          token_last_refreshed_at?: string | null
+          token_refresh_error?: string | null
           updated_at?: string | null
           webhook_verify_token?: string
         }

@@ -5,6 +5,7 @@ import OperationalMetrics from "@/components/dashboard/OperationalMetrics";
 import AccountHealth from "@/components/dashboard/AccountHealth";
 import SmartInsight from "@/components/dashboard/SmartInsight";
 import VerificationCard from "@/components/dashboard/VerificationCard";
+import TokenAlert from "@/components/dashboard/TokenAlert";
 import { Loader2 } from "lucide-react";
 
 const DashboardPage = () => {
@@ -31,6 +32,9 @@ const DashboardPage = () => {
 
       {/* 1. Status Bar */}
       <StatusBar data={data} />
+
+      {/* Token Expiry Alert */}
+      <TokenAlert data={data} />
 
       {/* 2. Verification Card */}
       <VerificationCard data={data} />

@@ -36,11 +36,12 @@ export interface DashboardData {
   orgName: string;
   planName: string;
   subscriptionStatus: string;
-  // Meta API data (fetched separately)
   metaPhoneStatus: string | null;
   metaBusinessVerification: string | null;
   metaQualityRating: string | null;
   metaMessagingLimit: string | null;
+  tokenExpiresAt: string | null;
+  tokenRefreshError: string | null;
   isLoading: boolean;
 }
 
@@ -67,6 +68,8 @@ export const useDashboardData = (): DashboardData => {
     metaBusinessVerification: null,
     metaQualityRating: null,
     metaMessagingLimit: null,
+    tokenExpiresAt: null,
+    tokenRefreshError: null,
     isLoading: true,
   });
 
@@ -165,6 +168,8 @@ export const useDashboardData = (): DashboardData => {
         metaBusinessVerification,
         metaQualityRating,
         metaMessagingLimit,
+        tokenExpiresAt: (waData as any)?.token_expires_at || null,
+        tokenRefreshError: (waData as any)?.token_refresh_error || null,
         isLoading: false,
       });
     };
