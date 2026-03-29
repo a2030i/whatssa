@@ -643,7 +643,7 @@ const IntegrationsPage = () => {
       </div>
 
       {/* WhatsApp Web (Unofficial) */}
-      <WhatsAppWebSection orgId={orgId} />
+      <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} />
 
       {/* Upcoming Channels */}
       <div className="space-y-3">
