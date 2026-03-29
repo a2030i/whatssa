@@ -275,16 +275,19 @@ const InboxPage = () => {
   }
 
   return (
-    <div className="flex h-screen" dir="rtl">
-      <ConversationList
-        conversations={conversations}
-        selectedId={selectedId}
-        onSelect={(id) => {
-          setSelectedId(id);
-          supabase.from("conversations").update({ unread_count: 0 }).eq("id", id).then();
-        }}
-        hasSelection={!!selected}
-      />
+    <div className="flex h-[100dvh] overflow-hidden" dir="rtl">
+      {/* On mobile: show list when no selection, show chat when selected */}
+      {(!isMobile || !selected) && (
+        <ConversationList
+          conversations={conversations}
+          selectedId={selectedId}
+          onSelect={(id) => {
+            setSelectedId(id);
+            supabase.from("conversations").update({ unread_count: 0 }).eq("id", id).then();
+          }}
+          hasSelection={!!selected}
+        />
+      )}
 
       {selected ? (
         <ChatArea
@@ -298,17 +301,19 @@ const InboxPage = () => {
           onTransfer={handleTransfer}
         />
       ) : (
-        <div className="hidden md:flex flex-1 items-center justify-center bg-secondary/20">
-          <div className="text-center text-muted-foreground">
-            <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">
-              {conversations.length === 0 ? "لا توجد محادثات بعد — اربط واتساب وابدأ باستقبال الرسائل" : "اختر محادثة للبدء"}
-            </p>
+        !isMobile && (
+          <div className="flex flex-1 items-center justify-center bg-secondary/20">
+            <div className="text-center text-muted-foreground">
+              <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">
+                {conversations.length === 0 ? "لا توجد محادثات بعد — اربط واتساب وابدأ باستقبال الرسائل" : "اختر محادثة للبدء"}
+              </p>
+            </div>
           </div>
-        </div>
+        )
       )}
 
-      {selected && <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} />}
+      {selected && !isMobile && <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} />}
     </div>
   );
 };
