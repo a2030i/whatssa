@@ -631,9 +631,15 @@ const IntegrationsPage = () => {
               <p className="text-[11px] text-muted-foreground">{configs.length} رقم مربوط</p>
             </div>
           </div>
-          <Button size="sm" className="gap-1.5 text-xs" onClick={startConnect} disabled={!sdkLoaded}>
-            <Plus className="w-3.5 h-3.5" /> إضافة رقم
-          </Button>
+          {configs.length >= maxPhones && !isSuperAdmin ? (
+            <div className="text-[11px] text-destructive bg-destructive/5 rounded-lg px-3 py-2">
+              وصلت للحد الأقصى ({maxPhones} رقم) — <span className="font-semibold">ترقّ لباقة أعلى</span>
+            </div>
+          ) : (
+            <Button size="sm" className="gap-1.5 text-xs" onClick={startConnect} disabled={!sdkLoaded}>
+              <Plus className="w-3.5 h-3.5" /> إضافة رقم
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-3">
