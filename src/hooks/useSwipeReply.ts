@@ -23,6 +23,7 @@ export function useSwipeReply({ onSwipe, direction = "right", threshold = 60 }: 
     startX.current = e.touches[0].clientX;
     currentX.current = 0;
     isSwiping.current = false;
+    didVibrate.current = false;
   }, []);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
