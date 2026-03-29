@@ -83,8 +83,14 @@ const IntegrationsPage = () => {
   }, []);
 
   const loadConfigs = async () => {
-    const { data } = await supabase.from("whatsapp_config").select("*").order("created_at", { ascending: true });
-    setConfigs(data || []);
+    const [configsRes, orgRes] = await Promise.all([
+      supabase.from("whatsapp_config").select("*").order("created_at", { ascending: true }),
+      orgId ? supabase.from("organizations").select("plans(max_phone_numbers)").eq("id", orgId).maybeSingle() : null,
+    ]);
+    const data = configsRes.data || [];
+    setConfigs(data);
+    const planData = orgRes?.data as any;
+    if (planData?.plans?.max_phone_numbers) setMaxPhones(planData.plans.max_phone_numbers);
     // Fetch Meta status for connected configs
     if (data) {
       data.filter(c => c.is_connected && c.access_token && c.phone_number_id).forEach(c => fetchMetaStatus(c));
