@@ -25,15 +25,17 @@ const AdminAccounts = () => {
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    const [o, p, pl, w] = await Promise.all([
+    const [o, p, pl, w, c] = await Promise.all([
       supabase.from("organizations").select("*").order("created_at", { ascending: false }),
       supabase.from("profiles").select("*"),
       supabase.from("plans").select("*").order("sort_order"),
       supabase.from("wallets").select("*"),
+      supabase.from("conversations").select("org_id, last_message_at").order("last_message_at", { ascending: false }),
     ]);
     setOrgs(o.data || []);
     setProfiles(p.data || []);
     setPlans(pl.data || []);
+    setConversations(c.data || []);
     setWallets(w.data || []);
   };
 
