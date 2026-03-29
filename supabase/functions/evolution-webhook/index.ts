@@ -182,8 +182,8 @@ serve(async (req) => {
         const content = text || `[${messageType}]`;
         const senderName = msg.pushName || "";
         const participant = key.participant || key.participantAlt || "";
-        
-        await supabase.from("messages").insert({
+
+        const { error: messageInsertError } = await supabase.from("messages").insert({
           conversation_id: conversation.id,
           content,
           sender: "customer",
@@ -194,14 +194,18 @@ serve(async (req) => {
           metadata: conversationType === "group" ? { sender_name: senderName, participant } : {},
         });
 
-        // Update conversation unread count
-        try {
-          await supabase.rpc('increment_unread', { conv_id: conversation.id });
-        } catch {
-          // Fallback if RPC doesn't exist
+        if (messageInsertError) {
+          console.error("Failed to save message:", messageInsertError);
+          continue;
         }
 
-        await supabase
+        // Update conversation unread count
+        const { error: unreadError } = await supabase.rpc("increment_unread", { conv_id: conversation.id });
+        if (unreadError) {
+          console.error("Failed to increment unread:", unreadError);
+        }
+
+        const { error: conversationUpdateError } = await supabase
           .from("conversations")
           .update({
             last_message: content,
@@ -209,6 +213,10 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", conversation.id);
+
+        if (conversationUpdateError) {
+          console.error("Failed to update conversation after message save:", conversationUpdateError);
+        }
 
         console.log(`Message saved from ${phone} in conversation ${conversation.id}`);
       }
