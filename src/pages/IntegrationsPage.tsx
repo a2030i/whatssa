@@ -138,6 +138,10 @@ const IntegrationsPage = () => {
   };
 
   const startConnect = useCallback(() => {
+    if (configs.length >= maxPhones && !isSuperAdmin) {
+      toast.error(`وصلت للحد الأقصى (${maxPhones} رقم). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
+      return;
+    }
     const FB = (window as any).FB;
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
