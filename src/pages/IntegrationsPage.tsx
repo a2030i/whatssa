@@ -270,11 +270,11 @@ const IntegrationsPage = () => {
         },
       });
       if (error || data?.error) {
-        toast.error(data?.error || "فشل إعادة التسجيل");
+        toast.error(friendlyError(data?.error || "فشل إعادة التسجيل"));
       } else if (data?.registration?.success) {
         toast.success("✅ تم تسجيل الرقم بنجاح!");
       } else {
-        toast.error(`فشل التسجيل: ${data?.registration?.error || "خطأ غير معروف"}`);
+        toast.error(friendlyError(data?.registration?.error || "خطأ غير معروف"));
       }
       await loadConfigs();
     } catch {
