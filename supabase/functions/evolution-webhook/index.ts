@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL") || "";
+const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") || "";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -131,10 +134,30 @@ serve(async (req) => {
           .maybeSingle();
 
         if (!conversation) {
-          // Get push name / group subject for conversation name
-          const pushName = conversationType === "group"
-            ? (body.data?.subject || msg.pushName || `قروب ${phone}`)
-            : (msg.pushName || phone);
+          let convName = msg.pushName || phone;
+
+          // For groups, fetch the group name from Evolution API
+          if (conversationType === "group" && EVOLUTION_API_URL && EVOLUTION_API_KEY) {
+            try {
+              const groupRes = await fetch(
+                `${EVOLUTION_API_URL}/group/findGroupInfos/${instanceName}?groupJid=${remoteJid}`,
+                { headers: { apikey: EVOLUTION_API_KEY } }
+              );
+              if (groupRes.ok) {
+                const groupData = await groupRes.json();
+                const subject = groupData?.subject || groupData?.data?.subject || groupData?.[0]?.subject;
+                if (subject) convName = subject;
+                else convName = `قروب ${phone}`;
+              } else {
+                convName = `قروب ${phone}`;
+              }
+            } catch (e) {
+              console.log("Failed to fetch group info:", e);
+              convName = `قروب ${phone}`;
+            }
+          } else if (conversationType === "group") {
+            convName = `قروب ${phone}`;
+          }
 
           const { data: newConv } = await supabase
             .from("conversations")
