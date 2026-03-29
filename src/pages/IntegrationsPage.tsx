@@ -851,9 +851,9 @@ const IntegrationsPage = () => {
 
       {/* WhatsApp Numbers */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <MessageSquare className="w-4 h-4 text-primary" />
             </div>
             <div>
@@ -862,11 +862,11 @@ const IntegrationsPage = () => {
             </div>
           </div>
           {configs.length >= maxPhones && !isSuperAdmin ? (
-            <div className="text-[11px] text-destructive bg-destructive/5 rounded-lg px-3 py-2">
+            <div className="text-[11px] text-destructive bg-destructive/5 rounded-lg px-3 py-2 text-center">
               وصلت للحد الأقصى ({maxPhones} رقم) — <span className="font-semibold">ترقّ لباقة أعلى</span>
             </div>
           ) : (
-            <Button size="sm" className="gap-1.5 text-xs" onClick={startConnect} disabled={!sdkLoaded}>
+            <Button size="sm" className="gap-1.5 text-xs w-full sm:w-auto" onClick={startConnect} disabled={!sdkLoaded}>
               <Plus className="w-3.5 h-3.5" /> إضافة رقم
             </Button>
           )}
@@ -874,15 +874,14 @@ const IntegrationsPage = () => {
 
         <div className="grid gap-3">
           {configs.map((config) => (
-            <div key={config.id} className="bg-card rounded-xl shadow-card p-4 border border-border hover:shadow-card-hover transition-shadow">
-              <div className="flex items-center justify-between">
-                 <div className="flex items-center gap-3">
-                   <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
-                     <Phone className="w-5 h-5 text-primary" />
+            <div key={config.id} className="bg-card rounded-xl shadow-card p-3 md:p-4 border border-border hover:shadow-card-hover transition-shadow">
+              <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                     <Phone className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                    </div>
-                   <div>
-                     <div className="flex items-center gap-2">
-                       <p className="font-semibold text-sm" dir="ltr">{config.display_phone || config.phone_number_id}</p>
+                   <div className="flex-1 min-w-0">
+                     <div className="flex items-center gap-1.5 flex-wrap">
+                       <p className="font-semibold text-xs md:text-sm truncate" dir="ltr">{config.display_phone || config.phone_number_id}</p>
                        {config.registration_status === "connected" ? (
                          <Badge className="bg-success/10 text-success border-0 text-[10px] gap-0.5">
                            <CheckCircle2 className="w-2.5 h-2.5" /> متصل
@@ -901,17 +900,17 @@ const IntegrationsPage = () => {
                          </Badge>
                        )}
                      </div>
-                     <p className="text-xs text-muted-foreground">{config.business_name || "واتساب للأعمال"}</p>
+                     <p className="text-[11px] text-muted-foreground truncate">{config.business_name || "واتساب للأعمال"}</p>
                    </div>
-                 </div>
-                 <div className="flex items-center gap-1">
+              </div>
+              <div className="flex items-center gap-1.5 mt-3 flex-wrap">
                    {(config.registration_status === "failed" || config.registration_status === "pending" || !config.registration_status) && (
                      <>
                        <Input
                          value={twoStepPin}
                          onChange={(e) => setTwoStepPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
                          placeholder="PIN (اختياري)"
-                         className="bg-secondary border-0 text-xs w-24 h-8 text-center"
+                         className="bg-secondary border-0 text-xs w-20 h-8 text-center"
                          dir="ltr"
                          maxLength={6}
                        />
@@ -923,10 +922,9 @@ const IntegrationsPage = () => {
                    <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setExpandedId(expandedId === config.id ? null : config.id)}>
                      التفاصيل
                    </Button>
-                   <Button variant="ghost" size="sm" className="text-destructive h-8 w-8 p-0" onClick={() => handleDisconnect(config.id)}>
+                   <Button variant="ghost" size="sm" className="text-destructive h-8 w-8 p-0 mr-auto" onClick={() => handleDisconnect(config.id)}>
                      <Trash2 className="w-3.5 h-3.5" />
                    </Button>
-                 </div>
               </div>
 
               {/* Expanded */}
