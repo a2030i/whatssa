@@ -221,7 +221,7 @@ serve(async (req) => {
 
       // ── Step 4: Register phone number (only if not already registered) ──
       if (auto_register && !alreadyRegistered) {
-        registrationResult = await registerPhone(phoneId, accessToken, 3);
+        registrationResult = await registerPhone(phoneId, accessToken, 3, userPin || "123456");
 
         const configId = savedConfig?.id || existingConfig?.id;
 
