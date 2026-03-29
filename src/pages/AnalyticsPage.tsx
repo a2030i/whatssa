@@ -68,7 +68,7 @@ const AnalyticsPage = () => {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="bg-secondary">
+        <TabsList className="bg-secondary w-full sm:w-auto overflow-x-auto">
           <TabsTrigger value="overview" className="text-xs gap-1"><BarChart3 className="w-3 h-3" /> نظرة عامة</TabsTrigger>
           <TabsTrigger value="team" className="text-xs gap-1"><Users className="w-3 h-3" /> أداء الفريق</TabsTrigger>
           <TabsTrigger value="reports" className="text-xs gap-1"><PieChartIcon className="w-3 h-3" /> تقارير</TabsTrigger>
