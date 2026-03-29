@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Square } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Square, Image as ImageIcon, Loader2, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Conversation, Message, quickReplies, agents } from "@/data/mockData";
 import type { WhatsAppTemplate } from "@/types/whatsapp";
@@ -54,8 +55,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [recordingTime, setRecordingTime] = useState(0);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showClosureReason, setShowClosureReason] = useState(false);
+  const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const windowExpired = isWindowExpired(conversation.lastCustomerMessageAt);
@@ -190,6 +194,58 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("يُسمح فقط برفع الصور حالياً");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("حجم الصورة يجب أن يكون أقل من 10 ميغابايت");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setImagePreview({ file, url });
+    e.target.value = "";
+  };
+
+  const handleSendImage = async () => {
+    if (!imagePreview) return;
+    if (windowExpired) {
+      toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const ext = imagePreview.file.name.split(".").pop() || "jpg";
+      const path = `${conversation.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(path, imagePreview.file, { contentType: imagePreview.file.type });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+      const caption = inputText.trim();
+      onSendMessage(conversation.id, caption ? `📷 ${caption}\n${urlData.publicUrl}` : `📷 صورة\n${urlData.publicUrl}`);
+      setImagePreview(null);
+      setInputText("");
+      URL.revokeObjectURL(imagePreview.url);
+      toast.success("تم إرسال الصورة");
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      toast.error("فشل رفع الصورة: " + (err.message || "خطأ غير معروف"));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const cancelImagePreview = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview.url);
+      setImagePreview(null);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
@@ -297,15 +353,28 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
                   </div>
                 )}
-                <p className="whitespace-pre-wrap">
-                  {msg.text.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
-                    part.startsWith("@") ? (
-                      <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{part}</span>
-                    ) : (
-                      <span key={i}>{part}</span>
-                    )
-                  )}
-                </p>
+                {(() => {
+                  const imgMatch = msg.text.match(/\n(https:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|svg)[^\s]*)/i) || msg.text.match(/\n(https:\/\/[^\s]*storage[^\s]*)/i);
+                  const textWithoutUrl = imgMatch ? msg.text.replace(imgMatch[0], "").trim() : msg.text;
+                  return (
+                    <>
+                      {imgMatch && (
+                        <img src={imgMatch[1]} alt="صورة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(imgMatch[1], "_blank")} />
+                      )}
+                      {textWithoutUrl && (
+                        <p className="whitespace-pre-wrap">
+                          {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
+                            part.startsWith("@") ? (
+                              <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{part}</span>
+                            ) : (
+                              <span key={i}>{part}</span>
+                            )
+                          )}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
                 <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-whatsapp-foreground/70")}>
                   <span className="text-[10px]">{msg.timestamp}</span>
                   {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
@@ -400,10 +469,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </PopoverContent>
                 </Popover>
                 {!isNoteMode && (
-                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => toast.info("سيتم دعم المرفقات قريباً")}>
+                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => fileInputRef.current?.click()}>
                     <Paperclip className="w-4 h-4" />
                   </button>
                 )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
                 {!isNoteMode && (
                   <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
                     <Zap className="w-4 h-4" />
@@ -432,6 +508,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             )}
           </div>
 
+          {/* Image Preview */}
+          {imagePreview && (
+            <div className="relative mb-2 inline-block">
+              <img src={imagePreview.url} alt="معاينة" className="max-h-32 rounded-lg border border-border object-cover" />
+              <button
+                onClick={cancelImagePreview}
+                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+
           {/* Input + send row */}
           <div className="flex items-center gap-2">
             {windowExpired && !isNoteMode ? (
@@ -441,15 +530,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             ) : (
               <Input
                 ref={inputRef}
-                placeholder={isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "اكتب رسالة..."}
+                placeholder={imagePreview ? "أضف تعليقاً (اختياري)..." : isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "اكتب رسالة..."}
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
                 className={cn("flex-1 border-0", isNoteMode ? "bg-amber-500/5" : "bg-secondary")}
               />
             )}
             {(isNoteMode || !windowExpired) && (
-              inputText.trim() ? (
+              imagePreview ? (
+                <button onClick={handleSendImage} disabled={isUploading} className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 gradient-whatsapp hover:opacity-90 transition-opacity">
+                  {isUploading ? <Loader2 className="w-4 h-4 text-whatsapp-foreground animate-spin" /> : <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />}
+                </button>
+              ) : inputText.trim() ? (
                 <button onClick={handleSend} className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-opacity", isNoteMode ? "bg-amber-500 hover:opacity-90" : "gradient-whatsapp hover:opacity-90")}>
                   <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
