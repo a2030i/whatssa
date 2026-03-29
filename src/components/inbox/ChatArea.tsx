@@ -127,15 +127,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
   const handleEmoji = (emoji: string) => setInputText((prev) => prev + emoji);
 
-  const openTemplateFill = (t: MessageTemplate) => {
+  const openTemplateFill = (t: WhatsAppTemplate) => {
     setSelectedTemplate(t);
-    setTemplateVars(new Array(t.variables?.length || 0).fill(""));
+    setTemplateVars(new Array(t.variableCount || 0).fill(""));
     setShowTemplates(false);
   };
 
   const handleSendTemplate = () => {
     if (!selectedTemplate) return;
-    if (selectedTemplate.variables && templateVars.some((v) => !v.trim())) {
+    if (selectedTemplate.variableCount > 0 && templateVars.some((v) => !v.trim())) {
       toast.error("يرجى تعبئة جميع المتغيرات");
       return;
     }
@@ -145,7 +145,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     toast.success("تم إرسال القالب بنجاح");
   };
 
-  const fillTemplateBody = (t: MessageTemplate, vars: string[]) => {
+  const fillTemplateBody = (t: WhatsAppTemplate, vars: string[]) => {
     let text = t.body;
     vars.forEach((v, i) => { text = text.replace(`{{${i + 1}}}`, v || `{{${i + 1}}}`); });
     let header = t.header || "";
@@ -484,7 +484,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </div>
                   {t.header && <p className="text-xs font-medium">{t.header}</p>}
                   <p className="text-xs text-muted-foreground line-clamp-2">{t.body}</p>
-                  {t.variables && <p className="text-[10px] text-muted-foreground">{t.variables.length} متغير</p>}
+                  {t.variableCount > 0 && <p className="text-[10px] text-muted-foreground">{t.variableCount} متغير</p>}
                 </button>
               ))
             )}
@@ -514,13 +514,13 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </>
                 ); })()}
               </div>
-              {selectedTemplate.variables && selectedTemplate.variables.map((v, i) => (
+              {selectedTemplate.variableCount > 0 && Array.from({ length: selectedTemplate.variableCount }, (_, i) => (
                 <div key={i} className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">{`{{${i + 1}}} ${v}`}</label>
+                  <label className="text-xs font-medium text-muted-foreground">{`{{${i + 1}}}`}</label>
                   <Input
                     value={templateVars[i] || ""}
                     onChange={(e) => { const nv = [...templateVars]; nv[i] = e.target.value; setTemplateVars(nv); }}
-                    placeholder={v}
+                    placeholder={`متغير ${i + 1}`}
                     className="text-sm bg-secondary border-0"
                   />
                 </div>
