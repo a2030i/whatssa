@@ -85,9 +85,10 @@ const IntegrationsPage = () => {
   }, []);
 
   const loadConfigs = async () => {
+    if (!orgId) return;
     const [configsRes, orgRes] = await Promise.all([
-      supabase.from("whatsapp_config").select("*").order("created_at", { ascending: true }),
-      orgId ? supabase.from("organizations").select("plans(max_phone_numbers)").eq("id", orgId).maybeSingle() : null,
+      supabase.from("whatsapp_config").select("*").eq("org_id", orgId).order("created_at", { ascending: true }),
+      supabase.from("organizations").select("plans(max_phone_numbers)").eq("id", orgId).maybeSingle(),
     ]);
     const data = configsRes.data || [];
     setConfigs(data);
