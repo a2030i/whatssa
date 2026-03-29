@@ -820,6 +820,8 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string | null
+          default_assignment_strategy: string
+          default_max_conversations: number | null
           id: string
           is_active: boolean
           is_ecommerce: boolean | null
@@ -838,6 +840,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          default_assignment_strategy?: string
+          default_max_conversations?: number | null
           id?: string
           is_active?: boolean
           is_ecommerce?: boolean | null
@@ -856,6 +860,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          default_assignment_strategy?: string
+          default_max_conversations?: number | null
           id?: string
           is_active?: boolean
           is_ecommerce?: boolean | null
@@ -1108,22 +1114,34 @@ export type Database = {
       }
       teams: {
         Row: {
+          assignment_strategy: string
           created_at: string | null
           id: string
+          last_assigned_index: number
+          max_conversations_per_agent: number | null
           name: string
           org_id: string
+          skill_keywords: Json | null
         }
         Insert: {
+          assignment_strategy?: string
           created_at?: string | null
           id?: string
+          last_assigned_index?: number
+          max_conversations_per_agent?: number | null
           name: string
           org_id: string
+          skill_keywords?: Json | null
         }
         Update: {
+          assignment_strategy?: string
           created_at?: string | null
           id?: string
+          last_assigned_index?: number
+          max_conversations_per_agent?: number | null
           name?: string
           org_id?: string
+          skill_keywords?: Json | null
         }
         Relationships: [
           {
