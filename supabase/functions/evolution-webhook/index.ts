@@ -194,18 +194,12 @@ serve(async (req) => {
           metadata: conversationType === "group" ? { sender_name: senderName, participant } : {},
         });
 
-        // Update conversation
-        await supabase.rpc('increment_unread', { conv_id: conversation.id }).catch(() => {
+        // Update conversation unread count
+        try {
+          await supabase.rpc('increment_unread', { conv_id: conversation.id });
+        } catch {
           // Fallback if RPC doesn't exist
-          supabase
-            .from("conversations")
-            .update({
-              last_message: content,
-              last_message_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", conversation.id);
-        });
+        }
 
         await supabase
           .from("conversations")
