@@ -79,25 +79,16 @@ const AdminAccounts = () => {
     }
     setCreating(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: newAccount.email,
-        password: newAccount.password,
-        options: { data: { full_name: newAccount.full_name } },
+      const { data, error } = await supabase.functions.invoke("admin-create-user", {
+        body: newAccount,
       });
       if (error) throw error;
-
-      // Update org name if provided
-      if (data.user && newAccount.org_name) {
-        const profile = await supabase.from("profiles").select("org_id").eq("id", data.user.id).maybeSingle();
-        if (profile.data?.org_id) {
-          await supabase.from("organizations").update({ name: newAccount.org_name }).eq("id", profile.data.org_id);
-        }
-      }
+      if (data?.error) throw new Error(data.error);
 
       toast.success("تم إنشاء الحساب بنجاح");
       setShowCreate(false);
       setNewAccount({ email: "", password: "", full_name: "", org_name: "" });
-      load();
+      setTimeout(() => load(), 1000);
     } catch (e: any) {
       toast.error(e.message || "فشل إنشاء الحساب");
     } finally {
