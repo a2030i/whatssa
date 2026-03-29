@@ -141,23 +141,47 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     let attempts = 0;
     pollRef.current = setInterval(async () => {
       attempts++;
-      if (attempts > 60) { // Stop after 2 minutes
+      if (attempts > 40) { // Stop after ~3.5 minutes
         if (pollRef.current) clearInterval(pollRef.current);
+        toast.error("⚠️ انتهت مهلة المسح — اضغط تحديث QR للمحاولة مجدداً");
         return;
       }
 
-      const { data } = await supabase.functions.invoke("evolution-manage", {
-        body: { action: "status", instance_name: name },
-      });
-
-      if (data?.status === "open") {
-        setInstanceStatus("connected");
-        setQrCode(null);
-        if (pollRef.current) clearInterval(pollRef.current);
-        toast.success("✅ تم ربط الرقم بنجاح!");
-        loadExistingConfig();
+      // Every other attempt: fetch fresh QR (Evolution regenerates QR every ~20s)
+      // Alternate attempts: check connection status
+      if (attempts % 2 === 0) {
+        // Refresh QR to keep it valid
+        try {
+          const { data } = await supabase.functions.invoke("evolution-manage", {
+            body: { action: "connect", instance_name: name },
+          });
+          if (data?.status === "open") {
+            setInstanceStatus("connected");
+            setQrCode(null);
+            if (pollRef.current) clearInterval(pollRef.current);
+            toast.success("✅ تم ربط الرقم بنجاح!");
+            loadExistingConfig();
+            return;
+          }
+          if (data?.qr_code) {
+            const qrSrc = data.qr_code.startsWith("data:") ? data.qr_code : `data:image/png;base64,${data.qr_code}`;
+            setQrCode(qrSrc);
+          }
+        } catch { /* ignore */ }
+      } else {
+        // Check status
+        const { data } = await supabase.functions.invoke("evolution-manage", {
+          body: { action: "status", instance_name: name },
+        });
+        if (data?.status === "open") {
+          setInstanceStatus("connected");
+          setQrCode(null);
+          if (pollRef.current) clearInterval(pollRef.current);
+          toast.success("✅ تم ربط الرقم بنجاح!");
+          loadExistingConfig();
+        }
       }
-    }, 3000);
+    }, 5000); // every 5 seconds (alternating = QR refresh every 10s)
   };
 
   const checkStatus = async () => {
