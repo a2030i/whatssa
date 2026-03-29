@@ -135,7 +135,7 @@ const TeamPage = () => {
   const isAdmin = userRole === "admin" || userRole === "super_admin";
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-[1000px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[1000px]" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold">الفريق</h1>

@@ -20,7 +20,7 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-[1200px] mx-auto space-y-5">
+    <div className="p-3 md:p-6 max-w-[1200px] mx-auto space-y-5">
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-foreground">لوحة التحكم</h1>

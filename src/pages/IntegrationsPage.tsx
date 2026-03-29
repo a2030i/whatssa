@@ -298,7 +298,7 @@ const IntegrationsPage = () => {
   // ============ EMPTY STATE: Show all channels ============
   if (configs.length === 0 && flowStep === "idle") {
     return (
-      <div className="p-4 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
+      <div className="p-3 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
             <Plug className="w-5 h-5 text-primary" />
@@ -403,7 +403,7 @@ const IntegrationsPage = () => {
   // ============ CONNECTING / LOADING ============
   if (flowStep === "connecting") {
     return (
-      <div className="p-4 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
         <div className="bg-card rounded-2xl shadow-card border border-border p-12 text-center">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
           <h2 className="text-lg font-bold text-foreground">جاري الربط...</h2>
@@ -416,7 +416,7 @@ const IntegrationsPage = () => {
   // ============ PICK PHONE NUMBER ============
   if (flowStep === "pick_phone") {
     return (
-      <div className="p-4 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
         <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
           <div className="p-6 border-b border-border">
             <h2 className="text-lg font-bold text-foreground">اختر رقمك</h2>
@@ -458,7 +458,7 @@ const IntegrationsPage = () => {
   // ============ SUCCESS ============
   if (flowStep === "success") {
     return (
-      <div className="p-4 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
         <div className="bg-card rounded-2xl shadow-card border border-success/30 overflow-hidden">
           <div className="bg-success/5 p-8 text-center">
             <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
@@ -507,7 +507,7 @@ const IntegrationsPage = () => {
   // ============ ERROR ============
   if (flowStep === "error") {
     return (
-      <div className="p-4 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
         <div className="bg-card rounded-2xl shadow-card border border-destructive/30 overflow-hidden">
           <div className="bg-destructive/5 p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
@@ -539,7 +539,7 @@ const IntegrationsPage = () => {
 
   // ============ MAIN: Connected Numbers Management ============
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">

@@ -34,7 +34,7 @@ const AnalyticsPage = () => {
   const [period, setPeriod] = useState("week");
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-[1200px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[1200px]" dir="rtl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">التحليلات والأداء</h1>
@@ -68,7 +68,7 @@ const AnalyticsPage = () => {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="bg-secondary">
+        <TabsList className="bg-secondary w-full sm:w-auto overflow-x-auto">
           <TabsTrigger value="overview" className="text-xs gap-1"><BarChart3 className="w-3 h-3" /> نظرة عامة</TabsTrigger>
           <TabsTrigger value="team" className="text-xs gap-1"><Users className="w-3 h-3" /> أداء الفريق</TabsTrigger>
           <TabsTrigger value="reports" className="text-xs gap-1"><PieChartIcon className="w-3 h-3" /> تقارير</TabsTrigger>

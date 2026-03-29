@@ -219,7 +219,7 @@ const TemplatesPage = () => {
   const isEditing = !!editingTemplate;
 
   return (
-    <div className="p-4 md:p-6 space-y-6" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6" dir="rtl">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

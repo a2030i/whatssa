@@ -90,7 +90,7 @@ const AbandonedCartsPage = () => {
   if (loading) return <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="p-4 md:p-6 space-y-5" dir="rtl">
+    <div className="p-3 md:p-6 space-y-5" dir="rtl">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-warning" /> السلات المتروكة</h1>
         <p className="text-sm text-muted-foreground mt-0.5">استرد المبيعات المفقودة بإرسال تذكيرات عبر واتساب</p>
