@@ -202,8 +202,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
             <button key={conv.id} onClick={() => onSelect(conv.id)} className={cn("w-full text-right p-3 border-b border-border transition-colors hover:bg-secondary/50", selectedId === conv.id && "bg-accent")}>
               <div className="flex items-start gap-3">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-full gradient-whatsapp flex items-center justify-center text-sm font-bold text-whatsapp-foreground shrink-0">
-                    {conv.customerName.charAt(0)}
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
+                    conv.conversationType === "group" ? "bg-blue-500/15 text-blue-600" :
+                    conv.conversationType === "broadcast" ? "bg-orange-500/15 text-orange-600" :
+                    "gradient-whatsapp text-whatsapp-foreground"
+                  )}>
+                    {conv.conversationType === "group" ? <Users className="w-5 h-5" /> :
+                     conv.conversationType === "broadcast" ? <Radio className="w-5 h-5" /> :
+                     conv.customerName.charAt(0)}
                   </div>
                   {conv.lastSeen === "متصل الآن" && (
                     <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-success border-2 border-card" />
