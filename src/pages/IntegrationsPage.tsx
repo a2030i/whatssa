@@ -66,6 +66,15 @@ const IntegrationsPage = () => {
   const [testSending, setTestSending] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [twoStepPin, setTwoStepPin] = useState("");
+  const [metaStatus, setMetaStatus] = useState<Record<string, {
+    phoneStatus?: string;
+    nameStatus?: string;
+    qualityRating?: string;
+    messagingLimit?: string;
+    businessVerification?: string;
+    accountReviewStatus?: string;
+    isLoading: boolean;
+  }>>({});
 
   useEffect(() => {
     loadConfigs();
@@ -75,6 +84,36 @@ const IntegrationsPage = () => {
   const loadConfigs = async () => {
     const { data } = await supabase.from("whatsapp_config").select("*").order("created_at", { ascending: true });
     setConfigs(data || []);
+    // Fetch Meta status for connected configs
+    if (data) {
+      data.filter(c => c.is_connected && c.access_token && c.phone_number_id).forEach(c => fetchMetaStatus(c));
+    }
+  };
+
+  const fetchMetaStatus = async (config: WhatsAppConfig) => {
+    setMetaStatus(p => ({ ...p, [config.id]: { isLoading: true } }));
+    try {
+      const [phoneRes, wabaRes] = await Promise.all([
+        fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}?fields=code_verification_status,quality_rating,messaging_limit_tier,name_status,status,account_mode&access_token=${config.access_token}`),
+        fetch(`https://graph.facebook.com/v21.0/${config.business_account_id}?fields=account_review_status,business_verification_status&access_token=${config.access_token}`),
+      ]);
+      const phoneData = phoneRes.ok ? await phoneRes.json() : {};
+      const wabaData = wabaRes.ok ? await wabaRes.json() : {};
+      setMetaStatus(p => ({
+        ...p,
+        [config.id]: {
+          phoneStatus: phoneData.code_verification_status || phoneData.status || null,
+          nameStatus: phoneData.name_status || null,
+          qualityRating: phoneData.quality_rating || null,
+          messagingLimit: phoneData.messaging_limit_tier || null,
+          businessVerification: wabaData.business_verification_status || null,
+          accountReviewStatus: wabaData.account_review_status || null,
+          isLoading: false,
+        },
+      }));
+    } catch {
+      setMetaStatus(p => ({ ...p, [config.id]: { isLoading: false } }));
+    }
   };
 
   const loadFacebookSDK = () => {
