@@ -3,10 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Search, Building2, UserCheck, UserX, ShoppingBag, Store, Plus, Eye, Clock, MessageSquare } from "lucide-react";
+import { Search, Building2, UserCheck, UserX, ShoppingBag, Store, Plus, Eye, Clock, MessageSquare, Archive, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useNavigate } from "react-router-dom";
 
 const AdminAccounts = () => {
@@ -19,6 +20,8 @@ const AdminAccounts = () => {
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [newAccount, setNewAccount] = useState({ email: "", password: "", full_name: "", org_name: "" });
   const navigate = useNavigate();
 
@@ -99,8 +102,32 @@ const AdminAccounts = () => {
     }
   };
 
+  const archiveOrg = async (orgId: string) => {
+    await supabase.from("organizations").update({ is_active: false, subscription_status: "cancelled" }).eq("id", orgId);
+    toast.success("تم أرشفة الحساب");
+    load();
+  };
+
+  const deleteOrg = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-delete-org", {
+        body: { org_id: deleteTarget.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("تم حذف الحساب نهائياً");
+      setDeleteTarget(null);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "فشل الحذف");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const impersonateOrg = (orgId: string) => {
-    // Store impersonation in sessionStorage and navigate to client dashboard
     sessionStorage.setItem("impersonate_org_id", orgId);
     const org = orgs.find(o => o.id === orgId);
     toast.success(`دخول كعميل: ${org?.name || orgId.slice(0, 8)}`);
@@ -299,12 +326,20 @@ const AdminAccounts = () => {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button size="sm" variant="outline" className="text-xs gap-1" onClick={(e) => { e.stopPropagation(); impersonateOrg(org.id); }}>
                       <Eye className="w-3 h-3" /> عرض كعميل
                     </Button>
                     <Button size="sm" variant={org.is_active ? "destructive" : "default"} className="text-xs" onClick={() => toggleActive(org.id, org.is_active)}>
                       {org.is_active ? "تعطيل المنظمة" : "تفعيل المنظمة"}
+                    </Button>
+                    {org.is_active && (
+                      <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => archiveOrg(org.id)}>
+                        <Archive className="w-3 h-3" /> أرشفة
+                      </Button>
+                    )}
+                    <Button size="sm" variant="destructive" className="text-xs gap-1" onClick={() => setDeleteTarget({ id: org.id, name: org.name })}>
+                      <Trash2 className="w-3 h-3" /> حذف نهائي
                     </Button>
                   </div>
                 </div>
@@ -313,6 +348,24 @@ const AdminAccounts = () => {
           );
         })}
       </div>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف الحساب نهائياً؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف <strong>{deleteTarget?.name}</strong> وجميع بياناته (المحادثات، العملاء، الحملات، المحفظة) بشكل نهائي ولا يمكن التراجع.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteOrg} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? "جاري الحذف..." : "حذف نهائي"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
