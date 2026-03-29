@@ -637,91 +637,12 @@ const CampaignsPage = () => {
       <Dialog open={!!detailCampaign} onOpenChange={() => setDetailCampaign(null)}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto" dir="rtl">
           {detailCampaign && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center justify-between">
-                  <span>تفاصيل: {detailCampaign.name}</span>
-                  <Button size="sm" variant="outline" className="text-xs gap-1" onClick={exportReport}>
-                    <Download className="w-3 h-3" /> تصدير التقرير
-                  </Button>
-                </DialogTitle>
-              </DialogHeader>
-
-              {/* Summary Stats */}
-              <div className="grid grid-cols-5 gap-3 mt-3">
-                <div className="bg-secondary rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold">{detailCampaign.total_recipients || 0}</p>
-                  <p className="text-[10px] text-muted-foreground">الإجمالي</p>
-                </div>
-                <div className="bg-info/5 rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold text-info">{detailCampaign.sent_count || 0}</p>
-                  <p className="text-[10px] text-muted-foreground">مُرسلة</p>
-                </div>
-                <div className="bg-success/5 rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold text-success">{detailCampaign.delivered_count || 0}</p>
-                  <p className="text-[10px] text-muted-foreground">تم التوصيل</p>
-                </div>
-                <div className="bg-primary/5 rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold text-primary">{detailCampaign.read_count || 0}</p>
-                  <p className="text-[10px] text-muted-foreground">تمت القراءة</p>
-                </div>
-                <div className="bg-destructive/5 rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold text-destructive">{detailCampaign.failed_count || 0}</p>
-                  <p className="text-[10px] text-muted-foreground">فشل</p>
-                </div>
-              </div>
-
-              {/* Campaign Info */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mt-3">
-                <div><span className="text-muted-foreground">القالب:</span> <span className="font-medium mr-1">{detailCampaign.template_name || "-"}</span></div>
-                <div><span className="text-muted-foreground">نوع الجمهور:</span> <span className="font-medium mr-1">
-                  {detailCampaign.audience_type === "all" ? "الكل" : detailCampaign.audience_type === "tags" ? "تصنيفات" : detailCampaign.audience_type === "upload" ? "إكسل" : "يدوي"}
-                </span></div>
-                {detailCampaign.audience_tags?.length > 0 && (
-                  <div><span className="text-muted-foreground">التصنيفات:</span> <span className="font-medium mr-1">{detailCampaign.audience_tags.join("، ")}</span></div>
-                )}
-                {detailCampaign.exclude_tags?.length > 0 && (
-                  <div><span className="text-muted-foreground">الاستثناءات:</span> <span className="font-medium mr-1 text-destructive">{detailCampaign.exclude_tags.join("، ")}</span></div>
-                )}
-              </div>
-
-              {/* Recipients Table */}
-              <div className="mt-4 border border-border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/50 text-muted-foreground text-[11px]">
-                      <th className="text-right p-2.5">الرقم</th>
-                      <th className="text-right p-2.5">الاسم</th>
-                      <th className="text-right p-2.5">الحالة</th>
-                      <th className="text-right p-2.5 hidden md:table-cell">وقت الإرسال</th>
-                      <th className="text-right p-2.5 hidden md:table-cell">وقت التوصيل</th>
-                      <th className="text-right p-2.5 hidden lg:table-cell">الخطأ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recipients.map((r) => (
-                      <tr key={r.id} className="border-b border-border/50 hover:bg-secondary/20">
-                        <td className="p-2.5 font-mono text-xs" dir="ltr">{r.phone}</td>
-                        <td className="p-2.5 text-xs">{r.customer_name || "-"}</td>
-                        <td className="p-2.5">{recipientStatusBadge(r.status)}</td>
-                        <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.sent_at ? new Date(r.sent_at).toLocaleString("ar-SA") : "-"}</td>
-                        <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.delivered_at ? new Date(r.delivered_at).toLocaleString("ar-SA") : "-"}</td>
-                        <td className="p-2.5 text-[10px] text-destructive hidden lg:table-cell">
-                          {r.error_code && <span className="font-mono">{r.error_code}: </span>}
-                          {r.error_message || "-"}
-                        </td>
-                      </tr>
-                    ))}
-                    {recipients.length === 0 && (
-                      <tr><td colSpan={6} className="text-center py-6 text-muted-foreground text-xs">لا يوجد مستلمين</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              {recipients.length >= 500 && (
-                <p className="text-[10px] text-muted-foreground text-center">يتم عرض أول 500 مستلم — صدّر التقرير للقائمة الكاملة</p>
-              )}
-            </>
+            <CampaignDetailContent
+              campaign={detailCampaign}
+              recipients={recipients}
+              recipientStatusBadge={recipientStatusBadge}
+              exportReport={exportReport}
+            />
           )}
         </DialogContent>
       </Dialog>
