@@ -147,6 +147,30 @@ const TeamPage = () => {
     setWorkDays2((d) => d.includes(day) ? d.filter((x) => x !== day) : [...d, day].sort());
   };
 
+  const openAssignDialog = (team: any) => {
+    setAssignDialog(team);
+    setAssignStrategy(team.assignment_strategy || "round_robin");
+    setAssignMaxConv(team.max_conversations_per_agent ? String(team.max_conversations_per_agent) : "");
+    const kw: string[] = Array.isArray(team.skill_keywords) ? team.skill_keywords : [];
+    setAssignKeywords(kw.join("، "));
+  };
+
+  const saveAssignConfig = async () => {
+    if (!assignDialog) return;
+    const keywords = assignKeywords
+      .split(/[,،\n]/)
+      .map((k: string) => k.trim())
+      .filter(Boolean);
+    await supabase.from("teams").update({
+      assignment_strategy: assignStrategy,
+      max_conversations_per_agent: assignMaxConv ? parseInt(assignMaxConv) : null,
+      skill_keywords: keywords,
+    }).eq("id", assignDialog.id);
+    toast.success("تم حفظ إعدادات الإسناد");
+    setAssignDialog(null);
+    load();
+  };
+
   const isAdmin = userRole === "admin" || userRole === "super_admin";
 
   return (
