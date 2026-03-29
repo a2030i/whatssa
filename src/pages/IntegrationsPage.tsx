@@ -96,7 +96,7 @@ const IntegrationsPage = () => {
           else { setIsLoading(false); toast.error("لم يتم الحصول على بيانات المصادقة"); }
         } else { setIsLoading(false); toast.error("تم إلغاء عملية الربط"); }
       },
-      { config_id: "2159780324784856", response_type: "code", override_default_response_type: true, scope: "whatsapp_business_management,whatsapp_business_messaging" }
+      { config_id: "913936624804564", response_type: "code", override_default_response_type: true, scope: "whatsapp_business_management,whatsapp_business_messaging" }
     );
   }, []);
 
