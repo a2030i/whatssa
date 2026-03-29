@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Shield, MoreVertical, Trash2, Edit, Save, UserPlus, Users, Layers, Clock, Eye, CalendarDays } from "lucide-react";
+import { Plus, Shield, MoreVertical, Trash2, Edit, Save, UserPlus, Users, Layers, Clock, Eye, CalendarDays, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -360,6 +360,134 @@ const TeamPage = () => {
           </div>
         </div>
       )}
+
+      {/* Coverage Gap Analysis */}
+      {profiles.length > 0 && (() => {
+        // Build hourly coverage per day (0-23 hours x 7 days)
+        const HOURS = Array.from({ length: 24 }, (_, i) => i);
+        const coverageMap: Record<number, Record<number, string[]>> = {};
+        for (let d = 0; d < 7; d++) {
+          coverageMap[d] = {};
+          for (const h of HOURS) coverageMap[d][h] = [];
+        }
+
+        const timeToHour = (t: string) => {
+          const [hh] = (t || "").split(":");
+          return parseInt(hh, 10);
+        };
+
+        const addShiftCoverage = (name: string, start: string, end: string, days: number[]) => {
+          if (!start || !end || !days?.length) return;
+          const sh = timeToHour(start);
+          const eh = timeToHour(end);
+          for (const d of days) {
+            if (sh <= eh) {
+              // Normal shift
+              for (let h = sh; h < eh; h++) coverageMap[d]?.[h]?.push(name);
+            } else {
+              // Overnight: start->midnight on day d, midnight->end on day (d+1)%7
+              for (let h = sh; h < 24; h++) coverageMap[d]?.[h]?.push(name);
+              const nextDay = (d + 1) % 7;
+              for (let h = 0; h < eh; h++) coverageMap[nextDay]?.[h]?.push(name);
+            }
+          }
+        };
+
+        for (const p of profiles) {
+          const name = p.full_name || "بدون اسم";
+          addShiftCoverage(name, p.work_start, p.work_end, p.work_days || []);
+          addShiftCoverage(name, p.work_start_2, p.work_end_2, p.work_days_2 || []);
+        }
+
+        // Find gaps (hours with 0 coverage on working days)
+        const gaps: { day: number; hours: number[] }[] = [];
+        for (let d = 0; d < 7; d++) {
+          const emptyHours = HOURS.filter(h => coverageMap[d][h].length === 0);
+          if (emptyHours.length > 0 && emptyHours.length < 24) {
+            // Only flag days that have SOME coverage (partial gaps)
+            gaps.push({ day: d, hours: emptyHours });
+          }
+        }
+
+        // Group consecutive hours for display
+        const groupConsecutive = (hours: number[]): string[] => {
+          if (!hours.length) return [];
+          const sorted = [...hours].sort((a, b) => a - b);
+          const ranges: string[] = [];
+          let start = sorted[0], prev = sorted[0];
+          for (let i = 1; i <= sorted.length; i++) {
+            if (i < sorted.length && sorted[i] === prev + 1) {
+              prev = sorted[i];
+            } else {
+              ranges.push(start === prev 
+                ? `${String(start).padStart(2, '0')}:00` 
+                : `${String(start).padStart(2, '0')}:00-${String(prev + 1).padStart(2, '0')}:00`
+              );
+              if (i < sorted.length) { start = sorted[i]; prev = sorted[i]; }
+            }
+          }
+          return ranges;
+        };
+
+        const hasGaps = gaps.length > 0;
+        const noCoverageDays = Array.from({ length: 7 }, (_, d) => d).filter(d => 
+          HOURS.every(h => coverageMap[d][h].length === 0)
+        );
+
+        return (
+          <div className={cn(
+            "rounded-lg shadow-card overflow-hidden border",
+            hasGaps ? "bg-destructive/5 border-destructive/20" : "bg-success/5 border-success/20"
+          )}>
+            <div className="p-4 md:p-5 flex items-center gap-2">
+              {hasGaps ? (
+                <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+              ) : (
+                <CheckCircle className="w-4 h-4 text-success shrink-0" />
+              )}
+              <h3 className="font-semibold text-sm">
+                {hasGaps ? "توجد فجوات في التغطية" : "التغطية مكتملة ✓"}
+              </h3>
+            </div>
+            {hasGaps && (
+              <div className="px-4 md:px-5 pb-4 space-y-2">
+                {gaps.map(({ day, hours }) => (
+                  <div key={day} className="bg-card rounded-lg p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="text-xs font-semibold min-w-[60px]">{dayLabels[day]}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {groupConsecutive(hours).map((range, i) => (
+                        <span key={i} className="text-[10px] bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium">
+                          {range}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {noCoverageDays.length > 0 && (
+                  <div className="bg-card rounded-lg p-3 flex items-center gap-2">
+                    <span className="text-xs font-semibold text-warning">أيام بدون تغطية:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {noCoverageDays.map(d => (
+                        <span key={d} className="text-[10px] bg-warning/10 text-warning px-2 py-0.5 rounded-full font-medium">
+                          {dayLabels[d]}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground pt-1">
+                  💡 الفترات أعلاه ليس فيها أي موظف متاح — قد لا يتم الرد على العملاء خلالها
+                </p>
+              </div>
+            )}
+            {!hasGaps && (
+              <p className="px-4 md:px-5 pb-4 text-xs text-muted-foreground">
+                جميع ساعات العمل مغطاة بموظف واحد على الأقل
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Info */}
       <div className="bg-card rounded-lg p-5 shadow-card">
