@@ -9,11 +9,19 @@ import { toast } from "sonner";
 
 const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
 
+const SYSTEM_KEY = "whatsapp_web_vps";
+
 const AdminMeta = () => {
   const [configs, setConfigs] = useState<any[]>([]);
   const [orgs, setOrgs] = useState<any[]>([]);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [refreshingAll, setRefreshingAll] = useState(false);
+  // VPS config state
+  const [vpsUrl, setVpsUrl] = useState("");
+  const [vpsApiKey, setVpsApiKey] = useState("");
+  const [vpsConfigSaved, setVpsConfigSaved] = useState(false);
+  const [isSavingVps, setIsSavingVps] = useState(false);
+  const [isTestingVps, setIsTestingVps] = useState(false);
 
   useEffect(() => { load(); }, []);
 
