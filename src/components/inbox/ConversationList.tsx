@@ -216,6 +216,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
                   <div className="flex items-center gap-1.5 mt-1.5">
+                    {conv.conversationType && conv.conversationType !== "private" && (
+                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 border-0",
+                        conv.conversationType === "group" ? "bg-blue-500/10 text-blue-600" : "bg-orange-500/10 text-orange-600"
+                      )}>
+                        {conv.conversationType === "group" ? "قروب" : "بث"}
+                      </Badge>
+                    )}
                     <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 border-0", statusColors[conv.status])}>
                       {statusLabels[conv.status]}
                     </Badge>
