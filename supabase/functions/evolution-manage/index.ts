@@ -117,82 +117,88 @@ serve(async (req) => {
 
     // ── GET QR CODE ──
     if (action === "connect" || action === "qr") {
-      // Step 1: Check current state
+      // Check current state first
       const stateRes = await fetch(`${EVOLUTION_URL}/instance/connectionState/${instanceName}`, {
         headers: evoHeaders,
       });
-      const stateData = await stateRes.json();
+      const stateText = await stateRes.text();
+      console.log("State check:", stateText);
+      let stateData: any;
+      try { stateData = JSON.parse(stateText); } catch { stateData = {}; }
       const currentState = stateData.instance?.state || stateData.state || "unknown";
-      console.log("Current state:", currentState);
 
       if (currentState === "open") {
         return json({ success: true, qr_code: null, status: "open" });
       }
 
-      // Step 2: If state is close/unknown, restart instance to generate new QR
-      if (currentState === "close" || currentState === "unknown") {
-        console.log("Instance closed, restarting to get QR...");
-        // First logout to reset
-        try {
-          await fetch(`${EVOLUTION_URL}/instance/logout/${instanceName}`, {
-            method: "DELETE",
-            headers: evoHeaders,
-          });
-        } catch (e) {
-          console.log("Logout before restart (ok to fail):", e);
-        }
-
-        // Small delay then reconnect
-        await new Promise(r => setTimeout(r, 1000));
+      // If instance is in 'close' state, delete and recreate to get fresh QR
+      console.log("Instance state:", currentState, "- deleting and recreating for fresh QR...");
+      
+      // Delete existing instance
+      try {
+        await fetch(`${EVOLUTION_URL}/instance/delete/${instanceName}`, {
+          method: "DELETE",
+          headers: evoHeaders,
+        });
+        console.log("Deleted old instance");
+      } catch (e) {
+        console.log("Delete failed (ok):", e);
       }
 
-      // Step 3: Call connect to get QR
+      // Wait briefly
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Recreate with QR
+      const createRes = await fetch(`${EVOLUTION_URL}/instance/create`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          instanceName,
+          integration: "WHATSAPP-BAILEYS",
+          qrcode: true,
+          webhook: {
+            url: webhookUrl,
+            byEvents: true,
+            webhookBase64: false,
+            events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE", "QRCODE_UPDATED"],
+          },
+        }),
+      });
+
+      const createText = await createRes.text();
+      console.log("Recreate response:", createText);
+      
+      let createData: any;
+      try { createData = JSON.parse(createText); } catch { createData = {}; }
+
+      const qr = createData?.qrcode?.base64 || createData?.base64 || null;
+      console.log("QR found:", qr ? "yes (" + qr.substring(0, 30) + "...)" : "no");
+
+      if (qr) {
+        // Update config
+        await upsertConfig(adminClient, profile.org_id, instanceName);
+        return json({ success: true, qr_code: qr, status: "qr_ready" });
+      }
+
+      // If still no QR from create, try connect endpoint
+      await new Promise(r => setTimeout(r, 1000));
       const connectRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
         headers: evoHeaders,
       });
-      const rawText = await connectRes.text();
-      console.log("Connect response:", rawText);
+      const connectText = await connectRes.text();
+      console.log("Connect after recreate:", connectText);
       
-      let data: any;
-      try { data = JSON.parse(rawText); } catch { data = {}; }
-
-      const qr = data.base64 || data.qrcode?.base64 || data.code || null;
-
-      if (!qr) {
-        // Try alternative: restart instance completely
-        console.log("No QR from connect, trying instance restart...");
-        const restartRes = await fetch(`${EVOLUTION_URL}/instance/restart/${instanceName}`, {
-          method: "PUT",
-          headers: evoHeaders,
-        });
-        const restartText = await restartRes.text();
-        console.log("Restart response:", restartText);
-
-        // Wait and try connect again
-        await new Promise(r => setTimeout(r, 2000));
-        
-        const retryRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
-          headers: evoHeaders,
-        });
-        const retryText = await retryRes.text();
-        console.log("Retry connect response:", retryText);
-        
-        let retryData: any;
-        try { retryData = JSON.parse(retryText); } catch { retryData = {}; }
-        
-        const retryQr = retryData.base64 || retryData.qrcode?.base64 || retryData.code || null;
-        
-        return json({
-          success: true,
-          qr_code: retryQr,
-          status: retryQr ? "qr_ready" : "no_qr",
-        });
-      }
-
+      let connectData: any;
+      try { connectData = JSON.parse(connectText); } catch { connectData = {}; }
+      
+      const connectQr = connectData.base64 || connectData.qrcode?.base64 || connectData.code || null;
+      
+      await upsertConfig(adminClient, profile.org_id, instanceName);
+      
       return json({
         success: true,
-        qr_code: qr,
-        status: "qr_ready",
+        qr_code: connectQr,
+        status: connectQr ? "qr_ready" : "no_qr",
       });
     }
 
