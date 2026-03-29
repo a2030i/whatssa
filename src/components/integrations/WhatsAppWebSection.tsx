@@ -94,46 +94,40 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     if (!iName) return;
 
     setInstanceStatus("connecting");
-    let attempts = 0;
-    const maxAttempts = 3;
     
-    const tryFetch = async (): Promise<boolean> => {
-      attempts++;
-      try {
-        const { data, error } = await supabase.functions.invoke("evolution-manage", {
-          body: { action: "connect", instance_name: iName },
-        });
+    try {
+      const { data, error } = await supabase.functions.invoke("evolution-manage", {
+        body: { action: "connect", instance_name: iName },
+      });
 
-        if (data?.qr_code) {
-          const qrSrc = data.qr_code.startsWith("data:") ? data.qr_code : `data:image/png;base64,${data.qr_code}`;
-          setQrCode(qrSrc);
-          setInstanceStatus("qr_pending");
-          startPolling(iName);
-          return true;
-        } else if (data?.status === "open") {
-          setInstanceStatus("connected");
-          setQrCode(null);
-          toast.success("✅ الرقم متصل بالفعل");
-          loadExistingConfig();
-          return true;
-        } else if (data?.status === "qr_timeout" && attempts < maxAttempts) {
-          toast.info(`محاولة ${attempts}/${maxAttempts} — جاري توليد QR...`);
-          return false;
-        }
-      } catch {
-        // continue
+      // If instance doesn't exist on server (deleted/expired), recreate it
+      if (!data?.qr_code && !data?.status) {
+        console.log("Instance not found, recreating...");
+        toast.info("جاري إعادة إنشاء الجلسة...");
+        await createInstance();
+        return;
       }
-      return false;
-    };
 
-    for (let i = 0; i < maxAttempts; i++) {
-      const success = await tryFetch();
-      if (success) return;
-      if (i < maxAttempts - 1) await new Promise(r => setTimeout(r, 3000));
+      if (data?.qr_code) {
+        const qrSrc = data.qr_code.startsWith("data:") ? data.qr_code : `data:image/png;base64,${data.qr_code}`;
+        setQrCode(qrSrc);
+        setInstanceStatus("qr_pending");
+        startPolling(iName);
+        return;
+      } else if (data?.status === "open") {
+        setInstanceStatus("connected");
+        setQrCode(null);
+        toast.success("✅ الرقم متصل بالفعل");
+        loadExistingConfig();
+        return;
+      }
+    } catch {
+      // continue
     }
 
-    setInstanceStatus("disconnected");
-    toast.error("⚠️ لم يتم توليد QR — تأكد أن سيرفر Evolution يعمل بشكل صحيح وأن الاتصال بسيرفرات واتساب متاح");
+    // If we get here, try creating fresh
+    toast.info("جاري إعادة إنشاء الجلسة...");
+    await createInstance();
   };
 
   const startPolling = (name: string) => {
