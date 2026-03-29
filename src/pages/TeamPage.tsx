@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Shield, MoreVertical, Trash2, Edit, Save, UserPlus, Users, Layers, Clock, Eye, CalendarDays, AlertTriangle, CheckCircle, Settings2, Zap, Hand, RotateCcw, Scale, Target } from "lucide-react";
+import { Plus, Shield, MoreVertical, Trash2, Edit, Save, UserPlus, Users, Layers, Clock, Eye, CalendarDays, AlertTriangle, CheckCircle, Settings2, Zap, Hand, RotateCcw, Scale, Target, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ const TeamPage = () => {
   const [teams, setTeams] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [convCounts, setConvCounts] = useState<Record<string, number>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [scheduleDialog, setScheduleDialog] = useState<any>(null);
@@ -60,14 +61,24 @@ const TeamPage = () => {
   }, [orgId]);
 
   const load = async () => {
-    const [t, p, r] = await Promise.all([
+    const [t, p, r, conv] = await Promise.all([
       supabase.from("teams").select("*").eq("org_id", orgId),
       supabase.from("profiles").select("*").eq("org_id", orgId),
       supabase.from("user_roles").select("*"),
+      supabase.from("conversations").select("assigned_to, status").eq("org_id", orgId).eq("status", "active"),
     ]);
     setTeams(t.data || []);
     setProfiles(p.data || []);
     setRoles(r.data || []);
+
+    // Build conversation count map by assigned_to (full_name)
+    const counts: Record<string, number> = {};
+    (conv.data || []).forEach((c: any) => {
+      if (c.assigned_to) {
+        counts[c.assigned_to] = (counts[c.assigned_to] || 0) + 1;
+      }
+    });
+    setConvCounts(counts);
   };
 
   const getRole = (userId: string) => {
@@ -281,6 +292,7 @@ const TeamPage = () => {
             const role = getRole(profile.id);
             const team = teams.find((t) => t.id === profile.team_id);
             const rc = roleConfig[role] || roleConfig.member;
+            const activeConvs = convCounts[profile.full_name] || 0;
             return (
               <div key={profile.id} className="p-4 md:p-5 flex items-center justify-between hover:bg-secondary/30 transition-colors">
                 <div className="flex items-center gap-3">
@@ -309,6 +321,13 @@ const TeamPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1",
+                    activeConvs > 0 ? "bg-warning/10 text-warning" : "bg-secondary text-muted-foreground"
+                  )}>
+                    <MessageSquare className="w-3 h-3" />
+                    {activeConvs}
+                  </span>
                   <Badge className={cn("text-[10px] border-0", rc.className)}>
                     {role === "admin" && <Shield className="w-3 h-3 ml-0.5" />}
                     {role === "supervisor" && <Eye className="w-3 h-3 ml-0.5" />}
