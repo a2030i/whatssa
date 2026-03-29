@@ -68,7 +68,7 @@ serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const action = body?.action;
 
-  if (!["list", "create"].includes(action)) {
+  if (!["list", "create", "edit", "delete", "get"].includes(action)) {
     return json({ error: "Invalid action" }, 400);
   }
 
@@ -91,6 +91,88 @@ serve(async (req) => {
     }
 
     return json({ templates: result.data || [] });
+  }
+
+  // ── Get single template ──
+  if (action === "get") {
+    const templateId = String(body?.template_id || "").trim();
+    if (!templateId) return json({ error: "template_id مطلوب" }, 400);
+
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${templateId}?fields=id,name,status,language,category,components`,
+      { headers: { Authorization: `Bearer ${config.access_token}` } },
+    );
+    const result = await response.json();
+    if (!response.ok) return json({ error: result?.error?.message || "تعذر جلب القالب" }, response.status);
+    return json({ template: result });
+  }
+
+  // ── Delete template ──
+  if (action === "delete") {
+    const templateName = String(body?.name || "").trim();
+    if (!templateName) return json({ error: "اسم القالب مطلوب للحذف" }, 400);
+
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${config.business_account_id}/message_templates?name=${encodeURIComponent(templateName)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${config.access_token}` },
+      },
+    );
+    const result = await response.json();
+    if (!response.ok) return json({ error: result?.error?.message || "تعذر حذف القالب" }, response.status);
+    return json({ success: true });
+  }
+
+  // ── Edit template (delete + recreate since Meta doesn't support direct edit) ──
+  if (action === "edit") {
+    const templateName = String(body?.name || "").trim();
+    if (!templateName) return json({ error: "اسم القالب مطلوب" }, 400);
+
+    // Step 1: Delete old template
+    const deleteRes = await fetch(
+      `https://graph.facebook.com/v21.0/${config.business_account_id}/message_templates?name=${encodeURIComponent(templateName)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${config.access_token}` },
+      },
+    );
+    const deleteData = await deleteRes.json();
+    if (!deleteRes.ok) {
+      return json({ error: deleteData?.error?.message || "تعذر حذف القالب القديم لإعادة إنشائه" }, deleteRes.status);
+    }
+
+    // Step 2: Recreate with new content
+    const category = String(body?.category || "UTILITY").trim().toUpperCase();
+    const language = String(body?.language || "ar").trim();
+    const header = String(body?.header || "").trim();
+    const content = String(body?.body || "").trim();
+    const footer = String(body?.footer || "").trim();
+
+    if (!content) return json({ error: "محتوى الرسالة مطلوب" }, 400);
+
+    const components: Array<Record<string, unknown>> = [];
+    if (header) components.push({ type: "HEADER", format: "TEXT", text: header });
+    components.push({ type: "BODY", text: content });
+    if (footer) components.push({ type: "FOOTER", text: footer });
+
+    const createRes = await fetch(
+      `https://graph.facebook.com/v21.0/${config.business_account_id}/message_templates`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: templateName, category, language, components }),
+      },
+    );
+    const createResult = await createRes.json();
+    if (!createRes.ok) {
+      return json({ error: createResult?.error?.message || "تعذر إعادة إنشاء القالب" }, createRes.status);
+    }
+
+    return json({ success: true, template: createResult });
   }
 
   const name = String(body?.name || "").trim().toLowerCase();
