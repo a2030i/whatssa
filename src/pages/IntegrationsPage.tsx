@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
 const META_APP_ID = "1239578701681497";
-const getOAuthRedirectUri = () => `${window.location.origin}/integrations`;
+
 
 interface PhoneNumber {
   id: string;
@@ -86,24 +86,20 @@ const IntegrationsPage = () => {
     const FB = (window as any).FB;
     if (!FB) { toast.error("جاري تحميل Facebook SDK..."); return; }
 
-    const redirectUri = getOAuthRedirectUri();
     setIsLoading(true);
     FB.login(
       (response: any) => {
         if (response.authResponse) {
-          const code = response.authResponse.code;
           const token = response.authResponse.accessToken;
-          if (code) exchangeToken(code, redirectUri);
-          else if (token) handleDirectToken(token);
+          if (token) handleDirectToken(token);
           else { setIsLoading(false); toast.error("لم يتم الحصول على بيانات المصادقة"); }
         } else { setIsLoading(false); toast.error("تم إلغاء عملية الربط"); }
       },
       {
         config_id: "913936624804564",
-        response_type: "code",
+        response_type: "token",
         override_default_response_type: true,
         scope: "whatsapp_business_management,whatsapp_business_messaging",
-        fallback_redirect_uri: redirectUri,
       }
     );
   }, []);
@@ -124,21 +120,6 @@ const IntegrationsPage = () => {
     setIsLoading(false);
   };
 
-  const exchangeToken = async (code: string, redirectUri: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", { body: { code, redirect_uri: redirectUri } });
-      if (error || data?.error) { toast.error(data?.error || "فشل في تبادل التوكن"); setIsLoading(false); return; }
-      setAccessToken(data.access_token);
-      const allPhones: PhoneNumber[] = [];
-      let firstWabaId = "";
-      if (data.results?.length > 0) {
-        data.results.forEach((r: WabaResult) => { if (!firstWabaId) firstWabaId = r.waba_id; allPhones.push(...r.phone_numbers); });
-      }
-      if (allPhones.length > 0) { setBusinessAccountId(firstWabaId); setPhoneNumbers(allPhones); setShowPhones(true); toast.success(`تم العثور على ${allPhones.length} رقم`); }
-      else toast.error("لا توجد أرقام واتساب.");
-    } catch { toast.error("حدث خطأ في الربط"); }
-    setIsLoading(false);
-  };
 
   const handleSelectPhone = async (phone: PhoneNumber) => {
     setIsLoading(true);
