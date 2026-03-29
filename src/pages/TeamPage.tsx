@@ -47,6 +47,12 @@ const TeamPage = () => {
   const [workEnd2, setWorkEnd2] = useState("02:00");
   const [workDays2, setWorkDays2] = useState<number[]>([]);
 
+  // Assignment config dialog
+  const [assignDialog, setAssignDialog] = useState<any>(null);
+  const [assignStrategy, setAssignStrategy] = useState("round_robin");
+  const [assignMaxConv, setAssignMaxConv] = useState<string>("");
+  const [assignKeywords, setAssignKeywords] = useState("");
+
   const dayLabels = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
   useEffect(() => {
