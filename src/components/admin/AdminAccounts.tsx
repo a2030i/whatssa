@@ -17,6 +17,7 @@ const AdminAccounts = () => {
   const [wallets, setWallets] = useState<any[]>([]);
   const [conversations, setConversations] = useState<any[]>([]);
   const [waConfigs, setWaConfigs] = useState<any[]>([]);
+  const [search, setSearch] = useState("");
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
