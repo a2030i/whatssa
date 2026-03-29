@@ -3,7 +3,7 @@ import {
   CheckCircle2, Copy, Loader2, Phone, RefreshCw,
   MessageSquare, KeyRound, Plus, Trash2, Instagram,
   Plug, Radio, Smartphone, Send, AlertTriangle, ExternalLink,
-  ShieldCheck, CreditCard, PhoneCall, Building2, Circle
+  ShieldCheck, CreditCard, PhoneCall, Building2, Circle, QrCode
 } from "lucide-react";
 import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import { cn } from "@/lib/utils";
@@ -586,7 +586,7 @@ const IntegrationsPage = () => {
   };
 
   const renderAllChannelsView = (currentConfigs: WhatsAppConfig[]) => {
-    const connectedOfficialConfigs = currentConfigs.filter(c => c.channel_type !== "evolution");
+    const connectedOfficialConfigs = currentConfigs.filter(c => !(c as any).channel_type || (c as any).channel_type !== "evolution");
     const hasConnected = connectedOfficialConfigs.length > 0;
 
     return (
