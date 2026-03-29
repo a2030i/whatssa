@@ -335,38 +335,100 @@ const TeamPage = () => {
 
       {/* Schedule Dialog */}
       <Dialog open={!!scheduleDialog} onOpenChange={() => setScheduleDialog(null)}>
-        <DialogContent className="max-w-sm" dir="rtl">
+        <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle>أوقات عمل {scheduleDialog?.full_name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-xs">بداية العمل</Label>
-                <Input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} className="bg-secondary border-0" />
+          <div className="space-y-5 py-2">
+            {/* Shift 1 */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-primary" /> الشفت الأول
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px]">بداية العمل</Label>
+                  <Input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} className="bg-secondary border-0 text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px]">نهاية العمل</Label>
+                  <Input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} className="bg-secondary border-0 text-sm" />
+                  {workEnd < workStart && (
+                    <p className="text-[9px] text-info">⏳ ينتهي صباح اليوم التالي</p>
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs">نهاية العمل</Label>
-                <Input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} className="bg-secondary border-0" />
+              <div className="space-y-1.5">
+                <Label className="text-[10px]">أيام العمل</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {dayLabels.map((label, i) => (
+                    <button
+                      key={i}
+                      onClick={() => toggleDay(i)}
+                      className={cn(
+                        "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
+                        workDays.includes(i) ? "bg-primary text-primary-foreground border-primary" : "bg-secondary border-border"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs">أيام العمل</Label>
-              <div className="flex flex-wrap gap-2">
-                {dayLabels.map((label, i) => (
-                  <button
-                    key={i}
-                    onClick={() => toggleDay(i)}
-                    className={cn(
-                      "text-[11px] px-3 py-1.5 rounded-full border transition-colors",
-                      workDays.includes(i) ? "bg-primary text-primary-foreground border-primary" : "bg-secondary border-border"
+
+            {/* Shift 2 Toggle */}
+            <div className="border-t border-border pt-4">
+              <button
+                onClick={() => setHasShift2(!hasShift2)}
+                className={cn(
+                  "w-full text-xs font-semibold py-2 rounded-lg border transition-colors flex items-center justify-center gap-2",
+                  hasShift2 ? "bg-primary/10 border-primary text-primary" : "bg-secondary border-border text-muted-foreground hover:border-primary/50"
+                )}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {hasShift2 ? "إزالة الشفت الثاني" : "إضافة شفت ثاني"}
+              </button>
+            </div>
+
+            {/* Shift 2 */}
+            {hasShift2 && (
+              <div className="space-y-3 bg-secondary/30 rounded-lg p-3">
+                <p className="text-xs font-semibold flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-info" /> الشفت الثاني
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px]">بداية العمل</Label>
+                    <Input type="time" value={workStart2} onChange={(e) => setWorkStart2(e.target.value)} className="bg-card border-0 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px]">نهاية العمل</Label>
+                    <Input type="time" value={workEnd2} onChange={(e) => setWorkEnd2(e.target.value)} className="bg-card border-0 text-sm" />
+                    {workEnd2 < workStart2 && (
+                      <p className="text-[9px] text-info">⏳ ينتهي صباح اليوم التالي</p>
                     )}
-                  >
-                    {label}
-                  </button>
-                ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px]">أيام العمل</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {dayLabels.map((label, i) => (
+                      <button
+                        key={i}
+                        onClick={() => toggleDay2(i)}
+                        className={cn(
+                          "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
+                          workDays2.includes(i) ? "bg-info text-info-foreground border-info" : "bg-card border-border"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setScheduleDialog(null)}>إلغاء</Button>
