@@ -543,6 +543,21 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       {/* Input Area */}
       {!isRecording && (
         <div className={cn("border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
+          {/* Reply Preview Bar */}
+          {replyTo && (
+            <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
+              <Reply className="w-4 h-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-primary truncate">
+                  {replyTo.sender === "agent" ? "أنت" : replyTo.senderName || conversation.customerName}
+                </p>
+                <p className="text-[12px] text-muted-foreground truncate">{replyTo.text}</p>
+              </div>
+              <button onClick={cancelReply} className="w-6 h-6 rounded-full hover:bg-muted flex items-center justify-center shrink-0">
+                <X className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
+          )}
           {/* Tool buttons row */}
           <div className="flex items-center gap-0.5 mb-2 overflow-x-auto pb-1">
             {(!windowExpired || isNoteMode) && (
