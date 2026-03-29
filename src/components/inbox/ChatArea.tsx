@@ -96,7 +96,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       setShowTemplates(true);
       return;
     }
-    onSendMessage(conversation.id, inputText.trim());
+    const replyData = replyTo ? { id: replyTo.id, waMessageId: replyTo.waMessageId, senderName: replyTo.sender === "agent" ? "أنت" : (replyTo.senderName || conversation.customerName), text: replyTo.text } : undefined;
+    onSendMessage(conversation.id, inputText.trim(), "text", replyData);
     setInputText("");
     setReplyTo(null);
     setIsTyping(true);
