@@ -195,6 +195,15 @@ const IntegrationsPage = () => {
       toast.error(`وصلت للحد الأقصى (${maxPhones} رقم). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
       return;
     }
+    // Show checklist first if there are already connected numbers
+    if (configs.length > 0) {
+      setFlowStep("checklist");
+      return;
+    }
+    proceedToMetaLogin();
+  }, [configs, maxPhones, isSuperAdmin]);
+
+  const proceedToMetaLogin = useCallback(() => {
     const FB = (window as any).FB;
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
