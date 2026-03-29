@@ -522,7 +522,7 @@ const TemplatesPage = () => {
               )}
             </div>
 
-
+            {isEditing && (
               <div className="bg-warning/10 text-warning rounded-lg p-3 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                 <p className="text-xs">تعديل القالب يعني حذفه وإعادة إنشائه — سيحتاج مراجعة جديدة من Meta</p>
