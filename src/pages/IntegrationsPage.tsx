@@ -675,7 +675,10 @@ const IntegrationsPage = () => {
                         <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                         <div>
                           <p className="text-xs font-semibold text-destructive">سبب فشل التسجيل</p>
-                          <p className="text-[11px] text-muted-foreground mt-1" dir="ltr">{config.registration_error}</p>
+                          <p className="text-[11px] text-foreground mt-1">{friendlyError(config.registration_error)}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+                            💡 إذا كان الرقم مستخدم على هاتفك، افتح واتساب → الإعدادات → حذف الحساب، ثم أعد المحاولة
+                          </p>
                         </div>
                       </div>
                     </div>
