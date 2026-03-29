@@ -20,24 +20,23 @@ const json = (body: unknown, status = 200) =>
 
 async function getUserContext(req: Request) {
   const authorization = req.headers.get("Authorization") || "";
-  if (!authorization) return { error: json({ error: "Unauthorized" }, 401) };
+  if (!authorization.startsWith("Bearer ")) return { error: json({ error: "Unauthorized" }, 401) };
 
   const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authorization } },
   });
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  const {
-    data: { user },
-    error: userError,
-  } = await authClient.auth.getUser();
+  const token = authorization.replace("Bearer ", "");
+  const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+  if (claimsError || !claimsData?.claims?.sub) return { error: json({ error: "Unauthorized" }, 401) };
 
-  if (userError || !user) return { error: json({ error: "Unauthorized" }, 401) };
+  const userId = claimsData.claims.sub;
 
   const { data: profile } = await adminClient
     .from("profiles")
     .select("org_id")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
 
   if (!profile?.org_id) return { error: json({ error: "لا توجد مؤسسة مرتبطة بهذا الحساب" }, 400) };
@@ -53,7 +52,7 @@ async function getUserContext(req: Request) {
 
   if (!config) return { error: json({ error: "لا يوجد رقم واتساب حقيقي مربوط حالياً" }, 400) };
 
-  return { adminClient, user, orgId: profile.org_id, config };
+  return { adminClient, userId, orgId: profile.org_id, config };
 }
 
 serve(async (req) => {
@@ -145,14 +144,20 @@ serve(async (req) => {
     // Step 2: Recreate with new content
     const category = String(body?.category || "UTILITY").trim().toUpperCase();
     const language = String(body?.language || "ar").trim();
+    const headerType = String(body?.header_type || "NONE").trim().toUpperCase();
     const header = String(body?.header || "").trim();
+    const headerUrl = String(body?.header_url || "").trim();
     const content = String(body?.body || "").trim();
     const footer = String(body?.footer || "").trim();
 
     if (!content) return json({ error: "محتوى الرسالة مطلوب" }, 400);
 
     const components: Array<Record<string, unknown>> = [];
-    if (header) components.push({ type: "HEADER", format: "TEXT", text: header });
+    if (headerType === "TEXT" && header) {
+      components.push({ type: "HEADER", format: "TEXT", text: header });
+    } else if ((headerType === "IMAGE" || headerType === "VIDEO") && headerUrl) {
+      components.push({ type: "HEADER", format: headerType, example: { header_url: [headerUrl] } });
+    }
     components.push({ type: "BODY", text: content });
     if (footer) components.push({ type: "FOOTER", text: footer });
 
@@ -178,7 +183,9 @@ serve(async (req) => {
   const name = String(body?.name || "").trim().toLowerCase();
   const category = String(body?.category || "UTILITY").trim().toUpperCase();
   const language = String(body?.language || "ar").trim();
+  const headerType = String(body?.header_type || "NONE").trim().toUpperCase();
   const header = String(body?.header || "").trim();
+  const headerUrl = String(body?.header_url || "").trim();
   const content = String(body?.body || "").trim();
   const footer = String(body?.footer || "").trim();
 
@@ -195,7 +202,11 @@ serve(async (req) => {
   }
 
   const components: Array<Record<string, unknown>> = [];
-  if (header) components.push({ type: "HEADER", format: "TEXT", text: header });
+  if (headerType === "TEXT" && header) {
+    components.push({ type: "HEADER", format: "TEXT", text: header });
+  } else if ((headerType === "IMAGE" || headerType === "VIDEO") && headerUrl) {
+    components.push({ type: "HEADER", format: headerType, example: { header_url: [headerUrl] } });
+  }
   components.push({ type: "BODY", text: content });
   if (footer) components.push({ type: "FOOTER", text: footer });
 
