@@ -355,6 +355,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason_id: string | null
+          conversation_type: string
           created_at: string | null
           customer_id: string | null
           customer_name: string | null
@@ -377,6 +378,7 @@ export type Database = {
           closed_at?: string | null
           closed_by?: string | null
           closure_reason_id?: string | null
+          conversation_type?: string
           created_at?: string | null
           customer_id?: string | null
           customer_name?: string | null
@@ -399,6 +401,7 @@ export type Database = {
           closed_at?: string | null
           closed_by?: string | null
           closure_reason_id?: string | null
+          conversation_type?: string
           created_at?: string | null
           customer_id?: string | null
           customer_name?: string | null

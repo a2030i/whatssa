@@ -1,0 +1,2 @@
+ALTER TABLE public.conversations ADD COLUMN IF NOT EXISTS conversation_type text NOT NULL DEFAULT 'private';
+COMMENT ON COLUMN public.conversations.conversation_type IS 'Type: private, group, broadcast';
