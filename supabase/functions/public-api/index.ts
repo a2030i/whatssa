@@ -1,0 +1,319 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-api-key, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+};
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+async function authenticateToken(apiKey: string) {
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  const { data: token, error } = await admin
+    .from("api_tokens")
+    .select("id, org_id, permissions, is_active, expires_at")
+    .eq("token", apiKey)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error || !token) return null;
+
+  if (token.expires_at && new Date(token.expires_at) < new Date()) return null;
+
+  // Update last_used_at
+  await admin
+    .from("api_tokens")
+    .update({ last_used_at: new Date().toISOString() })
+    .eq("id", token.id);
+
+  return token;
+}
+
+function hasPermission(token: { permissions: string[] }, required: string) {
+  return token.permissions.includes(required);
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const apiKey = req.headers.get("x-api-key") || "";
+    if (!apiKey) return json({ error: "مطلوب API Key في الهيدر x-api-key" }, 401);
+
+    const token = await authenticateToken(apiKey);
+    if (!token) return json({ error: "API Key غير صالح أو منتهي" }, 401);
+
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const url = new URL(req.url);
+    const path = url.pathname.replace(/^\/public-api\/?/, "").replace(/\/$/, "");
+    const method = req.method;
+
+    // ── MESSAGES ──
+    if (path === "messages/send" && method === "POST") {
+      if (!hasPermission(token, "messages")) return json({ error: "لا تملك صلاحية الرسائل" }, 403);
+
+      const body = await req.json();
+      const { to, message, template_name, template_language, template_variables } = body;
+      if (!to) return json({ error: "الحقل to مطلوب" }, 400);
+      if (!message && !template_name) return json({ error: "الحقل message أو template_name مطلوب" }, 400);
+
+      // Find WhatsApp config
+      const { data: configs } = await admin
+        .from("whatsapp_config")
+        .select("*")
+        .eq("org_id", token.org_id)
+        .eq("is_connected", true)
+        .limit(1);
+
+      const config = configs?.[0];
+      if (!config) return json({ error: "لا يوجد رقم واتساب مربوط" }, 400);
+
+      if (config.channel_type === "evolution") {
+        const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
+        const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
+        if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution غير مكتملة" }, 500);
+
+        const response = await fetch(`${EVOLUTION_URL}/message/sendText/${config.evolution_instance_name}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY },
+          body: JSON.stringify({ number: to, text: message }),
+        });
+        const result = await response.json();
+        if (!response.ok) return json({ error: result?.message || "فشل الإرسال" }, response.status);
+
+        // Save to DB
+        let { data: conv } = await admin
+          .from("conversations")
+          .select("id")
+          .eq("customer_phone", to)
+          .eq("org_id", token.org_id)
+          .neq("status", "closed")
+          .limit(1)
+          .maybeSingle();
+
+        if (!conv) {
+          const { data: newConv } = await admin
+            .from("conversations")
+            .insert({
+              customer_phone: to,
+              customer_name: to,
+              org_id: token.org_id,
+              status: "active",
+              last_message: message,
+              last_message_at: new Date().toISOString(),
+            })
+            .select("id")
+            .single();
+          conv = newConv;
+        }
+
+        if (conv) {
+          await admin.from("messages").insert({
+            conversation_id: conv.id,
+            wa_message_id: result.key?.id || null,
+            sender: "agent",
+            message_type: "text",
+            content: message,
+            status: "sent",
+            metadata: { source: "api" },
+          });
+          await admin.from("conversations").update({
+            last_message: message,
+            last_message_at: new Date().toISOString(),
+          }).eq("id", conv.id);
+        }
+
+        return json({ success: true, message_id: result.key?.id });
+      }
+
+      // Meta Cloud API
+      if (template_name) {
+        const components: unknown[] = [];
+        if (template_variables?.length) {
+          components.push({
+            type: "body",
+            parameters: template_variables.map((v: string) => ({ type: "text", text: v })),
+          });
+        }
+        const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${config.access_token}`,
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to,
+            type: "template",
+            template: { name: template_name, language: { code: template_language || "ar" }, components },
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) return json({ error: result?.error?.message || "فشل إرسال القالب" }, response.status);
+        return json({ success: true, message_id: result.messages?.[0]?.id });
+      }
+
+      const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.access_token}`,
+        },
+        body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: message } }),
+      });
+      const result = await response.json();
+      if (!response.ok) return json({ error: result?.error?.message || "فشل الإرسال" }, response.status);
+      return json({ success: true, message_id: result.messages?.[0]?.id });
+    }
+
+    // ── CUSTOMERS ──
+    if (path === "customers" && method === "GET") {
+      if (!hasPermission(token, "customers")) return json({ error: "لا تملك صلاحية العملاء" }, 403);
+      const limit = parseInt(url.searchParams.get("limit") || "50");
+      const offset = parseInt(url.searchParams.get("offset") || "0");
+      const search = url.searchParams.get("search") || "";
+
+      let query = admin.from("customers").select("*", { count: "exact" }).eq("org_id", token.org_id).range(offset, offset + limit - 1).order("created_at", { ascending: false });
+      if (search) query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`);
+
+      const { data, count, error } = await query;
+      if (error) return json({ error: error.message }, 500);
+      return json({ data, total: count, limit, offset });
+    }
+
+    if (path === "customers" && method === "POST") {
+      if (!hasPermission(token, "customers")) return json({ error: "لا تملك صلاحية العملاء" }, 403);
+      const body = await req.json();
+      if (!body.phone) return json({ error: "الحقل phone مطلوب" }, 400);
+      const { data, error } = await admin.from("customers").insert({ ...body, org_id: token.org_id }).select().single();
+      if (error) return json({ error: error.message }, 500);
+      return json({ data }, 201);
+    }
+
+    if (path.startsWith("customers/") && method === "PUT") {
+      if (!hasPermission(token, "customers")) return json({ error: "لا تملك صلاحية العملاء" }, 403);
+      const id = path.split("/")[1];
+      const body = await req.json();
+      delete body.id; delete body.org_id;
+      const { data, error } = await admin.from("customers").update(body).eq("id", id).eq("org_id", token.org_id).select().single();
+      if (error) return json({ error: error.message }, 500);
+      return json({ data });
+    }
+
+    if (path.startsWith("customers/") && method === "DELETE") {
+      if (!hasPermission(token, "customers")) return json({ error: "لا تملك صلاحية العملاء" }, 403);
+      const id = path.split("/")[1];
+      const { error } = await admin.from("customers").delete().eq("id", id).eq("org_id", token.org_id);
+      if (error) return json({ error: error.message }, 500);
+      return json({ success: true });
+    }
+
+    // ── ORDERS ──
+    if (path === "orders" && method === "GET") {
+      if (!hasPermission(token, "orders")) return json({ error: "لا تملك صلاحية الطلبات" }, 403);
+      const limit = parseInt(url.searchParams.get("limit") || "50");
+      const offset = parseInt(url.searchParams.get("offset") || "0");
+      const status = url.searchParams.get("status");
+
+      let query = admin.from("orders").select("*", { count: "exact" }).eq("org_id", token.org_id).range(offset, offset + limit - 1).order("created_at", { ascending: false });
+      if (status) query = query.eq("status", status);
+
+      const { data, count, error } = await query;
+      if (error) return json({ error: error.message }, 500);
+      return json({ data, total: count, limit, offset });
+    }
+
+    if (path === "orders" && method === "POST") {
+      if (!hasPermission(token, "orders")) return json({ error: "لا تملك صلاحية الطلبات" }, 403);
+      const body = await req.json();
+      const { items, ...orderData } = body;
+      const { data: order, error } = await admin.from("orders").insert({ ...orderData, org_id: token.org_id }).select().single();
+      if (error) return json({ error: error.message }, 500);
+      if (items?.length) {
+        await admin.from("order_items").insert(items.map((item: any) => ({ ...item, order_id: order.id })));
+      }
+      return json({ data: order }, 201);
+    }
+
+    if (path.startsWith("orders/") && method === "PUT") {
+      if (!hasPermission(token, "orders")) return json({ error: "لا تملك صلاحية الطلبات" }, 403);
+      const id = path.split("/")[1];
+      const body = await req.json();
+      delete body.id; delete body.org_id;
+      const { data, error } = await admin.from("orders").update(body).eq("id", id).eq("org_id", token.org_id).select().single();
+      if (error) return json({ error: error.message }, 500);
+      return json({ data });
+    }
+
+    // ── CONVERSATIONS ──
+    if (path === "conversations" && method === "GET") {
+      if (!hasPermission(token, "conversations")) return json({ error: "لا تملك صلاحية المحادثات" }, 403);
+      const limit = parseInt(url.searchParams.get("limit") || "50");
+      const offset = parseInt(url.searchParams.get("offset") || "0");
+      const status = url.searchParams.get("status");
+
+      let query = admin.from("conversations").select("*", { count: "exact" }).eq("org_id", token.org_id).range(offset, offset + limit - 1).order("last_message_at", { ascending: false });
+      if (status) query = query.eq("status", status);
+
+      const { data, count, error } = await query;
+      if (error) return json({ error: error.message }, 500);
+      return json({ data, total: count, limit, offset });
+    }
+
+    if (path.startsWith("conversations/") && path.endsWith("/messages") && method === "GET") {
+      if (!hasPermission(token, "conversations")) return json({ error: "لا تملك صلاحية المحادثات" }, 403);
+      const convId = path.split("/")[1];
+      const limit = parseInt(url.searchParams.get("limit") || "50");
+
+      // Verify conversation belongs to org
+      const { data: conv } = await admin.from("conversations").select("id").eq("id", convId).eq("org_id", token.org_id).maybeSingle();
+      if (!conv) return json({ error: "المحادثة غير موجودة" }, 404);
+
+      const { data, error } = await admin.from("messages").select("*").eq("conversation_id", convId).order("created_at", { ascending: false }).limit(limit);
+      if (error) return json({ error: error.message }, 500);
+      return json({ data });
+    }
+
+    // ── ABANDONED CARTS ──
+    if (path === "abandoned-carts" && method === "GET") {
+      if (!hasPermission(token, "orders")) return json({ error: "لا تملك صلاحية الطلبات" }, 403);
+      const limit = parseInt(url.searchParams.get("limit") || "50");
+      const offset = parseInt(url.searchParams.get("offset") || "0");
+
+      const { data, count, error } = await admin.from("abandoned_carts").select("*", { count: "exact" }).eq("org_id", token.org_id).range(offset, offset + limit - 1).order("created_at", { ascending: false });
+      if (error) return json({ error: error.message }, 500);
+      return json({ data, total: count, limit, offset });
+    }
+
+    if (path === "abandoned-carts" && method === "POST") {
+      if (!hasPermission(token, "orders")) return json({ error: "لا تملك صلاحية الطلبات" }, 403);
+      const body = await req.json();
+      const { data, error } = await admin.from("abandoned_carts").insert({ ...body, org_id: token.org_id }).select().single();
+      if (error) return json({ error: error.message }, 500);
+      return json({ data }, 201);
+    }
+
+    return json({ error: `المسار ${path} غير موجود`, available_endpoints: [
+      "POST /messages/send",
+      "GET /customers", "POST /customers", "PUT /customers/:id", "DELETE /customers/:id",
+      "GET /orders", "POST /orders", "PUT /orders/:id",
+      "GET /conversations", "GET /conversations/:id/messages",
+      "GET /abandoned-carts", "POST /abandoned-carts",
+    ] }, 404);
+  } catch (err: any) {
+    console.error("Public API error:", err);
+    return json({ error: err.message }, 500);
+  }
+});
