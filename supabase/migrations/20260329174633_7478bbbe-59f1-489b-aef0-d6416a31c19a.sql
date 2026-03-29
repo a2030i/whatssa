@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Anon can read config for webhook" ON public.whatsapp_config;
