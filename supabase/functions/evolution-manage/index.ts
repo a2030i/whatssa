@@ -171,34 +171,41 @@ serve(async (req) => {
       let createData: any;
       try { createData = JSON.parse(createText); } catch { createData = {}; }
 
-      const qr = createData?.qrcode?.base64 || createData?.base64 || null;
-      console.log("QR found:", qr ? "yes (" + qr.substring(0, 30) + "...)" : "no");
-
-      if (qr) {
-        // Update config
-        await upsertConfig(adminClient, profile.org_id, instanceName);
-        return json({ success: true, qr_code: qr, status: "qr_ready" });
-      }
-
-      // If still no QR from create, try connect endpoint
-      await new Promise(r => setTimeout(r, 1000));
-      const connectRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
-        headers: evoHeaders,
-      });
-      const connectText = await connectRes.text();
-      console.log("Connect after recreate:", connectText);
-      
-      let connectData: any;
-      try { connectData = JSON.parse(connectText); } catch { connectData = {}; }
-      
-      const connectQr = connectData.base64 || connectData.qrcode?.base64 || connectData.code || null;
-      
+      // Update config
       await upsertConfig(adminClient, profile.org_id, instanceName);
+
+      // QR may not be available immediately - poll connect endpoint
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await new Promise(r => setTimeout(r, 2000));
+        console.log(`QR poll attempt ${attempt + 1}...`);
+        
+        const connectRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+          headers: evoHeaders,
+        });
+        const connectText = await connectRes.text();
+        console.log(`Connect attempt ${attempt + 1}:`, connectText.substring(0, 200));
+        
+        let connectData: any;
+        try { connectData = JSON.parse(connectText); } catch { connectData = {}; }
+        
+        const qr = connectData.base64 || connectData.qrcode?.base64 || connectData.code || null;
+        
+        if (qr) {
+          console.log("QR found on attempt", attempt + 1);
+          return json({ success: true, qr_code: qr, status: "qr_ready" });
+        }
+        
+        // Check if qrcode object has pairingCode
+        if (connectData.pairingCode) {
+          return json({ success: true, qr_code: null, pairing_code: connectData.pairingCode, status: "pairing" });
+        }
+      }
       
       return json({
         success: true,
-        qr_code: connectQr,
-        status: connectQr ? "qr_ready" : "no_qr",
+        qr_code: null,
+        status: "qr_timeout",
+        message: "لم يتم توليد QR بعد. حاول مرة أخرى بعد ثوانٍ."
       });
     }
 
