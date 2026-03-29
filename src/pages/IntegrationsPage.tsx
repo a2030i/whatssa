@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
-const META_APP_ID = "1276045851157317";
+const META_APP_ID = "1239578701681497";
 const OAUTH_REDIRECT_URI = "https://whatssa.lovable.app/settings";
 
 interface PhoneNumber {
