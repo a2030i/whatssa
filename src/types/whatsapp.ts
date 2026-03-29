@@ -22,7 +22,9 @@ export interface WhatsAppTemplate {
   category: string;
   language: string;
   status: string;
+  headerFormat?: "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT" | "NONE";
   header?: string;
+  headerUrl?: string;
   body: string;
   footer?: string;
   buttons?: WhatsAppTemplateButton[];
@@ -49,10 +51,12 @@ export const mapMetaTemplate = (template: any): WhatsAppTemplate => {
     value: button.url || button.phone_number,
   }));
 
+  const headerFormat = (headerComponent?.format?.toUpperCase() || "NONE") as WhatsAppTemplate["headerFormat"];
   const header = headerComponent?.text || undefined;
+  const headerUrl = (headerComponent as any)?.example?.header_handle?.[0] || (headerComponent as any)?.example?.header_url?.[0] || undefined;
   const body = bodyComponent?.text || "";
   const footer = footerComponent?.text || undefined;
-  const headerVariableCount = countTemplateVariables(header);
+  const headerVariableCount = headerFormat === "TEXT" ? countTemplateVariables(header) : 0;
   const bodyVariableCount = countTemplateVariables(body);
 
   return {
@@ -61,7 +65,9 @@ export const mapMetaTemplate = (template: any): WhatsAppTemplate => {
     category: String(template?.category || "UTILITY").toLowerCase(),
     language: template?.language || "ar",
     status: String(template?.status || "PENDING").toLowerCase(),
+    headerFormat: headerFormat === "NONE" ? undefined : headerFormat,
     header,
+    headerUrl,
     body,
     footer,
     buttons: buttons.length ? buttons : undefined,
