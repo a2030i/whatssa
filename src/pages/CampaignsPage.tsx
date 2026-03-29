@@ -41,6 +41,9 @@ const CampaignsPage = () => {
   const [recipients, setRecipients] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Create form
