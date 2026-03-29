@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle } from "lucide-react";
+import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,9 @@ const CampaignsPage = () => {
   const [recipients, setRecipients] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Create form
@@ -286,9 +289,27 @@ const CampaignsPage = () => {
           <h1 className="text-xl font-bold">الحملات</h1>
           <p className="text-sm text-muted-foreground mt-1">إدارة حملات WhatsApp وتتبع نتائجها</p>
         </div>
-        <Button className="gap-2 gradient-whatsapp text-whatsapp-foreground" onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4" /> حملة جديدة
-        </Button>
+        <div className="flex items-center gap-2">
+          {compareMode ? (
+            <>
+              <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => { setCompareMode(false); setCompareIds([]); }}>
+                <X className="w-3 h-3" /> إلغاء
+              </Button>
+              <Button size="sm" className="gap-2 text-xs" disabled={compareIds.length !== 2} onClick={() => setShowCompare(true)}>
+                <GitCompareArrows className="w-3 h-3" /> مقارنة ({compareIds.length}/2)
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" className="gap-2 text-xs" onClick={() => setCompareMode(true)}>
+                <GitCompareArrows className="w-4 h-4" /> مقارنة
+              </Button>
+              <Button className="gap-2 gradient-whatsapp text-whatsapp-foreground" onClick={() => setShowCreate(true)}>
+                <Plus className="w-4 h-4" /> حملة جديدة
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
@@ -336,7 +357,22 @@ const CampaignsPage = () => {
           const status = statusConfig[campaign.status] || statusConfig.draft;
           const deliveryRate = campaign.sent_count > 0 ? Math.round((campaign.delivered_count / campaign.sent_count) * 100) : 0;
           return (
-            <div key={campaign.id} className="bg-card rounded-lg p-5 shadow-card hover:shadow-card-hover transition-shadow cursor-pointer" onClick={() => openDetail(campaign)}>
+            <div
+              key={campaign.id}
+              className={cn(
+                "bg-card rounded-lg p-5 shadow-card hover:shadow-card-hover transition-shadow cursor-pointer",
+                compareMode && compareIds.includes(campaign.id) && "ring-2 ring-primary"
+              )}
+              onClick={() => {
+                if (compareMode) {
+                  setCompareIds((prev) =>
+                    prev.includes(campaign.id) ? prev.filter((x) => x !== campaign.id) : prev.length < 2 ? [...prev, campaign.id] : prev
+                  );
+                } else {
+                  openDetail(campaign);
+                }
+              }}
+            >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
@@ -644,6 +680,109 @@ const CampaignsPage = () => {
               exportReport={exportReport}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Campaign Comparison Dialog */}
+      <Dialog open={showCompare} onOpenChange={(v) => { if (!v) { setShowCompare(false); } }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" dir="rtl">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><GitCompareArrows className="w-5 h-5 text-primary" /> مقارنة الحملات</DialogTitle></DialogHeader>
+          {(() => {
+            const c1 = campaigns.find((c) => c.id === compareIds[0]);
+            const c2 = campaigns.find((c) => c.id === compareIds[1]);
+            if (!c1 || !c2) return <p className="text-sm text-muted-foreground text-center py-8">اختر حملتين للمقارنة</p>;
+
+            const rate = (num: number, den: number) => den > 0 ? Math.round((num / den) * 100) : 0;
+            const c1DeliveryRate = rate(c1.delivered_count || 0, c1.sent_count || 0);
+            const c2DeliveryRate = rate(c2.delivered_count || 0, c2.sent_count || 0);
+            const c1ReadRate = rate(c1.read_count || 0, c1.delivered_count || 0);
+            const c2ReadRate = rate(c2.read_count || 0, c2.delivered_count || 0);
+            const c1FailRate = rate(c1.failed_count || 0, c1.total_recipients || 0);
+            const c2FailRate = rate(c2.failed_count || 0, c2.total_recipients || 0);
+
+            const rows: { label: string; v1: string | number; v2: string | number; better?: "high" | "low" }[] = [
+              { label: "الحالة", v1: statusConfig[c1.status]?.label || c1.status, v2: statusConfig[c2.status]?.label || c2.status },
+              { label: "القالب", v1: c1.template_name || "—", v2: c2.template_name || "—" },
+              { label: "إجمالي الجمهور", v1: c1.total_recipients || 0, v2: c2.total_recipients || 0, better: "high" },
+              { label: "رسائل مُرسلة", v1: c1.sent_count || 0, v2: c2.sent_count || 0, better: "high" },
+              { label: "تم التوصيل", v1: c1.delivered_count || 0, v2: c2.delivered_count || 0, better: "high" },
+              { label: "تمت القراءة", v1: c1.read_count || 0, v2: c2.read_count || 0, better: "high" },
+              { label: "فشل", v1: c1.failed_count || 0, v2: c2.failed_count || 0, better: "low" },
+              { label: "معدل التوصيل", v1: `${c1DeliveryRate}%`, v2: `${c2DeliveryRate}%`, better: "high" },
+              { label: "معدل القراءة", v1: `${c1ReadRate}%`, v2: `${c2ReadRate}%`, better: "high" },
+              { label: "معدل الفشل", v1: `${c1FailRate}%`, v2: `${c2FailRate}%`, better: "low" },
+              { label: "تاريخ الإرسال", v1: c1.sent_at ? new Date(c1.sent_at).toLocaleDateString("ar-SA") : "—", v2: c2.sent_at ? new Date(c2.sent_at).toLocaleDateString("ar-SA") : "—" },
+            ];
+
+            const getHighlight = (row: typeof rows[0], side: 1 | 2) => {
+              if (!row.better) return "";
+              const n1 = typeof row.v1 === "string" ? parseFloat(row.v1) : row.v1;
+              const n2 = typeof row.v2 === "string" ? parseFloat(row.v2) : row.v2;
+              if (isNaN(n1) || isNaN(n2) || n1 === n2) return "";
+              const isBetter = row.better === "high" ? (side === 1 ? n1 > n2 : n2 > n1) : (side === 1 ? n1 < n2 : n2 < n1);
+              return isBetter ? "text-success font-bold" : "text-muted-foreground";
+            };
+
+            return (
+              <div className="mt-4 space-y-4">
+                {/* Header */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div />
+                  <div className="bg-primary/5 rounded-lg p-3 text-center">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                      <Megaphone className="w-5 h-5 text-primary" />
+                    </div>
+                    <p className="font-bold text-sm truncate">{c1.name}</p>
+                  </div>
+                  <div className="bg-secondary rounded-lg p-3 text-center">
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center mx-auto mb-2">
+                      <Megaphone className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <p className="font-bold text-sm truncate">{c2.name}</p>
+                  </div>
+                </div>
+
+                {/* Comparison table */}
+                <div className="border border-border rounded-xl overflow-hidden">
+                  {rows.map((row, i) => (
+                    <div key={row.label} className={cn("grid grid-cols-3 gap-3 px-4 py-2.5 text-sm", i % 2 === 0 ? "bg-secondary/30" : "bg-card")}>
+                      <p className="text-muted-foreground text-xs font-medium">{row.label}</p>
+                      <p className={cn("text-center font-semibold", getHighlight(row, 1))}>{typeof row.v1 === "number" ? row.v1.toLocaleString() : row.v1}</p>
+                      <p className={cn("text-center font-semibold", getHighlight(row, 2))}>{typeof row.v2 === "number" ? row.v2.toLocaleString() : row.v2}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Visual bars */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-semibold text-muted-foreground">مقارنة بصرية</h3>
+                  {[
+                    { label: "معدل التوصيل", v1: c1DeliveryRate, v2: c2DeliveryRate },
+                    { label: "معدل القراءة", v1: c1ReadRate, v2: c2ReadRate },
+                    { label: "معدل الفشل", v1: c1FailRate, v2: c2FailRate },
+                  ].map((bar) => (
+                    <div key={bar.label} className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">{bar.label}</p>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] w-20 text-left truncate">{c1.name}</span>
+                        <div className="flex-1 bg-secondary rounded-full h-3 overflow-hidden">
+                          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${bar.v1}%` }} />
+                        </div>
+                        <span className="text-xs font-bold w-10">{bar.v1}%</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] w-20 text-left truncate">{c2.name}</span>
+                        <div className="flex-1 bg-secondary rounded-full h-3 overflow-hidden">
+                          <div className="h-full bg-muted-foreground rounded-full transition-all" style={{ width: `${bar.v2}%` }} />
+                        </div>
+                        <span className="text-xs font-bold w-10">{bar.v2}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
