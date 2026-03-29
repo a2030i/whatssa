@@ -116,13 +116,13 @@ const CustomersPage = () => {
   );
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-[1000px]" dir="rtl">
-      <div className="flex items-center justify-between">
+    <div className="p-3 md:p-6 space-y-4 max-w-[1000px]" dir="rtl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">العملاء</h1>
           <p className="text-sm text-muted-foreground">{customers.length} عميل</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button size="sm" variant="outline" className="text-xs gap-1" onClick={handleExport}>
             <Download className="w-3 h-3" /> تصدير
           </Button>
