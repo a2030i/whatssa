@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, FileText, Check, Clock, XCircle, Eye, Globe, RefreshCw, Loader2, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Search, FileText, Check, Clock, XCircle, Eye, Globe, RefreshCw, Loader2, Pencil, Trash2, AlertTriangle, Image, Video, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -21,12 +21,14 @@ const statusColors: Record<string, string> = { approved: "text-success", pending
 interface TemplateFormData {
   name: string;
   category: string;
+  headerType: "NONE" | "TEXT" | "IMAGE" | "VIDEO";
   header: string;
+  headerUrl: string;
   body: string;
   footer: string;
 }
 
-const emptyForm: TemplateFormData = { name: "", category: "utility", header: "", body: "", footer: "" };
+const emptyForm: TemplateFormData = { name: "", category: "utility", headerType: "NONE", header: "", headerUrl: "", body: "", footer: "" };
 
 const TemplatesPage = () => {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
@@ -94,7 +96,9 @@ const TemplatesPage = () => {
     setFormData({
       name: template.name,
       category: template.category,
+      headerType: template.headerFormat || (template.header ? "TEXT" : "NONE"),
       header: template.header || "",
+      headerUrl: template.headerUrl || "",
       body: template.body,
       footer: template.footer || "",
     });
@@ -116,7 +120,9 @@ const TemplatesPage = () => {
         action,
         name: formData.name.trim(),
         category: formData.category,
-        header: formData.header.trim(),
+        header_type: formData.headerType,
+        header: formData.headerType === "TEXT" ? formData.header.trim() : "",
+        header_url: formData.headerType !== "TEXT" && formData.headerType !== "NONE" ? formData.headerUrl.trim() : "",
         body: formData.body.trim(),
         footer: formData.footer.trim(),
         language: editingTemplate?.language || "ar",
