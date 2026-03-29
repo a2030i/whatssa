@@ -120,12 +120,32 @@ serve(async (req) => {
       const res = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
         headers: evoHeaders,
       });
-      const data = await res.json();
+      const rawText = await res.text();
+      console.log("Evolution connect raw response:", rawText);
+      let data: any;
+      try { data = JSON.parse(rawText); } catch { data = {}; }
+
+      // Evolution API v2 may return different structures
+      const qr = data.base64 || data.qrcode?.base64 || data.code || data.pairingCode || null;
+      const state = data.instance?.state || data.state || "unknown";
+
+      console.log("Parsed QR:", qr ? "found" : "null", "State:", state);
+
+      // If no QR and state is close/unknown, try fetchInstances to check if it needs restart
+      if (!qr && state !== "open") {
+        // Try to get QR via alternative endpoint
+        const fetchRes = await fetch(`${EVOLUTION_URL}/instance/fetchInstances?instanceName=${instanceName}`, {
+          headers: evoHeaders,
+        });
+        const fetchText = await fetchRes.text();
+        console.log("fetchInstances response:", fetchText);
+      }
 
       return json({
         success: true,
-        qr_code: data.base64 || data.qrcode?.base64 || null,
-        status: data.instance?.state || "unknown",
+        qr_code: qr,
+        status: state,
+        raw_keys: Object.keys(data),
       });
     }
 
