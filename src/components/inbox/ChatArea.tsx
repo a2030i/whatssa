@@ -353,15 +353,28 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
                   </div>
                 )}
-                <p className="whitespace-pre-wrap">
-                  {msg.text.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
-                    part.startsWith("@") ? (
-                      <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{part}</span>
-                    ) : (
-                      <span key={i}>{part}</span>
-                    )
-                  )}
-                </p>
+                {(() => {
+                  const imgMatch = msg.text.match(/\n(https:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|svg)[^\s]*)/i) || msg.text.match(/\n(https:\/\/[^\s]*storage[^\s]*)/i);
+                  const textWithoutUrl = imgMatch ? msg.text.replace(imgMatch[0], "").trim() : msg.text;
+                  return (
+                    <>
+                      {imgMatch && (
+                        <img src={imgMatch[1]} alt="صورة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(imgMatch[1], "_blank")} />
+                      )}
+                      {textWithoutUrl && (
+                        <p className="whitespace-pre-wrap">
+                          {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
+                            part.startsWith("@") ? (
+                              <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{part}</span>
+                            ) : (
+                              <span key={i}>{part}</span>
+                            )
+                          )}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
                 <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-whatsapp-foreground/70")}>
                   <span className="text-[10px]">{msg.timestamp}</span>
                   {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
