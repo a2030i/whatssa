@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Search, Building2, UserCheck, UserX, ShoppingBag, Store, Plus, Eye, Clock, MessageSquare, Archive, Trash2 } from "lucide-react";
+import { Search, Building2, UserCheck, UserX, ShoppingBag, Store, Plus, Eye, Clock, MessageSquare, Archive, Trash2, Phone, Smartphone } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
