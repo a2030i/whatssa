@@ -49,6 +49,15 @@ const getStorageUrlFromText = (text: string) => {
   return match?.[1];
 };
 
+const scrollToMessage = (messageId?: string) => {
+  if (!messageId) return;
+  const el = document.querySelector(`[data-message-id="${messageId}"]`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("ring-2", "ring-primary/60", "rounded-xl");
+  setTimeout(() => el.classList.remove("ring-2", "ring-primary/60", "rounded-xl"), 1500);
+};
+
 const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note";
@@ -65,6 +74,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
       onTouchMove={canReply ? swipe.onTouchMove : undefined}
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
       className="group relative max-w-[85%] md:max-w-[70%]"
+      data-message-id={msg.id}
     >
       {/* Desktop click reply button */}
       {canReply && (
