@@ -194,6 +194,58 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("يُسمح فقط برفع الصور حالياً");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("حجم الصورة يجب أن يكون أقل من 10 ميغابايت");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setImagePreview({ file, url });
+    e.target.value = "";
+  };
+
+  const handleSendImage = async () => {
+    if (!imagePreview) return;
+    if (windowExpired) {
+      toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const ext = imagePreview.file.name.split(".").pop() || "jpg";
+      const path = `${conversation.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("chat-media")
+        .upload(path, imagePreview.file, { contentType: imagePreview.file.type });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+      const caption = inputText.trim();
+      onSendMessage(conversation.id, caption ? `📷 ${caption}\n${urlData.publicUrl}` : `📷 صورة\n${urlData.publicUrl}`);
+      setImagePreview(null);
+      setInputText("");
+      URL.revokeObjectURL(imagePreview.url);
+      toast.success("تم إرسال الصورة");
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      toast.error("فشل رفع الصورة: " + (err.message || "خطأ غير معروف"));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const cancelImagePreview = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview.url);
+      setImagePreview(null);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
