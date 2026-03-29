@@ -540,28 +540,47 @@ const IntegrationsPage = () => {
           {configs.map((config) => (
             <div key={config.id} className="bg-card rounded-xl shadow-card p-4 border border-border hover:shadow-card-hover transition-shadow">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Phone className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-sm" dir="ltr">{config.display_phone || config.phone_number_id}</p>
-                      <Badge className="bg-success/10 text-success border-0 text-[10px] gap-0.5">
-                        <CheckCircle2 className="w-2.5 h-2.5" /> متصل
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{config.business_name || "واتساب للأعمال"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setExpandedId(expandedId === config.id ? null : config.id)}>
-                    التفاصيل
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive h-8 w-8 p-0" onClick={() => handleDisconnect(config.id)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                 <div className="flex items-center gap-3">
+                   <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+                     <Phone className="w-5 h-5 text-primary" />
+                   </div>
+                   <div>
+                     <div className="flex items-center gap-2">
+                       <p className="font-semibold text-sm" dir="ltr">{config.display_phone || config.phone_number_id}</p>
+                       {config.registration_status === "connected" ? (
+                         <Badge className="bg-success/10 text-success border-0 text-[10px] gap-0.5">
+                           <CheckCircle2 className="w-2.5 h-2.5" /> متصل
+                         </Badge>
+                       ) : config.registration_status === "failed" ? (
+                         <Badge className="bg-destructive/10 text-destructive border-0 text-[10px] gap-0.5">
+                           <AlertTriangle className="w-2.5 h-2.5" /> فشل التسجيل
+                         </Badge>
+                       ) : config.registration_status === "registering" ? (
+                         <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-0.5">
+                           <Loader2 className="w-2.5 h-2.5 animate-spin" /> جاري التسجيل
+                         </Badge>
+                       ) : (
+                         <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-0.5">
+                           <AlertTriangle className="w-2.5 h-2.5" /> معلّق
+                         </Badge>
+                       )}
+                     </div>
+                     <p className="text-xs text-muted-foreground">{config.business_name || "واتساب للأعمال"}</p>
+                   </div>
+                 </div>
+                 <div className="flex items-center gap-1">
+                   {(config.registration_status === "failed" || config.registration_status === "pending" || !config.registration_status) && (
+                     <Button variant="outline" size="sm" className="text-xs h-8 gap-1 text-primary" onClick={() => retryRegister(config)} disabled={isLoading}>
+                       <RefreshCw className="w-3 h-3" /> إعادة التسجيل
+                     </Button>
+                   )}
+                   <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setExpandedId(expandedId === config.id ? null : config.id)}>
+                     التفاصيل
+                   </Button>
+                   <Button variant="ghost" size="sm" className="text-destructive h-8 w-8 p-0" onClick={() => handleDisconnect(config.id)}>
+                     <Trash2 className="w-3.5 h-3.5" />
+                   </Button>
+                 </div>
               </div>
 
               {/* Expanded */}
