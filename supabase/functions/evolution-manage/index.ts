@@ -80,7 +80,14 @@ serve(async (req) => {
       console.log("Create response:", JSON.stringify(createData).substring(0, 500));
 
       if (!createRes.ok && !createData?.instance) {
-        if (createData?.message?.includes?.("already") || createData?.error?.includes?.("already")) {
+        const errMsg = JSON.stringify(createData || {});
+        const isAlreadyExists = errMsg.toLowerCase().includes("already in use") ||
+          errMsg.toLowerCase().includes("already exists") ||
+          createData?.message?.includes?.("already") ||
+          createData?.error?.includes?.("already") ||
+          (Array.isArray(createData?.response?.message) && createData.response.message.some((m: string) => m.toLowerCase().includes("already")));
+
+        if (isAlreadyExists) {
           // Re-set webhook for existing instance
           await setWebhook(EVOLUTION_URL, evoHeaders, instanceName, webhookUrl);
           const connectRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
@@ -96,7 +103,7 @@ serve(async (req) => {
             already_existed: true,
           });
         }
-        return json({ error: createData?.message || "فشل إنشاء الجلسة" }, 400);
+        return json({ error: createData?.response?.message?.[0] || createData?.message || "فشل إنشاء الجلسة" }, 400);
       }
 
       // Explicitly set webhook after creation (v2.3.7 sometimes ignores inline webhook config)
