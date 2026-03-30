@@ -169,6 +169,19 @@ const InboxPage = () => {
           [selectedId]: [...(prev[selectedId] || []), newMessage],
         }));
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${selectedId}` }, (payload) => {
+        const updated = payload.new as any;
+        setAllMessages((prev) => ({
+          ...prev,
+          [selectedId]: (prev[selectedId] || []).map((m) =>
+            m.id === updated.id
+              ? { ...m, status: updated.status as any }
+              : m.waMessageId && m.waMessageId === updated.wa_message_id
+                ? { ...m, status: updated.status as any }
+                : m
+          ),
+        }));
+      })
       .subscribe();
 
     return () => {

@@ -39,6 +39,33 @@ async function logToSystem(
   }
 }
 
+/** Upload a media file to Meta's Graph API and return the media_id */
+async function uploadMediaToMeta(
+  phoneNumberId: string,
+  accessToken: string,
+  fileData: Uint8Array,
+  contentType: string,
+  fileName: string,
+): Promise<string | null> {
+  const formData = new FormData();
+  formData.append("messaging_product", "whatsapp");
+  formData.append("file", new Blob([fileData], { type: contentType }), fileName);
+  formData.append("type", contentType);
+
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/media`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+  });
+
+  const result = await res.json();
+  if (!res.ok) {
+    console.error("Meta media upload error:", result);
+    return null;
+  }
+  return result.id || null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -80,11 +107,42 @@ serve(async (req) => {
 
     const orgId = profile.org_id;
 
-    const { data: config, error: configError } = await adminClient
+    const body = await req.json();
+    const {
+      to,
+      message,
+      type = "text",
+      template_name,
+      template_language,
+      template_components,
+      conversation_id,
+      // Media fields
+      media_url,
+      media_type,
+      caption,
+      // Interactive message fields
+      interactive,
+      // Phone number selection (multi-number support)
+      phone_number_id: requestedPhoneId,
+    } = body;
+
+    if (!to || typeof to !== "string") {
+      return json({ error: "رقم المستلم مطلوب" }, 400);
+    }
+
+    // Pick config — if requestedPhoneId is provided, use that specific number
+    let configQuery = adminClient
       .from("whatsapp_config")
       .select("*")
       .eq("org_id", orgId)
       .eq("is_connected", true)
+      .eq("channel_type", "meta_api");
+
+    if (requestedPhoneId) {
+      configQuery = configQuery.eq("phone_number_id", requestedPhoneId);
+    }
+
+    const { data: config, error: configError } = await configQuery
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -94,30 +152,16 @@ serve(async (req) => {
       return json({ error: "واتساب غير مربوط بشكل حقيقي بعد" }, 400);
     }
 
-    const {
-      to,
-      message,
-      type = "text",
-      template_name,
-      template_language,
-      template_components,
-      conversation_id,
-    } = await req.json();
-
-    if (!to || typeof to !== "string") {
-      return json({ error: "رقم المستلم مطلوب" }, 400);
-    }
-
     let messagePayload: Record<string, unknown> = {
       messaging_product: "whatsapp",
       to,
     };
 
+    // ── Template message ──
     if (type === "template") {
       if (!template_name || typeof template_name !== "string") {
         return json({ error: "اسم القالب مطلوب" }, 400);
       }
-
       messagePayload = {
         ...messagePayload,
         type: "template",
@@ -127,11 +171,53 @@ serve(async (req) => {
           components: Array.isArray(template_components) ? template_components : [],
         },
       };
-    } else {
+    }
+    // ── Media message (image/video/document/audio) ──
+    else if (type === "media" || media_url) {
+      const mType = media_type || "image";
+      let mediaId: string | null = null;
+
+      // If media_url is a storage path, download and upload to Meta
+      if (media_url && media_url.startsWith("storage:chat-media/")) {
+        const path = media_url.replace("storage:chat-media/", "");
+        const { data: fileData, error: dlError } = await adminClient.storage.from("chat-media").download(path);
+        if (dlError || !fileData) {
+          return json({ error: "فشل تحميل الملف من التخزين" }, 400);
+        }
+        const bytes = new Uint8Array(await fileData.arrayBuffer());
+        const fileName = path.split("/").pop() || "file";
+        const contentType = fileData.type || "application/octet-stream";
+        mediaId = await uploadMediaToMeta(config.phone_number_id, config.access_token, bytes, contentType, fileName);
+      }
+      // If it's a direct URL, pass as link
+      else if (media_url && media_url.startsWith("http")) {
+        // Meta supports sending by link for images/documents
+        const mediaObj: Record<string, unknown> = { link: media_url };
+        if (caption) mediaObj.caption = caption;
+        messagePayload = { ...messagePayload, type: mType, [mType]: mediaObj };
+      }
+
+      if (mediaId) {
+        const mediaObj: Record<string, unknown> = { id: mediaId };
+        if (caption || message) mediaObj.caption = caption || message || "";
+        messagePayload = { ...messagePayload, type: mType, [mType]: mediaObj };
+      } else if (!messagePayload.type) {
+        return json({ error: "فشل رفع الوسائط إلى واتساب" }, 400);
+      }
+    }
+    // ── Interactive message (buttons/list/product) ──
+    else if (type === "interactive" && interactive) {
+      messagePayload = {
+        ...messagePayload,
+        type: "interactive",
+        interactive,
+      };
+    }
+    // ── Text message ──
+    else {
       if (!message || typeof message !== "string") {
         return json({ error: "نص الرسالة مطلوب" }, 400);
       }
-
       messagePayload = {
         ...messagePayload,
         type: "text",
@@ -139,7 +225,7 @@ serve(async (req) => {
       };
     }
 
-    await logToSystem(adminClient, "info", `إرسال رسالة ${type} إلى ${to}`, { type, to, template_name: template_name || null }, orgId, user.id);
+    await logToSystem(adminClient, "info", `إرسال رسالة ${messagePayload.type} إلى ${to}`, { type: messagePayload.type, to, template_name: template_name || null }, orgId, user.id);
 
     const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
       method: "POST",
@@ -155,7 +241,7 @@ serve(async (req) => {
     if (!response.ok) {
       await logToSystem(adminClient, "error", `فشل إرسال رسالة واتساب إلى ${to}`, {
         to,
-        type,
+        type: messagePayload.type,
         http_status: response.status,
         wa_error: result?.error?.message || "unknown",
         wa_error_code: result?.error?.code || null,
@@ -168,9 +254,10 @@ serve(async (req) => {
 
     await logToSystem(adminClient, "info", `تم إرسال رسالة بنجاح إلى ${to}`, {
       wa_message_id: waMessageId,
-      type,
+      type: messagePayload.type,
     }, orgId, user.id);
 
+    // ── Save to conversation ──
     let conversation = null;
 
     if (conversation_id) {
@@ -196,14 +283,30 @@ serve(async (req) => {
     }
 
     if (conversation) {
-      const content = type === "template" ? `[قالب: ${template_name}]` : message;
+      let content = message || "";
+      let msgType = "text";
+
+      if (type === "template") {
+        content = `[قالب: ${template_name}]`;
+        msgType = "template";
+      } else if (type === "interactive" || interactive) {
+        const interBody = interactive?.body?.text || "";
+        content = interBody || "[رسالة تفاعلية]";
+        msgType = "interactive";
+      } else if (type === "media" || media_url) {
+        const mType = media_type || "image";
+        const label = mType === "image" ? "📷" : mType === "video" ? "🎬" : mType === "audio" ? "🎤" : "📎";
+        content = caption || message || `${label} ${mType}`;
+        msgType = mType;
+      }
 
       await adminClient.from("messages").insert({
         conversation_id: conversation.id,
         wa_message_id: waMessageId,
         sender: "agent",
-        message_type: type === "template" ? "template" : "text",
+        message_type: msgType,
         content,
+        media_url: media_url || null,
         status: "sent",
       });
 
@@ -220,7 +323,6 @@ serve(async (req) => {
     return json({ success: true, message_id: waMessageId });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    const stack = error instanceof Error ? error.stack : undefined;
     await logToSystem(adminClient, "critical", `خطأ غير متوقع في إرسال رسالة واتساب`, {
       error: errMsg,
     }, null, null);
