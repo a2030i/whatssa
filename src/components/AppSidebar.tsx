@@ -88,21 +88,9 @@ const roleLabels: Record<string, string> = {
 const AppSidebar = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { profile, userRole, isSuperAdmin, isEcommerce, signOut } = useAuth();
+  const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, signOut } = useAuth();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const [hasMetaApi, setHasMetaApi] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    supabase
-      .from("whatsapp_config")
-      .select("id")
-      .eq("channel_type", "meta_api")
-      .eq("is_connected", true)
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => setHasMetaApi(!!data));
-  }, []);
 
   const navStructure = buildGroups(isEcommerce)
     .map((item) => {
