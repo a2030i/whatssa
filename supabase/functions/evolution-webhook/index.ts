@@ -527,69 +527,71 @@ serve(async (req) => {
           })
           .eq("id", conversation.id);
 
-        // ── Automation rules ──
+        // ── Chatbot flow processing ──
         if (messageType === "text" && content) {
-          const normalizedContent = content.trim().toLowerCase();
-          const { data: rules } = await supabase
-            .from("automation_rules")
-            .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id")
-            .eq("org_id", orgId)
-            .eq("enabled", true)
-            .order("created_at", { ascending: true });
+          const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, phone, content, "evolution", logToSystem);
+          
+          // ── Automation rules (only if chatbot didn't handle) ──
+          if (!chatbotHandled) {
+            const normalizedContent = content.trim().toLowerCase();
+            const { data: rules } = await supabase
+              .from("automation_rules")
+              .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id")
+              .eq("org_id", orgId)
+              .eq("enabled", true)
+              .order("created_at", { ascending: true });
 
-          const matchedRule = (rules || []).find((rule: any) =>
-            Array.isArray(rule.keywords) &&
-            rule.keywords.some((kw: string) => kw?.trim() && normalizedContent.includes(kw.trim().toLowerCase())),
-          );
+            const matchedRule = (rules || []).find((rule: any) =>
+              Array.isArray(rule.keywords) &&
+              rule.keywords.some((kw: string) => kw?.trim() && normalizedContent.includes(kw.trim().toLowerCase())),
+            );
 
-          if (matchedRule) {
-            const actionType = matchedRule.action_type || "reply";
-            await logToSystem(supabase, "info", `قاعدة أتمتة مطابقة (Evolution): ${matchedRule.name} (${actionType})`, {
-              rule_id: matchedRule.id, action_type: actionType,
-            }, orgId);
+            if (matchedRule) {
+              const actionType = matchedRule.action_type || "reply";
+              await logToSystem(supabase, "info", `قاعدة أتمتة مطابقة (Evolution): ${matchedRule.name} (${actionType})`, {
+                rule_id: matchedRule.id, action_type: actionType,
+              }, orgId);
 
-            // Action: Add tag
-            if (actionType === "add_tag" || actionType === "reply_and_tag") {
-              const tag = matchedRule.action_tag;
-              if (tag) {
-                const { data: conv } = await supabase.from("conversations").select("tags").eq("id", conversation.id).single();
-                const currentTags: string[] = conv?.tags || [];
-                if (!currentTags.includes(tag)) {
-                  await supabase.from("conversations").update({ tags: [...currentTags, tag] }).eq("id", conversation.id);
+              if (actionType === "add_tag" || actionType === "reply_and_tag") {
+                const tag = matchedRule.action_tag;
+                if (tag) {
+                  const { data: conv } = await supabase.from("conversations").select("tags").eq("id", conversation.id).single();
+                  const currentTags: string[] = conv?.tags || [];
+                  if (!currentTags.includes(tag)) {
+                    await supabase.from("conversations").update({ tags: [...currentTags, tag] }).eq("id", conversation.id);
+                  }
                 }
               }
-            }
 
-            // Action: Assign team
-            if (actionType === "assign_team" && matchedRule.action_team_id) {
-              const { data: team } = await supabase.from("teams").select("name").eq("id", matchedRule.action_team_id).single();
-              if (team) {
-                await supabase.from("conversations").update({ assigned_team: team.name }).eq("id", conversation.id);
-                await supabase.from("messages").insert({
-                  conversation_id: conversation.id, content: `تم إسناد المحادثة تلقائياً لفريق: ${team.name}`, sender: "system", message_type: "text",
-                });
-                try { await supabase.functions.invoke("auto-assign", { body: { conversation_id: conversation.id, org_id: orgId, message_text: content } }); } catch (_) {}
-              }
-            }
-
-            // Action: Reply via Evolution
-            if ((actionType === "reply" || actionType === "reply_and_tag") && matchedRule.reply_text) {
-              try {
-                const sendResp = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
-                  body: JSON.stringify({ number: phone, text: matchedRule.reply_text }),
-                });
-                if (sendResp.ok) {
+              if (actionType === "assign_team" && matchedRule.action_team_id) {
+                const { data: team } = await supabase.from("teams").select("name").eq("id", matchedRule.action_team_id).single();
+                if (team) {
+                  await supabase.from("conversations").update({ assigned_team: team.name }).eq("id", conversation.id);
                   await supabase.from("messages").insert({
-                    conversation_id: conversation.id, sender: "agent", message_type: "text", content: matchedRule.reply_text, status: "sent",
+                    conversation_id: conversation.id, content: `تم إسناد المحادثة تلقائياً لفريق: ${team.name}`, sender: "system", message_type: "text",
                   });
-                  await supabase.from("conversations").update({
-                    last_message: matchedRule.reply_text, last_message_at: new Date().toISOString(),
-                  }).eq("id", conversation.id);
+                  try { await supabase.functions.invoke("auto-assign", { body: { conversation_id: conversation.id, org_id: orgId, message_text: content } }); } catch (_) {}
                 }
-              } catch (e) {
-                await logToSystem(supabase, "error", "فشل إرسال الرد التلقائي (Evolution)", { error: (e as Error).message }, orgId);
+              }
+
+              if ((actionType === "reply" || actionType === "reply_and_tag") && matchedRule.reply_text) {
+                try {
+                  const sendResp = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+                    body: JSON.stringify({ number: phone, text: matchedRule.reply_text }),
+                  });
+                  if (sendResp.ok) {
+                    await supabase.from("messages").insert({
+                      conversation_id: conversation.id, sender: "agent", message_type: "text", content: matchedRule.reply_text, status: "sent",
+                    });
+                    await supabase.from("conversations").update({
+                      last_message: matchedRule.reply_text, last_message_at: new Date().toISOString(),
+                    }).eq("id", conversation.id);
+                  }
+                } catch (e) {
+                  await logToSystem(supabase, "error", "فشل إرسال الرد التلقائي (Evolution)", { error: (e as Error).message }, orgId);
+                }
               }
             }
           }
