@@ -319,6 +319,10 @@ serve(async (req) => {
       const messages = body.data || [];
       const messageList = Array.isArray(messages) ? messages : [messages];
 
+      // Load org settings once
+      const { data: orgData } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+      const orgSettings = (orgData?.settings as Record<string, any>) || {};
+
       for (const msg of messageList) {
         const key = msg.key || {};
         const messageContent = msg.message || {};
