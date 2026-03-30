@@ -46,6 +46,20 @@ const isWindowExpired = (lastCustomerMessageAt?: string): boolean => {
   return diff > 24 * 60 * 60 * 1000;
 };
 
+const getWindowRemaining = (lastCustomerMessageAt?: string): { expired: boolean; hours: number; minutes: number; percentage: number } => {
+  if (!lastCustomerMessageAt) return { expired: true, hours: 0, minutes: 0, percentage: 0 };
+  const end = new Date(lastCustomerMessageAt).getTime() + 24 * 60 * 60 * 1000;
+  const remaining = end - Date.now();
+  if (remaining <= 0) return { expired: true, hours: 0, minutes: 0, percentage: 0 };
+  const totalMs = 24 * 60 * 60 * 1000;
+  return {
+    expired: false,
+    hours: Math.floor(remaining / (60 * 60 * 1000)),
+    minutes: Math.floor((remaining % (60 * 60 * 1000)) / 60000),
+    percentage: Math.round((remaining / totalMs) * 100),
+  };
+};
+
 const isImageUrl = (url?: string | null) => !!url && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url);
 
 const getStorageUrlFromText = (text: string) => {
