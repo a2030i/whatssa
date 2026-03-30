@@ -11,6 +11,10 @@ interface AuthContextType {
   isLoading: boolean;
   isSuperAdmin: boolean;
   isEcommerce: boolean;
+  isImpersonating: boolean;
+  impersonatedOrgId: string | null;
+  startImpersonation: (orgId: string) => void;
+  stopImpersonation: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -23,6 +27,10 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isSuperAdmin: false,
   isEcommerce: false,
+  isImpersonating: false,
+  impersonatedOrgId: null,
+  startImpersonation: () => {},
+  stopImpersonation: () => {},
   signOut: async () => {},
 });
 
@@ -36,6 +44,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [isEcommerce, setIsEcommerce] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [impersonatedOrgId, setImpersonatedOrgId] = useState<string | null>(null);
+
+  const isSuperAdmin = userRole === "super_admin";
+  const isImpersonating = isSuperAdmin && !!impersonatedOrgId;
+
+  // The effective org_id used throughout the app
+  const effectiveOrgId = isImpersonating ? impersonatedOrgId : orgId;
 
   const fetchUserData = async (userId: string) => {
     const [profileRes, roleRes] = await Promise.all([
@@ -45,7 +60,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (profileRes.data) {
       setProfile(profileRes.data);
       setOrgId(profileRes.data.org_id);
-      // Fetch org ecommerce status
       if (profileRes.data.org_id) {
         const { data: orgData } = await supabase.from("organizations").select("is_ecommerce").eq("id", profileRes.data.org_id).maybeSingle();
         setIsEcommerce(orgData?.is_ecommerce || false);
@@ -56,6 +70,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (roles.includes("super_admin")) setUserRole("super_admin");
       else if (roles.includes("admin")) setUserRole("admin");
       else setUserRole(roles[0]);
+    }
+  };
+
+  const startImpersonation = async (targetOrgId: string) => {
+    setImpersonatedOrgId(targetOrgId);
+    // Fetch ecommerce status for impersonated org
+    const { data: orgData } = await supabase.from("organizations").select("is_ecommerce").eq("id", targetOrgId).maybeSingle();
+    setIsEcommerce(orgData?.is_ecommerce || false);
+  };
+
+  const stopImpersonation = () => {
+    setImpersonatedOrgId(null);
+    // Restore original org's ecommerce status
+    if (orgId) {
+      supabase.from("organizations").select("is_ecommerce").eq("id", orgId).maybeSingle().then(({ data }) => {
+        setIsEcommerce(data?.is_ecommerce || false);
+      });
     }
   };
 
@@ -71,6 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserRole(null);
           setOrgId(null);
           setIsEcommerce(false);
+          setImpersonatedOrgId(null);
         }
         setIsLoading(false);
       }
@@ -96,6 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserRole(null);
     setOrgId(null);
     setIsEcommerce(false);
+    setImpersonatedOrgId(null);
   };
 
   return (
@@ -105,10 +138,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         session,
         profile,
         userRole,
-        orgId,
+        orgId: effectiveOrgId,
         isLoading,
-        isSuperAdmin: userRole === "super_admin",
+        isSuperAdmin,
         isEcommerce,
+        isImpersonating,
+        impersonatedOrgId,
+        startImpersonation,
+        stopImpersonation,
         signOut,
       }}
     >
