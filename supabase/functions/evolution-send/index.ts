@@ -90,8 +90,8 @@ serve(async (req) => {
       return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
     }
 
-    const { to, message, conversation_id, reply_to } = await req.json();
-    if (!to || !message) return json({ error: "الرقم والرسالة مطلوبان" }, 400);
+    const { to, message, conversation_id, reply_to, media_url, media_type } = await req.json();
+    if (!to || (!message && !media_url)) return json({ error: "الرقم والرسالة أو الوسائط مطلوبة" }, 400);
 
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
@@ -102,45 +102,94 @@ serve(async (req) => {
     }
 
     const instanceName = config.evolution_instance_name;
-    const sendBody: Record<string, unknown> = { number: to, text: message };
+    const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
 
-    if (reply_to?.wa_message_id) {
-      sendBody.quoted = {
-        key: {
-          remoteJid: to.includes("@") ? to : `${to}@s.whatsapp.net`,
-          fromMe: false,
-          id: reply_to.wa_message_id,
-        },
-        message: { conversation: reply_to.text || "" },
+    // Determine the correct remoteJid for groups
+    const isGroup = to.includes("@g.us");
+    const remoteJid = isGroup ? to : to.includes("@") ? to : `${to}@s.whatsapp.net`;
+
+    let waMessageId: string | null = null;
+    let sentContent = message || "";
+    let sentMediaUrl: string | null = null;
+    let sentMessageType = "text";
+
+    // ── Send media if provided ──
+    if (media_url) {
+      sentMessageType = media_type || "image";
+      // Get signed URL if it's a storage path
+      let publicUrl = media_url;
+      if (media_url.startsWith("storage:chat-media/")) {
+        const path = media_url.replace("storage:chat-media/", "");
+        const { data: signedData } = await adminClient.storage.from("chat-media").createSignedUrl(path, 3600);
+        if (signedData?.signedUrl) publicUrl = signedData.signedUrl;
+      }
+
+      sentMediaUrl = media_url;
+      const mediaEndpoint = sentMessageType === "document" ? "sendMedia" : "sendMedia";
+      const mediaBody: Record<string, unknown> = {
+        number: to,
+        mediatype: sentMessageType === "image" ? "image" : sentMessageType === "video" ? "video" : sentMessageType === "audio" ? "audio" : "document",
+        media: publicUrl,
+        caption: message || "",
       };
-    }
 
-    await logToSystem(adminClient, "info", `إرسال رسالة Evolution إلى ${to}`, {
-      to, instance: instanceName, has_reply: !!reply_to,
-    }, orgId, user.id);
+      if (reply_to?.wa_message_id) {
+        mediaBody.quoted = {
+          key: { remoteJid, fromMe: false, id: reply_to.wa_message_id },
+          message: { conversation: reply_to.text || "" },
+        };
+      }
 
-    const response = await fetch(`${EVOLUTION_URL}/message/sendText/${instanceName}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: EVOLUTION_KEY,
-      },
-      body: JSON.stringify(sendBody),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      await logToSystem(adminClient, "error", `فشل إرسال رسالة Evolution إلى ${to}`, {
-        to, http_status: response.status, error: result?.message || "unknown", instance: instanceName,
+      await logToSystem(adminClient, "info", `إرسال وسائط Evolution (${sentMessageType}) إلى ${to}`, {
+        to, instance: instanceName, media_type: sentMessageType,
       }, orgId, user.id);
-      return json({ error: result?.message || "فشل إرسال الرسالة عبر Evolution" }, response.status);
-    }
 
-    const waMessageId = result.key?.id || null;
+      const response = await fetch(`${EVOLUTION_URL}/message/${mediaEndpoint}/${instanceName}`, {
+        method: "POST", headers: evoHeaders, body: JSON.stringify(mediaBody),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        await logToSystem(adminClient, "error", `فشل إرسال وسائط Evolution إلى ${to}`, {
+          to, http_status: response.status, error: result?.message || "unknown",
+        }, orgId, user.id);
+        return json({ error: result?.message || "فشل إرسال الوسائط عبر Evolution" }, response.status);
+      }
+
+      waMessageId = result.key?.id || null;
+      sentContent = message || `[${sentMessageType}]`;
+    } else {
+      // ── Send text message ──
+      const sendBody: Record<string, unknown> = { number: to, text: message };
+
+      if (reply_to?.wa_message_id) {
+        sendBody.quoted = {
+          key: { remoteJid, fromMe: false, id: reply_to.wa_message_id },
+          message: { conversation: reply_to.text || "" },
+        };
+      }
+
+      await logToSystem(adminClient, "info", `إرسال رسالة Evolution إلى ${to}`, {
+        to, instance: instanceName, has_reply: !!reply_to,
+      }, orgId, user.id);
+
+      const response = await fetch(`${EVOLUTION_URL}/message/sendText/${instanceName}`, {
+        method: "POST", headers: evoHeaders, body: JSON.stringify(sendBody),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        await logToSystem(adminClient, "error", `فشل إرسال رسالة Evolution إلى ${to}`, {
+          to, http_status: response.status, error: result?.message || "unknown", instance: instanceName,
+        }, orgId, user.id);
+        return json({ error: result?.message || "فشل إرسال الرسالة عبر Evolution" }, response.status);
+      }
+
+      waMessageId = result.key?.id || null;
+    }
 
     await logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
-      wa_message_id: waMessageId,
+      wa_message_id: waMessageId, type: sentMessageType,
     }, orgId, user.id);
 
     // Save message to DB
@@ -181,14 +230,15 @@ serve(async (req) => {
         conversation_id: conversation.id,
         wa_message_id: waMessageId,
         sender: "agent",
-        message_type: "text",
-        content: message,
+        message_type: sentMessageType,
+        content: sentContent,
+        media_url: sentMediaUrl,
         status: "sent",
         metadata: Object.keys(msgMetadata).length > 0 ? msgMetadata : {},
       });
 
       await adminClient.from("conversations").update({
-        last_message: message,
+        last_message: sentContent,
         last_message_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }).eq("id", conversation.id);
