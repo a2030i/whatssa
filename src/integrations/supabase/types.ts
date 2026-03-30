@@ -181,6 +181,9 @@ export type Database = {
       }
       automation_rules: {
         Row: {
+          action_tag: string | null
+          action_team_id: string | null
+          action_type: string
           created_at: string
           created_by: string | null
           enabled: boolean
@@ -192,6 +195,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          action_tag?: string | null
+          action_team_id?: string | null
+          action_type?: string
           created_at?: string
           created_by?: string | null
           enabled?: boolean
@@ -203,6 +209,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          action_tag?: string | null
+          action_team_id?: string | null
+          action_type?: string
           created_at?: string
           created_by?: string | null
           enabled?: boolean
@@ -213,7 +222,15 @@ export type Database = {
           reply_text?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_action_team_id_fkey"
+            columns: ["action_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       campaign_recipients: {
         Row: {

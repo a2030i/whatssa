@@ -219,7 +219,7 @@ serve(async (req) => {
             const normalizedContent = content.trim().toLowerCase();
             const { data: rules } = await supabase
               .from("automation_rules")
-              .select("id, name, keywords, reply_text")
+              .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id")
               .eq("org_id", orgId)
               .eq("enabled", true)
               .order("created_at", { ascending: true });
@@ -230,62 +230,118 @@ serve(async (req) => {
             );
 
             if (matchedRule) {
-              await logToSystem(supabase, "info", `قاعدة أتمتة مطابقة: ${matchedRule.name}`, {
+              const actionType = matchedRule.action_type || "reply";
+              await logToSystem(supabase, "info", `قاعدة أتمتة مطابقة: ${matchedRule.name} (${actionType})`, {
                 rule_id: matchedRule.id,
                 rule_name: matchedRule.name,
+                action_type: actionType,
                 customer_phone: customerPhone,
               }, orgId);
 
-              const { data: config } = await supabase
-                .from("whatsapp_config")
-                .select("phone_number_id, access_token")
-                .eq("org_id", orgId)
-                .eq("is_connected", true)
-                .order("created_at", { ascending: true })
-                .limit(1)
-                .maybeSingle();
+              // ── Action: Add tag ──
+              if (actionType === "add_tag" || actionType === "reply_and_tag") {
+                const tag = matchedRule.action_tag;
+                if (tag) {
+                  const { data: conv } = await supabase
+                    .from("conversations")
+                    .select("tags")
+                    .eq("id", conversation.id)
+                    .single();
+                  const currentTags: string[] = conv?.tags || [];
+                  if (!currentTags.includes(tag)) {
+                    await supabase
+                      .from("conversations")
+                      .update({ tags: [...currentTags, tag] })
+                      .eq("id", conversation.id);
+                    await logToSystem(supabase, "info", `تم تطبيق الوسم "${tag}" تلقائياً`, { conversation_id: conversation.id, tag }, orgId);
+                  }
+                }
+              }
 
-              if (config) {
-                const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${config.access_token}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    messaging_product: "whatsapp",
-                    to: customerPhone,
-                    type: "text",
-                    text: { body: matchedRule.reply_text },
-                  }),
-                });
+              // ── Action: Assign team ──
+              if (actionType === "assign_team") {
+                const teamId = matchedRule.action_team_id;
+                if (teamId) {
+                  const { data: team } = await supabase
+                    .from("teams")
+                    .select("name")
+                    .eq("id", teamId)
+                    .single();
+                  if (team) {
+                    await supabase
+                      .from("conversations")
+                      .update({ assigned_team: team.name })
+                      .eq("id", conversation.id);
+                    await supabase.from("messages").insert({
+                      conversation_id: conversation.id,
+                      content: `تم إسناد المحادثة تلقائياً لفريق: ${team.name}`,
+                      sender: "system",
+                      message_type: "text",
+                    });
+                    await logToSystem(supabase, "info", `تم إسناد المحادثة لفريق "${team.name}" تلقائياً`, { conversation_id: conversation.id, team_id: teamId }, orgId);
 
-                const result = await response.json();
-                if (response.ok) {
-                  await supabase.from("messages").insert({
-                    conversation_id: conversation.id,
-                    wa_message_id: result.messages?.[0]?.id || null,
-                    sender: "agent",
-                    message_type: "text",
-                    content: matchedRule.reply_text,
-                    status: "sent",
+                    // Trigger auto-assign within that team
+                    try {
+                      await supabase.functions.invoke("auto-assign", {
+                        body: { conversation_id: conversation.id, org_id: orgId, message_text: content },
+                      });
+                    } catch (_) { /* silent */ }
+                  }
+                }
+              }
+
+              // ── Action: Reply ──
+              if (actionType === "reply" || actionType === "reply_and_tag") {
+                const { data: config } = await supabase
+                  .from("whatsapp_config")
+                  .select("phone_number_id, access_token")
+                  .eq("org_id", orgId)
+                  .eq("is_connected", true)
+                  .order("created_at", { ascending: true })
+                  .limit(1)
+                  .maybeSingle();
+
+                if (config && matchedRule.reply_text) {
+                  const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${config.access_token}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      messaging_product: "whatsapp",
+                      to: customerPhone,
+                      type: "text",
+                      text: { body: matchedRule.reply_text },
+                    }),
                   });
 
-                  await supabase
-                    .from("conversations")
-                    .update({
-                      last_message: matchedRule.reply_text,
-                      last_message_at: new Date().toISOString(),
-                      updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", conversation.id);
-                } else {
-                  await logToSystem(supabase, "error", `فشل إرسال الرد التلقائي إلى ${customerPhone}`, {
-                    rule_name: matchedRule.name,
-                    http_status: response.status,
-                    wa_error: result?.error?.message || "unknown",
-                    wa_error_code: result?.error?.code || null,
-                  }, orgId);
+                  const result = await response.json();
+                  if (response.ok) {
+                    await supabase.from("messages").insert({
+                      conversation_id: conversation.id,
+                      wa_message_id: result.messages?.[0]?.id || null,
+                      sender: "agent",
+                      message_type: "text",
+                      content: matchedRule.reply_text,
+                      status: "sent",
+                    });
+
+                    await supabase
+                      .from("conversations")
+                      .update({
+                        last_message: matchedRule.reply_text,
+                        last_message_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                      })
+                      .eq("id", conversation.id);
+                  } else {
+                    await logToSystem(supabase, "error", `فشل إرسال الرد التلقائي إلى ${customerPhone}`, {
+                      rule_name: matchedRule.name,
+                      http_status: response.status,
+                      wa_error: result?.error?.message || "unknown",
+                    }, orgId);
+                  }
                 }
               }
             }
