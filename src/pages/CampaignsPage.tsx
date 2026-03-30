@@ -188,17 +188,30 @@ const CampaignsPage = () => {
     return filtered.map((c) => ({ phone: c.phone, name: c.name }));
   };
 
+  const selectedChannel = whatsappChannels.find((c) => c.id === form.channelId);
+  const isEvolutionChannel = selectedChannel?.channel_type === "evolution";
+
+  const getChannelLabel = (ch: any) => {
+    if (ch.channel_type === "evolution") {
+      return ch.evolution_instance_name ? `واتساب ويب — ${ch.evolution_instance_name}` : `واتساب ويب — ${ch.display_phone || "غير مسمى"}`;
+    }
+    return ch.display_phone ? `واتساب رسمي — ${ch.display_phone}` : `واتساب رسمي — ${ch.business_name || ch.phone_number_id}`;
+  };
+
   const handleCreate = async () => {
     if (!form.name.trim()) { toast.error("يرجى كتابة اسم الحملة"); return; }
+    if (!form.channelId) { toast.error("يرجى اختيار قناة الإرسال"); return; }
+    if (isEvolutionChannel && !form.messageText.trim()) { toast.error("يرجى كتابة نص الرسالة"); return; }
+    if (!isEvolutionChannel && !form.templateName.trim()) { toast.error("يرجى تحديد اسم القالب"); return; }
     const recipientList = buildRecipientList();
     if (recipientList.length === 0) { toast.error("لا يوجد مستلمين — اختر جمهوراً"); return; }
 
     const { data: campaign, error } = await supabase.from("campaigns").insert({
       org_id: orgId,
       name: form.name,
-      template_name: form.templateName || null,
+      template_name: isEvolutionChannel ? null : (form.templateName || null),
       template_language: form.templateLang,
-      template_variables: templateVars,
+      template_variables: isEvolutionChannel ? [{ message_text: form.messageText, delay_seconds: form.delaySeconds, channel_type: "evolution", channel_id: form.channelId }] : templateVars,
       audience_type: form.audienceType,
       audience_tags: form.audienceTags,
       exclude_tags: form.excludeTags,
