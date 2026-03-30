@@ -11,6 +11,27 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+async function logToSystem(
+  client: any,
+  level: string,
+  message: string,
+  metadata: Record<string, unknown> = {},
+  orgId: string | null = null
+) {
+  try {
+    await client.from("system_logs").insert({
+      level,
+      source: "edge_function",
+      function_name: "auto-assign",
+      message,
+      metadata,
+      org_id: orgId,
+    });
+  } catch (_) {
+    // silent
+  }
+}
+
 /** Check if currentTime falls within a shift, supporting overnight (e.g. 22:00→06:00) */
 function isInShift(currentTime: string, currentDay: number, start: string, end: string, days: number[]): boolean {
   if (!days.includes(currentDay)) return false;
@@ -39,16 +60,18 @@ function isAgentInShift(agent: any, currentTime: string, currentDay: number): bo
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 
+  try {
     const { conversation_id, org_id, message_text } = await req.json();
     if (!conversation_id || !org_id) {
       return json({ error: "Missing conversation_id or org_id" }, 400);
     }
+
+    await logToSystem(supabase, "info", "بدء التوزيع التلقائي", { conversation_id, message_text: message_text?.substring(0, 100) }, org_id);
 
     // Get conversation to find assigned_team
     const { data: conversation } = await supabase
@@ -94,6 +117,7 @@ Deno.serve(async (req) => {
         const keywords: string[] = Array.isArray(team.skill_keywords) ? team.skill_keywords : [];
         if (keywords.length > 0 && keywords.some((kw: string) => msgLower.includes(kw.toLowerCase()))) {
           targetTeam = team;
+          await logToSystem(supabase, "info", `توجيه بناءً على المهارة إلى فريق: ${team.name}`, { conversation_id, team_id: team.id, matched_keywords: keywords }, org_id);
           break;
         }
       }
@@ -104,6 +128,7 @@ Deno.serve(async (req) => {
 
     // If strategy is manual, don't auto-assign
     if (strategy === "manual") {
+      await logToSystem(supabase, "info", "لم يتم التوزيع: الاستراتيجية يدوية", { conversation_id, strategy }, org_id);
       return json({ assigned: false, reason: "manual_strategy" });
     }
 
@@ -121,6 +146,7 @@ Deno.serve(async (req) => {
     const { data: members, error: membersErr } = await membersQuery;
 
     if (membersErr || !members || members.length === 0) {
+      await logToSystem(supabase, "warn", "لم يتم التوزيع: لا يوجد أعضاء", { conversation_id, error: membersErr?.message, team: targetTeam?.name }, org_id);
       return json({ assigned: false, reason: "no_members" });
     }
 
@@ -157,6 +183,15 @@ Deno.serve(async (req) => {
         });
       }
 
+      await logToSystem(supabase, "info", `تم إسناد المحادثة إلى ${agent.full_name}`, {
+        conversation_id,
+        agent_id: agent.id,
+        agent_name: agent.full_name,
+        strategy,
+        fallback,
+        team: targetTeam?.name || null,
+      }, org_id);
+
       return json({ assigned: true, agent: agent.full_name, strategy, fallback });
     };
 
@@ -177,13 +212,11 @@ Deno.serve(async (req) => {
 
       switch (strategy) {
         case "round_robin": {
-          // Sort by name for consistent ordering, then pick next in rotation
           agentsWithLoad.sort((a, b) => a.full_name.localeCompare(b.full_name));
           const lastIdx = targetTeam?.last_assigned_index || 0;
           const nextIdx = lastIdx % agentsWithLoad.length;
           chosen = agentsWithLoad[nextIdx];
 
-          // Update round-robin index
           if (targetTeam) {
             await supabase.from("teams")
               .update({ last_assigned_index: nextIdx + 1 })
@@ -199,14 +232,12 @@ Deno.serve(async (req) => {
         }
 
         case "skill_based": {
-          // Already routed to correct team, use least_busy within team
           agentsWithLoad.sort((a, b) => a.load - b.load);
           chosen = agentsWithLoad[0];
           break;
         }
 
         default: {
-          // Fallback to least_busy
           agentsWithLoad.sort((a, b) => a.load - b.load);
           chosen = agentsWithLoad[0];
           break;
@@ -223,7 +254,7 @@ Deno.serve(async (req) => {
     if (available.length > 0) {
       const result = await pickAgent(available);
       if (result) return result;
-      // All at capacity
+      await logToSystem(supabase, "warn", "جميع الوكلاء وصلوا للحد الأقصى", { conversation_id, available_count: available.length, max_conv: maxConv }, org_id);
       return json({ assigned: false, reason: "all_agents_at_capacity" });
     }
 
@@ -232,11 +263,14 @@ Deno.serve(async (req) => {
     if (onlineOnly.length > 0) {
       const result = await pickAgent(onlineOnly, true);
       if (result) return result;
+      await logToSystem(supabase, "warn", "جميع الوكلاء المتصلين وصلوا للحد الأقصى (fallback)", { conversation_id, online_count: onlineOnly.length }, org_id);
       return json({ assigned: false, reason: "all_agents_at_capacity" });
     }
 
+    await logToSystem(supabase, "warn", "لا يوجد وكلاء متاحين للتوزيع", { conversation_id, total_members: members.length }, org_id);
     return json({ assigned: false, reason: "no_available_agents" });
   } catch (err) {
+    await logToSystem(supabase, "error", "خطأ في التوزيع التلقائي", { error: err.message, stack: err.stack });
     return json({ error: err.message }, 500);
   }
 });
