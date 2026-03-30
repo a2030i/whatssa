@@ -532,6 +532,7 @@ export type Database = {
           last_message_at: string | null
           notes: string | null
           org_id: string | null
+          satisfaction_status: string | null
           status: string | null
           tags: string[] | null
           unread_count: number | null
@@ -555,6 +556,7 @@ export type Database = {
           last_message_at?: string | null
           notes?: string | null
           org_id?: string | null
+          satisfaction_status?: string | null
           status?: string | null
           tags?: string[] | null
           unread_count?: number | null
@@ -578,6 +580,7 @@ export type Database = {
           last_message_at?: string | null
           notes?: string | null
           org_id?: string | null
+          satisfaction_status?: string | null
           status?: string | null
           tags?: string[] | null
           unread_count?: number | null
@@ -1439,6 +1442,51 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      satisfaction_ratings: {
+        Row: {
+          agent_name: string | null
+          conversation_id: string
+          created_at: string
+          feedback_text: string | null
+          id: string
+          org_id: string
+          rating: number
+        }
+        Insert: {
+          agent_name?: string | null
+          conversation_id: string
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          org_id: string
+          rating: number
+        }
+        Update: {
+          agent_name?: string | null
+          conversation_id?: string
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          org_id?: string
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "satisfaction_ratings_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "satisfaction_ratings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]

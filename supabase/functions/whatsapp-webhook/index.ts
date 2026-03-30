@@ -394,15 +394,51 @@ serve(async (req) => {
 
       // ── Handle incoming messages ──
       if (value.messages && value.messages.length > 0) {
+        // Load org settings once for this batch
+        const { data: orgData } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+        const orgSettings = (orgData?.settings as Record<string, any>) || {};
+
         for (const incomingMessage of value.messages) {
           const customerPhone = incomingMessage.from;
           const contactName = value.contacts?.[0]?.profile?.name || customerPhone;
+          const messageContent = incomingMessage.text?.body || `[${incomingMessage.type}]`;
 
           await logToSystem(supabase, "info", `رسالة واردة من ${customerPhone}`, {
             type: incomingMessage.type,
             wa_message_id: incomingMessage.id,
             contact_name: contactName,
           }, orgId);
+
+          // ── Check for satisfaction rating response ──
+          if (incomingMessage.type === "text") {
+            const ratingNum = parseInt(messageContent.trim());
+            if (ratingNum >= 1 && ratingNum <= 5) {
+              const { data: pendingConv } = await supabase
+                .from("conversations")
+                .select("id, assigned_to")
+                .eq("customer_phone", customerPhone)
+                .eq("org_id", orgId)
+                .eq("status", "closed")
+                .eq("satisfaction_status", "pending")
+                .order("closed_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (pendingConv) {
+                await supabase.from("satisfaction_ratings").insert({
+                  conversation_id: pendingConv.id,
+                  org_id: orgId,
+                  agent_name: pendingConv.assigned_to,
+                  rating: ratingNum,
+                });
+                await supabase.from("conversations").update({ satisfaction_status: "rated" }).eq("id", pendingConv.id);
+                // Send thank you message
+                await sendBotMessage(supabase, orgId, pendingConv.id, customerPhone, "شكراً لتقييمك! 🙏 نسعد بخدمتك دائماً.", "meta", logToSystem);
+                await logToSystem(supabase, "info", `تم تسجيل تقييم العميل: ${ratingNum}/5`, { conversation_id: pendingConv.id, rating: ratingNum }, orgId);
+                continue; // Skip normal processing for this message
+              }
+            }
+          }
 
           let { data: conversation } = await supabase
             .from("conversations")
@@ -412,8 +448,6 @@ serve(async (req) => {
             .neq("status", "closed")
             .limit(1)
             .maybeSingle();
-
-          const messageContent = incomingMessage.text?.body || `[${incomingMessage.type}]`;
 
           if (!conversation) {
             const { data: newConversation, error: convError } = await supabase
@@ -504,6 +538,38 @@ serve(async (req) => {
               wa_message_id: incomingMessage.id,
               conversation_id: conversation.id,
             }, orgId);
+          }
+
+          // ── Out-of-hours check ──
+          if (orgSettings.out_of_hours_enabled && incomingMessage.type === "text") {
+            const now = new Date();
+            const riyadhTime = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
+            const riyadhDay = parseInt(new Intl.DateTimeFormat("en-US", { weekday: "narrow", timeZone: "Asia/Riyadh" }).format(now).replace(/[^0-6]/, ""), 10);
+            const dayOfWeek = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" })).getDay();
+            const workStart = orgSettings.work_start || "09:00";
+            const workEnd = orgSettings.work_end || "17:00";
+            const workDays: number[] = orgSettings.work_days || [0, 1, 2, 3, 4];
+            
+            const isWorkDay = workDays.includes(dayOfWeek);
+            const isWorkHour = riyadhTime >= workStart && riyadhTime <= workEnd;
+            const isOutOfHours = !isWorkDay || !isWorkHour;
+            
+            if (isOutOfHours && orgSettings.out_of_hours_message) {
+              // Check if we already sent an OOH message in the last 4 hours for this conversation
+              const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+              const { count: recentOoh } = await supabase
+                .from("messages")
+                .select("id", { count: "exact", head: true })
+                .eq("conversation_id", conversation.id)
+                .eq("sender", "agent")
+                .eq("content", orgSettings.out_of_hours_message)
+                .gte("created_at", fourHoursAgo);
+              
+              if (!recentOoh || recentOoh === 0) {
+                await sendBotMessage(supabase, orgId, conversation.id, customerPhone, orgSettings.out_of_hours_message, "meta", logToSystem);
+                await logToSystem(supabase, "info", "تم إرسال رسالة خارج الدوام", { conversation_id: conversation.id }, orgId);
+              }
+            }
           }
 
           // ── Chatbot flow processing ──

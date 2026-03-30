@@ -319,6 +319,10 @@ serve(async (req) => {
       const messages = body.data || [];
       const messageList = Array.isArray(messages) ? messages : [messages];
 
+      // Load org settings once
+      const { data: orgData } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+      const orgSettings = (orgData?.settings as Record<string, any>) || {};
+
       for (const msg of messageList) {
         const key = msg.key || {};
         const messageContent = msg.message || {};
@@ -360,6 +364,36 @@ serve(async (req) => {
         await logToSystem(supabase, "info", `رسالة واردة (Evolution) من ${phone}`, {
           type: messageType, conversation_type: conversationType, wa_message_id: key.id,
         }, orgId);
+
+        // ── Check for satisfaction rating response ──
+        if (messageType === "text" && text) {
+          const ratingNum = parseInt(text.trim());
+          if (ratingNum >= 1 && ratingNum <= 5) {
+            const { data: pendingConv } = await supabase
+              .from("conversations")
+              .select("id, assigned_to")
+              .eq("customer_phone", phone)
+              .eq("org_id", orgId)
+              .eq("status", "closed")
+              .eq("satisfaction_status", "pending")
+              .order("closed_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (pendingConv) {
+              await supabase.from("satisfaction_ratings").insert({
+                conversation_id: pendingConv.id,
+                org_id: orgId,
+                agent_name: pendingConv.assigned_to,
+                rating: ratingNum,
+              });
+              await supabase.from("conversations").update({ satisfaction_status: "rated" }).eq("id", pendingConv.id);
+              await sendBotMessage(supabase, orgId, pendingConv.id, phone, "شكراً لتقييمك! 🙏 نسعد بخدمتك دائماً.", "evolution", logToSystem);
+              await logToSystem(supabase, "info", `تم تسجيل تقييم العميل (Evolution): ${ratingNum}/5`, { conversation_id: pendingConv.id, rating: ratingNum }, orgId);
+              continue;
+            }
+          }
+        }
 
         let { data: conversation } = await supabase
           .from("conversations")
@@ -526,6 +560,34 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", conversation.id);
+
+        // ── Out-of-hours check ──
+        if (orgSettings.out_of_hours_enabled && messageType === "text") {
+          const now = new Date();
+          const riyadhTime = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
+          const dayOfWeek = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" })).getDay();
+          const workStart = orgSettings.work_start || "09:00";
+          const workEnd = orgSettings.work_end || "17:00";
+          const workDays: number[] = orgSettings.work_days || [0, 1, 2, 3, 4];
+          
+          const isOutOfHours = !workDays.includes(dayOfWeek) || !(riyadhTime >= workStart && riyadhTime <= workEnd);
+          
+          if (isOutOfHours && orgSettings.out_of_hours_message) {
+            const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+            const { count: recentOoh } = await supabase
+              .from("messages")
+              .select("id", { count: "exact", head: true })
+              .eq("conversation_id", conversation.id)
+              .eq("sender", "agent")
+              .eq("content", orgSettings.out_of_hours_message)
+              .gte("created_at", fourHoursAgo);
+            
+            if (!recentOoh || recentOoh === 0) {
+              await sendBotMessage(supabase, orgId, conversation.id, phone, orgSettings.out_of_hours_message, "evolution", logToSystem);
+              await logToSystem(supabase, "info", "تم إرسال رسالة خارج الدوام (Evolution)", { conversation_id: conversation.id }, orgId);
+            }
+          }
+        }
 
         // ── Chatbot flow processing ──
         if (messageType === "text" && content) {
