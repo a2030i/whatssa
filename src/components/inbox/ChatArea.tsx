@@ -279,7 +279,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const windowExpired = windowInfo.expired;
+  const isMetaChannel = conversation.channelType === "meta_api";
+  const windowExpired = isMetaChannel ? windowInfo.expired : false;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
   const filteredMentionAgents = agents.filter((agent) => agent.name.includes(mentionFilter));
 
@@ -623,8 +624,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {/* 24h Window Timer */}
-            {windowExpired ? (
+            {/* 24h Window Timer - Meta API only */}
+            {isMetaChannel && (windowExpired ? (
               <div className="hidden sm:flex items-center gap-1 text-warning bg-warning/10 px-2 py-1 rounded-lg ml-2">
                 <Clock className="w-3 h-3" />
                 <span className="text-[10px] font-medium">نافذة 24س منتهية</span>
@@ -643,7 +644,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   />
                 </div>
               </div>
-            )}
+            ))}
             <ExportConversation conversation={conversation} messages={messages} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -730,7 +731,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       </div>
 
       {/* 24h Window Warning */}
-      {windowExpired && (
+      {isMetaChannel && windowExpired && (
         <div className="shrink-0 bg-warning/10 border-b border-warning/20 px-4 py-2 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
           <p className="text-xs text-warning font-medium flex-1">انتهت نافذة الـ 24 ساعة. يمكنك فقط إرسال قوالب معتمدة من Meta.</p>
