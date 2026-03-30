@@ -869,12 +869,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         <div className="border-t border-border bg-card px-3 py-2">
           <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">اذكر موظف</p>
           <div className="flex gap-2 overflow-x-auto">
-            {filteredMentionAgents.map((a) => (
-              <button key={a.id} onClick={() => insertMention(a.name)} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
-                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{a.initials}</div>
-                {a.name}
-              </button>
-            ))}
+            {filteredMentionAgents.map((a) => {
+              const initials = (a.full_name || "").split(" ").map(w => w[0]).join("").slice(0, 2);
+              return (
+                <button key={a.id} onClick={() => insertMention(a.full_name || "")} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
+                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{initials}</div>
+                  {a.full_name}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
