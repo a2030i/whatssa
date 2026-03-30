@@ -888,11 +888,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       </div>
 
       {/* Quick Replies */}
-      {showQuickReplies && !windowExpired && !isNoteMode && (
+      {showQuickReplies && !windowExpired && !isNoteMode && savedReplies.length > 0 && (
         <div className="shrink-0 border-t border-border bg-card px-3 py-2 flex gap-2 overflow-x-auto">
-          {quickReplies.map((qr) => (
-            <button key={qr.id} onClick={() => handleQuickReply(qr.text)} className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium">
-              {qr.label}
+          {savedReplies.map((qr) => (
+            <button key={qr.id} onClick={() => handleQuickReply(qr.content)} className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium">
+              {qr.title}
             </button>
           ))}
         </div>
