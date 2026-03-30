@@ -474,6 +474,78 @@ const SettingsPage = () => {
         <ApiTokensSection />
       </div>
 
+      {/* Saved Replies */}
+      <div className="bg-card rounded-lg shadow-card">
+        <div className="p-5 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-primary" />
+            <h3 className="font-semibold text-sm">الردود المحفوظة</h3>
+            <span className="text-[10px] text-muted-foreground">اكتب / في الشات لاستخدامها</span>
+          </div>
+          <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => { setEditingReply(null); setReplyForm({ shortcut: "", title: "", content: "", category: "عام" }); setShowReplyDialog(true); }}>
+            <Plus className="w-3 h-3" /> إضافة رد
+          </Button>
+        </div>
+        <div className="divide-y divide-border">
+          {savedReplies.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              <Zap className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">لا توجد ردود محفوظة</p>
+              <p className="text-xs mt-1">أضف ردوداً جاهزة ليستخدمها فريقك بسرعة عبر اختصار /</p>
+            </div>
+          ) : savedReplies.map((reply) => (
+            <div key={reply.id} className="p-4 flex items-start gap-3 hover:bg-secondary/30 transition-colors">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <code className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono">/{reply.shortcut}</code>
+                  <span className="text-sm font-medium">{reply.title}</span>
+                  <span className="text-[10px] text-muted-foreground">{reply.category}</span>
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-2">{reply.content}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => { setEditingReply(reply); setReplyForm({ shortcut: reply.shortcut, title: reply.title, content: reply.content, category: reply.category }); setShowReplyDialog(true); }} className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground"><Edit className="w-3.5 h-3.5" /></button>
+                <button onClick={() => deleteReply(reply.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Saved Reply Dialog */}
+      <Dialog open={showReplyDialog} onOpenChange={setShowReplyDialog}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader><DialogTitle>{editingReply ? "تعديل الرد المحفوظ" : "إضافة رد محفوظ جديد"}</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">الاختصار *</Label>
+                <div className="relative">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">/</span>
+                  <Input value={replyForm.shortcut} onChange={(e) => setReplyForm({ ...replyForm, shortcut: e.target.value.replace(/[^a-zA-Z0-9_\u0600-\u06FF]/g, "") })} placeholder="ترحيب" className="text-sm bg-secondary border-0 pr-7" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">التصنيف</Label>
+                <Input value={replyForm.category} onChange={(e) => setReplyForm({ ...replyForm, category: e.target.value })} placeholder="عام" className="text-sm bg-secondary border-0" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">العنوان *</Label>
+              <Input value={replyForm.title} onChange={(e) => setReplyForm({ ...replyForm, title: e.target.value })} placeholder="رسالة ترحيب" className="text-sm bg-secondary border-0" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">نص الرد *</Label>
+              <Textarea value={replyForm.content} onChange={(e) => setReplyForm({ ...replyForm, content: e.target.value })} placeholder="أهلاً وسهلاً! كيف أقدر أساعدك؟" className="text-sm bg-secondary border-0 min-h-[100px]" />
+              <p className="text-[10px] text-muted-foreground">استخدم {"{name}"} لإدراج اسم العميل تلقائياً</p>
+            </div>
+            <Button onClick={saveReply} className="w-full gradient-whatsapp text-whatsapp-foreground gap-1">
+              <Save className="w-4 h-4" /> {editingReply ? "تحديث" : "حفظ"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Push Notifications */}
       <PushNotificationSettings />
 
