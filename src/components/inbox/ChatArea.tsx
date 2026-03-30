@@ -3,7 +3,7 @@ import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckChec
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Conversation, Message, quickReplies, agents } from "@/data/mockData";
+import { Conversation, Message, quickReplies } from "@/data/mockData";
 import type { WhatsAppTemplate } from "@/types/whatsapp";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -273,16 +273,32 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showSavedReplies, setShowSavedReplies] = useState(false);
   const [savedReplyFilter, setSavedReplyFilter] = useState("");
   const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
+  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; full_name: string }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Fetch real team members from database
+  useEffect(() => {
+    if (!orgId) return;
+    const fetchMembers = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("org_id", orgId)
+        .eq("is_active", true)
+        .order("full_name");
+      if (data) setTeamMembers(data.filter(m => m.full_name));
+    };
+    fetchMembers();
+  }, [orgId]);
+
   const isMetaChannel = conversation.channelType === "meta_api";
   const windowExpired = isMetaChannel ? windowInfo.expired : false;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
-  const filteredMentionAgents = agents.filter((agent) => agent.name.includes(mentionFilter));
+  const filteredMentionAgents = teamMembers.filter((m) => (m.full_name || "").includes(mentionFilter));
 
   // 24h window countdown - update every minute
   useEffect(() => {
@@ -853,12 +869,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         <div className="border-t border-border bg-card px-3 py-2">
           <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">اذكر موظف</p>
           <div className="flex gap-2 overflow-x-auto">
-            {filteredMentionAgents.map((a) => (
-              <button key={a.id} onClick={() => insertMention(a.name)} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
-                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{a.initials}</div>
-                {a.name}
-              </button>
-            ))}
+            {filteredMentionAgents.map((a) => {
+              const initials = (a.full_name || "").split(" ").map(w => w[0]).join("").slice(0, 2);
+              return (
+                <button key={a.id} onClick={() => insertMention(a.full_name || "")} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
+                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{initials}</div>
+                  {a.full_name}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
