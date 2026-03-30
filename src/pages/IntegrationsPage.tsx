@@ -6,6 +6,7 @@ import {
   ShieldCheck, CreditCard, PhoneCall, Building2, Circle, QrCode
 } from "lucide-react";
 import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
+import SallaIntegrationSection from "@/components/integrations/SallaIntegrationSection";
 import ChannelRoutingConfig from "@/components/integrations/ChannelRoutingConfig";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -693,6 +694,14 @@ const IntegrationsPage = () => {
               description="التواصل مع المستخدمين من خلال الهاتف"
               actions={<Badge variant="outline" className="text-[10px] px-2.5 py-1">قريباً</Badge>}
             />
+          </div>
+        </div>
+
+        {/* E-commerce Integrations */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-foreground">تكاملات المتاجر</h2>
+          <div className="bg-card rounded-2xl border border-border p-5">
+            <SallaIntegrationSection />
           </div>
         </div>
 
