@@ -1811,6 +1811,62 @@ export type Database = {
           },
         ]
       }
+      store_integrations: {
+        Row: {
+          created_at: string | null
+          events_enabled: string[]
+          id: string
+          is_active: boolean
+          last_webhook_at: string | null
+          metadata: Json | null
+          org_id: string
+          platform: string
+          store_name: string | null
+          store_url: string | null
+          updated_at: string | null
+          webhook_error: string | null
+          webhook_secret: string
+        }
+        Insert: {
+          created_at?: string | null
+          events_enabled?: string[]
+          id?: string
+          is_active?: boolean
+          last_webhook_at?: string | null
+          metadata?: Json | null
+          org_id: string
+          platform?: string
+          store_name?: string | null
+          store_url?: string | null
+          updated_at?: string | null
+          webhook_error?: string | null
+          webhook_secret?: string
+        }
+        Update: {
+          created_at?: string | null
+          events_enabled?: string[]
+          id?: string
+          is_active?: boolean
+          last_webhook_at?: string | null
+          metadata?: Json | null
+          org_id?: string
+          platform?: string
+          store_name?: string | null
+          store_url?: string | null
+          updated_at?: string | null
+          webhook_error?: string | null
+          webhook_secret?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_integrations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_logs: {
         Row: {
           created_at: string
