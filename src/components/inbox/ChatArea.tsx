@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -619,7 +619,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               )}
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-sm truncate">{conversation.customerName}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-semibold text-sm truncate">{conversation.customerName}</p>
+                {isMetaChannel ? (
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 gap-0.5 border-success/40 text-success bg-success/10 shrink-0">
+                    <ShieldCheck className="w-2.5 h-2.5" />
+                    رسمي
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 gap-0.5 border-muted-foreground/40 text-muted-foreground bg-muted shrink-0">
+                    <Wifi className="w-2.5 h-2.5" />
+                    غير رسمي
+                  </Badge>
+                )}
+              </div>
               <p className="text-[10px] text-muted-foreground truncate">{conversation.lastSeen || conversation.customerPhone}</p>
             </div>
           </div>
