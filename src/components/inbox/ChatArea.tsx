@@ -623,10 +623,25 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {windowExpired && (
+            {/* 24h Window Timer */}
+            {windowExpired ? (
               <div className="hidden sm:flex items-center gap-1 text-warning bg-warning/10 px-2 py-1 rounded-lg ml-2">
                 <Clock className="w-3 h-3" />
                 <span className="text-[10px] font-medium">نافذة 24س منتهية</span>
+              </div>
+            ) : windowInfo.hours < 24 && (
+              <div className={cn(
+                "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg ml-2",
+                windowInfo.hours < 2 ? "text-destructive bg-destructive/10" : windowInfo.hours < 6 ? "text-warning bg-warning/10" : "text-success bg-success/10"
+              )}>
+                <Timer className="w-3 h-3" />
+                <span className="text-[10px] font-bold font-mono">{windowInfo.hours}:{String(windowInfo.minutes).padStart(2, "0")}</span>
+                <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all", windowInfo.hours < 2 ? "bg-destructive" : windowInfo.hours < 6 ? "bg-warning" : "bg-success")}
+                    style={{ width: `${windowInfo.percentage}%` }}
+                  />
+                </div>
               </div>
             )}
             <ExportConversation conversation={conversation} messages={messages} />
