@@ -264,6 +264,11 @@ const InboxPage = () => {
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, notes } : conversation)));
   }, []);
 
+  const handleTagsChange = useCallback(async (convId: string, tags: string[]) => {
+    await supabase.from("conversations").update({ tags }).eq("id", convId);
+    setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, tags } : conversation)));
+  }, []);
+
   const handleSendTemplate = useCallback(async (convId: string, template: WhatsAppTemplate, variables: string[]) => {
     const conversation = conversations.find((item) => item.id === convId);
     if (!conversation) {
@@ -326,6 +331,7 @@ const InboxPage = () => {
           onSendTemplate={handleSendTemplate}
           onStatusChange={handleStatusChange}
           onTransfer={handleTransfer}
+          onTagsChange={handleTagsChange}
         />
       ) : (
         !isMobile && (
