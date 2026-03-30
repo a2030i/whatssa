@@ -5,6 +5,7 @@ import { Conversation } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const statusColors: Record<string, string> = {
   active: "bg-success/10 text-success",
@@ -33,13 +34,12 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
   const [agentFilter, setAgentFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const isMobile = useIsMobile();
 
   const allAgents = useMemo(() => [...new Set(conversations.map((c) => c.assignedTo))], [conversations]);
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
 
-  // Quick filter counts
   const counts = useMemo(() => ({
     all: conversations.length,
     active: conversations.filter(c => c.status === "active").length,
@@ -53,21 +53,19 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
   }), [conversations]);
 
   const quickFilters: QuickFilter[] = [
-    { id: "all", label: "جميع المحادثات", icon: MessageSquare, count: counts.all },
+    { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
+    { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
+    { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
     { id: "private", label: "خاصة", icon: User, count: counts.private },
     { id: "group", label: "قروبات", icon: Users, count: counts.group },
     { id: "broadcast", label: "بث", icon: Radio, count: counts.broadcast },
-    { id: "unassigned", label: "غير المعينة", icon: UserX, count: counts.unassigned },
-    { id: "unread", label: "غير المقروءة", icon: Eye, count: counts.unread },
-    { id: "waiting", label: "في انتظار رد العميل", icon: Clock, count: counts.waiting },
+    { id: "waiting", label: "بانتظار", icon: Clock, count: counts.waiting },
     { id: "closed", label: "منتهية", icon: XCircle, count: counts.closed },
   ];
 
   const filtered = useMemo(() => {
     return conversations.filter((conv) => {
       if (searchQuery && !conv.customerName.includes(searchQuery) && !conv.lastMessage.includes(searchQuery) && !conv.customerPhone.includes(searchQuery)) return false;
-      
-      // Quick filter
       switch (activeQuickFilter) {
         case "active": if (conv.status !== "active") return false; break;
         case "private": if (conv.conversationType && conv.conversationType !== "private") return false; break;
@@ -78,7 +76,6 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
         case "waiting": if (conv.status !== "waiting") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
       }
-
       if (agentFilter !== "all" && conv.assignedTo !== agentFilter) return false;
       if (selectedTags.length > 0 && !selectedTags.some((t) => conv.tags.includes(t))) return false;
       return true;
@@ -95,7 +92,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
       hasSelection ? "hidden md:flex md:w-[320px] lg:w-[340px]" : "w-full md:w-[320px] lg:w-[340px]"
     )}>
       {/* Header */}
-      <div className="p-3 border-b border-border space-y-2">
+      <div className="p-3 border-b border-border space-y-2 shrink-0">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold">المحادثات</h1>
           <div className="flex items-center gap-1">
@@ -120,43 +117,76 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
         </div>
       </div>
 
-      {/* Quick Filters - Vertical List */}
-      <div className="border-b border-border">
-        {/* Active filter always visible */}
-        <button
-          onClick={() => setFiltersCollapsed(!filtersCollapsed)}
-          className="w-full flex items-center justify-between px-4 py-2 text-xs text-muted-foreground hover:bg-secondary/50"
-        >
-          <span>الفلاتر</span>
-          {filtersCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
-        </button>
-        {!filtersCollapsed && quickFilters.map((qf) => (
+      {/* Quick Filters */}
+      {isMobile ? (
+        /* Mobile: Horizontal scrollable chips */
+        <div className="shrink-0 border-b border-border px-2 py-2 overflow-x-auto scrollbar-none">
+          <div className="flex gap-1.5 w-max">
+            {quickFilters.map((qf) => (
+              <button
+                key={qf.id}
+                onClick={() => setActiveQuickFilter(qf.id)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
+                  activeQuickFilter === qf.id
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-secondary text-muted-foreground hover:bg-accent"
+                )}
+              >
+                <qf.icon className="w-3.5 h-3.5" />
+                <span>{qf.label}</span>
+                {(qf.count ?? 0) > 0 && (
+                  <span className={cn(
+                    "text-[10px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold",
+                    activeQuickFilter === qf.id
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {qf.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* Desktop: Vertical list (collapsible) */
+        <div className="border-b border-border shrink-0">
           <button
-            key={qf.id}
-            onClick={() => setActiveQuickFilter(qf.id)}
-            className={cn(
-              "w-full flex items-center justify-between px-4 py-2 text-sm transition-colors",
-              activeQuickFilter === qf.id
-                ? "bg-accent text-accent-foreground font-medium"
-                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-            )}
+            onClick={() => setFiltersCollapsed(!filtersCollapsed)}
+            className="w-full flex items-center justify-between px-4 py-2 text-xs text-muted-foreground hover:bg-secondary/50"
           >
-            <div className="flex items-center gap-2.5">
-              <qf.icon className="w-4 h-4" />
-              <span className="text-xs">{qf.label}</span>
-            </div>
-            <Badge variant="secondary" className={cn("text-[10px] px-1.5 min-w-[22px] justify-center",
-              activeQuickFilter === qf.id && "bg-primary text-primary-foreground"
-            )}>
-              {qf.count}
-            </Badge>
+            <span>الفلاتر</span>
+            {filtersCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
           </button>
-        ))}
-      </div>
+          {!filtersCollapsed && quickFilters.map((qf) => (
+            <button
+              key={qf.id}
+              onClick={() => setActiveQuickFilter(qf.id)}
+              className={cn(
+                "w-full flex items-center justify-between px-4 py-2 text-sm transition-colors",
+                activeQuickFilter === qf.id
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              )}
+            >
+              <div className="flex items-center gap-2.5">
+                <qf.icon className="w-4 h-4" />
+                <span className="text-xs">{qf.label}</span>
+              </div>
+              <Badge variant="secondary" className={cn("text-[10px] px-1.5 min-w-[22px] justify-center",
+                activeQuickFilter === qf.id && "bg-primary text-primary-foreground"
+              )}>
+                {qf.count}
+              </Badge>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Advanced Filters */}
       {showAdvancedFilters && (
-        <div className="px-3 py-2.5 border-b border-border space-y-2 animate-fade-in bg-secondary/30">
+        <div className="px-3 py-2.5 border-b border-border space-y-2 animate-fade-in bg-secondary/30 shrink-0">
           <div className="flex items-center gap-2">
             <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             <Select value={agentFilter} onValueChange={setAgentFilter}>
@@ -187,11 +217,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
 
       {/* Results count */}
       {(hasActiveFilters || searchQuery) && (
-        <div className="px-4 py-1.5 bg-accent/50 text-[11px] text-accent-foreground">{filtered.length} محادثة</div>
+        <div className="px-4 py-1.5 bg-accent/50 text-[11px] text-accent-foreground shrink-0">{filtered.length} محادثة</div>
       )}
 
       {/* Conversation Items */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
