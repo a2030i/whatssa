@@ -5,9 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import InternalNotes from "./InternalNotes";
 
 interface CustomerInfoPanelProps {
   conversation: Conversation;
@@ -81,7 +83,12 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes }: CustomerInfoPanelPro
 
   return (
     <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-hidden">
-      {/* Customer Header */}
+      <Tabs defaultValue="info" className="flex flex-col h-full">
+        <TabsList className="mx-2 mt-2 mb-0 grid grid-cols-2">
+          <TabsTrigger value="info" className="text-xs">معلومات</TabsTrigger>
+          <TabsTrigger value="notes" className="text-xs">ملاحظات</TabsTrigger>
+        </TabsList>
+        <TabsContent value="info" className="flex-1 flex flex-col overflow-hidden mt-0">
       <div className="p-4 border-b border-border text-center">
         <div className="relative inline-block">
           <div className="w-16 h-16 rounded-full gradient-whatsapp flex items-center justify-center text-xl font-bold text-whatsapp-foreground mx-auto mb-2">
@@ -223,6 +230,11 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes }: CustomerInfoPanelPro
           </div>
         )}
       </div>
+        </TabsContent>
+        <TabsContent value="notes" className="flex-1 flex flex-col overflow-hidden mt-0">
+          <InternalNotes conversationId={conversation.id} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
