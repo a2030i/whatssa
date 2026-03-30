@@ -25,6 +25,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ApiDocsPage from "./pages/ApiDocsPage";
 import ReportsPage from "./pages/ReportsPage";
+import ChatbotPage from "./pages/ChatbotPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentCallbackPage from "./pages/PaymentCallbackPage";
 import BillingPage from "./pages/BillingPage";
@@ -78,6 +79,7 @@ const AppRoutes = () => {
       <Route path="/analytics" element={<ProtectedRoute><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/campaigns" element={<ProtectedRoute><AppLayout><CampaignsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/automation" element={<ProtectedRoute><AppLayout><AutomationPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/chatbot" element={<ProtectedRoute><AppLayout><ChatbotPage /></AppLayout></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><AppLayout><TeamPage /></AppLayout></ProtectedRoute>} />
       <Route path="/plans" element={<ProtectedRoute><AppLayout><PlanUpgradePage /></AppLayout></ProtectedRoute>} />
       <Route path="/integrations" element={<ProtectedRoute><AppLayout><IntegrationsPage /></AppLayout></ProtectedRoute>} />

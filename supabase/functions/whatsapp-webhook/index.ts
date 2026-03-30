@@ -6,6 +6,298 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ── Chatbot Flow Processor ──
+async function processChatbotFlow(
+  client: ReturnType<typeof createClient>,
+  orgId: string,
+  conversationId: string,
+  customerPhone: string,
+  messageText: string,
+  channel: "meta" | "evolution",
+  log: typeof logToSystem,
+): Promise<boolean> {
+  const normalizedText = messageText.trim().toLowerCase();
+
+  // Check for existing active session
+  const { data: session } = await client
+    .from("chatbot_sessions")
+    .select("id, flow_id, current_node_id, is_active")
+    .eq("conversation_id", conversationId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (session) {
+    // User is in an active flow — find the current node and match button
+    const { data: flow } = await client
+      .from("chatbot_flows")
+      .select("nodes, is_active, name")
+      .eq("id", session.flow_id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!flow) {
+      // Flow was deactivated, end session
+      await client.from("chatbot_sessions").update({ is_active: false }).eq("id", session.id);
+      return false;
+    }
+
+    const nodes = (flow.nodes as any[]) || [];
+    const currentNode = nodes.find((n: any) => n.id === session.current_node_id);
+
+    if (!currentNode || !currentNode.buttons || currentNode.buttons.length === 0) {
+      // No buttons = end of flow
+      await client.from("chatbot_sessions").update({ is_active: false }).eq("id", session.id);
+      return false;
+    }
+
+    // Match by button label or number (1, 2, 3)
+    let matchedButton = currentNode.buttons.find(
+      (btn: any) => btn.label && normalizedText === btn.label.trim().toLowerCase()
+    );
+    if (!matchedButton) {
+      const num = parseInt(normalizedText);
+      if (num > 0 && num <= currentNode.buttons.length) {
+        matchedButton = currentNode.buttons[num - 1];
+      }
+    }
+
+    if (!matchedButton) {
+      // No match — re-send current node options
+      const buttonLabels = currentNode.buttons.map((b: any, i: number) => `${i + 1}. ${b.label}`).join("\n");
+      const retryMsg = `اختر أحد الخيارات:\n${buttonLabels}`;
+      await sendBotMessage(client, orgId, conversationId, customerPhone, retryMsg, channel, log);
+      return true;
+    }
+
+    // Navigate to next node
+    const nextNodeId = matchedButton.next_node_id;
+    if (!nextNodeId) {
+      await client.from("chatbot_sessions").update({ is_active: false }).eq("id", session.id);
+      return true;
+    }
+
+    const nextNode = nodes.find((n: any) => n.id === nextNodeId);
+    if (!nextNode) {
+      await client.from("chatbot_sessions").update({ is_active: false }).eq("id", session.id);
+      return true;
+    }
+
+    // Handle action node
+    if (nextNode.type === "action") {
+      await handleBotAction(client, orgId, conversationId, customerPhone, nextNode, channel, log);
+      await client.from("chatbot_sessions").update({ is_active: false }).eq("id", session.id);
+      return true;
+    }
+
+    // Send next message node
+    let msgText = nextNode.content || "";
+    if (nextNode.buttons && nextNode.buttons.length > 0) {
+      const buttonLabels = nextNode.buttons.map((b: any, i: number) => `${i + 1}. ${b.label}`).join("\n");
+      msgText += `\n\n${buttonLabels}`;
+    }
+
+    await sendBotMessage(client, orgId, conversationId, customerPhone, msgText, channel, log);
+    
+    // Update session to new node
+    await client.from("chatbot_sessions").update({
+      current_node_id: nextNode.id,
+      updated_at: new Date().toISOString(),
+    }).eq("id", session.id);
+
+    // If no buttons on next node, end session
+    if (!nextNode.buttons || nextNode.buttons.length === 0) {
+      await client.from("chatbot_sessions").update({ is_active: false }).eq("id", session.id);
+    }
+
+    return true;
+  }
+
+  // No active session — check if any flow should be triggered
+  const { data: flows } = await client
+    .from("chatbot_flows")
+    .select("id, trigger_type, trigger_keywords, welcome_message, nodes, name")
+    .eq("org_id", orgId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+
+  if (!flows || flows.length === 0) return false;
+
+  // Check if this is the first message in conversation
+  const { count: msgCount } = await client
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("conversation_id", conversationId)
+    .eq("sender", "customer");
+
+  const isFirstMessage = (msgCount || 0) <= 1;
+
+  let matchedFlow = null;
+  for (const flow of flows) {
+    if (flow.trigger_type === "first_message" && isFirstMessage) {
+      matchedFlow = flow;
+      break;
+    }
+    if (flow.trigger_type === "always") {
+      matchedFlow = flow;
+      break;
+    }
+    if (flow.trigger_type === "keyword" && Array.isArray(flow.trigger_keywords)) {
+      const matched = flow.trigger_keywords.some(
+        (kw: string) => kw?.trim() && normalizedText.includes(kw.trim().toLowerCase())
+      );
+      if (matched) {
+        matchedFlow = flow;
+        break;
+      }
+    }
+  }
+
+  if (!matchedFlow) return false;
+
+  const nodes = (matchedFlow.nodes as any[]) || [];
+  if (nodes.length === 0) return false;
+
+  await log(client, "info", `تدفق شات بوت مطابق: ${matchedFlow.name}`, {
+    flow_id: matchedFlow.id, trigger_type: matchedFlow.trigger_type,
+  }, orgId);
+
+  // Send welcome message if exists
+  if (matchedFlow.welcome_message) {
+    await sendBotMessage(client, orgId, conversationId, customerPhone, matchedFlow.welcome_message, channel, log);
+  }
+
+  // Send first node
+  const firstNode = nodes[0];
+  let msgText = firstNode.content || "";
+  if (firstNode.buttons && firstNode.buttons.length > 0) {
+    const buttonLabels = firstNode.buttons.map((b: any, i: number) => `${i + 1}. ${b.label}`).join("\n");
+    msgText += `\n\n${buttonLabels}`;
+  }
+
+  await sendBotMessage(client, orgId, conversationId, customerPhone, msgText, channel, log);
+
+  // Create session
+  if (firstNode.buttons && firstNode.buttons.length > 0) {
+    await client.from("chatbot_sessions").upsert({
+      conversation_id: conversationId,
+      flow_id: matchedFlow.id,
+      current_node_id: firstNode.id,
+      is_active: true,
+      org_id: orgId,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "conversation_id" });
+  }
+
+  return true;
+}
+
+async function handleBotAction(
+  client: ReturnType<typeof createClient>,
+  orgId: string,
+  conversationId: string,
+  customerPhone: string,
+  node: any,
+  channel: "meta" | "evolution",
+  log: typeof logToSystem,
+) {
+  const actionType = node.action_type || "transfer_agent";
+
+  if (actionType === "transfer_agent") {
+    const msg = node.content || "جاري تحويلك لأحد الموظفين...";
+    await sendBotMessage(client, orgId, conversationId, customerPhone, msg, channel, log);
+  } else if (actionType === "close") {
+    const msg = node.content || "شكراً لتواصلك معنا!";
+    await sendBotMessage(client, orgId, conversationId, customerPhone, msg, channel, log);
+    await client.from("conversations").update({ status: "closed", closed_at: new Date().toISOString() }).eq("id", conversationId);
+    await client.from("messages").insert({
+      conversation_id: conversationId, content: "تم إغلاق المحادثة تلقائياً بواسطة البوت", sender: "system", message_type: "text",
+    });
+  } else if (actionType === "add_tag") {
+    const tag = node.content || "";
+    if (tag) {
+      const { data: conv } = await client.from("conversations").select("tags").eq("id", conversationId).single();
+      const tags: string[] = conv?.tags || [];
+      if (!tags.includes(tag)) {
+        await client.from("conversations").update({ tags: [...tags, tag] }).eq("id", conversationId);
+      }
+    }
+  }
+}
+
+async function sendBotMessage(
+  client: ReturnType<typeof createClient>,
+  orgId: string,
+  conversationId: string,
+  customerPhone: string,
+  text: string,
+  channel: "meta" | "evolution",
+  log: typeof logToSystem,
+) {
+  if (!text) return;
+
+  if (channel === "meta") {
+    const { data: config } = await client
+      .from("whatsapp_config")
+      .select("phone_number_id, access_token")
+      .eq("org_id", orgId)
+      .eq("is_connected", true)
+      .eq("channel_type", "meta_api")
+      .limit(1)
+      .maybeSingle();
+
+    if (config) {
+      const resp = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${config.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ messaging_product: "whatsapp", to: customerPhone, type: "text", text: { body: text } }),
+      });
+      const result = await resp.json();
+      if (resp.ok) {
+        await client.from("messages").insert({
+          conversation_id: conversationId, wa_message_id: result.messages?.[0]?.id || null,
+          sender: "agent", message_type: "text", content: text, status: "sent",
+        });
+        await client.from("conversations").update({
+          last_message: text, last_message_at: new Date().toISOString(),
+        }).eq("id", conversationId);
+      } else {
+        await log(client, "error", "فشل إرسال رسالة البوت (Meta)", { error: result?.error?.message }, orgId);
+      }
+    }
+  } else {
+    const evoUrl = Deno.env.get("EVOLUTION_API_URL") || "";
+    const evoKey = Deno.env.get("EVOLUTION_API_KEY") || "";
+    const { data: config } = await client
+      .from("whatsapp_config")
+      .select("evolution_instance_name")
+      .eq("org_id", orgId)
+      .eq("channel_type", "evolution")
+      .eq("is_connected", true)
+      .limit(1)
+      .maybeSingle();
+
+    if (config && evoUrl && evoKey) {
+      try {
+        const resp = await fetch(`${evoUrl}/message/sendText/${config.evolution_instance_name}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: evoKey },
+          body: JSON.stringify({ number: customerPhone, text }),
+        });
+        if (resp.ok) {
+          await client.from("messages").insert({
+            conversation_id: conversationId, sender: "agent", message_type: "text", content: text, status: "sent",
+          });
+          await client.from("conversations").update({
+            last_message: text, last_message_at: new Date().toISOString(),
+          }).eq("id", conversationId);
+        }
+      } catch (e) {
+        await log(client, "error", "فشل إرسال رسالة البوت (Evolution)", { error: (e as Error).message }, orgId);
+      }
+    }
+  }
+}
+
 async function logToSystem(
   client: ReturnType<typeof createClient>,
   level: string,
@@ -214,133 +506,138 @@ serve(async (req) => {
             }, orgId);
           }
 
-          // ── Automation rules ──
+          // ── Chatbot flow processing ──
           if (incomingMessage.type === "text") {
-            const normalizedContent = content.trim().toLowerCase();
-            const { data: rules } = await supabase
-              .from("automation_rules")
-              .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id")
-              .eq("org_id", orgId)
-              .eq("enabled", true)
-              .order("created_at", { ascending: true });
+            const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, customerPhone, content, "meta", logToSystem);
+            
+            // ── Automation rules (only if chatbot didn't handle) ──
+            if (!chatbotHandled) {
+              const normalizedContent = content.trim().toLowerCase();
+              const { data: rules } = await supabase
+                .from("automation_rules")
+                .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id")
+                .eq("org_id", orgId)
+                .eq("enabled", true)
+                .order("created_at", { ascending: true });
 
-            const matchedRule = (rules || []).find((rule: any) =>
-              Array.isArray(rule.keywords) &&
-              rule.keywords.some((keyword: string) => keyword?.trim() && normalizedContent.includes(keyword.trim().toLowerCase())),
-            );
+              const matchedRule = (rules || []).find((rule: any) =>
+                Array.isArray(rule.keywords) &&
+                rule.keywords.some((keyword: string) => keyword?.trim() && normalizedContent.includes(keyword.trim().toLowerCase())),
+              );
 
-            if (matchedRule) {
-              const actionType = matchedRule.action_type || "reply";
-              await logToSystem(supabase, "info", `قاعدة أتمتة مطابقة: ${matchedRule.name} (${actionType})`, {
-                rule_id: matchedRule.id,
-                rule_name: matchedRule.name,
-                action_type: actionType,
-                customer_phone: customerPhone,
-              }, orgId);
+              if (matchedRule) {
+                const actionType = matchedRule.action_type || "reply";
+                await logToSystem(supabase, "info", `قاعدة أتمتة مطابقة: ${matchedRule.name} (${actionType})`, {
+                  rule_id: matchedRule.id,
+                  rule_name: matchedRule.name,
+                  action_type: actionType,
+                  customer_phone: customerPhone,
+                }, orgId);
 
-              // ── Action: Add tag ──
-              if (actionType === "add_tag" || actionType === "reply_and_tag") {
-                const tag = matchedRule.action_tag;
-                if (tag) {
-                  const { data: conv } = await supabase
-                    .from("conversations")
-                    .select("tags")
-                    .eq("id", conversation.id)
-                    .single();
-                  const currentTags: string[] = conv?.tags || [];
-                  if (!currentTags.includes(tag)) {
-                    await supabase
+                // ── Action: Add tag ──
+                if (actionType === "add_tag" || actionType === "reply_and_tag") {
+                  const tag = matchedRule.action_tag;
+                  if (tag) {
+                    const { data: conv } = await supabase
                       .from("conversations")
-                      .update({ tags: [...currentTags, tag] })
-                      .eq("id", conversation.id);
-                    await logToSystem(supabase, "info", `تم تطبيق الوسم "${tag}" تلقائياً`, { conversation_id: conversation.id, tag }, orgId);
+                      .select("tags")
+                      .eq("id", conversation.id)
+                      .single();
+                    const currentTags: string[] = conv?.tags || [];
+                    if (!currentTags.includes(tag)) {
+                      await supabase
+                        .from("conversations")
+                        .update({ tags: [...currentTags, tag] })
+                        .eq("id", conversation.id);
+                      await logToSystem(supabase, "info", `تم تطبيق الوسم "${tag}" تلقائياً`, { conversation_id: conversation.id, tag }, orgId);
+                    }
                   }
                 }
-              }
 
-              // ── Action: Assign team ──
-              if (actionType === "assign_team") {
-                const teamId = matchedRule.action_team_id;
-                if (teamId) {
-                  const { data: team } = await supabase
-                    .from("teams")
-                    .select("name")
-                    .eq("id", teamId)
-                    .single();
-                  if (team) {
-                    await supabase
-                      .from("conversations")
-                      .update({ assigned_team: team.name })
-                      .eq("id", conversation.id);
-                    await supabase.from("messages").insert({
-                      conversation_id: conversation.id,
-                      content: `تم إسناد المحادثة تلقائياً لفريق: ${team.name}`,
-                      sender: "system",
-                      message_type: "text",
-                    });
-                    await logToSystem(supabase, "info", `تم إسناد المحادثة لفريق "${team.name}" تلقائياً`, { conversation_id: conversation.id, team_id: teamId }, orgId);
-
-                    // Trigger auto-assign within that team
-                    try {
-                      await supabase.functions.invoke("auto-assign", {
-                        body: { conversation_id: conversation.id, org_id: orgId, message_text: content },
+                // ── Action: Assign team ──
+                if (actionType === "assign_team") {
+                  const teamId = matchedRule.action_team_id;
+                  if (teamId) {
+                    const { data: team } = await supabase
+                      .from("teams")
+                      .select("name")
+                      .eq("id", teamId)
+                      .single();
+                    if (team) {
+                      await supabase
+                        .from("conversations")
+                        .update({ assigned_team: team.name })
+                        .eq("id", conversation.id);
+                      await supabase.from("messages").insert({
+                        conversation_id: conversation.id,
+                        content: `تم إسناد المحادثة تلقائياً لفريق: ${team.name}`,
+                        sender: "system",
+                        message_type: "text",
                       });
-                    } catch (_) { /* silent */ }
+                      await logToSystem(supabase, "info", `تم إسناد المحادثة لفريق "${team.name}" تلقائياً`, { conversation_id: conversation.id, team_id: teamId }, orgId);
+
+                      // Trigger auto-assign within that team
+                      try {
+                        await supabase.functions.invoke("auto-assign", {
+                          body: { conversation_id: conversation.id, org_id: orgId, message_text: content },
+                        });
+                      } catch (_) { /* silent */ }
+                    }
                   }
                 }
-              }
 
-              // ── Action: Reply ──
-              if (actionType === "reply" || actionType === "reply_and_tag") {
-                const { data: config } = await supabase
-                  .from("whatsapp_config")
-                  .select("phone_number_id, access_token")
-                  .eq("org_id", orgId)
-                  .eq("is_connected", true)
-                  .order("created_at", { ascending: true })
-                  .limit(1)
-                  .maybeSingle();
+                // ── Action: Reply ──
+                if (actionType === "reply" || actionType === "reply_and_tag") {
+                  const { data: config } = await supabase
+                    .from("whatsapp_config")
+                    .select("phone_number_id, access_token")
+                    .eq("org_id", orgId)
+                    .eq("is_connected", true)
+                    .order("created_at", { ascending: true })
+                    .limit(1)
+                    .maybeSingle();
 
-                if (config && matchedRule.reply_text) {
-                  const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
-                    method: "POST",
-                    headers: {
-                      Authorization: `Bearer ${config.access_token}`,
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      messaging_product: "whatsapp",
-                      to: customerPhone,
-                      type: "text",
-                      text: { body: matchedRule.reply_text },
-                    }),
-                  });
-
-                  const result = await response.json();
-                  if (response.ok) {
-                    await supabase.from("messages").insert({
-                      conversation_id: conversation.id,
-                      wa_message_id: result.messages?.[0]?.id || null,
-                      sender: "agent",
-                      message_type: "text",
-                      content: matchedRule.reply_text,
-                      status: "sent",
+                  if (config && matchedRule.reply_text) {
+                    const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
+                      method: "POST",
+                      headers: {
+                        Authorization: `Bearer ${config.access_token}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        messaging_product: "whatsapp",
+                        to: customerPhone,
+                        type: "text",
+                        text: { body: matchedRule.reply_text },
+                      }),
                     });
 
-                    await supabase
-                      .from("conversations")
-                      .update({
-                        last_message: matchedRule.reply_text,
-                        last_message_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                      })
-                      .eq("id", conversation.id);
-                  } else {
-                    await logToSystem(supabase, "error", `فشل إرسال الرد التلقائي إلى ${customerPhone}`, {
-                      rule_name: matchedRule.name,
-                      http_status: response.status,
-                      wa_error: result?.error?.message || "unknown",
-                    }, orgId);
+                    const result = await response.json();
+                    if (response.ok) {
+                      await supabase.from("messages").insert({
+                        conversation_id: conversation.id,
+                        wa_message_id: result.messages?.[0]?.id || null,
+                        sender: "agent",
+                        message_type: "text",
+                        content: matchedRule.reply_text,
+                        status: "sent",
+                      });
+
+                      await supabase
+                        .from("conversations")
+                        .update({
+                          last_message: matchedRule.reply_text,
+                          last_message_at: new Date().toISOString(),
+                          updated_at: new Date().toISOString(),
+                        })
+                        .eq("id", conversation.id);
+                    } else {
+                      await logToSystem(supabase, "error", `فشل إرسال الرد التلقائي إلى ${customerPhone}`, {
+                        rule_name: matchedRule.name,
+                        http_status: response.status,
+                        wa_error: result?.error?.message || "unknown",
+                      }, orgId);
+                    }
                   }
                 }
               }
