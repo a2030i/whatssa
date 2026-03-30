@@ -481,9 +481,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           throw new Error(data?.error || "فشل إرسال الوسائط");
         }
       } else {
-        // Fallback: text-based send with storage path
-        const label = mediaType === "image" ? "📷" : mediaType === "video" ? "🎬" : "📎";
-        onSendMessage(conversation.id, caption ? `${label} ${caption}\n${storagePath}` : `${label} ${mediaType === "image" ? "صورة" : mediaType === "video" ? "فيديو" : "ملف"}\n${storagePath}`);
+        // Send via Meta API with media upload
+        const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+          body: {
+            to: conversation.customerPhone,
+            type: "media",
+            media_url: storagePath,
+            media_type: mediaType,
+            caption: caption || "",
+            conversation_id: conversation.id,
+          },
+        });
+        if (error || data?.error) {
+          throw new Error(data?.error || "فشل إرسال الوسائط");
+        }
       }
 
       setImagePreview(null);

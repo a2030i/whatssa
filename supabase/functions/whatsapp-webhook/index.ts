@@ -712,17 +712,34 @@ serve(async (req) => {
         }
       }
 
-      // ── Handle status updates ──
+      // ── Handle status updates (delivered/read/failed) ──
       if (value.statuses && value.statuses.length > 0) {
-        for (const status of value.statuses) {
-          await supabase.from("messages").update({ status: status.status }).eq("wa_message_id", status.id);
+        for (const statusUpdate of value.statuses) {
+          const newStatus = statusUpdate.status;
+          const waMessageId = statusUpdate.id;
 
-          if (status.status === "failed") {
+          // Update message status
+          const updateData: Record<string, unknown> = { status: newStatus };
+          if (newStatus === "failed") {
+            const errCode = statusUpdate.errors?.[0]?.code || null;
+            const errTitle = statusUpdate.errors?.[0]?.title || null;
+            const errMessage = statusUpdate.errors?.[0]?.message || null;
+            updateData.metadata = {
+              error_code: errCode,
+              error_title: errTitle,
+              error_message: errMessage,
+            };
+          }
+
+          await supabase.from("messages").update(updateData).eq("wa_message_id", waMessageId);
+
+          if (newStatus === "failed") {
             await logToSystem(supabase, "error", `فشل تسليم رسالة واتساب`, {
-              wa_message_id: status.id,
-              recipient: status.recipient_id,
-              error_code: status.errors?.[0]?.code || null,
-              error_title: status.errors?.[0]?.title || null,
+              wa_message_id: waMessageId,
+              recipient: statusUpdate.recipient_id,
+              error_code: statusUpdate.errors?.[0]?.code || null,
+              error_title: statusUpdate.errors?.[0]?.title || null,
+              error_message: statusUpdate.errors?.[0]?.message || null,
             }, orgId);
           }
         }
