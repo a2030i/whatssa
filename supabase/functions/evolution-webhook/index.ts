@@ -528,7 +528,18 @@ serve(async (req) => {
           }
 
           conversation = newConv;
-        }
+
+            // Trigger auto-assign for new conversations with team routing
+            if (newConv && config.default_team_id && !config.default_agent_id) {
+              try {
+                await supabase.functions.invoke("auto-assign", {
+                  body: { conversation_id: newConv.id, org_id: orgId, message_text: text || "" },
+                });
+              } catch (_) {
+                await logToSystem(supabase, "warn", "فشل التعيين التلقائي (Evolution)", { conversation_id: newConv?.id }, orgId);
+              }
+            }
+          }
 
         if (!conversation) continue;
 
