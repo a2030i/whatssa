@@ -76,14 +76,16 @@ const CampaignsPage = () => {
   }, [orgId]);
 
   const load = async () => {
-    const [c, cust, tags] = await Promise.all([
+    const [c, cust, tags, channels] = await Promise.all([
       supabase.from("campaigns").select("*").eq("org_id", orgId!).order("created_at", { ascending: false }),
       supabase.from("customers").select("*").eq("org_id", orgId!),
       supabase.from("customer_tag_definitions").select("*").eq("org_id", orgId!),
+      supabase.from("whatsapp_config").select("*").eq("org_id", orgId!).eq("is_connected", true),
     ]);
     setCampaigns(c.data || []);
     setCustomers(cust.data || []);
     setTagDefs(tags.data || []);
+    setWhatsappChannels(channels.data || []);
     if (isEcommerce && orgId) {
       const [o, p] = await Promise.all([
         supabase.from("orders").select("*").eq("org_id", orgId),
