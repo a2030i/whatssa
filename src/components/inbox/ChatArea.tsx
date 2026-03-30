@@ -799,7 +799,42 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </div>
       )}
 
-      {/* Mentions Popup */}
+      {/* Saved Replies Popup (/ shortcut) */}
+      {showSavedReplies && !windowExpired && !isNoteMode && (
+        <div className="shrink-0 border-t border-primary/20 bg-card px-3 py-2 max-h-[200px] overflow-y-auto">
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+              <Zap className="w-3 h-3 text-primary" /> ردود محفوظة
+            </p>
+            <button onClick={() => { setShowSavedReplies(false); setInputText(""); }} className="text-muted-foreground hover:text-foreground">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          {filteredSavedReplies.length > 0 ? (
+            <div className="space-y-1">
+              {filteredSavedReplies.map((reply) => (
+                <button
+                  key={reply.id}
+                  onClick={() => insertSavedReply(reply)}
+                  className="w-full text-right px-3 py-2 rounded-lg hover:bg-secondary transition-colors group"
+                >
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-mono shrink-0">/{reply.shortcut}</Badge>
+                    <span className="text-xs font-medium truncate">{reply.title}</span>
+                    {reply.category && <span className="text-[9px] text-muted-foreground mr-auto">{reply.category}</span>}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate mt-0.5 group-hover:text-foreground transition-colors">{reply.content}</p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-3">
+              {savedReplies.length === 0 ? "لا توجد ردود محفوظة — أضفها من الإعدادات" : "لا توجد نتائج لـ /" + savedReplyFilter}
+            </p>
+          )}
+        </div>
+      )}
+
       {showMentions && filteredMentionAgents.length > 0 && (
         <div className="border-t border-border bg-card px-3 py-2">
           <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">اذكر موظف</p>
