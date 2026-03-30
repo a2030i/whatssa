@@ -22,6 +22,8 @@ import OrdersPage from "./pages/OrdersPage";
 import AbandonedCartsPage from "./pages/AbandonedCartsPage";
 import NotFound from "./pages/NotFound";
 import DashboardPage from "./pages/DashboardPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import ApiDocsPage from "./pages/ApiDocsPage";
 import ReportsPage from "./pages/ReportsPage";
 import { Loader2 } from "lucide-react";
 
