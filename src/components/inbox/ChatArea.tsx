@@ -153,44 +153,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
         {(() => {
           const textMediaUrl = getStorageUrlFromText(msg.text);
           const mediaUrl = msg.mediaUrl || textMediaUrl;
-          const isImage = msg.type === "image" || isImageUrl(mediaUrl);
           const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
           return (
             <>
-              {isImage && mediaUrl && (
-                <img src={mediaUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(mediaUrl, "_blank")} />
-              )}
-              {msg.type === "audio" && mediaUrl && (
-                <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
-                  <div className="mb-2 flex items-center gap-2 text-xs font-medium">
-                    <Play className="h-3.5 w-3.5" />
-                    <span>مقطع صوتي</span>
-                  </div>
-                  <audio controls preload="none" className="w-full">
-                    <source src={mediaUrl} />
-                    متصفحك لا يدعم تشغيل الصوت.
-                  </audio>
-                </div>
-              )}
-              {msg.type === "video" && mediaUrl && (
-                <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
-                  <div className="mb-2 flex items-center gap-2 text-xs font-medium">
-                    <Video className="h-3.5 w-3.5" />
-                    <span>مقطع فيديو</span>
-                  </div>
-                  <video controls preload="metadata" className="max-h-[240px] w-full rounded-md">
-                    <source src={mediaUrl} />
-                    متصفحك لا يدعم تشغيل الفيديو.
-                  </video>
-                </div>
-              )}
-              {msg.type === "document" && mediaUrl && (
-                <a href={mediaUrl} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 rounded-lg bg-background/40 p-2 text-xs font-medium hover:bg-background/60">
-                  <FileText className="h-4 w-4" />
-                  <span>فتح الملف المرفق</span>
-                </a>
-              )}
-              {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImage) || textWithoutUrl) && textWithoutUrl && (
+              {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} />}
+              {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
                 <p className="whitespace-pre-wrap">
                   {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
                     part.startsWith("@") ? (
