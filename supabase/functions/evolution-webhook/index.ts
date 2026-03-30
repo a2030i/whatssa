@@ -561,6 +561,34 @@ serve(async (req) => {
           })
           .eq("id", conversation.id);
 
+        // ── Out-of-hours check ──
+        if (orgSettings.out_of_hours_enabled && messageType === "text") {
+          const now = new Date();
+          const riyadhTime = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
+          const dayOfWeek = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" })).getDay();
+          const workStart = orgSettings.work_start || "09:00";
+          const workEnd = orgSettings.work_end || "17:00";
+          const workDays: number[] = orgSettings.work_days || [0, 1, 2, 3, 4];
+          
+          const isOutOfHours = !workDays.includes(dayOfWeek) || !(riyadhTime >= workStart && riyadhTime <= workEnd);
+          
+          if (isOutOfHours && orgSettings.out_of_hours_message) {
+            const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+            const { count: recentOoh } = await supabase
+              .from("messages")
+              .select("id", { count: "exact", head: true })
+              .eq("conversation_id", conversation.id)
+              .eq("sender", "agent")
+              .eq("content", orgSettings.out_of_hours_message)
+              .gte("created_at", fourHoursAgo);
+            
+            if (!recentOoh || recentOoh === 0) {
+              await sendBotMessage(supabase, orgId, conversation.id, phone, orgSettings.out_of_hours_message, "evolution", logToSystem);
+              await logToSystem(supabase, "info", "تم إرسال رسالة خارج الدوام (Evolution)", { conversation_id: conversation.id }, orgId);
+            }
+          }
+        }
+
         // ── Chatbot flow processing ──
         if (messageType === "text" && content) {
           const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, phone, content, "evolution", logToSystem);
