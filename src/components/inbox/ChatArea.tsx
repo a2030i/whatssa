@@ -553,7 +553,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* 24h Window Warning */}
       {windowExpired && (
-        <div className="bg-warning/10 border-b border-warning/20 px-4 py-2 flex items-center gap-2">
+        <div className="shrink-0 bg-warning/10 border-b border-warning/20 px-4 py-2 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
           <p className="text-xs text-warning font-medium flex-1">انتهت نافذة الـ 24 ساعة. يمكنك فقط إرسال قوالب معتمدة من Meta.</p>
           <Button size="sm" variant="outline" className="text-xs h-7 border-warning/30 text-warning hover:bg-warning/10" onClick={() => setShowTemplates(true)}>
@@ -564,7 +564,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Note Mode Banner */}
       {isNoteMode && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center gap-2">
+        <div className="shrink-0 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center gap-2">
           <StickyNote className="w-4 h-4 text-amber-500 shrink-0" />
           <p className="text-xs text-amber-600 font-medium flex-1">وضع الملاحظات الداخلية - الرسالة لن تُرسل للعميل</p>
           <Button size="sm" variant="ghost" className="text-xs h-7 text-amber-600" onClick={() => setIsNoteMode(false)}>
@@ -657,7 +657,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Input Area */}
       {!isRecording && (
-        <div className={cn("border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
+        <div className={cn("shrink-0 border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
           {/* Reply Preview Bar */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
