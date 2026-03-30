@@ -250,6 +250,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [showTagInput, setShowTagInput] = useState(false);
   const [newTagText, setNewTagText] = useState("");
+  const [allOrgTags, setAllOrgTags] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -263,6 +264,22 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Load all unique tags from org conversations for suggestions
+  useEffect(() => {
+    const loadOrgTags = async () => {
+      const { data } = await supabase
+        .from("conversations")
+        .select("tags")
+        .not("tags", "eq", "{}");
+      if (data) {
+        const tagSet = new Set<string>();
+        data.forEach((c: any) => (c.tags || []).forEach((t: string) => tagSet.add(t)));
+        setAllOrgTags(Array.from(tagSet).sort());
+      }
+    };
+    loadOrgTags();
+  }, []);
 
   useEffect(() => {
     return () => { if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current); };
@@ -530,18 +547,45 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </Badge>
           ))}
           {showTagInput ? (
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="relative flex items-center gap-1 shrink-0">
               <input
                 ref={tagInputRef}
                 value={newTagText}
                 onChange={(e) => setNewTagText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addTag(); if (e.key === "Escape") { setShowTagInput(false); setNewTagText(""); } }}
                 placeholder="وسم جديد..."
-                className="w-20 text-[11px] bg-secondary rounded px-2 py-0.5 outline-none border-0"
+                className="w-24 text-[11px] bg-secondary rounded px-2 py-0.5 outline-none border-0"
                 autoFocus
               />
               <button onClick={addTag} className="text-primary"><Check className="w-3.5 h-3.5" /></button>
               <button onClick={() => { setShowTagInput(false); setNewTagText(""); }} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
+              {/* Tag suggestions dropdown */}
+              {(() => {
+                const suggestions = allOrgTags.filter(
+                  (t) => !conversation.tags.includes(t) && (newTagText === "" || t.includes(newTagText))
+                );
+                if (suggestions.length === 0) return null;
+                return (
+                  <div className="absolute top-full right-0 mt-1 z-50 bg-card border border-border rounded-lg shadow-lg max-h-32 overflow-y-auto min-w-[120px]">
+                    {suggestions.slice(0, 8).map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => {
+                          if (onTagsChange) {
+                            onTagsChange(conversation.id, [...conversation.tags, tag]);
+                            toast.success("تم إضافة الوسم");
+                          }
+                          setNewTagText("");
+                          setShowTagInput(false);
+                        }}
+                        className="w-full text-right px-3 py-1.5 text-[11px] hover:bg-secondary transition-colors truncate"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <button onClick={() => setShowTagInput(true)} className="shrink-0 flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-colors px-1.5 py-0.5 rounded hover:bg-secondary">
