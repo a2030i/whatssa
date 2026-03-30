@@ -2193,6 +2193,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_org_limit: {
+        Args: { _check_type: string; _org_id: string }
+        Returns: Json
+      }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
