@@ -731,7 +731,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       </div>
 
       {/* 24h Window Warning */}
-      {windowExpired && (
+      {isMetaChannel && windowExpired && (
         <div className="shrink-0 bg-warning/10 border-b border-warning/20 px-4 py-2 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
           <p className="text-xs text-warning font-medium flex-1">انتهت نافذة الـ 24 ساعة. يمكنك فقط إرسال قوالب معتمدة من Meta.</p>
