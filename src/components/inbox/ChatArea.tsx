@@ -250,6 +250,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [showTagInput, setShowTagInput] = useState(false);
   const [newTagText, setNewTagText] = useState("");
+  const [allOrgTags, setAllOrgTags] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
