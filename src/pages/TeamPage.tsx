@@ -821,6 +821,69 @@ const TeamPage = () => {
                 </p>
               </div>
             )}
+
+            {/* SLA Response Timeout */}
+            <div className="space-y-3 border-t border-border pt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Timer className="w-4 h-4 text-warning" />
+                  <Label className="text-xs font-semibold">مهلة وقت الاستجابة (SLA)</Label>
+                </div>
+                <Switch checked={slaEnabled} onCheckedChange={setSlaEnabled} />
+              </div>
+              {slaEnabled && (
+                <div className="space-y-3 bg-warning/5 rounded-lg p-3">
+                  <div className="space-y-2">
+                    <Label className="text-[11px]">المهلة بالدقائق</Label>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="1440"
+                        value={slaTimeout}
+                        onChange={(e) => setSlaTimeout(e.target.value)}
+                        className="bg-card border-0 text-sm w-28"
+                      />
+                      <span className="text-[10px] text-muted-foreground">
+                        {parseInt(slaTimeout || "30") >= 60
+                          ? `${Math.floor(parseInt(slaTimeout || "30") / 60)} ساعة ${parseInt(slaTimeout || "30") % 60 > 0 ? `و ${parseInt(slaTimeout || "30") % 60} دقيقة` : ""}`
+                          : `${slaTimeout || 30} دقيقة`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px]">الإجراء عند تجاوز المهلة</Label>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {[
+                        { value: "reassign", label: "إعادة إسناد لموظف آخر", desc: "يتم نقل المحادثة لأقل موظف ضغطاً في الفريق", icon: RotateCcw, color: "text-primary" },
+                        { value: "supervisor", label: "تصعيد للمشرف", desc: "يتم نقل المحادثة للمشرف أو المدير في الفريق", icon: Shield, color: "text-warning" },
+                        { value: "unassign", label: "إلغاء الإسناد", desc: "يتم إلغاء إسناد المحادثة وإعادتها للتوزيع التلقائي", icon: AlertTriangle, color: "text-destructive" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setSlaAction(opt.value)}
+                          className={cn(
+                            "flex items-start gap-2.5 p-2.5 rounded-lg border text-right transition-all",
+                            slaAction === opt.value
+                              ? "border-primary bg-primary/5"
+                              : "border-transparent bg-card hover:border-border"
+                          )}
+                        >
+                          <opt.icon className={cn("w-4 h-4 mt-0.5 shrink-0", slaAction === opt.value ? opt.color : "text-muted-foreground")} />
+                          <div>
+                            <p className="text-[11px] font-semibold">{opt.label}</p>
+                            <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground bg-card rounded p-2">
+                    💡 يتم فحص المحادثات المتأخرة كل دقيقتين تلقائياً
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setAssignDialog(null)}>إلغاء</Button>
