@@ -247,7 +247,28 @@ serve(async (req) => {
         wa_error_code: result?.error?.code || null,
         phone_number_id: config.phone_number_id,
       }, orgId, user.id);
-      return json({ error: result?.error?.message || "Failed to send message", details: result }, response.status);
+
+      // Add to retry queue for transient errors
+      const retryableStatuses = [429, 500, 502, 503, 504];
+      if (retryableStatuses.includes(response.status)) {
+        await adminClient.from("message_retry_queue").insert({
+          org_id: orgId,
+          conversation_id: conversation_id || null,
+          to_phone: to,
+          content: message || caption || `[${type}]`,
+          message_type: type === "template" ? "template" : type === "media" ? (media_type || "image") : "text",
+          media_url: media_url || null,
+          template_name: template_name || null,
+          template_language: template_language || "ar",
+          template_components: template_components || [],
+          channel_type: "meta_api",
+          last_error: result?.error?.message || `HTTP ${response.status}`,
+          metadata: { original_payload: messagePayload },
+        });
+        await logToSystem(adminClient, "info", `تمت إضافة الرسالة لقائمة إعادة المحاولة`, { to }, orgId, user.id);
+      }
+
+      return json({ error: result?.error?.message || "Failed to send message", details: result, retrying: retryableStatuses.includes(response.status) }, response.status);
     }
 
     const waMessageId = result.messages?.[0]?.id;
