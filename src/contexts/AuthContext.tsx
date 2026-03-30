@@ -92,16 +92,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setHasMetaApi(!!metaRes.data);
   };
 
+  const refreshOrg = () => {
+    const targetId = impersonatedOrgId || orgId;
+    if (!targetId) return;
+    Promise.all([
+      supabase.from("organizations").select("is_ecommerce").eq("id", targetId).maybeSingle(),
+      supabase.from("whatsapp_config").select("id").eq("org_id", targetId).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
+    ]).then(([orgRes, metaRes]) => {
+      setIsEcommerce(orgRes.data?.is_ecommerce || false);
+      setHasMetaApi(!!metaRes.data);
+    });
+  };
+
   const stopImpersonation = () => {
     setImpersonatedOrgId(null);
     if (orgId) {
-      Promise.all([
-        supabase.from("organizations").select("is_ecommerce").eq("id", orgId).maybeSingle(),
-        supabase.from("whatsapp_config").select("id").eq("org_id", orgId).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
-      ]).then(([orgRes, metaRes]) => {
-        setIsEcommerce(orgRes.data?.is_ecommerce || false);
-        setHasMetaApi(!!metaRes.data);
-      });
+      refreshOrg();
     }
   };
 
