@@ -228,7 +228,7 @@ const CampaignsPage = () => {
 
   const resetForm = () => {
     setShowCreate(false);
-    setForm({ name: "", templateName: "", templateLang: "ar", scheduledAt: "", notes: "", audienceType: "all", audienceTags: [], excludeTags: [], excludeCampaignIds: [], variableColumns: [], filterProduct: "", filterCity: "", filterDateFrom: "", filterDateTo: "", filterMinAmount: "", filterMaxAmount: "" });
+    setForm({ name: "", templateName: "", templateLang: "ar", scheduledAt: "", notes: "", audienceType: "all", audienceTags: [], excludeTags: [], excludeCampaignIds: [], variableColumns: [], channelId: "", messageText: "", delaySeconds: 10, filterProduct: "", filterCity: "", filterDateFrom: "", filterDateTo: "", filterMinAmount: "", filterMaxAmount: "" });
     setUploadedRecipients([]);
     setSelectedCustomerIds([]);
     setTemplateVars([]);
