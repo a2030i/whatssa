@@ -169,6 +169,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         impersonatedOrgId,
         startImpersonation,
         stopImpersonation,
+        refreshOrg,
         signOut,
       }}
     >
