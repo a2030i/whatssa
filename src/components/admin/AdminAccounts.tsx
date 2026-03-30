@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AdminAccounts = () => {
   const [orgs, setOrgs] = useState<any[]>([]);
@@ -136,14 +137,12 @@ const AdminAccounts = () => {
     }
   };
 
+  const { startImpersonation } = useAuth();
+
   const impersonateOrg = (orgId: string) => {
-    // Use AuthContext impersonation instead of opening new tab
-    const { startImpersonation } = require("@/contexts/AuthContext");
-    // We'll navigate directly using react-router
     const org = orgs.find(o => o.id === orgId);
     toast.success(`دخول كعميل: ${org?.name || orgId.slice(0, 8)}`);
-    // Store in sessionStorage and navigate
-    sessionStorage.setItem("impersonate_org_id", orgId);
+    startImpersonation(orgId);
     navigate("/");
   };
 
