@@ -540,6 +540,38 @@ serve(async (req) => {
             }, orgId);
           }
 
+          // ── Out-of-hours check ──
+          if (orgSettings.out_of_hours_enabled && incomingMessage.type === "text") {
+            const now = new Date();
+            const riyadhTime = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
+            const riyadhDay = parseInt(new Intl.DateTimeFormat("en-US", { weekday: "narrow", timeZone: "Asia/Riyadh" }).format(now).replace(/[^0-6]/, ""), 10);
+            const dayOfWeek = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" })).getDay();
+            const workStart = orgSettings.work_start || "09:00";
+            const workEnd = orgSettings.work_end || "17:00";
+            const workDays: number[] = orgSettings.work_days || [0, 1, 2, 3, 4];
+            
+            const isWorkDay = workDays.includes(dayOfWeek);
+            const isWorkHour = riyadhTime >= workStart && riyadhTime <= workEnd;
+            const isOutOfHours = !isWorkDay || !isWorkHour;
+            
+            if (isOutOfHours && orgSettings.out_of_hours_message) {
+              // Check if we already sent an OOH message in the last 4 hours for this conversation
+              const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+              const { count: recentOoh } = await supabase
+                .from("messages")
+                .select("id", { count: "exact", head: true })
+                .eq("conversation_id", conversation.id)
+                .eq("sender", "agent")
+                .eq("content", orgSettings.out_of_hours_message)
+                .gte("created_at", fourHoursAgo);
+              
+              if (!recentOoh || recentOoh === 0) {
+                await sendBotMessage(supabase, orgId, conversation.id, customerPhone, orgSettings.out_of_hours_message, "meta", logToSystem);
+                await logToSystem(supabase, "info", "تم إرسال رسالة خارج الدوام", { conversation_id: conversation.id }, orgId);
+              }
+            }
+          }
+
           // ── Chatbot flow processing ──
           if (incomingMessage.type === "text") {
             const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, customerPhone, content, "meta", logToSystem);
