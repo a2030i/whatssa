@@ -100,7 +100,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsEcommerce(orgRes.data?.is_ecommerce || false);
         setHasMetaApi(!!metaRes.data);
       });
-      });
     }
   };
 
