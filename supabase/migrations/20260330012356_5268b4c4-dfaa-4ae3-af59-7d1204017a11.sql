@@ -1,0 +1,1 @@
+UPDATE public.system_settings SET value = '"Respondly"' WHERE key = 'platform_name';

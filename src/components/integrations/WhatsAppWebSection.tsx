@@ -242,7 +242,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     setTestSending(true);
     try {
       const { data, error } = await supabase.functions.invoke("evolution-send", {
-        body: { to: testPhone.trim(), message: "✅ تم الربط بنجاح! هذه رسالة اختبار من واتس ديسك (WhatsApp Web)." },
+        body: { to: testPhone.trim(), message: "✅ تم الربط بنجاح! هذه رسالة اختبار من Respondly (WhatsApp Web)." },
       });
       if (error || data?.error) {
         toast.error(data?.error || "فشل إرسال الرسالة");

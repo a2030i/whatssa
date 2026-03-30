@@ -405,7 +405,7 @@ const IntegrationsPage = () => {
     setTestSending(true);
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-send", {
-        body: { to: testPhone.trim(), message: "✅ تم الربط بنجاح! هذه رسالة اختبار من واتس ديسك." },
+        body: { to: testPhone.trim(), message: "✅ تم الربط بنجاح! هذه رسالة اختبار من Respondly." },
       });
       if (error || data?.error) {
         toast.error(data?.error || "فشل إرسال الرسالة");

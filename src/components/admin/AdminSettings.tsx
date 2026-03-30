@@ -63,7 +63,7 @@ const AdminSettings = () => {
             <Label className="text-xs">اسم المنصة</Label>
             <div className="flex gap-2 mt-1">
               <Input
-                value={typeof settings.platform_name?.value === "string" ? settings.platform_name.value : "واتس ديسك"}
+                value={typeof settings.platform_name?.value === "string" ? settings.platform_name.value : "Respondly"}
                 onChange={(e) => setSettings({ ...settings, platform_name: { ...settings.platform_name, value: e.target.value } })}
                 className="h-9 text-sm"
               />
