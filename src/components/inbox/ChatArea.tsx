@@ -265,6 +265,22 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Load all unique tags from org conversations for suggestions
+  useEffect(() => {
+    const loadOrgTags = async () => {
+      const { data } = await supabase
+        .from("conversations")
+        .select("tags")
+        .not("tags", "eq", "{}");
+      if (data) {
+        const tagSet = new Set<string>();
+        data.forEach((c: any) => (c.tags || []).forEach((t: string) => tagSet.add(t)));
+        setAllOrgTags(Array.from(tagSet).sort());
+      }
+    };
+    loadOrgTags();
+  }, []);
+
   useEffect(() => {
     return () => { if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current); };
   }, []);
