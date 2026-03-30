@@ -38,7 +38,7 @@ const SALLA_EVENTS = [
 ];
 
 const SallaIntegrationSection = () => {
-  const { orgId } = useAuth();
+  const { orgId, isEcommerce, refreshOrg } = useAuth();
   const [stores, setStores] = useState<StoreIntegration[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -79,7 +79,12 @@ const SallaIntegrationSection = () => {
       toast.error("فشل إضافة المتجر");
       console.error(error);
     } else {
-      toast.success("تم إضافة المتجر بنجاح");
+      // Auto-enable e-commerce mode on first store integration
+      if (!isEcommerce) {
+        await supabase.from("organizations").update({ is_ecommerce: true, store_platform: "salla" } as any).eq("id", orgId!);
+        refreshOrg();
+      }
+      toast.success("تم إضافة المتجر بنجاح — ظهرت أقسام الطلبات والسلات المتروكة");
       setShowAdd(false);
       setNewStoreName("");
       setNewStoreUrl("");
