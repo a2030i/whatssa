@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio } from "lucide-react";
+import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Conversation } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
@@ -253,6 +253,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
                   <div className="flex items-center gap-1.5 mt-1.5">
+                    {conv.channelType === "meta_api" ? (
+                      <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 border-success/40 text-success bg-success/10">
+                        <ShieldCheck className="w-2.5 h-2.5" />
+                        رسمي
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 border-muted-foreground/30 text-muted-foreground bg-muted">
+                        <Wifi className="w-2.5 h-2.5" />
+                        غير رسمي
+                      </Badge>
+                    )}
                     {conv.conversationType && conv.conversationType !== "private" && (
                       <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 border-0",
                         conv.conversationType === "group" ? "bg-blue-500/10 text-blue-600" : "bg-orange-500/10 text-orange-600"
