@@ -26,6 +26,7 @@ interface ChatAreaProps {
   onSendTemplate: (convId: string, template: WhatsAppTemplate, variables: string[]) => void;
   onStatusChange: (convId: string, status: "active" | "waiting" | "closed") => void;
   onTransfer: (convId: string, agent: string) => void;
+  onTagsChange?: (convId: string, tags: string[]) => void;
 }
 
 const MessageStatus = ({ status }: { status?: string }) => {
@@ -230,7 +231,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
   );
 };
 
-const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer }: ChatAreaProps) => {
+const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange }: ChatAreaProps) => {
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -247,7 +248,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [showTagInput, setShowTagInput] = useState(false);
+  const [newTagText, setNewTagText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
