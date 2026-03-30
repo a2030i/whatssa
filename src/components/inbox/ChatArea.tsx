@@ -3,7 +3,7 @@ import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckChec
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Conversation, Message, quickReplies } from "@/data/mockData";
+import { Conversation, Message } from "@/data/mockData";
 import type { WhatsAppTemplate } from "@/types/whatsapp";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
