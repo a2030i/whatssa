@@ -856,6 +856,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             )}
           </div>
         ))}
+        {/* Other agents typing indicator */}
+        {otherTypingAgents.length > 0 && (
+          <div className="flex justify-center">
+            <div className="bg-primary/10 text-primary text-[11px] px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <span className="font-medium">{otherTypingAgents.join("، ")}</span>
+              <span>يكتب الآن</span>
+              <span className="flex gap-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </span>
+            </div>
+          </div>
+        )}
         {isTyping && (
           <div className="flex justify-end">
             <div className="gradient-whatsapp text-whatsapp-foreground rounded-xl rounded-br-sm px-4 py-2.5 text-sm">
