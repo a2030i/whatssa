@@ -107,6 +107,7 @@ export type Database = {
           created_at: string | null
           id: string
           metadata: Json | null
+          org_id: string | null
           target_id: string | null
           target_type: string | null
         }
@@ -117,6 +118,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           metadata?: Json | null
+          org_id?: string | null
           target_id?: string | null
           target_type?: string | null
         }
@@ -127,10 +129,19 @@ export type Database = {
           created_at?: string | null
           id?: string
           metadata?: Json | null
+          org_id?: string | null
           target_id?: string | null
           target_type?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       api_tokens: {
         Row: {
@@ -747,38 +758,50 @@ export type Database = {
       }
       customers: {
         Row: {
+          company: string | null
           created_at: string | null
+          custom_fields: Json | null
           email: string | null
           id: string
+          lifecycle_stage: string
           metadata: Json | null
           name: string | null
           notes: string | null
           org_id: string
           phone: string
+          source: string | null
           tags: string[] | null
           updated_at: string | null
         }
         Insert: {
+          company?: string | null
           created_at?: string | null
+          custom_fields?: Json | null
           email?: string | null
           id?: string
+          lifecycle_stage?: string
           metadata?: Json | null
           name?: string | null
           notes?: string | null
           org_id: string
           phone: string
+          source?: string | null
           tags?: string[] | null
           updated_at?: string | null
         }
         Update: {
+          company?: string | null
           created_at?: string | null
+          custom_fields?: Json | null
           email?: string | null
           id?: string
+          lifecycle_stage?: string
           metadata?: Json | null
           name?: string | null
           notes?: string | null
           org_id?: string
           phone?: string
+          source?: string | null
           tags?: string[] | null
           updated_at?: string | null
         }
@@ -843,6 +866,90 @@ export type Database = {
           },
           {
             foreignKeyName: "internal_notes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_retry_queue: {
+        Row: {
+          channel_type: string
+          content: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          last_attempted_at: string | null
+          last_error: string | null
+          max_retries: number
+          media_url: string | null
+          message_type: string
+          metadata: Json | null
+          next_retry_at: string
+          org_id: string
+          resolved_at: string | null
+          retry_count: number
+          status: string
+          template_components: Json | null
+          template_language: string | null
+          template_name: string | null
+          to_phone: string
+        }
+        Insert: {
+          channel_type?: string
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          last_attempted_at?: string | null
+          last_error?: string | null
+          max_retries?: number
+          media_url?: string | null
+          message_type?: string
+          metadata?: Json | null
+          next_retry_at?: string
+          org_id: string
+          resolved_at?: string | null
+          retry_count?: number
+          status?: string
+          template_components?: Json | null
+          template_language?: string | null
+          template_name?: string | null
+          to_phone: string
+        }
+        Update: {
+          channel_type?: string
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          last_attempted_at?: string | null
+          last_error?: string | null
+          max_retries?: number
+          media_url?: string | null
+          message_type?: string
+          metadata?: Json | null
+          next_retry_at?: string
+          org_id?: string
+          resolved_at?: string | null
+          retry_count?: number
+          status?: string
+          template_components?: Json | null
+          template_language?: string | null
+          template_name?: string | null
+          to_phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_retry_queue_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_retry_queue_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1102,6 +1209,53 @@ export type Database = {
           },
           {
             foreignKeyName: "orders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_webhooks: {
+        Row: {
+          created_at: string
+          events: string[]
+          failure_count: number
+          id: string
+          is_active: boolean
+          last_triggered_at: string | null
+          org_id: string
+          secret: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          events?: string[]
+          failure_count?: number
+          id?: string
+          is_active?: boolean
+          last_triggered_at?: string | null
+          org_id: string
+          secret?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          events?: string[]
+          failure_count?: number
+          id?: string
+          is_active?: boolean
+          last_triggered_at?: string | null
+          org_id?: string
+          secret?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_webhooks_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
