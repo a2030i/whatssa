@@ -6,6 +6,7 @@ import {
   ShieldCheck, CreditCard, PhoneCall, Building2, Circle, QrCode
 } from "lucide-react";
 import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
+import ChannelRoutingConfig from "@/components/integrations/ChannelRoutingConfig";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -522,6 +523,16 @@ const IntegrationsPage = () => {
                 </p>
                 <p className="text-[11px] text-foreground mt-1">{friendlyError(config.registration_error)}</p>
               </div>
+            )}
+
+            {/* Channel Routing */}
+            {orgId && (
+              <ChannelRoutingConfig
+                configId={config.id}
+                orgId={orgId}
+                defaultTeamId={(config as any).default_team_id}
+                defaultAgentId={(config as any).default_agent_id}
+              />
             )}
 
             {config.registered_at && (

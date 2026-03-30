@@ -4,6 +4,7 @@ import {
   Server, Trash2, Wifi, Settings, Smartphone, RefreshCw,
   LogOut, Send
 } from "lucide-react";
+import ChannelRoutingConfig from "./ChannelRoutingConfig";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -349,6 +350,16 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
                   </Button>
                 </div>
               </div>
+
+              {/* Channel Routing */}
+              {orgId && existingConfig?.id && (
+                <ChannelRoutingConfig
+                  configId={existingConfig.id}
+                  orgId={orgId}
+                  defaultTeamId={existingConfig.default_team_id}
+                  defaultAgentId={existingConfig.default_agent_id}
+                />
+              )}
 
               {/* Delete Instance */}
               {isSuperAdmin && (

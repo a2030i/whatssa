@@ -1948,6 +1948,8 @@ export type Database = {
           business_name: string | null
           channel_type: string
           created_at: string | null
+          default_agent_id: string | null
+          default_team_id: string | null
           display_phone: string | null
           evolution_instance_name: string | null
           evolution_instance_status: string | null
@@ -1971,6 +1973,8 @@ export type Database = {
           business_name?: string | null
           channel_type?: string
           created_at?: string | null
+          default_agent_id?: string | null
+          default_team_id?: string | null
           display_phone?: string | null
           evolution_instance_name?: string | null
           evolution_instance_status?: string | null
@@ -1994,6 +1998,8 @@ export type Database = {
           business_name?: string | null
           channel_type?: string
           created_at?: string | null
+          default_agent_id?: string | null
+          default_team_id?: string | null
           display_phone?: string | null
           evolution_instance_name?: string | null
           evolution_instance_status?: string | null
@@ -2012,6 +2018,13 @@ export type Database = {
           webhook_verify_token?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_config_default_team_id_fkey"
+            columns: ["default_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_config_org_id_fkey"
             columns: ["org_id"]

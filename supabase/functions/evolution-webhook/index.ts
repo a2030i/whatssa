@@ -271,7 +271,7 @@ serve(async (req) => {
     // Find the config for this instance
     const { data: config } = await supabase
       .from("whatsapp_config")
-      .select("id, org_id")
+      .select("id, org_id, default_team_id, default_agent_id")
       .eq("evolution_instance_name", instanceName)
       .eq("channel_type", "evolution")
       .maybeSingle();
@@ -493,9 +493,7 @@ serve(async (req) => {
             }
           }
 
-          const { data: newConv, error: convError } = await supabase
-            .from("conversations")
-            .insert({
+          const convInsert: Record<string, any> = {
               customer_phone: phone,
               customer_name: convName,
               org_id: orgId,
@@ -503,7 +501,19 @@ serve(async (req) => {
               conversation_type: conversationType,
               last_message: text || `[${messageType}]`,
               last_message_at: new Date().toISOString(),
-            })
+            };
+            // Apply channel routing
+            if (config.default_agent_id) {
+              convInsert.assigned_to = config.default_agent_id;
+              convInsert.assigned_at = new Date().toISOString();
+            } else if (config.default_team_id) {
+              const { data: teamData } = await supabase.from("teams").select("name").eq("id", config.default_team_id).single();
+              if (teamData) convInsert.assigned_team = teamData.name;
+            }
+
+          const { data: newConv, error: convError } = await supabase
+            .from("conversations")
+            .insert(convInsert)
             .select("id")
             .single();
 
