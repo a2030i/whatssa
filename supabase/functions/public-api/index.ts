@@ -16,6 +16,27 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+async function logToSystem(
+  client: any,
+  level: string,
+  message: string,
+  metadata: Record<string, unknown> = {},
+  orgId: string | null = null
+) {
+  try {
+    await client.from("system_logs").insert({
+      level,
+      source: "edge_function",
+      function_name: "public-api",
+      message,
+      metadata,
+      org_id: orgId,
+    });
+  } catch (_) {
+    // silent
+  }
+}
+
 async function authenticateToken(apiKey: string) {
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -48,21 +69,34 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const requestId = crypto.randomUUID();
+
   try {
     const apiKey = req.headers.get("x-api-key") || "";
-    if (!apiKey) return json({ error: "مطلوب API Key في الهيدر x-api-key" }, 401);
+    if (!apiKey) {
+      await logToSystem(admin, "warn", "طلب API بدون مفتاح", { request_id: requestId });
+      return json({ error: "مطلوب API Key في الهيدر x-api-key" }, 401);
+    }
 
     const token = await authenticateToken(apiKey);
-    if (!token) return json({ error: "API Key غير صالح أو منتهي" }, 401);
+    if (!token) {
+      await logToSystem(admin, "warn", "مفتاح API غير صالح أو منتهي", { request_id: requestId, api_key_prefix: apiKey.substring(0, 8) + "..." });
+      return json({ error: "API Key غير صالح أو منتهي" }, 401);
+    }
 
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const url = new URL(req.url);
     const path = url.pathname.replace(/^\/public-api\/?/, "").replace(/\/$/, "");
     const method = req.method;
 
+    await logToSystem(admin, "info", `API request: ${method} /${path}`, { request_id: requestId, method, path, token_id: token.id }, token.org_id);
+
     // ── MESSAGES ──
     if (path === "messages/send" && method === "POST") {
-      if (!hasPermission(token, "messages")) return json({ error: "لا تملك صلاحية الرسائل" }, 403);
+      if (!hasPermission(token, "messages")) {
+        await logToSystem(admin, "warn", "محاولة إرسال رسالة بدون صلاحية", { request_id: requestId, token_id: token.id }, token.org_id);
+        return json({ error: "لا تملك صلاحية الرسائل" }, 403);
+      }
 
       const body = await req.json();
       const { to, message, template_name, template_language, template_variables } = body;
@@ -78,7 +112,10 @@ serve(async (req) => {
         .limit(1);
 
       const config = configs?.[0];
-      if (!config) return json({ error: "لا يوجد رقم واتساب مربوط" }, 400);
+      if (!config) {
+        await logToSystem(admin, "error", "لا يوجد رقم واتساب مربوط عند محاولة إرسال عبر API", { request_id: requestId, to }, token.org_id);
+        return json({ error: "لا يوجد رقم واتساب مربوط" }, 400);
+      }
 
       if (config.channel_type === "evolution") {
         const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
@@ -91,7 +128,10 @@ serve(async (req) => {
           body: JSON.stringify({ number: to, text: message }),
         });
         const result = await response.json();
-        if (!response.ok) return json({ error: result?.message || "فشل الإرسال" }, response.status);
+        if (!response.ok) {
+          await logToSystem(admin, "error", "فشل إرسال رسالة عبر Evolution API", { request_id: requestId, to, error: result?.message, status: response.status }, token.org_id);
+          return json({ error: result?.message || "فشل الإرسال" }, response.status);
+        }
 
         // Save to DB
         let { data: conv } = await admin
@@ -135,6 +175,7 @@ serve(async (req) => {
           }).eq("id", conv.id);
         }
 
+        await logToSystem(admin, "info", "تم إرسال رسالة عبر API (Evolution)", { request_id: requestId, to, message_id: result.key?.id }, token.org_id);
         return json({ success: true, message_id: result.key?.id });
       }
 
@@ -161,7 +202,11 @@ serve(async (req) => {
           }),
         });
         const result = await response.json();
-        if (!response.ok) return json({ error: result?.error?.message || "فشل إرسال القالب" }, response.status);
+        if (!response.ok) {
+          await logToSystem(admin, "error", "فشل إرسال قالب عبر Meta API", { request_id: requestId, to, template_name, error: result?.error?.message }, token.org_id);
+          return json({ error: result?.error?.message || "فشل إرسال القالب" }, response.status);
+        }
+        await logToSystem(admin, "info", "تم إرسال قالب عبر API (Meta)", { request_id: requestId, to, template_name, message_id: result.messages?.[0]?.id }, token.org_id);
         return json({ success: true, message_id: result.messages?.[0]?.id });
       }
 
@@ -174,7 +219,11 @@ serve(async (req) => {
         body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: message } }),
       });
       const result = await response.json();
-      if (!response.ok) return json({ error: result?.error?.message || "فشل الإرسال" }, response.status);
+      if (!response.ok) {
+        await logToSystem(admin, "error", "فشل إرسال رسالة عبر Meta API", { request_id: requestId, to, error: result?.error?.message }, token.org_id);
+        return json({ error: result?.error?.message || "فشل الإرسال" }, response.status);
+      }
+      await logToSystem(admin, "info", "تم إرسال رسالة عبر API (Meta)", { request_id: requestId, to, message_id: result.messages?.[0]?.id }, token.org_id);
       return json({ success: true, message_id: result.messages?.[0]?.id });
     }
 
@@ -198,7 +247,11 @@ serve(async (req) => {
       const body = await req.json();
       if (!body.phone) return json({ error: "الحقل phone مطلوب" }, 400);
       const { data, error } = await admin.from("customers").insert({ ...body, org_id: token.org_id }).select().single();
-      if (error) return json({ error: error.message }, 500);
+      if (error) {
+        await logToSystem(admin, "error", "فشل إنشاء عميل عبر API", { request_id: requestId, error: error.message }, token.org_id);
+        return json({ error: error.message }, 500);
+      }
+      await logToSystem(admin, "info", "تم إنشاء عميل عبر API", { request_id: requestId, customer_id: data.id }, token.org_id);
       return json({ data }, 201);
     }
 
@@ -209,6 +262,7 @@ serve(async (req) => {
       delete body.id; delete body.org_id;
       const { data, error } = await admin.from("customers").update(body).eq("id", id).eq("org_id", token.org_id).select().single();
       if (error) return json({ error: error.message }, 500);
+      await logToSystem(admin, "info", "تم تحديث عميل عبر API", { request_id: requestId, customer_id: id }, token.org_id);
       return json({ data });
     }
 
@@ -217,6 +271,7 @@ serve(async (req) => {
       const id = path.split("/")[1];
       const { error } = await admin.from("customers").delete().eq("id", id).eq("org_id", token.org_id);
       if (error) return json({ error: error.message }, 500);
+      await logToSystem(admin, "info", "تم حذف عميل عبر API", { request_id: requestId, customer_id: id }, token.org_id);
       return json({ success: true });
     }
 
@@ -240,10 +295,14 @@ serve(async (req) => {
       const body = await req.json();
       const { items, ...orderData } = body;
       const { data: order, error } = await admin.from("orders").insert({ ...orderData, org_id: token.org_id }).select().single();
-      if (error) return json({ error: error.message }, 500);
+      if (error) {
+        await logToSystem(admin, "error", "فشل إنشاء طلب عبر API", { request_id: requestId, error: error.message }, token.org_id);
+        return json({ error: error.message }, 500);
+      }
       if (items?.length) {
         await admin.from("order_items").insert(items.map((item: any) => ({ ...item, order_id: order.id })));
       }
+      await logToSystem(admin, "info", "تم إنشاء طلب عبر API", { request_id: requestId, order_id: order.id }, token.org_id);
       return json({ data: order }, 201);
     }
 
@@ -254,6 +313,7 @@ serve(async (req) => {
       delete body.id; delete body.org_id;
       const { data, error } = await admin.from("orders").update(body).eq("id", id).eq("org_id", token.org_id).select().single();
       if (error) return json({ error: error.message }, 500);
+      await logToSystem(admin, "info", "تم تحديث طلب عبر API", { request_id: requestId, order_id: id }, token.org_id);
       return json({ data });
     }
 
@@ -277,7 +337,6 @@ serve(async (req) => {
       const convId = path.split("/")[1];
       const limit = parseInt(url.searchParams.get("limit") || "50");
 
-      // Verify conversation belongs to org
       const { data: conv } = await admin.from("conversations").select("id").eq("id", convId).eq("org_id", token.org_id).maybeSingle();
       if (!conv) return json({ error: "المحادثة غير موجودة" }, 404);
 
@@ -302,9 +361,11 @@ serve(async (req) => {
       const body = await req.json();
       const { data, error } = await admin.from("abandoned_carts").insert({ ...body, org_id: token.org_id }).select().single();
       if (error) return json({ error: error.message }, 500);
+      await logToSystem(admin, "info", "تم إنشاء سلة مهجورة عبر API", { request_id: requestId, cart_id: data.id }, token.org_id);
       return json({ data }, 201);
     }
 
+    await logToSystem(admin, "warn", `مسار API غير موجود: ${method} /${path}`, { request_id: requestId }, token.org_id);
     return json({ error: `المسار ${path} غير موجود`, available_endpoints: [
       "POST /messages/send",
       "GET /customers", "POST /customers", "PUT /customers/:id", "DELETE /customers/:id",
@@ -314,6 +375,7 @@ serve(async (req) => {
     ] }, 404);
   } catch (err: any) {
     console.error("Public API error:", err);
+    await logToSystem(admin, "error", "خطأ غير متوقع في Public API", { request_id: requestId, error: err.message, stack: err.stack });
     return json({ error: err.message }, 500);
   }
 });
