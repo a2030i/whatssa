@@ -82,6 +82,12 @@ const SettingsPage = () => {
   const [satMessage, setSatMessage] = useState("شكراً لتواصلك معنا! 🌟\nنود معرفة رأيك في الخدمة:\n\n1. ممتاز ⭐⭐⭐⭐⭐\n2. جيد جداً ⭐⭐⭐⭐\n3. جيد ⭐⭐⭐\n4. مقبول ⭐⭐\n5. ضعيف ⭐");
   const [savingSat, setSavingSat] = useState(false);
 
+  // Saved replies
+  const [savedReplies, setSavedReplies] = useState<Array<{ id: string; shortcut: string; title: string; content: string; category: string }>>([]);
+  const [showReplyDialog, setShowReplyDialog] = useState(false);
+  const [editingReply, setEditingReply] = useState<any>(null);
+  const [replyForm, setReplyForm] = useState({ shortcut: "", title: "", content: "", category: "عام" });
+
   useEffect(() => {
     if (orgId) loadAllSettings();
   }, [orgId]);
