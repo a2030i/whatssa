@@ -11,20 +11,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function logToSystem(
+  client: ReturnType<typeof createClient>,
+  level: string,
+  message: string,
+  metadata: Record<string, unknown> = {},
+  orgId?: string | null,
+) {
+  try {
+    await client.from("system_logs").insert({
+      level,
+      source: "edge_function",
+      function_name: "evolution-webhook",
+      message,
+      metadata,
+      org_id: orgId || null,
+    });
+  } catch (e) {
+    console.error("Failed to write system log:", e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
     const body = await req.json();
-    console.log("Evolution webhook event:", JSON.stringify(body).slice(0, 500));
-
     const event = body.event;
     const instanceName = body.instance || body.instanceName || "";
 
@@ -37,11 +56,13 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!config) {
-      console.log(`No config found for instance: ${instanceName}`);
+      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, { event, instance: instanceName });
       return new Response(JSON.stringify({ ok: true, skipped: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const orgId = config.org_id;
 
     // Handle CONNECTION_UPDATE
     if (event === "CONNECTION_UPDATE" || event === "connection.update") {
@@ -63,13 +84,13 @@ serve(async (req) => {
         })
         .eq("id", config.id);
 
-      console.log(`Instance ${instanceName} status updated to: ${newStatus}`);
+      await logToSystem(supabase, newStatus === "disconnected" ? "warn" : "info",
+        `حالة اتصال Evolution تغيرت: ${newStatus}`, { instance: instanceName, state }, orgId);
     }
 
     // Handle QRCODE_UPDATED
     if (event === "QRCODE_UPDATED" || event === "qrcode.updated") {
-      // QR code is handled client-side via polling, just log
-      console.log(`QR code updated for instance: ${instanceName}`);
+      await logToSystem(supabase, "info", `تم تحديث رمز QR للجلسة: ${instanceName}`, {}, orgId);
     }
 
     // Handle MESSAGES_UPSERT (incoming messages)
@@ -81,11 +102,9 @@ serve(async (req) => {
         const key = msg.key || {};
         const messageContent = msg.message || {};
 
-        // Skip outgoing messages (fromMe)
         if (key.fromMe) continue;
 
-      const remoteJid = key.remoteJid || "";
-        // Determine conversation type from JID
+        const remoteJid = key.remoteJid || "";
         let conversationType = "private";
         let phone = "";
         if (remoteJid.endsWith("@g.us")) {
@@ -99,7 +118,6 @@ serve(async (req) => {
         }
         if (!phone || phone.includes("status")) continue;
 
-        // Get message text
         const text =
           messageContent.conversation ||
           messageContent.extendedTextMessage?.text ||
@@ -108,28 +126,25 @@ serve(async (req) => {
           messageContent.documentMessage?.caption ||
           "";
 
-        // Determine message type
         let messageType = "text";
         let mediaUrl = null;
 
-        if (messageContent.imageMessage) {
-          messageType = "image";
-        } else if (messageContent.videoMessage) {
-          messageType = "video";
-        } else if (messageContent.audioMessage) {
-          messageType = "audio";
-        } else if (messageContent.documentMessage) {
-          messageType = "document";
-        }
+        if (messageContent.imageMessage) messageType = "image";
+        else if (messageContent.videoMessage) messageType = "video";
+        else if (messageContent.audioMessage) messageType = "audio";
+        else if (messageContent.documentMessage) messageType = "document";
 
-        if (!text && messageType === "text") continue; // Skip empty text messages
+        if (!text && messageType === "text") continue;
 
-        // Find or create conversation
+        await logToSystem(supabase, "info", `رسالة واردة (Evolution) من ${phone}`, {
+          type: messageType, conversation_type: conversationType, wa_message_id: key.id,
+        }, orgId);
+
         let { data: conversation } = await supabase
           .from("conversations")
           .select("id")
           .eq("customer_phone", phone)
-          .eq("org_id", config.org_id)
+          .eq("org_id", orgId)
           .eq("conversation_type", conversationType)
           .neq("status", "closed")
           .limit(1)
@@ -138,7 +153,6 @@ serve(async (req) => {
         if (!conversation) {
           let convName = msg.pushName || phone;
 
-          // For groups, fetch the group name from Evolution API
           if (conversationType === "group" && EVOLUTION_API_URL && EVOLUTION_API_KEY) {
             try {
               const groupRes = await fetch(
@@ -154,19 +168,21 @@ serve(async (req) => {
                 convName = `قروب ${phone}`;
               }
             } catch (e) {
-              console.log("Failed to fetch group info:", e);
+              await logToSystem(supabase, "warn", "فشل جلب معلومات المجموعة من Evolution", {
+                error: e instanceof Error ? e.message : String(e), remoteJid,
+              }, orgId);
               convName = `قروب ${phone}`;
             }
           } else if (conversationType === "group") {
             convName = `قروب ${phone}`;
           }
 
-          const { data: newConv } = await supabase
+          const { data: newConv, error: convError } = await supabase
             .from("conversations")
             .insert({
               customer_phone: phone,
               customer_name: convName,
-              org_id: config.org_id,
+              org_id: orgId,
               status: "active",
               conversation_type: conversationType,
               last_message: text || `[${messageType}]`,
@@ -174,6 +190,16 @@ serve(async (req) => {
             })
             .select("id")
             .single();
+
+          if (convError) {
+            await logToSystem(supabase, "error", "فشل إنشاء محادثة جديدة (Evolution)", {
+              error: convError.message, customer_phone: phone,
+            }, orgId);
+          } else {
+            await logToSystem(supabase, "info", `محادثة جديدة أُنشئت (Evolution) للعميل ${phone}`, {
+              conversation_id: newConv?.id,
+            }, orgId);
+          }
 
           conversation = newConv;
         }
@@ -186,15 +212,15 @@ serve(async (req) => {
             key,
             conversationId: conversation.id,
             messageType,
+            supabase,
+            orgId,
           });
         }
 
-        // Insert message with sender info for groups
         const content = text || `[${messageType}]`;
         const senderName = msg.pushName || "";
         const participant = key.participant || key.participantAlt || "";
 
-        // Extract reply/quote context
         const contextInfo =
           messageContent.extendedTextMessage?.contextInfo ||
           messageContent.imageMessage?.contextInfo ||
@@ -223,21 +249,15 @@ serve(async (req) => {
             "[مرفق]";
         }
 
-        // Build metadata with reply context
         const metadata: Record<string, unknown> = {};
-        if (senderName) {
-          metadata.sender_name = senderName;
-        }
-        if (conversationType === "group") {
-          metadata.participant = participant;
-        }
+        if (senderName) metadata.sender_name = senderName;
+        if (conversationType === "group") metadata.participant = participant;
         if (quotedStanzaId && quotedMessage) {
           metadata.quoted = {
             stanza_id: quotedStanzaId,
             sender_name: quotedSenderName,
             text: quotedText,
           };
-          // Try to find the original message in DB to link
           const { data: originalMsg } = await supabase
             .from("messages")
             .select("id, content, sender, metadata")
@@ -264,17 +284,20 @@ serve(async (req) => {
         });
 
         if (messageInsertError) {
-          console.error("Failed to save message:", messageInsertError);
+          await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة (Evolution)", {
+            error: messageInsertError.message, wa_message_id: key.id, conversation_id: conversation.id,
+          }, orgId);
           continue;
         }
 
-        // Update conversation unread count
         const { error: unreadError } = await supabase.rpc("increment_unread", { conv_id: conversation.id });
         if (unreadError) {
-          console.error("Failed to increment unread:", unreadError);
+          await logToSystem(supabase, "warn", "فشل تحديث عداد الرسائل غير المقروءة", {
+            error: unreadError.message, conversation_id: conversation.id,
+          }, orgId);
         }
 
-        const { error: conversationUpdateError } = await supabase
+        await supabase
           .from("conversations")
           .update({
             last_message: content,
@@ -282,12 +305,6 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", conversation.id);
-
-        if (conversationUpdateError) {
-          console.error("Failed to update conversation after message save:", conversationUpdateError);
-        }
-
-        console.log(`Message saved from ${phone} in conversation ${conversation.id}`);
       }
     }
 
@@ -295,6 +312,9 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
+    await logToSystem(supabase, "critical", "خطأ غير متوقع في Evolution Webhook", {
+      error: err.message, stack: err.stack,
+    });
     console.error("Evolution webhook error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
@@ -308,8 +328,10 @@ async function uploadMediaFromEvolution(params: {
   key: Record<string, unknown>;
   conversationId: string;
   messageType: string;
+  supabase: ReturnType<typeof createClient>;
+  orgId: string;
 }) {
-  const { instanceName, key, conversationId, messageType } = params;
+  const { instanceName, key, conversationId, messageType, supabase, orgId } = params;
 
   if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return null;
@@ -333,7 +355,10 @@ async function uploadMediaFromEvolution(params: {
     });
 
     if (!response.ok) {
-      console.error("Failed to fetch media base64 from Evolution", await response.text());
+      const errText = await response.text();
+      await logToSystem(supabase, "error", "فشل جلب الوسائط من Evolution API", {
+        http_status: response.status, error: errText.slice(0, 300), messageType,
+      }, orgId);
       return null;
     }
 
@@ -357,14 +382,18 @@ async function uploadMediaFromEvolution(params: {
       });
 
     if (uploadError) {
-      console.error("Failed to upload media to storage:", uploadError);
+      await logToSystem(supabase, "error", "فشل رفع الوسائط إلى التخزين", {
+        error: uploadError.message, fileName, messageType,
+      }, orgId);
       return null;
     }
 
     const { data } = adminStorage.storage.from("chat-media").getPublicUrl(fileName);
     return data.publicUrl || null;
   } catch (error) {
-    console.error("uploadMediaFromEvolution error:", error);
+    await logToSystem(supabase, "error", "خطأ غير متوقع في رفع الوسائط (Evolution)", {
+      error: error instanceof Error ? error.message : String(error),
+    }, orgId);
     return null;
   }
 }
