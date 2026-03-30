@@ -89,6 +89,7 @@ const InboxPage = () => {
         notes: conversation.notes || "",
         lastCustomerMessageAt: conversation.last_message_at || undefined,
         conversationType: (conversation.conversation_type as "private" | "group" | "broadcast") || "private",
+        channelType: (conversation.conversation_type as "meta_api" | "evolution") === "meta_api" ? "meta_api" : "evolution",
       }));
 
       setConversations(mapped);

@@ -13,6 +13,7 @@ export interface Conversation {
   lastSeen?: string;
   lastCustomerMessageAt?: string;
   conversationType?: "private" | "group" | "broadcast";
+  channelType?: "meta_api" | "evolution";
 }
 
 export interface MessageTemplate {
