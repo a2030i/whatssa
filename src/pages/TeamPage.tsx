@@ -167,6 +167,9 @@ const TeamPage = () => {
     setAssignMaxConv(team.max_conversations_per_agent ? String(team.max_conversations_per_agent) : "");
     const kw: string[] = Array.isArray(team.skill_keywords) ? team.skill_keywords : [];
     setAssignKeywords(kw.join("، "));
+    setSlaEnabled(team.sla_enabled || false);
+    setSlaTimeout(team.response_timeout_minutes ? String(team.response_timeout_minutes) : "30");
+    setSlaAction(team.escalation_action || "reassign");
   };
 
   const saveAssignConfig = async () => {
@@ -179,7 +182,10 @@ const TeamPage = () => {
       assignment_strategy: assignStrategy,
       max_conversations_per_agent: assignMaxConv ? parseInt(assignMaxConv) : null,
       skill_keywords: keywords,
-    }).eq("id", assignDialog.id);
+      sla_enabled: slaEnabled,
+      response_timeout_minutes: slaTimeout ? parseInt(slaTimeout) : 30,
+      escalation_action: slaAction,
+    } as any).eq("id", assignDialog.id);
     toast.success("تم حفظ إعدادات الإسناد");
     setAssignDialog(null);
     load();
