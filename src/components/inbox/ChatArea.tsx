@@ -273,16 +273,32 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showSavedReplies, setShowSavedReplies] = useState(false);
   const [savedReplyFilter, setSavedReplyFilter] = useState("");
   const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
+  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; full_name: string }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Fetch real team members from database
+  useEffect(() => {
+    if (!orgId) return;
+    const fetchMembers = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("org_id", orgId)
+        .eq("is_active", true)
+        .order("full_name");
+      if (data) setTeamMembers(data.filter(m => m.full_name));
+    };
+    fetchMembers();
+  }, [orgId]);
+
   const isMetaChannel = conversation.channelType === "meta_api";
   const windowExpired = isMetaChannel ? windowInfo.expired : false;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
-  const filteredMentionAgents = agents.filter((agent) => agent.name.includes(mentionFilter));
+  const filteredMentionAgents = teamMembers.filter((m) => (m.full_name || "").includes(mentionFilter));
 
   // 24h window countdown - update every minute
   useEffect(() => {
