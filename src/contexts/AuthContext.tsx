@@ -11,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   isSuperAdmin: boolean;
   isEcommerce: boolean;
+  hasMetaApi: boolean;
   isImpersonating: boolean;
   impersonatedOrgId: string | null;
   startImpersonation: (orgId: string) => void;
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isSuperAdmin: false,
   isEcommerce: false,
+  hasMetaApi: false,
   isImpersonating: false,
   impersonatedOrgId: null,
   startImpersonation: () => {},
@@ -43,6 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [isEcommerce, setIsEcommerce] = useState(false);
+  const [hasMetaApi, setHasMetaApi] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [impersonatedOrgId, setImpersonatedOrgId] = useState<string | null>(null);
 
