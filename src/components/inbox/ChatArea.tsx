@@ -450,56 +450,104 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
   };
 
+  const addTag = () => {
+    if (!newTagText.trim() || !onTagsChange) return;
+    const updated = [...conversation.tags, newTagText.trim()];
+    onTagsChange(conversation.id, updated);
+    setNewTagText("");
+    setShowTagInput(false);
+    toast.success("تم إضافة الوسم");
+  };
+
+  const removeTag = (tag: string) => {
+    if (!onTagsChange) return;
+    onTagsChange(conversation.id, conversation.tags.filter(t => t !== tag));
+    toast.success("تم حذف الوسم");
+  };
+
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Header */}
-      <div className="h-14 md:h-16 border-b border-border bg-card flex items-center justify-between px-2 md:px-5">
-        <div className="flex items-center gap-2">
-          <button className="w-9 h-9 rounded-lg hover:bg-secondary transition-colors flex items-center justify-center shrink-0" onClick={onBack}>
-            <ArrowRight className="w-5 h-5 text-foreground" />
-          </button>
-          <div className="relative">
-            <div className="w-8 h-8 md:w-9 md:h-9 rounded-full gradient-whatsapp flex items-center justify-center text-sm font-bold text-whatsapp-foreground">
-              {conversation.customerName.charAt(0)}
+    <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden">
+      {/* Header - fixed */}
+      <div className="shrink-0 border-b border-border bg-card">
+        <div className="h-14 md:h-16 flex items-center justify-between px-2 md:px-5">
+          <div className="flex items-center gap-2">
+            <button className="w-9 h-9 rounded-lg hover:bg-secondary transition-colors flex items-center justify-center shrink-0" onClick={onBack}>
+              <ArrowRight className="w-5 h-5 text-foreground" />
+            </button>
+            <div className="relative">
+              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full gradient-whatsapp flex items-center justify-center text-sm font-bold text-whatsapp-foreground">
+                {conversation.customerName.charAt(0)}
+              </div>
+              {conversation.lastSeen === "متصل الآن" && (
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-success border-2 border-card" />
+              )}
             </div>
-            {conversation.lastSeen === "متصل الآن" && (
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-success border-2 border-card" />
-            )}
+            <div className="min-w-0">
+              <p className="font-semibold text-sm truncate">{conversation.customerName}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{conversation.lastSeen || conversation.customerPhone}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="font-semibold text-sm truncate">{conversation.customerName}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{conversation.lastSeen || conversation.customerPhone}</p>
+          <div className="flex items-center gap-1">
+            {windowExpired && (
+              <div className="hidden sm:flex items-center gap-1 text-warning bg-warning/10 px-2 py-1 rounded-lg ml-2">
+                <Clock className="w-3 h-3" />
+                <span className="text-[10px] font-medium">نافذة 24س منتهية</span>
+              </div>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
+                  <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem onClick={() => { onStatusChange(conversation.id, "active"); toast.success("تم تغيير الحالة إلى نشط"); }}>
+                  <CheckCircle2 className="w-4 h-4 ml-2 text-success" /> تعيين كنشط
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { onStatusChange(conversation.id, "waiting"); toast.success("تم تغيير الحالة إلى بانتظار"); }}>
+                  <StickyNote className="w-4 h-4 ml-2 text-warning" /> تعيين كبانتظار
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowClosureReason(true)}>
+                  <XCircle className="w-4 h-4 ml-2 text-destructive" /> إغلاق المحادثة
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowTransfer(true)}>
+                  <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          {windowExpired && (
-            <div className="hidden sm:flex items-center gap-1 text-warning bg-warning/10 px-2 py-1 rounded-lg ml-2">
-              <Clock className="w-3 h-3" />
-              <span className="text-[10px] font-medium">نافذة 24س منتهية</span>
-            </div>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
-                <MoreVertical className="w-4 h-4 text-muted-foreground" />
+
+        {/* Tags row - always visible */}
+        <div className="flex items-center gap-1.5 px-3 pb-2 overflow-x-auto">
+          {conversation.tags.map((tag) => (
+            <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 gap-1 shrink-0 group">
+              {tag}
+              <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                <X className="w-2.5 h-2.5" />
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem onClick={() => { onStatusChange(conversation.id, "active"); toast.success("تم تغيير الحالة إلى نشط"); }}>
-                <CheckCircle2 className="w-4 h-4 ml-2 text-success" /> تعيين كنشط
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { onStatusChange(conversation.id, "waiting"); toast.success("تم تغيير الحالة إلى بانتظار"); }}>
-                <StickyNote className="w-4 h-4 ml-2 text-warning" /> تعيين كبانتظار
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowClosureReason(true)}>
-                <XCircle className="w-4 h-4 ml-2 text-destructive" /> إغلاق المحادثة
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setShowTransfer(true)}>
-                <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </Badge>
+          ))}
+          {showTagInput ? (
+            <div className="flex items-center gap-1 shrink-0">
+              <input
+                ref={tagInputRef}
+                value={newTagText}
+                onChange={(e) => setNewTagText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addTag(); if (e.key === "Escape") { setShowTagInput(false); setNewTagText(""); } }}
+                placeholder="وسم جديد..."
+                className="w-20 text-[11px] bg-secondary rounded px-2 py-0.5 outline-none border-0"
+                autoFocus
+              />
+              <button onClick={addTag} className="text-primary"><Check className="w-3.5 h-3.5" /></button>
+              <button onClick={() => { setShowTagInput(false); setNewTagText(""); }} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          ) : (
+            <button onClick={() => setShowTagInput(true)} className="shrink-0 flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-colors px-1.5 py-0.5 rounded hover:bg-secondary">
+              <Plus className="w-3 h-3" /> وسم
+            </button>
+          )}
         </div>
       </div>
 
