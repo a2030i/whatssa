@@ -25,6 +25,8 @@ import DashboardPage from "./pages/DashboardPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ApiDocsPage from "./pages/ApiDocsPage";
 import ReportsPage from "./pages/ReportsPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import PaymentCallbackPage from "./pages/PaymentCallbackPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -85,6 +87,9 @@ const AppRoutes = () => {
       <Route path="/abandoned-carts" element={<ProtectedRoute><AppLayout><AbandonedCartsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><AppLayout><ReportsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/api-docs" element={<ProtectedRoute><AppLayout><ApiDocsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/checkout" element={<ProtectedRoute><AppLayout><CheckoutPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/payment-callback" element={<ProtectedRoute><AppLayout><PaymentCallbackPage /></AppLayout></ProtectedRoute>} />
+      <Route path="*" element={<NotFound />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

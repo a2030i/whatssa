@@ -1,22 +1,23 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Check, Crown, Zap, Building2, Rocket, QrCode, Plus, Minus } from "lucide-react";
+import { Check, Crown, Zap, Building2, Rocket, QrCode, Plus, Minus, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const planIcons = [Zap, Crown, Rocket, Building2];
 
 const PlanUpgradePage = () => {
   const { orgId } = useAuth();
+  const navigate = useNavigate();
   const [plans, setPlans] = useState<any[]>([]);
   const [currentOrg, setCurrentOrg] = useState<any>(null);
   const [qrCount, setQrCount] = useState(1);
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
 
-  useEffect(() => {
-    load();
-  }, [orgId]);
+  useEffect(() => { load(); }, [orgId]);
 
   const load = async () => {
     const [p, o] = await Promise.all([
@@ -27,33 +28,20 @@ const PlanUpgradePage = () => {
     if (o.data) setCurrentOrg(o.data);
   };
 
-  const requestUpgrade = async (planId: string) => {
-    const plan = plans.find((p) => p.id === planId);
-    if (!plan) return;
-    toast.success(`تم طلب الترقية إلى باقة "${plan.name_ar}" — سيتواصل معك فريق الدعم`);
-    await supabase.from("activity_logs").insert({
-      action: "plan_upgrade_request",
-      actor_id: orgId,
-      actor_type: "organization",
-      target_type: "plan",
-      target_id: planId,
-      metadata: { plan_name: plan.name_ar, plan_price: plan.price },
-    });
+  const goToCheckout = (planId: string) => {
+    navigate(`/checkout?plan_id=${planId}&cycle=${billingCycle}&type=subscription`);
   };
 
-  const requestQrAddon = async () => {
-    toast.success(`تم طلب إضافة ${qrCount} رقم ربط غير رسمي (${qrCount * 300} ر.س/سنوياً) — سيتواصل معك فريق الدعم`);
-    await supabase.from("activity_logs").insert({
-      action: "qr_addon_request",
-      actor_id: orgId,
-      actor_type: "organization",
-      target_type: "addon",
-      target_id: "qr_unofficial",
-      metadata: { quantity: qrCount, total_price: qrCount * 300, billing: "yearly" },
-    });
+  const goToQrCheckout = () => {
+    navigate(`/checkout?type=addon_qr&qty=${qrCount}&cycle=yearly`);
   };
 
   const currentPlanId = currentOrg?.plan_id;
+
+  const getPrice = (plan: any) => {
+    if (billingCycle === "yearly") return Math.round(plan.price * 12 * 0.8);
+    return plan.price;
+  };
 
   return (
     <div className="p-3 md:p-6 space-y-6 max-w-[1100px]" dir="rtl">
@@ -67,11 +55,37 @@ const PlanUpgradePage = () => {
         </p>
       </div>
 
+      {/* Billing Toggle */}
+      <div className="flex items-center justify-center gap-2">
+        <button
+          onClick={() => setBillingCycle("monthly")}
+          className={cn(
+            "px-4 py-2 rounded-lg text-xs font-medium transition-all",
+            billingCycle === "monthly" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+          )}
+        >
+          شهري
+        </button>
+        <button
+          onClick={() => setBillingCycle("yearly")}
+          className={cn(
+            "px-4 py-2 rounded-lg text-xs font-medium transition-all relative",
+            billingCycle === "yearly" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+          )}
+        >
+          سنوي
+          <span className="absolute -top-2 -left-2 bg-emerald-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold">
+            -20%
+          </span>
+        </button>
+      </div>
+
       {/* Main Plans + QR Standalone */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {plans.map((plan, i) => {
           const isCurrent = plan.id === currentPlanId;
           const Icon = planIcons[i % planIcons.length];
+          const price = getPrice(plan);
           return (
             <div
               key={plan.id}
@@ -92,8 +106,13 @@ const PlanUpgradePage = () => {
               </div>
 
               <div className="mb-4">
-                <span className="text-2xl font-bold">{plan.price}</span>
-                <span className="text-xs text-muted-foreground mr-1">ر.س / شهرياً</span>
+                <span className="text-2xl font-bold">{price}</span>
+                <span className="text-xs text-muted-foreground mr-1">
+                  ر.س / {billingCycle === "yearly" ? "سنوياً" : "شهرياً"}
+                </span>
+                {billingCycle === "yearly" && plan.price > 0 && (
+                  <p className="text-[10px] text-muted-foreground line-through">{plan.price * 12} ر.س</p>
+                )}
               </div>
 
               <div className="space-y-2 flex-1 mb-4">
@@ -116,12 +135,17 @@ const PlanUpgradePage = () => {
               </div>
 
               <Button
-                className="w-full"
+                className="w-full gap-1.5"
                 variant={isCurrent ? "outline" : "default"}
-                disabled={isCurrent}
-                onClick={() => requestUpgrade(plan.id)}
+                disabled={isCurrent || price === 0}
+                onClick={() => goToCheckout(plan.id)}
               >
-                {isCurrent ? "باقتك الحالية" : plan.price === 0 ? "مجاني" : "طلب ترقية"}
+                {isCurrent ? "باقتك الحالية" : price === 0 ? "مجاني" : (
+                  <>
+                    <CreditCard className="w-3.5 h-3.5" />
+                    اشترك الآن
+                  </>
+                )}
               </Button>
             </div>
           );
@@ -164,8 +188,9 @@ const PlanUpgradePage = () => {
             </div>
           </div>
 
-          <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={requestQrAddon}>
-            طلب الإضافة
+          <Button className="w-full bg-emerald-600 hover:bg-emerald-700 gap-1.5" onClick={goToQrCheckout}>
+            <CreditCard className="w-3.5 h-3.5" />
+            اشترك الآن
           </Button>
         </div>
       </div>
@@ -180,7 +205,7 @@ const PlanUpgradePage = () => {
             <div>
               <h3 className="font-bold text-sm">إضافة أرقام ربط غير رسمي (QR)</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                أضف أرقام واتساب إضافية عبر مسح QR بدون الحاجة لحساب Meta Business — يدعم الرسائل الخاصة والمجموعات
+                أضف أرقام واتساب إضافية عبر مسح QR — يدعم الرسائل الخاصة والمجموعات
               </p>
             </div>
           </div>
@@ -199,8 +224,9 @@ const PlanUpgradePage = () => {
               <p className="font-bold text-sm">{qrCount * 300} ر.س</p>
               <p className="text-[10px] text-muted-foreground">سنوياً</p>
             </div>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-xs px-4" onClick={requestQrAddon}>
-              طلب الإضافة
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-xs px-4 gap-1.5" onClick={goToQrCheckout}>
+              <CreditCard className="w-3.5 h-3.5" />
+              ادفع الآن
             </Button>
           </div>
         </div>
