@@ -121,6 +121,7 @@ const ResolvedMedia = ({ url, type }: { url: string; type: string }) => {
 };
 
 const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void }) => {
+  const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note";
   const swipe = useSwipeReply({
     onSwipe: () => canReply && onReply(msg),
