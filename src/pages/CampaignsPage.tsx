@@ -554,24 +554,109 @@ const CampaignsPage = () => {
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: عروض الصيف" className="text-sm bg-secondary border-0" />
             </div>
 
-            {/* Template */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">اسم القالب (من Meta)</Label>
-                <Input value={form.templateName} onChange={(e) => setForm({ ...form, templateName: e.target.value })} placeholder="مثال: summer_offer" className="text-sm bg-secondary border-0" dir="ltr" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">لغة القالب</Label>
-                <Select value={form.templateLang} onValueChange={(v) => setForm({ ...form, templateLang: v })}>
-                  <SelectTrigger className="text-sm bg-secondary border-0"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ar">العربية</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="en_US">English (US)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Channel Selection */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">قناة الإرسال *</Label>
+              {whatsappChannels.length === 0 ? (
+                <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  لا توجد قنوات واتساب مربوطة — اذهب لصفحة الربط والتكامل أولاً
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {whatsappChannels.map((ch) => (
+                    <button
+                      key={ch.id}
+                      onClick={() => setForm({ ...form, channelId: ch.id })}
+                      className={cn(
+                        "p-3 rounded-lg border text-xs text-right transition-all",
+                        form.channelId === ch.id ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/50"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        {ch.channel_type === "evolution" ? (
+                          <MessageSquare className="w-4 h-4 shrink-0" />
+                        ) : (
+                          <Shield className="w-4 h-4 shrink-0" />
+                        )}
+                        <span className="font-medium">{getChannelLabel(ch)}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        {ch.channel_type === "evolution" ? "رسائل نصية مباشرة" : "قوالب Meta معتمدة"}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Evolution Warning */}
+            {isEvolutionChannel && (
+              <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 space-y-2">
+                <div className="flex items-start gap-2 text-warning">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-semibold">تحذير — قناة غير رسمية</p>
+                    <p className="text-muted-foreground">إرسال عدد كبير من الرسائل بسرعة قد يؤدي لحظر الرقم. استخدم تأخيراً مناسباً بين الرسائل ولا ترسل لأرقام لم تتواصل معك سابقاً.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">التأخير بين كل رسالة (ثانية) *</Label>
+                    <Input
+                      type="number"
+                      min={5}
+                      max={3600}
+                      value={form.delaySeconds}
+                      onChange={(e) => setForm({ ...form, delaySeconds: Math.max(5, parseInt(e.target.value) || 10) })}
+                      className="text-xs bg-background border-0 h-8"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="flex flex-col justify-end">
+                    <p className="text-[10px] text-muted-foreground">
+                      الوقت المتوقع: <strong className="text-foreground">{Math.ceil((getAudienceCount() * form.delaySeconds) / 60)} دقيقة</strong>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Message Text (Evolution only) */}
+            {isEvolutionChannel && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">نص الرسالة *</Label>
+                <Textarea
+                  value={form.messageText}
+                  onChange={(e) => setForm({ ...form, messageText: e.target.value })}
+                  placeholder="اكتب نص الرسالة هنا... يمكنك استخدام {name} لاسم العميل"
+                  className="text-sm bg-secondary border-0 min-h-[80px]"
+                />
+              </div>
+            )}
+
+            {/* Template (Meta API only) */}
+            {!isEvolutionChannel && form.channelId && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">اسم القالب (من Meta) *</Label>
+                    <Input value={form.templateName} onChange={(e) => setForm({ ...form, templateName: e.target.value })} placeholder="مثال: summer_offer" className="text-sm bg-secondary border-0" dir="ltr" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">لغة القالب</Label>
+                    <Select value={form.templateLang} onValueChange={(v) => setForm({ ...form, templateLang: v })}>
+                      <SelectTrigger className="text-sm bg-secondary border-0"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ar">العربية</SelectItem>
+                        <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="en_US">English (US)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Template Variables */}
             <div className="space-y-1.5">
