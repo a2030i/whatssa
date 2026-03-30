@@ -256,7 +256,7 @@ const AppSidebar = () => {
         {!collapsed && (
           <div>
             <span className="text-base font-bold text-sidebar-accent-foreground tracking-tight block leading-tight">
-              واتس ديسك
+              Respondly
             </span>
             <span className="text-[10px] text-sidebar-foreground/60">منصة إدارة المحادثات</span>
           </div>

@@ -104,7 +104,7 @@ const AuthPage = () => {
           <div className="w-16 h-16 rounded-2xl gradient-whatsapp flex items-center justify-center mx-auto shadow-lg">
             <MessageSquare className="w-8 h-8 text-whatsapp-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">واتس ديسك</h1>
+          <h1 className="text-2xl font-bold text-foreground">Respondly</h1>
           <p className="text-sm text-muted-foreground">
             {step === "email" && "أدخل بريدك الإلكتروني للمتابعة"}
             {step === "password" && "أدخل كلمة المرور لتسجيل الدخول"}
