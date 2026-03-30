@@ -137,10 +137,14 @@ const AdminAccounts = () => {
   };
 
   const impersonateOrg = (orgId: string) => {
-    sessionStorage.setItem("impersonate_org_id", orgId);
+    // Use AuthContext impersonation instead of opening new tab
+    const { startImpersonation } = require("@/contexts/AuthContext");
+    // We'll navigate directly using react-router
     const org = orgs.find(o => o.id === orgId);
     toast.success(`دخول كعميل: ${org?.name || orgId.slice(0, 8)}`);
-    window.open(`/?impersonate=${orgId}`, "_blank");
+    // Store in sessionStorage and navigate
+    sessionStorage.setItem("impersonate_org_id", orgId);
+    navigate("/");
   };
 
   const statusColor = (s: string) => {

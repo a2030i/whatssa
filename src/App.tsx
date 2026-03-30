@@ -53,7 +53,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { user, isLoading, isSuperAdmin } = useAuth();
+  const { user, isLoading, isSuperAdmin, isImpersonating } = useAuth();
 
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -61,12 +61,15 @@ const AppRoutes = () => {
     </div>
   );
 
+  // Super admin accessing client routes when impersonating
+  const shouldRedirectToAdmin = isSuperAdmin && !isImpersonating;
+
   return (
     <Routes>
-      <Route path="/auth" element={user ? (isSuperAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />) : <AuthPage />} />
+      <Route path="/auth" element={user ? (shouldRedirectToAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />) : <AuthPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-      <Route path="/" element={isSuperAdmin ? <Navigate to="/admin" replace /> : <ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/" element={shouldRedirectToAdmin ? <Navigate to="/admin" replace /> : <ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
       <Route path="/inbox" element={<ProtectedRoute><AppLayout><InboxPage /></AppLayout></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><AppLayout><CustomersPage /></AppLayout></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
