@@ -4,21 +4,34 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Search, Plus, Upload, Download, UserPlus, X, Tag, Edit2, Trash2 } from "lucide-react";
+import { Search, Plus, Upload, Download, UserPlus, X, Tag, Edit2, Trash2, Filter, User, UserCheck, UserX, Users } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
+const LIFECYCLE_STAGES = [
+  { value: "lead", label: "عميل محتمل", icon: User, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  { value: "qualified", label: "مؤهل", icon: UserCheck, color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  { value: "customer", label: "عميل فعلي", icon: Users, color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+  { value: "lost", label: "خسرناه", icon: UserX, color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+];
 
 const CustomersPage = () => {
   const { orgId } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState<string>("all");
   const [tagDefs, setTagDefs] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [editCustomer, setEditCustomer] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", tags: [] as string[] });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", tags: [] as string[], lifecycle_stage: "lead", company: "", source: "whatsapp" });
+  const [customFields, setCustomFields] = useState<Record<string, string>>({});
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -36,25 +49,32 @@ const CustomersPage = () => {
 
   const handleSave = async () => {
     if (!form.phone.trim()) { toast.error("رقم الجوال مطلوب"); return; }
+    const payload: any = {
+      name: form.name || null, phone: form.phone, email: form.email || null,
+      notes: form.notes || null, tags: form.tags,
+      lifecycle_stage: form.lifecycle_stage, company: form.company || null,
+      source: form.source || "whatsapp",
+      custom_fields: Object.keys(customFields).length > 0 ? customFields : {},
+    };
+
     if (editCustomer) {
-      await supabase.from("customers").update({
-        name: form.name || null, phone: form.phone, email: form.email || null,
-        notes: form.notes || null, tags: form.tags,
-      }).eq("id", editCustomer.id);
+      await supabase.from("customers").update(payload).eq("id", editCustomer.id);
       toast.success("تم تحديث العميل");
     } else {
-      const { error } = await supabase.from("customers").insert({
-        org_id: orgId, name: form.name || null, phone: form.phone,
-        email: form.email || null, notes: form.notes || null, tags: form.tags,
-      });
+      const { error } = await supabase.from("customers").insert({ ...payload, org_id: orgId });
       if (error?.code === "23505") { toast.error("هذا الرقم موجود مسبقاً"); return; }
       if (error) { toast.error("حدث خطأ"); return; }
       toast.success("تم إضافة العميل");
     }
     setShowAdd(false);
     setEditCustomer(null);
-    setForm({ name: "", phone: "", email: "", notes: "", tags: [] });
+    resetForm();
     load();
+  };
+
+  const resetForm = () => {
+    setForm({ name: "", phone: "", email: "", notes: "", tags: [], lifecycle_stage: "lead", company: "", source: "whatsapp" });
+    setCustomFields({});
   };
 
   const handleDelete = async (id: string) => {
@@ -65,14 +85,19 @@ const CustomersPage = () => {
 
   const openEdit = (c: any) => {
     setEditCustomer(c);
-    setForm({ name: c.name || "", phone: c.phone, email: c.email || "", notes: c.notes || "", tags: c.tags || [] });
+    setForm({
+      name: c.name || "", phone: c.phone, email: c.email || "", notes: c.notes || "",
+      tags: c.tags || [], lifecycle_stage: c.lifecycle_stage || "lead",
+      company: c.company || "", source: c.source || "whatsapp",
+    });
+    setCustomFields(c.custom_fields || {});
     setShowAdd(true);
   };
 
   const handleExport = () => {
     const csv = [
-      "الاسم,الجوال,الإيميل,التصنيفات,ملاحظات",
-      ...customers.map((c) => `"${c.name || ""}","${c.phone}","${c.email || ""}","${(c.tags || []).join(";")}","${c.notes || ""}"`),
+      "الاسم,الجوال,الإيميل,التصنيفات,المرحلة,الشركة,المصدر,ملاحظات",
+      ...customers.map((c) => `"${c.name || ""}","${c.phone}","${c.email || ""}","${(c.tags || []).join(";")}","${c.lifecycle_stage || "lead"}","${c.company || ""}","${c.source || ""}","${c.notes || ""}"`),
     ].join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -111,9 +136,23 @@ const CustomersPage = () => {
     }));
   };
 
-  const filtered = customers.filter((c) =>
-    (c.name || "").includes(search) || c.phone.includes(search) || (c.email || "").includes(search)
-  );
+  const updateLifecycleStage = async (customerId: string, stage: string) => {
+    await supabase.from("customers").update({ lifecycle_stage: stage }).eq("id", customerId);
+    toast.success("تم تحديث المرحلة");
+    load();
+  };
+
+  const filtered = customers.filter((c) => {
+    const matchesSearch = (c.name || "").includes(search) || c.phone.includes(search) || (c.email || "").includes(search);
+    const matchesStage = stageFilter === "all" || (c.lifecycle_stage || "lead") === stageFilter;
+    return matchesSearch && matchesStage;
+  });
+
+  // Stage summary counts
+  const stageCounts = LIFECYCLE_STAGES.map((s) => ({
+    ...s,
+    count: customers.filter((c) => (c.lifecycle_stage || "lead") === s.value).length,
+  }));
 
   return (
     <div className="p-3 md:p-6 space-y-4 max-w-[1000px]" dir="rtl">
@@ -130,10 +169,29 @@ const CustomersPage = () => {
             <Upload className="w-3 h-3" /> استيراد
           </Button>
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
-          <Button size="sm" className="text-xs gap-1" onClick={() => { setEditCustomer(null); setForm({ name: "", phone: "", email: "", notes: "", tags: [] }); setShowAdd(true); }}>
+          <Button size="sm" className="text-xs gap-1" onClick={() => { setEditCustomer(null); resetForm(); setShowAdd(true); }}>
             <UserPlus className="w-3 h-3" /> إضافة عميل
           </Button>
         </div>
+      </div>
+
+      {/* Stage summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {stageCounts.map((s) => (
+          <button
+            key={s.value}
+            onClick={() => setStageFilter(stageFilter === s.value ? "all" : s.value)}
+            className={`rounded-lg p-3 text-right transition-all border ${
+              stageFilter === s.value ? "ring-2 ring-primary border-primary" : "border-border hover:border-primary/50"
+            } bg-card`}
+          >
+            <div className="flex items-center justify-between">
+              <s.icon className="w-4 h-4 text-muted-foreground" />
+              <span className="text-lg font-bold">{s.count}</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">{s.label}</p>
+          </button>
+        ))}
       </div>
 
       <div className="relative max-w-sm">
@@ -142,43 +200,62 @@ const CustomersPage = () => {
       </div>
 
       <div className="bg-card rounded-xl shadow-card overflow-x-auto">
-        <table className="w-full text-sm min-w-[500px]">
+        <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="border-b border-border text-muted-foreground text-[11px]">
               <th className="text-right p-3">الاسم</th>
               <th className="text-right p-3">الجوال</th>
+              <th className="text-right p-3">المرحلة</th>
               <th className="text-right p-3 hidden md:table-cell">الإيميل</th>
               <th className="text-right p-3">التصنيفات</th>
               <th className="text-right p-3 w-20">إجراء</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
-              <tr key={c.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                <td className="p-3 font-medium">{c.name || "بدون اسم"}</td>
-                <td className="p-3 font-mono text-xs" dir="ltr">{c.phone}</td>
-                <td className="p-3 text-xs hidden md:table-cell">{c.email || "-"}</td>
-                <td className="p-3">
-                  <div className="flex flex-wrap gap-1">
-                    {(c.tags || []).map((t: string) => (
-                      <Badge key={t} variant="secondary" className="text-[9px] px-1.5 py-0">{t}</Badge>
-                    ))}
-                  </div>
-                </td>
-                <td className="p-3">
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEdit(c)}>
-                      <Edit2 className="w-3 h-3" />
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => handleDelete(c.id)}>
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((c) => {
+              const stage = LIFECYCLE_STAGES.find((s) => s.value === (c.lifecycle_stage || "lead")) || LIFECYCLE_STAGES[0];
+              return (
+                <tr key={c.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                  <td className="p-3">
+                    <p className="font-medium">{c.name || "بدون اسم"}</p>
+                    {c.company && <p className="text-[10px] text-muted-foreground">{c.company}</p>}
+                  </td>
+                  <td className="p-3 font-mono text-xs" dir="ltr">{c.phone}</td>
+                  <td className="p-3">
+                    <Select value={c.lifecycle_stage || "lead"} onValueChange={(v) => updateLifecycleStage(c.id, v)}>
+                      <SelectTrigger className="h-7 text-[10px] w-24 border-0 p-1">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${stage.color}`}>{stage.label}</span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LIFECYCLE_STAGES.map((s) => (
+                          <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-3 text-xs hidden md:table-cell">{c.email || "-"}</td>
+                  <td className="p-3">
+                    <div className="flex flex-wrap gap-1">
+                      {(c.tags || []).map((t: string) => (
+                        <Badge key={t} variant="secondary" className="text-[9px] px-1.5 py-0">{t}</Badge>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEdit(c)}>
+                        <Edit2 className="w-3 h-3" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => handleDelete(c.id)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && (
-              <tr><td colSpan={5} className="text-center py-8 text-muted-foreground text-xs">لا يوجد عملاء</td></tr>
+              <tr><td colSpan={6} className="text-center py-8 text-muted-foreground text-xs">لا يوجد عملاء</td></tr>
             )}
           </tbody>
         </table>
@@ -186,26 +263,60 @@ const CustomersPage = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="max-w-md" dir="rtl">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle>{editCustomer ? "تعديل عميل" : "إضافة عميل جديد"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div>
-              <Label className="text-xs">الاسم</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">الاسم</Label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">رقم الجوال *</Label>
+                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1" dir="ltr" placeholder="+966..." />
+              </div>
             </div>
-            <div>
-              <Label className="text-xs">رقم الجوال *</Label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1" dir="ltr" placeholder="+966..." />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">الإيميل</Label>
+                <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1" dir="ltr" />
+              </div>
+              <div>
+                <Label className="text-xs">الشركة</Label>
+                <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} className="mt-1" />
+              </div>
             </div>
-            <div>
-              <Label className="text-xs">الإيميل</Label>
-              <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1" dir="ltr" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">المرحلة</Label>
+                <Select value={form.lifecycle_stage} onValueChange={(v) => setForm({ ...form, lifecycle_stage: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {LIFECYCLE_STAGES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">المصدر</Label>
+                <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="whatsapp">واتساب</SelectItem>
+                    <SelectItem value="website">الموقع</SelectItem>
+                    <SelectItem value="referral">إحالة</SelectItem>
+                    <SelectItem value="social">سوشيال ميديا</SelectItem>
+                    <SelectItem value="manual">يدوي</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <Label className="text-xs">ملاحظات</Label>
-              <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-1" />
+              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-1 min-h-[60px]" />
             </div>
             <div>
               <Label className="text-xs">التصنيفات</Label>
@@ -223,9 +334,44 @@ const CustomersPage = () => {
                     {t.name}
                   </button>
                 ))}
-                {tagDefs.length === 0 && <span className="text-[10px] text-muted-foreground">لم تُنشأ تصنيفات بعد (أضفها من الإعدادات)</span>}
+                {tagDefs.length === 0 && <span className="text-[10px] text-muted-foreground">لم تُنشأ تصنيفات بعد</span>}
               </div>
             </div>
+
+            {/* Custom Fields */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">حقول مخصصة</Label>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-[10px] h-6 px-2"
+                  onClick={() => {
+                    const key = prompt("اسم الحقل:");
+                    if (key) setCustomFields({ ...customFields, [key]: "" });
+                  }}
+                >
+                  <Plus className="w-3 h-3 ml-1" /> إضافة حقل
+                </Button>
+              </div>
+              {Object.entries(customFields).map(([key, value]) => (
+                <div key={key} className="flex items-center gap-2 mt-1.5">
+                  <span className="text-[10px] text-muted-foreground min-w-[60px]">{key}</span>
+                  <Input
+                    value={value}
+                    onChange={(e) => setCustomFields({ ...customFields, [key]: e.target.value })}
+                    className="h-7 text-xs flex-1"
+                  />
+                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => {
+                    const { [key]: _, ...rest } = customFields;
+                    setCustomFields(rest);
+                  }}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
             <Button className="w-full" onClick={handleSave}>{editCustomer ? "تحديث" : "إضافة"}</Button>
           </div>
         </DialogContent>
