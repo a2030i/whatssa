@@ -102,13 +102,6 @@ const SallaIntegrationSection = () => {
     if (!confirm("هل أنت متأكد من حذف هذا الربط؟")) return;
     await supabase.from("store_integrations").delete().eq("id", id);
     toast.success("تم حذف الربط");
-    
-    // Check if this was the last store — revert e-commerce mode
-    const { count } = await supabase.from("store_integrations").select("id", { count: "exact", head: true }).eq("org_id", orgId!);
-    if (count === 0) {
-      await supabase.from("organizations").update({ is_ecommerce: false, store_platform: null } as any).eq("id", orgId!);
-      refreshOrg();
-    }
     fetchStores();
   };
 
