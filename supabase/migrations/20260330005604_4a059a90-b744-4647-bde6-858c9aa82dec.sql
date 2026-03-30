@@ -1,0 +1,1 @@
+ALTER TABLE public.plans ADD COLUMN IF NOT EXISTS max_api_tokens integer NOT NULL DEFAULT 2;

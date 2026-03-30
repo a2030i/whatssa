@@ -40,10 +40,30 @@ const ApiTokensSection = () => {
   const [creating, setCreating] = useState(false);
   const [revealedTokens, setRevealedTokens] = useState<Set<string>>(new Set());
   const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
+  const [maxTokens, setMaxTokens] = useState<number>(2);
 
   useEffect(() => {
-    if (orgId) loadTokens();
+    if (orgId) {
+      loadTokens();
+      loadMaxTokens();
+    }
   }, [orgId]);
+
+  const loadMaxTokens = async () => {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("plan_id")
+      .eq("id", orgId!)
+      .maybeSingle();
+    if (org?.plan_id) {
+      const { data: plan } = await supabase
+        .from("plans")
+        .select("max_api_tokens")
+        .eq("id", org.plan_id)
+        .maybeSingle();
+      if (plan && (plan as any).max_api_tokens) setMaxTokens((plan as any).max_api_tokens);
+    }
+  };
 
   const loadTokens = async () => {
     setLoading(true);
@@ -56,7 +76,10 @@ const ApiTokensSection = () => {
     setLoading(false);
   };
 
+  const limitReached = tokens.length >= maxTokens;
+
   const createToken = async () => {
+    if (limitReached) { toast.error(`وصلت للحد الأقصى (${maxTokens} توكنات). قم بترقية باقتك لإنشاء المزيد.`); return; }
     if (!newName.trim()) { toast.error("أدخل اسم التوكن"); return; }
     if (!newPerms.length) { toast.error("اختر صلاحية واحدة على الأقل"); return; }
     setCreating(true);
@@ -107,9 +130,12 @@ const ApiTokensSection = () => {
           <Key className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-bold">توكنات API</h3>
         </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4 ml-1" /> إنشاء توكن جديد
-        </Button>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs">{tokens.length}/{maxTokens}</Badge>
+          <Button size="sm" onClick={() => setShowCreate(true)} disabled={limitReached}>
+            <Plus className="w-4 h-4 ml-1" /> إنشاء توكن جديد
+          </Button>
+        </div>
       </div>
 
       <div className="bg-secondary/50 rounded-lg p-3 text-sm">

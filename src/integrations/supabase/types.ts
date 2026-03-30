@@ -947,6 +947,7 @@ export type Database = {
           features: Json | null
           id: string
           is_active: boolean
+          max_api_tokens: number
           max_conversations: number
           max_messages_per_month: number
           max_phone_numbers: number
@@ -965,6 +966,7 @@ export type Database = {
           features?: Json | null
           id?: string
           is_active?: boolean
+          max_api_tokens?: number
           max_conversations?: number
           max_messages_per_month?: number
           max_phone_numbers?: number
@@ -983,6 +985,7 @@ export type Database = {
           features?: Json | null
           id?: string
           is_active?: boolean
+          max_api_tokens?: number
           max_conversations?: number
           max_messages_per_month?: number
           max_phone_numbers?: number
