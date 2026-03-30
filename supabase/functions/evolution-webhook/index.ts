@@ -357,7 +357,7 @@ serve(async (req) => {
                 const sendResp = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
-                  body: JSON.stringify({ number: senderJid.replace("@s.whatsapp.net", ""), text: matchedRule.reply_text }),
+                  body: JSON.stringify({ number: phone, text: matchedRule.reply_text }),
                 });
                 if (sendResp.ok) {
                   await supabase.from("messages").insert({
