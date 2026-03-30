@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Check, Crown, Zap, Building2, Rocket } from "lucide-react";
+import { Check, Crown, Zap, Building2, Rocket, QrCode, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const planIcons = [Zap, Crown, Rocket, Building2];
@@ -12,6 +12,7 @@ const PlanUpgradePage = () => {
   const { orgId } = useAuth();
   const [plans, setPlans] = useState<any[]>([]);
   const [currentOrg, setCurrentOrg] = useState<any>(null);
+  const [qrCount, setQrCount] = useState(1);
 
   useEffect(() => {
     load();
@@ -29,9 +30,7 @@ const PlanUpgradePage = () => {
   const requestUpgrade = async (planId: string) => {
     const plan = plans.find((p) => p.id === planId);
     if (!plan) return;
-    // For now, just notify - in production this would go to a payment gateway
     toast.success(`تم طلب الترقية إلى باقة "${plan.name_ar}" — سيتواصل معك فريق الدعم`);
-    // Log the request
     await supabase.from("activity_logs").insert({
       action: "plan_upgrade_request",
       actor_id: orgId,
@@ -42,10 +41,22 @@ const PlanUpgradePage = () => {
     });
   };
 
+  const requestQrAddon = async () => {
+    toast.success(`تم طلب إضافة ${qrCount} رقم ربط غير رسمي (${qrCount * 300} ر.س/سنوياً) — سيتواصل معك فريق الدعم`);
+    await supabase.from("activity_logs").insert({
+      action: "qr_addon_request",
+      actor_id: orgId,
+      actor_type: "organization",
+      target_type: "addon",
+      target_id: "qr_unofficial",
+      metadata: { quantity: qrCount, total_price: qrCount * 300, billing: "yearly" },
+    });
+  };
+
   const currentPlanId = currentOrg?.plan_id;
 
   return (
-    <div className="p-3 md:p-6 space-y-6 max-w-[1000px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[1100px]" dir="rtl">
       <div>
         <h1 className="text-xl font-bold">الباقات والترقية</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -56,7 +67,8 @@ const PlanUpgradePage = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Main Plans + QR Standalone */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {plans.map((plan, i) => {
           const isCurrent = plan.id === currentPlanId;
           const Icon = planIcons[i % planIcons.length];
@@ -114,6 +126,84 @@ const PlanUpgradePage = () => {
             </div>
           );
         })}
+
+        {/* QR Standalone Card */}
+        <div className="bg-card rounded-xl shadow-card p-5 flex flex-col transition-all hover:shadow-lg border border-dashed border-primary/30 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 bg-gradient-to-l from-primary/10 to-primary/5 h-1" />
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-600">
+              <QrCode className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">ربط QR</p>
+              <span className="text-[9px] text-emerald-600 font-medium">غير رسمي</span>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <span className="text-2xl font-bold">300</span>
+            <span className="text-xs text-muted-foreground mr-1">ر.س / سنوياً لكل رقم</span>
+          </div>
+
+          <div className="space-y-2 flex-1 mb-4">
+            <div className="flex items-center gap-2 text-xs">
+              <Check className="w-3 h-3 text-emerald-500" />
+              <span>ربط عبر مسح QR</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <Check className="w-3 h-3 text-emerald-500" />
+              <span>رسائل خاصة + مجموعات</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <Check className="w-3 h-3 text-emerald-500" />
+              <span>بدون حساب Meta Business</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Check className="w-3 h-3" />
+              <span>يُضاف لأي باقة</span>
+            </div>
+          </div>
+
+          <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={requestQrAddon}>
+            طلب الإضافة
+          </Button>
+        </div>
+      </div>
+
+      {/* QR Add-on Section */}
+      <div className="bg-card rounded-xl shadow-card p-5">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <QrCode className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm">إضافة أرقام ربط غير رسمي (QR)</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                أضف أرقام واتساب إضافية عبر مسح QR بدون الحاجة لحساب Meta Business — يدعم الرسائل الخاصة والمجموعات
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-2 py-1">
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setQrCount(Math.max(1, qrCount - 1))}>
+                <Minus className="w-3.5 h-3.5" />
+              </Button>
+              <span className="font-bold text-lg min-w-[2ch] text-center">{qrCount}</span>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setQrCount(qrCount + 1)}>
+                <Plus className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            <div className="text-left min-w-[80px]">
+              <p className="font-bold text-sm">{qrCount * 300} ر.س</p>
+              <p className="text-[10px] text-muted-foreground">سنوياً</p>
+            </div>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-xs px-4" onClick={requestQrAddon}>
+              طلب الإضافة
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
