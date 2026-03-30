@@ -394,15 +394,51 @@ serve(async (req) => {
 
       // ── Handle incoming messages ──
       if (value.messages && value.messages.length > 0) {
+        // Load org settings once for this batch
+        const { data: orgData } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+        const orgSettings = (orgData?.settings as Record<string, any>) || {};
+
         for (const incomingMessage of value.messages) {
           const customerPhone = incomingMessage.from;
           const contactName = value.contacts?.[0]?.profile?.name || customerPhone;
+          const messageContent = incomingMessage.text?.body || `[${incomingMessage.type}]`;
 
           await logToSystem(supabase, "info", `رسالة واردة من ${customerPhone}`, {
             type: incomingMessage.type,
             wa_message_id: incomingMessage.id,
             contact_name: contactName,
           }, orgId);
+
+          // ── Check for satisfaction rating response ──
+          if (incomingMessage.type === "text") {
+            const ratingNum = parseInt(messageContent.trim());
+            if (ratingNum >= 1 && ratingNum <= 5) {
+              const { data: pendingConv } = await supabase
+                .from("conversations")
+                .select("id, assigned_to")
+                .eq("customer_phone", customerPhone)
+                .eq("org_id", orgId)
+                .eq("status", "closed")
+                .eq("satisfaction_status", "pending")
+                .order("closed_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (pendingConv) {
+                await supabase.from("satisfaction_ratings").insert({
+                  conversation_id: pendingConv.id,
+                  org_id: orgId,
+                  agent_name: pendingConv.assigned_to,
+                  rating: ratingNum,
+                });
+                await supabase.from("conversations").update({ satisfaction_status: "rated" }).eq("id", pendingConv.id);
+                // Send thank you message
+                await sendBotMessage(supabase, orgId, pendingConv.id, customerPhone, "شكراً لتقييمك! 🙏 نسعد بخدمتك دائماً.", "meta", logToSystem);
+                await logToSystem(supabase, "info", `تم تسجيل تقييم العميل: ${ratingNum}/5`, { conversation_id: pendingConv.id, rating: ratingNum }, orgId);
+                continue; // Skip normal processing for this message
+              }
+            }
+          }
 
           let { data: conversation } = await supabase
             .from("conversations")
@@ -412,8 +448,6 @@ serve(async (req) => {
             .neq("status", "closed")
             .limit(1)
             .maybeSingle();
-
-          const messageContent = incomingMessage.text?.body || `[${incomingMessage.type}]`;
 
           if (!conversation) {
             const { data: newConversation, error: convError } = await supabase
