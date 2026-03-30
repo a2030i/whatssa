@@ -40,10 +40,30 @@ const ApiTokensSection = () => {
   const [creating, setCreating] = useState(false);
   const [revealedTokens, setRevealedTokens] = useState<Set<string>>(new Set());
   const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
+  const [maxTokens, setMaxTokens] = useState<number>(2);
 
   useEffect(() => {
-    if (orgId) loadTokens();
+    if (orgId) {
+      loadTokens();
+      loadMaxTokens();
+    }
   }, [orgId]);
+
+  const loadMaxTokens = async () => {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("plan_id")
+      .eq("id", orgId!)
+      .maybeSingle();
+    if (org?.plan_id) {
+      const { data: plan } = await supabase
+        .from("plans")
+        .select("max_api_tokens")
+        .eq("id", org.plan_id)
+        .maybeSingle();
+      if (plan && (plan as any).max_api_tokens) setMaxTokens((plan as any).max_api_tokens);
+    }
+  };
 
   const loadTokens = async () => {
     setLoading(true);
