@@ -306,8 +306,27 @@ const InboxPage = () => {
     );
   }
 
+  // On mobile with a selected chat, go full-screen over the layout
+  if (isMobile && selected) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-background" dir="rtl">
+        <ChatArea
+          conversation={selected}
+          messages={currentMessages}
+          templates={templates}
+          onBack={() => setSelectedId(null)}
+          onSendMessage={handleSendMessage}
+          onSendTemplate={handleSendTemplate}
+          onStatusChange={handleStatusChange}
+          onTransfer={handleTransfer}
+          onTagsChange={handleTagsChange}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-[100dvh] overflow-hidden" dir="rtl">
+    <div className="flex h-[calc(100dvh-3rem)] overflow-hidden" dir="rtl">
       {/* On mobile: show list when no selection, show chat when selected */}
       {(!isMobile || !selected) && (
         <ConversationList
