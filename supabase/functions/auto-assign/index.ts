@@ -172,6 +172,9 @@ Deno.serve(async (req) => {
       await supabase.from("conversations").update({
         assigned_to: agent.full_name,
         assigned_team: targetTeam?.name || null,
+        assigned_at: new Date().toISOString(),
+        first_response_at: null,
+        escalated: false,
       }).eq("id", conversation_id);
 
       if (!fallback) {

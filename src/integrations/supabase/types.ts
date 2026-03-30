@@ -516,6 +516,7 @@ export type Database = {
       }
       conversations: {
         Row: {
+          assigned_at: string | null
           assigned_team: string | null
           assigned_to: string | null
           closed_at: string | null
@@ -527,6 +528,9 @@ export type Database = {
           customer_name: string | null
           customer_phone: string
           customer_profile_pic: string | null
+          escalated: boolean | null
+          escalated_at: string | null
+          first_response_at: string | null
           id: string
           last_message: string | null
           last_message_at: string | null
@@ -540,6 +544,7 @@ export type Database = {
           wa_conversation_id: string | null
         }
         Insert: {
+          assigned_at?: string | null
           assigned_team?: string | null
           assigned_to?: string | null
           closed_at?: string | null
@@ -551,6 +556,9 @@ export type Database = {
           customer_name?: string | null
           customer_phone: string
           customer_profile_pic?: string | null
+          escalated?: boolean | null
+          escalated_at?: string | null
+          first_response_at?: string | null
           id?: string
           last_message?: string | null
           last_message_at?: string | null
@@ -564,6 +572,7 @@ export type Database = {
           wa_conversation_id?: string | null
         }
         Update: {
+          assigned_at?: string | null
           assigned_team?: string | null
           assigned_to?: string | null
           closed_at?: string | null
@@ -575,6 +584,9 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string
           customer_profile_pic?: string | null
+          escalated?: boolean | null
+          escalated_at?: string | null
+          first_response_at?: string | null
           id?: string
           last_message?: string | null
           last_message_at?: string | null
@@ -1723,32 +1735,41 @@ export type Database = {
         Row: {
           assignment_strategy: string
           created_at: string | null
+          escalation_action: string | null
           id: string
           last_assigned_index: number
           max_conversations_per_agent: number | null
           name: string
           org_id: string
+          response_timeout_minutes: number | null
           skill_keywords: Json | null
+          sla_enabled: boolean
         }
         Insert: {
           assignment_strategy?: string
           created_at?: string | null
+          escalation_action?: string | null
           id?: string
           last_assigned_index?: number
           max_conversations_per_agent?: number | null
           name: string
           org_id: string
+          response_timeout_minutes?: number | null
           skill_keywords?: Json | null
+          sla_enabled?: boolean
         }
         Update: {
           assignment_strategy?: string
           created_at?: string | null
+          escalation_action?: string | null
           id?: string
           last_assigned_index?: number
           max_conversations_per_agent?: number | null
           name?: string
           org_id?: string
+          response_timeout_minutes?: number | null
           skill_keywords?: Json | null
+          sla_enabled?: boolean
         }
         Relationships: [
           {
