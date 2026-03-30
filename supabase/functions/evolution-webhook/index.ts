@@ -388,8 +388,8 @@ async function uploadMediaFromEvolution(params: {
       return null;
     }
 
-    const { data } = adminStorage.storage.from("chat-media").getPublicUrl(fileName);
-    return data.publicUrl || null;
+    // Return the storage path (not public URL) — frontend will create signed URLs
+    return `storage:chat-media/${fileName}`;
   } catch (error) {
     await logToSystem(supabase, "error", "خطأ غير متوقع في رفع الوسائط (Evolution)", {
       error: error instanceof Error ? error.message : String(error),

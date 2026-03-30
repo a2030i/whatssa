@@ -45,8 +45,20 @@ const isWindowExpired = (lastCustomerMessageAt?: string): boolean => {
 const isImageUrl = (url?: string | null) => !!url && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url);
 
 const getStorageUrlFromText = (text: string) => {
-  const match = text.match(/\n(https:\/\/[^\s]+)/i);
+  const match = text.match(/\n(https:\/\/[^\s]+|storage:chat-media\/[^\s]+)/i);
   return match?.[1];
+};
+
+/** Resolve a media URL: if it's a storage path, create a signed URL; otherwise return as-is */
+const resolveMediaUrl = async (url: string | null | undefined): Promise<string | null> => {
+  if (!url) return null;
+  if (url.startsWith("storage:chat-media/")) {
+    const path = url.replace("storage:chat-media/", "");
+    const { data, error } = await supabase.storage.from("chat-media").createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  }
+  return url;
 };
 
 const scrollToMessage = (messageId?: string) => {
@@ -395,9 +407,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         .from("chat-media")
         .upload(path, imagePreview.file, { contentType: imagePreview.file.type });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+      const storagePath = `storage:chat-media/${path}`;
       const caption = inputText.trim();
-      onSendMessage(conversation.id, caption ? `📷 ${caption}\n${urlData.publicUrl}` : `📷 صورة\n${urlData.publicUrl}`);
+      onSendMessage(conversation.id, caption ? `📷 ${caption}\n${storagePath}` : `📷 صورة\n${storagePath}`);
       setImagePreview(null);
       setInputText("");
       URL.revokeObjectURL(imagePreview.url);
