@@ -362,6 +362,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
   const handleInputChange = (value: string) => {
     setInputText(value);
+
+    // Check for / shortcut (saved replies)
+    if (value.startsWith("/")) {
+      const filter = value.slice(1).toLowerCase();
+      setSavedReplyFilter(filter);
+      setShowSavedReplies(true);
+      setShowMentions(false);
+      return;
+    } else {
+      setShowSavedReplies(false);
+    }
+
+    // Check for @ mentions
     const lastAtIndex = value.lastIndexOf("@");
     if (lastAtIndex !== -1) {
       const afterAt = value.slice(lastAtIndex + 1);
@@ -373,6 +386,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     setShowMentions(false);
   };
+
+  const insertSavedReply = (reply: { content: string }) => {
+    // Replace customer name placeholder
+    const text = reply.content.replace(/\{name\}/gi, conversation.customerName || "");
+    setInputText(text);
+    setShowSavedReplies(false);
+    inputRef.current?.focus();
+  };
+
+  const filteredSavedReplies = savedReplies.filter((r) =>
+    !savedReplyFilter || r.shortcut.toLowerCase().includes(savedReplyFilter) || r.title.toLowerCase().includes(savedReplyFilter)
+  );
 
   const insertMention = (agentName: string) => {
     const lastAtIndex = inputText.lastIndexOf("@");
