@@ -5,28 +5,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const log = async (supabase: any, level: string, message: string, metadata: any = {}, orgId?: string) => {
+  await supabase.from("system_logs").insert({
+    level,
+    source: "webhook",
+    function_name: "moyasar-webhook",
+    message,
+    metadata,
+    org_id: orgId || null,
+  }).then(() => {});
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, serviceKey);
 
+  try {
     const body = await req.json();
-    
-    // Moyasar sends webhook with payment data
     const moyasarId = body.id;
-    const status = body.status; // paid, failed, refunded
+    const status = body.status;
     const metadata = body.metadata || {};
     const paymentId = metadata.payment_id;
     const sourceType = body.source?.type;
 
+    await log(supabase, "info", "Webhook received", { moyasar_id: moyasarId, status, payment_id: paymentId });
+
     if (!paymentId) {
+      await log(supabase, "warn", "Missing payment_id in webhook metadata", { body });
       return new Response(JSON.stringify({ error: "Missing payment_id in metadata" }), { status: 400, headers: corsHeaders });
     }
 
-    // Verify payment with Moyasar API
     const { data: moyasarSettings } = await supabase
       .from("system_settings")
       .select("key, value")
@@ -35,14 +46,16 @@ Deno.serve(async (req) => {
 
     const secretKey = moyasarSettings?.value;
     if (!secretKey) {
+      await log(supabase, "error", "Payment gateway not configured - missing secret key");
       return new Response(JSON.stringify({ error: "Payment gateway not configured" }), { status: 500, headers: corsHeaders });
     }
 
-    // Verify with Moyasar
     const verifyRes = await fetch(`https://api.moyasar.com/v1/payments/${moyasarId}`, {
       headers: { Authorization: `Basic ${btoa(secretKey + ":")}` },
     });
     const verifiedPayment = await verifyRes.json();
+
+    await log(supabase, "info", "Moyasar verification response", { verified_status: verifiedPayment.status, moyasar_id: moyasarId });
 
     if (verifiedPayment.status !== "paid") {
       await supabase.from("payments").update({
@@ -52,20 +65,20 @@ Deno.serve(async (req) => {
         updated_at: new Date().toISOString(),
       }).eq("id", paymentId);
 
+      await log(supabase, "warn", "Payment not verified as paid", { payment_id: paymentId, status: verifiedPayment.status });
       return new Response(JSON.stringify({ status: verifiedPayment.status }), { headers: corsHeaders });
     }
 
-    // Payment is verified as paid
     const { data: payment } = await supabase.from("payments")
       .select("*")
       .eq("id", paymentId)
       .maybeSingle();
 
     if (!payment) {
+      await log(supabase, "error", "Payment record not found", { payment_id: paymentId });
       return new Response(JSON.stringify({ error: "Payment not found" }), { status: 404, headers: corsHeaders });
     }
 
-    // Update payment record
     await supabase.from("payments").update({
       status: "paid",
       moyasar_payment_id: moyasarId,
@@ -75,7 +88,6 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     }).eq("id", paymentId);
 
-    // Activate subscription
     if (payment.payment_type === "subscription" && payment.plan_id) {
       const now = new Date();
       const endDate = new Date(now);
@@ -92,9 +104,14 @@ Deno.serve(async (req) => {
         subscription_ends_at: endDate.toISOString(),
         updated_at: now.toISOString(),
       }).eq("id", payment.org_id);
+
+      await log(supabase, "info", "Subscription activated", {
+        org_id: payment.org_id,
+        plan_id: payment.plan_id,
+        ends_at: endDate.toISOString(),
+      }, payment.org_id);
     }
 
-    // Log activity
     await supabase.from("activity_logs").insert({
       action: "payment_completed",
       actor_id: payment.org_id,
@@ -109,9 +126,12 @@ Deno.serve(async (req) => {
       },
     });
 
+    await log(supabase, "info", "Payment completed successfully", { payment_id: paymentId, amount: payment.amount }, payment.org_id);
+
     return new Response(JSON.stringify({ status: "paid", activated: true }), { headers: corsHeaders });
 
   } catch (e) {
+    await log(supabase, "critical", "Webhook processing failed", { error: e.message, stack: e.stack });
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
   }
 });

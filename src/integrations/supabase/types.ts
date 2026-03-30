@@ -1324,6 +1324,56 @@ export type Database = {
           },
         ]
       }
+      system_logs: {
+        Row: {
+          created_at: string
+          function_name: string | null
+          id: string
+          level: string
+          message: string
+          metadata: Json | null
+          org_id: string | null
+          request_id: string | null
+          source: string
+          stack_trace: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          function_name?: string | null
+          id?: string
+          level?: string
+          message: string
+          metadata?: Json | null
+          org_id?: string | null
+          request_id?: string | null
+          source?: string
+          stack_trace?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          function_name?: string | null
+          id?: string
+          level?: string
+          message?: string
+          metadata?: Json | null
+          org_id?: string | null
+          request_id?: string | null
+          source?: string
+          stack_trace?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_settings: {
         Row: {
           description: string | null

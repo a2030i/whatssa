@@ -13,6 +13,7 @@ import AdminUsage from "@/components/admin/AdminUsage";
 import AdminSettings from "@/components/admin/AdminSettings";
 import AdminMeta from "@/components/admin/AdminMeta";
 import AdminBaileys from "@/components/admin/AdminBaileys";
+import AdminLogs from "@/components/admin/AdminLogs";
 
 const tabs = [
   { id: "overview", label: "نظرة عامة" },
@@ -23,6 +24,7 @@ const tabs = [
   { id: "usage", label: "الاستخدام" },
   { id: "meta", label: "ربط ميتا" },
   { id: "baileys", label: "سيرفر QR" },
+  { id: "logs", label: "السجلات" },
   { id: "settings", label: "إعدادات النظام" },
 ];
 
@@ -41,6 +43,7 @@ const AdminDashboard = () => {
       case "usage": return <AdminUsage />;
       case "meta": return <AdminMeta />;
       case "baileys": return <AdminBaileys />;
+      case "logs": return <AdminLogs />;
       case "settings": return <AdminSettings />;
       default: return <AdminOverview />;
     }
