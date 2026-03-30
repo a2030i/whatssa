@@ -130,9 +130,12 @@ const ApiTokensSection = () => {
           <Key className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-bold">توكنات API</h3>
         </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="w-4 h-4 ml-1" /> إنشاء توكن جديد
-        </Button>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs">{tokens.length}/{maxTokens}</Badge>
+          <Button size="sm" onClick={() => setShowCreate(true)} disabled={limitReached}>
+            <Plus className="w-4 h-4 ml-1" /> إنشاء توكن جديد
+          </Button>
+        </div>
       </div>
 
       <div className="bg-secondary/50 rounded-lg p-3 text-sm">
