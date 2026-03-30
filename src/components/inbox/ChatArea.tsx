@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import TransferDialog from "./TransferDialog";
 import ClosureReasonDialog from "./ClosureReasonDialog";
 import ExportConversation from "./ExportConversation";
+import { useAuth } from "@/contexts/AuthContext";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
@@ -43,6 +44,20 @@ const isWindowExpired = (lastCustomerMessageAt?: string): boolean => {
   if (!lastCustomerMessageAt) return true;
   const diff = Date.now() - new Date(lastCustomerMessageAt).getTime();
   return diff > 24 * 60 * 60 * 1000;
+};
+
+const getWindowRemaining = (lastCustomerMessageAt?: string): { expired: boolean; hours: number; minutes: number; percentage: number } => {
+  if (!lastCustomerMessageAt) return { expired: true, hours: 0, minutes: 0, percentage: 0 };
+  const end = new Date(lastCustomerMessageAt).getTime() + 24 * 60 * 60 * 1000;
+  const remaining = end - Date.now();
+  if (remaining <= 0) return { expired: true, hours: 0, minutes: 0, percentage: 0 };
+  const totalMs = 24 * 60 * 60 * 1000;
+  return {
+    expired: false,
+    hours: Math.floor(remaining / (60 * 60 * 1000)),
+    minutes: Math.floor((remaining % (60 * 60 * 1000)) / 60000),
+    percentage: Math.round((remaining / totalMs) * 100),
+  };
 };
 
 const isImageUrl = (url?: string | null) => !!url && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url);
@@ -234,6 +249,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
 };
 
 const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange }: ChatAreaProps) => {
+  const { orgId } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -253,15 +269,42 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showTagInput, setShowTagInput] = useState(false);
   const [newTagText, setNewTagText] = useState("");
   const [allOrgTags, setAllOrgTags] = useState<string[]>([]);
+  const [savedReplies, setSavedReplies] = useState<Array<{ id: string; shortcut: string; title: string; content: string; category: string }>>([]);
+  const [showSavedReplies, setShowSavedReplies] = useState(false);
+  const [savedReplyFilter, setSavedReplyFilter] = useState("");
+  const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const windowExpired = isWindowExpired(conversation.lastCustomerMessageAt);
+  const windowExpired = windowInfo.expired;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
   const filteredMentionAgents = agents.filter((agent) => agent.name.includes(mentionFilter));
+
+  // 24h window countdown - update every minute
+  useEffect(() => {
+    setWindowInfo(getWindowRemaining(conversation.lastCustomerMessageAt));
+    const interval = setInterval(() => {
+      setWindowInfo(getWindowRemaining(conversation.lastCustomerMessageAt));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [conversation.lastCustomerMessageAt]);
+
+  // Load saved replies
+  useEffect(() => {
+    if (!orgId) return;
+    const loadReplies = async () => {
+      const { data } = await supabase
+        .from("saved_replies")
+        .select("id, shortcut, title, content, category")
+        .eq("org_id", orgId)
+        .order("shortcut");
+      if (data) setSavedReplies(data);
+    };
+    loadReplies();
+  }, [orgId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -319,6 +362,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
   const handleInputChange = (value: string) => {
     setInputText(value);
+
+    // Check for / shortcut (saved replies)
+    if (value.startsWith("/")) {
+      const filter = value.slice(1).toLowerCase();
+      setSavedReplyFilter(filter);
+      setShowSavedReplies(true);
+      setShowMentions(false);
+      return;
+    } else {
+      setShowSavedReplies(false);
+    }
+
+    // Check for @ mentions
     const lastAtIndex = value.lastIndexOf("@");
     if (lastAtIndex !== -1) {
       const afterAt = value.slice(lastAtIndex + 1);
@@ -330,6 +386,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     setShowMentions(false);
   };
+
+  const insertSavedReply = (reply: { content: string }) => {
+    // Replace customer name placeholder
+    const text = reply.content.replace(/\{name\}/gi, conversation.customerName || "");
+    setInputText(text);
+    setShowSavedReplies(false);
+    inputRef.current?.focus();
+  };
+
+  const filteredSavedReplies = savedReplies.filter((r) =>
+    !savedReplyFilter || r.shortcut.toLowerCase().includes(savedReplyFilter) || r.title.toLowerCase().includes(savedReplyFilter)
+  );
 
   const insertMention = (agentName: string) => {
     const lastAtIndex = inputText.lastIndexOf("@");
@@ -555,10 +623,25 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {windowExpired && (
+            {/* 24h Window Timer */}
+            {windowExpired ? (
               <div className="hidden sm:flex items-center gap-1 text-warning bg-warning/10 px-2 py-1 rounded-lg ml-2">
                 <Clock className="w-3 h-3" />
                 <span className="text-[10px] font-medium">نافذة 24س منتهية</span>
+              </div>
+            ) : windowInfo.hours < 24 && (
+              <div className={cn(
+                "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg ml-2",
+                windowInfo.hours < 2 ? "text-destructive bg-destructive/10" : windowInfo.hours < 6 ? "text-warning bg-warning/10" : "text-success bg-success/10"
+              )}>
+                <Timer className="w-3 h-3" />
+                <span className="text-[10px] font-bold font-mono">{windowInfo.hours}:{String(windowInfo.minutes).padStart(2, "0")}</span>
+                <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all", windowInfo.hours < 2 ? "bg-destructive" : windowInfo.hours < 6 ? "bg-warning" : "bg-success")}
+                    style={{ width: `${windowInfo.percentage}%` }}
+                  />
+                </div>
               </div>
             )}
             <ExportConversation conversation={conversation} messages={messages} />
@@ -716,7 +799,42 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </div>
       )}
 
-      {/* Mentions Popup */}
+      {/* Saved Replies Popup (/ shortcut) */}
+      {showSavedReplies && !windowExpired && !isNoteMode && (
+        <div className="shrink-0 border-t border-primary/20 bg-card px-3 py-2 max-h-[200px] overflow-y-auto">
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+              <Zap className="w-3 h-3 text-primary" /> ردود محفوظة
+            </p>
+            <button onClick={() => { setShowSavedReplies(false); setInputText(""); }} className="text-muted-foreground hover:text-foreground">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          {filteredSavedReplies.length > 0 ? (
+            <div className="space-y-1">
+              {filteredSavedReplies.map((reply) => (
+                <button
+                  key={reply.id}
+                  onClick={() => insertSavedReply(reply)}
+                  className="w-full text-right px-3 py-2 rounded-lg hover:bg-secondary transition-colors group"
+                >
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-mono shrink-0">/{reply.shortcut}</Badge>
+                    <span className="text-xs font-medium truncate">{reply.title}</span>
+                    {reply.category && <span className="text-[9px] text-muted-foreground mr-auto">{reply.category}</span>}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate mt-0.5 group-hover:text-foreground transition-colors">{reply.content}</p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-3">
+              {savedReplies.length === 0 ? "لا توجد ردود محفوظة — أضفها من الإعدادات" : "لا توجد نتائج لـ /" + savedReplyFilter}
+            </p>
+          )}
+        </div>
+      )}
+
       {showMentions && filteredMentionAgents.length > 0 && (
         <div className="border-t border-border bg-card px-3 py-2">
           <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">اذكر موظف</p>
