@@ -149,10 +149,13 @@ Deno.serve(async (req) => {
 async function handleOrder(supabase: any, orgId: string, integrationId: string, data: any, event: string) {
   const orderId = String(data.id);
   const customer = data.customer || {};
-  const total = data.total || data.amounts?.total || {};
+  const amounts = data.amounts || data.total || {};
+  const shipping = data.shipping || {};
+  const address = shipping.address || customer.address || {};
 
   // Upsert customer first
   let customerId: string | null = null;
+  const customerName = customer.first_name ? `${customer.first_name} ${customer.last_name || ""}`.trim() : null;
   if (customer.mobile || customer.phone) {
     const phone = normalizePhone(customer.mobile || customer.phone);
     const { data: existing } = await supabase
@@ -164,13 +167,20 @@ async function handleOrder(supabase: any, orgId: string, integrationId: string, 
 
     if (existing) {
       customerId = existing.id;
+      // Update customer info on every order
+      await supabase.from("customers").update({
+        name: customerName || undefined,
+        email: customer.email || undefined,
+        lifecycle_stage: "customer",
+        updated_at: new Date().toISOString(),
+      }).eq("id", existing.id);
     } else {
       const { data: created } = await supabase
         .from("customers")
         .insert({
           org_id: orgId,
           phone,
-          name: customer.first_name ? `${customer.first_name} ${customer.last_name || ""}`.trim() : null,
+          name: customerName,
           email: customer.email || null,
           source: "salla",
           lifecycle_stage: "customer",
@@ -186,15 +196,21 @@ async function handleOrder(supabase: any, orgId: string, integrationId: string, 
     external_id: orderId,
     order_number: data.reference_id ? String(data.reference_id) : orderId,
     customer_id: customerId,
-    customer_name: customer.first_name ? `${customer.first_name} ${customer.last_name || ""}`.trim() : null,
+    customer_name: customerName,
     customer_phone: normalizePhone(customer.mobile || customer.phone || ""),
     customer_email: customer.email || null,
-    customer_city: customer.city || null,
+    customer_city: address.city || customer.city || null,
+    customer_region: address.region || address.state || null,
+    customer_address: [address.street_number, address.block, address.district, address.zipcode].filter(Boolean).join(", ") || null,
     status: mapSallaOrderStatus(data.status?.slug || data.status?.name || "pending"),
     payment_status: data.payment?.status || "unpaid",
-    payment_method: data.payment?.method || null,
-    total: total.amount || 0,
-    currency: total.currency || "SAR",
+    payment_method: data.payment?.method || data.payment?.slug || null,
+    subtotal: amounts.sub_total?.amount || amounts.subtotal || 0,
+    discount_amount: amounts.discount?.amount || amounts.discount || 0,
+    shipping_amount: amounts.shipping?.amount || amounts.shipping_cost || 0,
+    tax_amount: amounts.tax?.amount || amounts.tax || 0,
+    total: amounts.total?.amount || amounts.amount || 0,
+    currency: amounts.total?.currency || amounts.currency || "SAR",
     source: "salla",
     updated_at: new Date().toISOString(),
   };
@@ -207,16 +223,53 @@ async function handleOrder(supabase: any, orgId: string, integrationId: string, 
     .eq("external_id", orderId)
     .maybeSingle();
 
+  let dbOrderId: string;
   if (existingOrder) {
-    await supabase
-      .from("orders")
-      .update(orderData)
-      .eq("id", existingOrder.id);
+    await supabase.from("orders").update(orderData).eq("id", existingOrder.id);
+    dbOrderId = existingOrder.id;
   } else {
-    await supabase.from("orders").insert(orderData);
+    const { data: newOrder } = await supabase.from("orders").insert(orderData).select("id").single();
+    dbOrderId = newOrder?.id;
   }
 
-  console.log(`[salla] Order ${event}: ${orderId} for org ${orgId}`);
+  // Sync order items
+  if (dbOrderId && data.items && Array.isArray(data.items)) {
+    // Delete old items then re-insert
+    await supabase.from("order_items").delete().eq("order_id", dbOrderId);
+
+    const items = data.items.map((item: any) => ({
+      order_id: dbOrderId,
+      product_name: item.name || item.product?.name || "منتج",
+      product_sku: item.sku || item.product?.sku || null,
+      product_id: null, // will be linked if product exists
+      quantity: item.quantity || 1,
+      unit_price: item.price?.amount || item.price || 0,
+      total_price: (item.price?.amount || item.price || 0) * (item.quantity || 1),
+      metadata: {
+        salla_product_id: item.product_id || item.id,
+        thumbnail: item.thumbnail || item.image?.url || null,
+        options: item.options || [],
+      },
+    }));
+
+    if (items.length > 0) {
+      // Try to link product_id from products table
+      for (const item of items) {
+        if (item.metadata.salla_product_id) {
+          const { data: prod } = await supabase
+            .from("products")
+            .select("id")
+            .eq("org_id", orgId)
+            .eq("external_id", String(item.metadata.salla_product_id))
+            .maybeSingle();
+          if (prod) item.product_id = prod.id;
+        }
+      }
+      await supabase.from("order_items").insert(items);
+    }
+  }
+
+  console.log(`[salla] Order ${event}: ${orderId} (${data.items?.length || 0} items) for org ${orgId}`);
 }
 
 async function handleOrderStatus(supabase: any, orgId: string, data: any) {

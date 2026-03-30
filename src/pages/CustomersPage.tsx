@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import CustomerProfile from "@/components/customers/CustomerProfile";
 
 const LIFECYCLE_STAGES = [
   { value: "lead", label: "عميل محتمل", icon: User, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
@@ -32,6 +33,7 @@ const CustomersPage = () => {
   const [editCustomer, setEditCustomer] = useState<any>(null);
   const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", tags: [] as string[], lifecycle_stage: "lead", company: "", source: "whatsapp" });
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -260,6 +262,14 @@ const CustomersPage = () => {
     count: customers.filter((c) => (c.lifecycle_stage || "lead") === s.value).length,
   }));
 
+  if (selectedCustomerId) {
+    return (
+      <div className="p-3 md:p-6 max-w-[1000px]">
+        <CustomerProfile customerId={selectedCustomerId} onBack={() => setSelectedCustomerId(null)} />
+      </div>
+    );
+  }
+
   return (
     <div className="p-3 md:p-6 space-y-4 max-w-[1000px]" dir="rtl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -321,7 +331,7 @@ const CustomersPage = () => {
             {filtered.map((c) => {
               const stage = LIFECYCLE_STAGES.find((s) => s.value === (c.lifecycle_stage || "lead")) || LIFECYCLE_STAGES[0];
               return (
-                <tr key={c.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                <tr key={c.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => setSelectedCustomerId(c.id)}>
                   <td className="p-3">
                     <p className="font-medium">{c.name || "بدون اسم"}</p>
                     {c.company && <p className="text-[10px] text-muted-foreground">{c.company}</p>}
@@ -349,10 +359,10 @@ const CustomersPage = () => {
                   </td>
                   <td className="p-3">
                     <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEdit(c)}>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); openEdit(c); }}>
                         <Edit2 className="w-3 h-3" />
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => handleDelete(c.id)}>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}>
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
