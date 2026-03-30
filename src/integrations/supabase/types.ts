@@ -377,6 +377,108 @@ export type Database = {
           },
         ]
       }
+      chatbot_flows: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          nodes: Json | null
+          org_id: string
+          trigger_keywords: string[] | null
+          trigger_type: string
+          updated_at: string | null
+          welcome_message: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          nodes?: Json | null
+          org_id: string
+          trigger_keywords?: string[] | null
+          trigger_type?: string
+          updated_at?: string | null
+          welcome_message?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          nodes?: Json | null
+          org_id?: string
+          trigger_keywords?: string[] | null
+          trigger_type?: string
+          updated_at?: string | null
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatbot_flows_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chatbot_sessions: {
+        Row: {
+          conversation_id: string
+          created_at: string | null
+          current_node_id: string | null
+          flow_id: string
+          id: string
+          is_active: boolean | null
+          org_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string | null
+          current_node_id?: string | null
+          flow_id: string
+          id?: string
+          is_active?: boolean | null
+          org_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string | null
+          current_node_id?: string | null
+          flow_id?: string
+          id?: string
+          is_active?: boolean | null
+          org_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatbot_sessions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: true
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chatbot_sessions_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "chatbot_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chatbot_sessions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closure_reasons: {
         Row: {
           created_at: string | null
