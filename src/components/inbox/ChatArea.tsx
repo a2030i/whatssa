@@ -249,6 +249,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
 };
 
 const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange }: ChatAreaProps) => {
+  const { orgId } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -268,15 +269,42 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showTagInput, setShowTagInput] = useState(false);
   const [newTagText, setNewTagText] = useState("");
   const [allOrgTags, setAllOrgTags] = useState<string[]>([]);
+  const [savedReplies, setSavedReplies] = useState<Array<{ id: string; shortcut: string; title: string; content: string; category: string }>>([]);
+  const [showSavedReplies, setShowSavedReplies] = useState(false);
+  const [savedReplyFilter, setSavedReplyFilter] = useState("");
+  const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const windowExpired = isWindowExpired(conversation.lastCustomerMessageAt);
+  const windowExpired = windowInfo.expired;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
   const filteredMentionAgents = agents.filter((agent) => agent.name.includes(mentionFilter));
+
+  // 24h window countdown - update every minute
+  useEffect(() => {
+    setWindowInfo(getWindowRemaining(conversation.lastCustomerMessageAt));
+    const interval = setInterval(() => {
+      setWindowInfo(getWindowRemaining(conversation.lastCustomerMessageAt));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [conversation.lastCustomerMessageAt]);
+
+  // Load saved replies
+  useEffect(() => {
+    if (!orgId) return;
+    const loadReplies = async () => {
+      const { data } = await supabase
+        .from("saved_replies")
+        .select("id, shortcut, title, content, category")
+        .eq("org_id", orgId)
+        .order("shortcut");
+      if (data) setSavedReplies(data);
+    };
+    loadReplies();
+  }, [orgId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
