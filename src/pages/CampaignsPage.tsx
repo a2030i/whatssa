@@ -658,7 +658,8 @@ const CampaignsPage = () => {
               </>
             )}
 
-            {/* Template Variables */}
+            {/* Template Variables (Meta only) */}
+            {!isEvolutionChannel && form.channelId && (
             <div className="space-y-1.5">
               <Label className="text-xs">متغيرات القالب (اختياري)</Label>
               <p className="text-[10px] text-muted-foreground">أضف أسماء المتغيرات بالترتيب مثل: الاسم، رقم_الطلب — يمكنك تعبئتها من الإكسل</p>
@@ -684,6 +685,7 @@ const CampaignsPage = () => {
                 />
               </div>
             </div>
+            )}
 
             {/* Audience */}
             <div className="space-y-3">
