@@ -27,6 +27,7 @@ import ApiDocsPage from "./pages/ApiDocsPage";
 import ReportsPage from "./pages/ReportsPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentCallbackPage from "./pages/PaymentCallbackPage";
+import BillingPage from "./pages/BillingPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -89,6 +90,7 @@ const AppRoutes = () => {
       <Route path="/api-docs" element={<ProtectedRoute><AppLayout><ApiDocsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/checkout" element={<ProtectedRoute><AppLayout><CheckoutPage /></AppLayout></ProtectedRoute>} />
       <Route path="/payment-callback" element={<ProtectedRoute><AppLayout><PaymentCallbackPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/billing" element={<ProtectedRoute><AppLayout><BillingPage /></AppLayout></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
