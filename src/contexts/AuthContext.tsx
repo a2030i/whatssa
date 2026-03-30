@@ -16,6 +16,7 @@ interface AuthContextType {
   impersonatedOrgId: string | null;
   startImpersonation: (orgId: string) => void;
   stopImpersonation: () => void;
+  refreshOrg: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -33,6 +34,7 @@ const AuthContext = createContext<AuthContextType>({
   impersonatedOrgId: null,
   startImpersonation: () => {},
   stopImpersonation: () => {},
+  refreshOrg: () => {},
   signOut: async () => {},
 });
 
