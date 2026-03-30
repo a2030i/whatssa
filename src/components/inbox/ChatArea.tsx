@@ -423,6 +423,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const handleInputChange = (value: string) => {
     setInputText(value);
 
+    // Broadcast typing presence
+    if (value.trim() && !isNoteMode) {
+      broadcastTyping(true);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => broadcastTyping(false), 3000);
+    } else {
+      broadcastTyping(false);
+    }
+
     // Check for / shortcut (saved replies)
     if (value.startsWith("/")) {
       const filter = value.slice(1).toLowerCase();
@@ -434,13 +443,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       setShowSavedReplies(false);
     }
 
-    // Check for @ mentions
+    // Check for @ mentions - auto-switch to note mode
     const lastAtIndex = value.lastIndexOf("@");
     if (lastAtIndex !== -1) {
       const afterAt = value.slice(lastAtIndex + 1);
       if (!afterAt.includes(" ") && afterAt.length <= 20) {
         setShowMentions(true);
         setMentionFilter(afterAt);
+        if (!isNoteMode) {
+          setIsNoteMode(true);
+        }
         return;
       }
     }
