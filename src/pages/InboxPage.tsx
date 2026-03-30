@@ -10,6 +10,8 @@ import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";
 import { toast } from "sonner";
 import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
 
+const TYPING_TIMEOUT = 3000;
+
 const formatTimestamp = (isoStr: string | null): string => {
   if (!isoStr) return "";
   const date = new Date(isoStr);
@@ -24,7 +26,7 @@ const formatTimestamp = (isoStr: string | null): string => {
 };
 
 const InboxPage = () => {
-  const { orgId } = useAuth();
+  const { orgId, profile } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [allMessages, setAllMessages] = useState<Record<string, Message[]>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -252,24 +254,37 @@ const InboxPage = () => {
   }, [conversations]);
 
   const handleStatusChange = useCallback(async (convId: string, status: "active" | "waiting" | "closed") => {
+    const conv = conversations.find(c => c.id === convId);
+    const prevStatus = conv?.status;
     await supabase.from("conversations").update({ status, ...(status === "closed" ? { closed_at: new Date().toISOString() } : {}) }).eq("id", convId);
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, status } : conversation)));
+
+    // Log status change as system message
+    const statusLabels: Record<string, string> = { active: "نشط", waiting: "بانتظار", closed: "مغلق" };
+    const agentName = profile?.full_name || "النظام";
     if (status === "closed") {
       await supabase.from("messages").insert({
         conversation_id: convId,
-        content: "تم إغلاق المحادثة",
+        content: `تم إغلاق المحادثة بواسطة ${agentName}`,
         sender: "system",
         message_type: "text",
       });
+    } else {
+      await supabase.from("messages").insert({
+        conversation_id: convId,
+        content: `تم تغيير الحالة إلى "${statusLabels[status]}" بواسطة ${agentName}`,
+        sender: "system",
+        message_type: "text",
+      });
+    }
 
+    if (status === "closed") {
       // Send satisfaction survey if enabled
       try {
-        const conv = conversations.find(c => c.id === convId);
         if (conv && orgId) {
           const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
           const settings = (org?.settings as Record<string, any>) || {};
           if (settings.satisfaction_enabled && settings.satisfaction_message) {
-            // Invoke the send function to send satisfaction message
             await supabase.functions.invoke("whatsapp-send", {
               body: {
                 phone: conv.customerPhone,
@@ -277,7 +292,6 @@ const InboxPage = () => {
                 org_id: orgId,
               },
             });
-            // Update conversation satisfaction status
             await supabase.from("conversations").update({ satisfaction_status: "pending" }).eq("id", convId);
           }
         }
@@ -285,18 +299,28 @@ const InboxPage = () => {
         console.error("Failed to send satisfaction survey:", e);
       }
     }
-  }, [conversations, orgId]);
+  }, [conversations, orgId, profile]);
 
   const handleTransfer = useCallback(async (convId: string, agent: string) => {
+    const conv = conversations.find(c => c.id === convId);
+    const previousAgent = conv?.assignedTo;
+    const agentName = profile?.full_name || "النظام";
+    
     await supabase.from("conversations").update({ assigned_to: agent }).eq("id", convId);
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, assignedTo: agent } : conversation)));
+    
+    // Log transfer with details
+    const content = previousAgent && previousAgent !== "غير معيّن"
+      ? `تم تحويل المحادثة من ${previousAgent} إلى ${agent} بواسطة ${agentName}`
+      : `تم إسناد المحادثة إلى ${agent} بواسطة ${agentName}`;
+    
     await supabase.from("messages").insert({
       conversation_id: convId,
-      content: `تم تحويل المحادثة إلى ${agent}`,
+      content,
       sender: "system",
       message_type: "text",
     });
-  }, []);
+  }, [conversations, profile]);
 
   const handleUpdateNotes = useCallback(async (convId: string, notes: string) => {
     await supabase.from("conversations").update({ notes }).eq("id", convId);

@@ -249,7 +249,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
 };
 
 const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange }: ChatAreaProps) => {
-  const { orgId } = useAuth();
+  const { orgId, user, profile } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -274,11 +274,53 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [savedReplyFilter, setSavedReplyFilter] = useState("");
   const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [otherTypingAgents, setOtherTypingAgents] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Real-time typing presence
+  useEffect(() => {
+    if (!conversation.id || !user?.id) return;
+
+    const channelName = `typing:${conversation.id}`;
+    const channel = supabase.channel(channelName, {
+      config: { presence: { key: user.id } },
+    });
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const typingNames: string[] = [];
+        Object.entries(state).forEach(([key, presences]) => {
+          if (key !== user?.id) {
+            const p = (presences as any[])[0];
+            if (p?.is_typing) {
+              typingNames.push(p.name || "موظف");
+            }
+          }
+        });
+        setOtherTypingAgents(typingNames);
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({ is_typing: false, name: profile?.full_name || "موظف" });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversation.id, user?.id, profile?.full_name]);
+
+  const broadcastTyping = useCallback((typing: boolean) => {
+    const channelName = `typing:${conversation.id}`;
+    const channel = supabase.channel(channelName);
+    channel.track({ is_typing: typing, name: profile?.full_name || "موظف" });
+  }, [conversation.id, profile?.full_name]);
 
   // Fetch real team members from database
   useEffect(() => {
@@ -365,6 +407,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     onSendMessage(conversation.id, inputText.trim(), "text", replyData);
     setInputText("");
     setReplyTo(null);
+    broadcastTyping(false);
     setIsTyping(true);
     setTimeout(() => setIsTyping(false), 2000);
   };
@@ -380,6 +423,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const handleInputChange = (value: string) => {
     setInputText(value);
 
+    // Broadcast typing presence
+    if (value.trim() && !isNoteMode) {
+      broadcastTyping(true);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => broadcastTyping(false), 3000);
+    } else {
+      broadcastTyping(false);
+    }
+
     // Check for / shortcut (saved replies)
     if (value.startsWith("/")) {
       const filter = value.slice(1).toLowerCase();
@@ -391,13 +443,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       setShowSavedReplies(false);
     }
 
-    // Check for @ mentions
+    // Check for @ mentions - auto-switch to note mode
     const lastAtIndex = value.lastIndexOf("@");
     if (lastAtIndex !== -1) {
       const afterAt = value.slice(lastAtIndex + 1);
       if (!afterAt.includes(" ") && afterAt.length <= 20) {
         setShowMentions(true);
         setMentionFilter(afterAt);
+        if (!isNoteMode) {
+          setIsNoteMode(true);
+        }
         return;
       }
     }
@@ -801,6 +856,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             )}
           </div>
         ))}
+        {/* Other agents typing indicator */}
+        {otherTypingAgents.length > 0 && (
+          <div className="flex justify-center">
+            <div className="bg-primary/10 text-primary text-[11px] px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <span className="font-medium">{otherTypingAgents.join("، ")}</span>
+              <span>يكتب الآن</span>
+              <span className="flex gap-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </span>
+            </div>
+          </div>
+        )}
         {isTyping && (
           <div className="flex justify-end">
             <div className="gradient-whatsapp text-whatsapp-foreground rounded-xl rounded-br-sm px-4 py-2.5 text-sm">
