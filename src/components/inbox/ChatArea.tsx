@@ -279,7 +279,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const windowExpired = windowInfo.expired;
+  const isMetaChannel = conversation.channelType === "meta_api";
+  const windowExpired = isMetaChannel ? windowInfo.expired : false;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
   const filteredMentionAgents = agents.filter((agent) => agent.name.includes(mentionFilter));
 
@@ -623,8 +624,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {/* 24h Window Timer */}
-            {windowExpired ? (
+            {/* 24h Window Timer - Meta API only */}
+            {isMetaChannel && (windowExpired ? (
               <div className="hidden sm:flex items-center gap-1 text-warning bg-warning/10 px-2 py-1 rounded-lg ml-2">
                 <Clock className="w-3 h-3" />
                 <span className="text-[10px] font-medium">نافذة 24س منتهية</span>
@@ -643,7 +644,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   />
                 </div>
               </div>
-            )}
+            ))}
             <ExportConversation conversation={conversation} messages={messages} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
