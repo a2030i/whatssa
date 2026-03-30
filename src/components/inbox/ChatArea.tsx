@@ -70,7 +70,57 @@ const scrollToMessage = (messageId?: string) => {
   setTimeout(() => el.classList.remove("ring-2", "ring-primary/60", "rounded-xl"), 1500);
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void }) => {
+/** Component to resolve storage: URLs to signed URLs for media display */
+const ResolvedMedia = ({ url, type }: { url: string; type: string }) => {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveMediaUrl(url).then((resolved) => {
+      if (!cancelled) {
+        setResolvedUrl(resolved);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (loading) return <div className="w-[120px] h-[80px] rounded-lg bg-muted animate-pulse mb-1" />;
+  if (!resolvedUrl) return null;
+
+  const isImage = type === "image" || isImageUrl(resolvedUrl) || isImageUrl(url);
+
+  if (isImage) {
+    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(resolvedUrl, "_blank")} />;
+  }
+  if (type === "audio") {
+    return (
+      <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium"><Play className="h-3.5 w-3.5" /><span>مقطع صوتي</span></div>
+        <audio controls preload="none" className="w-full"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الصوت.</audio>
+      </div>
+    );
+  }
+  if (type === "video") {
+    return (
+      <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium"><Video className="h-3.5 w-3.5" /><span>مقطع فيديو</span></div>
+        <video controls preload="metadata" className="max-h-[240px] w-full rounded-md"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الفيديو.</video>
+      </div>
+    );
+  }
+  if (type === "document") {
+    return (
+      <a href={resolvedUrl} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 rounded-lg bg-background/40 p-2 text-xs font-medium hover:bg-background/60">
+        <FileText className="h-4 w-4" /><span>فتح الملف المرفق</span>
+      </a>
+    );
+  }
+  return null;
+};
+
+
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note";
   const swipe = useSwipeReply({
