@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import TransferDialog from "./TransferDialog";
 import ClosureReasonDialog from "./ClosureReasonDialog";
+import ExportConversation from "./ExportConversation";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
@@ -548,6 +549,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <span className="text-[10px] font-medium">نافذة 24س منتهية</span>
               </div>
             )}
+            <ExportConversation conversation={conversation} messages={messages} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
