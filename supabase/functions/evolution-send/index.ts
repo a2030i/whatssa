@@ -16,22 +16,52 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+async function logToSystem(
+  client: ReturnType<typeof createClient>,
+  level: string,
+  message: string,
+  metadata: Record<string, unknown> = {},
+  orgId?: string | null,
+  userId?: string | null,
+) {
+  try {
+    await client.from("system_logs").insert({
+      level,
+      source: "edge_function",
+      function_name: "evolution-send",
+      message,
+      metadata,
+      org_id: orgId || null,
+      user_id: userId || null,
+    });
+  } catch (e) {
+    console.error("Failed to write system log:", e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
   try {
     const authorization = req.headers.get("Authorization") || "";
-    if (!authorization) return json({ error: "Unauthorized" }, 401);
+    if (!authorization) {
+      await logToSystem(adminClient, "warn", "طلب إرسال Evolution بدون توثيق");
+      return json({ error: "Unauthorized" }, 401);
+    }
 
     const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authorization } },
     });
-    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: { user }, error: userError } = await authClient.auth.getUser();
-    if (userError || !user) return json({ error: "Unauthorized" }, 401);
+    if (userError || !user) {
+      await logToSystem(adminClient, "warn", "فشل التحقق من المستخدم (Evolution Send)", { error: userError?.message });
+      return json({ error: "Unauthorized" }, 401);
+    }
 
     const { data: profile } = await adminClient
       .from("profiles")
@@ -39,19 +69,24 @@ serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!profile?.org_id) return json({ error: "لا توجد مؤسسة مرتبطة" }, 400);
+    if (!profile?.org_id) {
+      await logToSystem(adminClient, "warn", "مستخدم بدون مؤسسة حاول إرسال رسالة Evolution", {}, null, user.id);
+      return json({ error: "لا توجد مؤسسة مرتبطة" }, 400);
+    }
 
-    // Find Evolution config for this org
+    const orgId = profile.org_id;
+
     const { data: config } = await adminClient
       .from("whatsapp_config")
       .select("*")
-      .eq("org_id", profile.org_id)
+      .eq("org_id", orgId)
       .eq("channel_type", "evolution")
       .eq("is_connected", true)
       .limit(1)
       .maybeSingle();
 
     if (!config || !config.evolution_instance_name) {
+      await logToSystem(adminClient, "error", "واتساب ويب غير مربوط - فشل الإرسال", {}, orgId, user.id);
       return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
     }
 
@@ -62,16 +97,12 @@ serve(async (req) => {
     const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
 
     if (!EVOLUTION_URL || !EVOLUTION_KEY) {
+      await logToSystem(adminClient, "error", "إعدادات Evolution API غير مكتملة", {}, orgId, user.id);
       return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
     }
 
-    // Send via Evolution API
     const instanceName = config.evolution_instance_name;
-    // Build send payload with optional quoted reply
-    const sendBody: Record<string, unknown> = {
-      number: to,
-      text: message,
-    };
+    const sendBody: Record<string, unknown> = { number: to, text: message };
 
     if (reply_to?.wa_message_id) {
       sendBody.quoted = {
@@ -80,11 +111,13 @@ serve(async (req) => {
           fromMe: false,
           id: reply_to.wa_message_id,
         },
-        message: {
-          conversation: reply_to.text || "",
-        },
+        message: { conversation: reply_to.text || "" },
       };
     }
+
+    await logToSystem(adminClient, "info", `إرسال رسالة Evolution إلى ${to}`, {
+      to, instance: instanceName, has_reply: !!reply_to,
+    }, orgId, user.id);
 
     const response = await fetch(`${EVOLUTION_URL}/message/sendText/${instanceName}`, {
       method: "POST",
@@ -98,11 +131,17 @@ serve(async (req) => {
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("Evolution send error:", result);
+      await logToSystem(adminClient, "error", `فشل إرسال رسالة Evolution إلى ${to}`, {
+        to, http_status: response.status, error: result?.message || "unknown", instance: instanceName,
+      }, orgId, user.id);
       return json({ error: result?.message || "فشل إرسال الرسالة عبر Evolution" }, response.status);
     }
 
     const waMessageId = result.key?.id || null;
+
+    await logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
+      wa_message_id: waMessageId,
+    }, orgId, user.id);
 
     // Save message to DB
     let conversation = null;
@@ -111,7 +150,7 @@ serve(async (req) => {
         .from("conversations")
         .select("id")
         .eq("id", conversation_id)
-        .eq("org_id", profile.org_id)
+        .eq("org_id", orgId)
         .maybeSingle();
       conversation = data;
     }
@@ -121,7 +160,7 @@ serve(async (req) => {
         .from("conversations")
         .select("id")
         .eq("customer_phone", to)
-        .eq("org_id", profile.org_id)
+        .eq("org_id", orgId)
         .neq("status", "closed")
         .limit(1)
         .maybeSingle();
@@ -157,6 +196,9 @@ serve(async (req) => {
 
     return json({ success: true, message_id: waMessageId });
   } catch (err: any) {
+    await logToSystem(adminClient, "critical", "خطأ غير متوقع في إرسال رسالة Evolution", {
+      error: err.message,
+    });
     console.error("Evolution send error:", err);
     return json({ error: err.message }, 500);
   }
