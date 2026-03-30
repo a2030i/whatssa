@@ -57,6 +57,18 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const MetaApiRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading, hasMetaApi } = useAuth();
+  if (isLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!hasMetaApi) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
 const AppRoutes = () => {
   const { user, isLoading, isSuperAdmin, isImpersonating } = useAuth();
 
@@ -78,14 +90,14 @@ const AppRoutes = () => {
       <Route path="/inbox" element={<ProtectedRoute><AppLayout><InboxPage /></AppLayout></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><AppLayout><CustomersPage /></AppLayout></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/campaigns" element={<ProtectedRoute><AppLayout><CampaignsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/campaigns" element={<MetaApiRoute><AppLayout><CampaignsPage /></AppLayout></MetaApiRoute>} />
       <Route path="/automation" element={<ProtectedRoute><AppLayout><AutomationPage /></AppLayout></ProtectedRoute>} />
       <Route path="/chatbot" element={<ProtectedRoute><AppLayout><ChatbotPage /></AppLayout></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><AppLayout><TeamPage /></AppLayout></ProtectedRoute>} />
       <Route path="/plans" element={<ProtectedRoute><AppLayout><PlanUpgradePage /></AppLayout></ProtectedRoute>} />
       <Route path="/integrations" element={<ProtectedRoute><AppLayout><IntegrationsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/templates" element={<ProtectedRoute><AppLayout><TemplatesPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/templates" element={<MetaApiRoute><AppLayout><TemplatesPage /></AppLayout></MetaApiRoute>} />
       <Route path="/wallet" element={<ProtectedRoute><AppLayout><WalletPage /></AppLayout></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><AppLayout><OrdersPage /></AppLayout></ProtectedRoute>} />
       <Route path="/abandoned-carts" element={<ProtectedRoute><AppLayout><AbandonedCartsPage /></AppLayout></ProtectedRoute>} />

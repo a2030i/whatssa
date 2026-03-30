@@ -8,7 +8,7 @@ import {
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -49,7 +49,7 @@ const buildGroups = (isEcommerce: boolean): (NavItem | NavGroup)[] => [
     label: "التسويق",
     icon: Megaphone,
     items: [
-      { label: "الحملات", icon: Megaphone, path: "/campaigns" },
+      { label: "الحملات", icon: Megaphone, path: "/campaigns", metaApiOnly: true },
       { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true },
       { label: "الأتمتة", icon: Bot, path: "/automation" },
       { label: "الشات بوت", icon: Zap, path: "/chatbot" },
@@ -88,21 +88,9 @@ const roleLabels: Record<string, string> = {
 const AppSidebar = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { profile, userRole, isSuperAdmin, isEcommerce, signOut } = useAuth();
+  const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, signOut } = useAuth();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const [hasMetaApi, setHasMetaApi] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    supabase
-      .from("whatsapp_config")
-      .select("id")
-      .eq("channel_type", "meta_api")
-      .eq("is_connected", true)
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => setHasMetaApi(!!data));
-  }, []);
 
   const navStructure = buildGroups(isEcommerce)
     .map((item) => {

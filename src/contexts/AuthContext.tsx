@@ -11,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   isSuperAdmin: boolean;
   isEcommerce: boolean;
+  hasMetaApi: boolean;
   isImpersonating: boolean;
   impersonatedOrgId: string | null;
   startImpersonation: (orgId: string) => void;
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isSuperAdmin: false,
   isEcommerce: false,
+  hasMetaApi: false,
   isImpersonating: false,
   impersonatedOrgId: null,
   startImpersonation: () => {},
@@ -43,6 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [isEcommerce, setIsEcommerce] = useState(false);
+  const [hasMetaApi, setHasMetaApi] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [impersonatedOrgId, setImpersonatedOrgId] = useState<string | null>(null);
 
@@ -61,8 +64,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfile(profileRes.data);
       setOrgId(profileRes.data.org_id);
       if (profileRes.data.org_id) {
-        const { data: orgData } = await supabase.from("organizations").select("is_ecommerce").eq("id", profileRes.data.org_id).maybeSingle();
-        setIsEcommerce(orgData?.is_ecommerce || false);
+        const [orgRes, metaRes] = await Promise.all([
+          supabase.from("organizations").select("is_ecommerce").eq("id", profileRes.data.org_id).maybeSingle(),
+          supabase.from("whatsapp_config").select("id").eq("org_id", profileRes.data.org_id).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
+        ]);
+        setIsEcommerce(orgRes.data?.is_ecommerce || false);
+        setHasMetaApi(!!metaRes.data);
       }
     }
     if (roleRes.data && roleRes.data.length > 0) {
@@ -75,17 +82,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const startImpersonation = async (targetOrgId: string) => {
     setImpersonatedOrgId(targetOrgId);
-    // Fetch ecommerce status for impersonated org
-    const { data: orgData } = await supabase.from("organizations").select("is_ecommerce").eq("id", targetOrgId).maybeSingle();
-    setIsEcommerce(orgData?.is_ecommerce || false);
+    const [orgRes, metaRes] = await Promise.all([
+      supabase.from("organizations").select("is_ecommerce").eq("id", targetOrgId).maybeSingle(),
+      supabase.from("whatsapp_config").select("id").eq("org_id", targetOrgId).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
+    ]);
+    setIsEcommerce(orgRes.data?.is_ecommerce || false);
+    setHasMetaApi(!!metaRes.data);
   };
 
   const stopImpersonation = () => {
     setImpersonatedOrgId(null);
-    // Restore original org's ecommerce status
     if (orgId) {
-      supabase.from("organizations").select("is_ecommerce").eq("id", orgId).maybeSingle().then(({ data }) => {
-        setIsEcommerce(data?.is_ecommerce || false);
+      Promise.all([
+        supabase.from("organizations").select("is_ecommerce").eq("id", orgId).maybeSingle(),
+        supabase.from("whatsapp_config").select("id").eq("org_id", orgId).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
+      ]).then(([orgRes, metaRes]) => {
+        setIsEcommerce(orgRes.data?.is_ecommerce || false);
+        setHasMetaApi(!!metaRes.data);
       });
     }
   };
@@ -128,6 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserRole(null);
     setOrgId(null);
     setIsEcommerce(false);
+    setHasMetaApi(false);
     setImpersonatedOrgId(null);
   };
 
@@ -142,6 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isSuperAdmin,
         isEcommerce,
+        hasMetaApi,
         isImpersonating,
         impersonatedOrgId,
         startImpersonation,
