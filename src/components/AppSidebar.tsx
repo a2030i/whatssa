@@ -49,7 +49,7 @@ const buildGroups = (isEcommerce: boolean): (NavItem | NavGroup)[] => [
     label: "التسويق",
     icon: Megaphone,
     items: [
-      { label: "الحملات", icon: Megaphone, path: "/campaigns", metaApiOnly: true },
+      { label: "الحملات", icon: Megaphone, path: "/campaigns" },
       { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true },
       { label: "الأتمتة", icon: Bot, path: "/automation" },
       { label: "الشات بوت", icon: Zap, path: "/chatbot" },
