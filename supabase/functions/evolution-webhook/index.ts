@@ -307,6 +307,43 @@ serve(async (req) => {
 
       await logToSystem(supabase, newStatus === "disconnected" ? "warn" : "info",
         `حالة اتصال Evolution تغيرت: ${newStatus}`, { instance: instanceName, state }, orgId);
+
+      // ── Auto-reconnect on disconnect ──
+      if (newStatus === "disconnected" && EVOLUTION_API_URL && EVOLUTION_API_KEY) {
+        await logToSystem(supabase, "info", `محاولة إعادة اتصال تلقائي للجلسة: ${instanceName}`, {}, orgId);
+        try {
+          const reconnectRes = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
+            headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+          });
+          const reconnectData = await reconnectRes.json();
+          const reconnectState = reconnectData.instance?.state || reconnectData.state || "";
+          if (reconnectState === "open") {
+            await supabase.from("whatsapp_config").update({
+              evolution_instance_status: "connected", is_connected: true, registration_status: "connected",
+              updated_at: new Date().toISOString(),
+            }).eq("id", config.id);
+            await logToSystem(supabase, "info", `✅ تم إعادة الاتصال تلقائياً: ${instanceName}`, {}, orgId);
+          } else {
+            await logToSystem(supabase, "warn", `فشل إعادة الاتصال التلقائي — يتطلب QR جديد`, { state: reconnectState }, orgId);
+            // Create notification for org admins
+            const { data: orgAdmins } = await supabase.from("profiles").select("id").eq("org_id", orgId);
+            if (orgAdmins && orgAdmins.length > 0) {
+              const notifications = orgAdmins.map((admin: any) => ({
+                org_id: orgId,
+                user_id: admin.id,
+                type: "alert",
+                title: "⚠️ انقطع اتصال واتساب ويب",
+                body: `انقطع اتصال جلسة واتساب ويب (${instanceName}). يرجى إعادة المسح من صفحة التكامل.`,
+              }));
+              await supabase.from("notifications").insert(notifications);
+            }
+          }
+        } catch (e) {
+          await logToSystem(supabase, "error", "فشل محاولة إعادة الاتصال التلقائي", {
+            error: e instanceof Error ? e.message : String(e), instance: instanceName,
+          }, orgId);
+        }
+      }
     }
 
     // Handle QRCODE_UPDATED
@@ -430,6 +467,30 @@ serve(async (req) => {
             }
           } else if (conversationType === "group") {
             convName = `قروب ${phone}`;
+          } else if (conversationType === "private" && EVOLUTION_API_URL && EVOLUTION_API_KEY && (!convName || convName === phone)) {
+            // ── Contact sync: fetch contact name from Evolution ──
+            try {
+              const contactRes = await fetch(
+                `${EVOLUTION_API_URL}/chat/findContacts/${instanceName}`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+                  body: JSON.stringify({ where: { id: `${phone}@s.whatsapp.net` } }),
+                }
+              );
+              if (contactRes.ok) {
+                const contacts = await contactRes.json();
+                const contact = Array.isArray(contacts) ? contacts[0] : contacts;
+                const contactName = contact?.pushName || contact?.name || contact?.notify || contact?.verifiedName;
+                if (contactName && contactName !== phone) {
+                  convName = contactName;
+                  // Also update customer record if exists
+                  await supabase.from("customers").update({ name: contactName }).eq("phone", phone).eq("org_id", orgId);
+                }
+              }
+            } catch (e) {
+              // Silent fail — pushName fallback is fine
+            }
           }
 
           const { data: newConv, error: convError } = await supabase

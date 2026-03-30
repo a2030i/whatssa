@@ -415,15 +415,22 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  const allowedFileTypes = "image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+  const getFileMediaType = (file: File): string => {
+    if (file.type.startsWith("image/")) return "image";
+    if (file.type.startsWith("video/")) return "video";
+    if (file.type.startsWith("audio/")) return "audio";
+    return "document";
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("يُسمح فقط برفع الصور حالياً");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("حجم الصورة يجب أن يكون أقل من 10 ميغابايت");
+    const mediaType = getFileMediaType(file);
+    const maxSize = mediaType === "video" ? 50 : 20; // MB
+    if (file.size > maxSize * 1024 * 1024) {
+      toast.error(`حجم الملف يجب أن يكون أقل من ${maxSize} ميغابايت`);
       return;
     }
     const url = URL.createObjectURL(file);
@@ -439,7 +446,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     setIsUploading(true);
     try {
-      const ext = imagePreview.file.name.split(".").pop() || "jpg";
+      const ext = imagePreview.file.name.split(".").pop() || "bin";
+      const mediaType = getFileMediaType(imagePreview.file);
       const path = `${conversation.id}/${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("chat-media")
@@ -447,14 +455,43 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       if (uploadError) throw uploadError;
       const storagePath = `storage:chat-media/${path}`;
       const caption = inputText.trim();
-      onSendMessage(conversation.id, caption ? `📷 ${caption}\n${storagePath}` : `📷 صورة\n${storagePath}`);
+
+      // Check if using Evolution — send media via evolution-send with media_url
+      const { data: evoConfig } = await supabase
+        .from("whatsapp_config")
+        .select("id")
+        .eq("channel_type", "evolution")
+        .eq("is_connected", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (evoConfig) {
+        // Send via evolution-send with media support
+        const { data, error } = await supabase.functions.invoke("evolution-send", {
+          body: {
+            to: conversation.customerPhone,
+            message: caption || "",
+            conversation_id: conversation.id,
+            media_url: storagePath,
+            media_type: mediaType,
+          },
+        });
+        if (error || data?.error) {
+          throw new Error(data?.error || "فشل إرسال الوسائط");
+        }
+      } else {
+        // Fallback: text-based send with storage path
+        const label = mediaType === "image" ? "📷" : mediaType === "video" ? "🎬" : "📎";
+        onSendMessage(conversation.id, caption ? `${label} ${caption}\n${storagePath}` : `${label} ${mediaType === "image" ? "صورة" : mediaType === "video" ? "فيديو" : "ملف"}\n${storagePath}`);
+      }
+
       setImagePreview(null);
       setInputText("");
       URL.revokeObjectURL(imagePreview.url);
-      toast.success("تم إرسال الصورة");
+      toast.success(mediaType === "image" ? "تم إرسال الصورة" : mediaType === "video" ? "تم إرسال الفيديو" : "تم إرسال الملف");
     } catch (err: any) {
       console.error("Upload error:", err);
-      toast.error("فشل رفع الصورة: " + (err.message || "خطأ غير معروف"));
+      toast.error("فشل رفع الملف: " + (err.message || "خطأ غير معروف"));
     } finally {
       setIsUploading(false);
     }
@@ -745,7 +782,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={allowedFileTypes}
                   className="hidden"
                   onChange={handleFileSelect}
                 />
@@ -777,10 +814,22 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             )}
           </div>
 
-          {/* Image Preview */}
+          {/* File Preview */}
           {imagePreview && (
             <div className="relative mb-2 inline-block">
-              <img src={imagePreview.url} alt="معاينة" className="max-h-32 rounded-lg border border-border object-cover" />
+              {imagePreview.file.type.startsWith("image/") ? (
+                <img src={imagePreview.url} alt="معاينة" className="max-h-32 rounded-lg border border-border object-cover" />
+              ) : imagePreview.file.type.startsWith("video/") ? (
+                <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2 border border-border">
+                  <Video className="w-5 h-5 text-primary" />
+                  <span className="text-xs font-medium truncate max-w-[200px]">{imagePreview.file.name}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2 border border-border">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <span className="text-xs font-medium truncate max-w-[200px]">{imagePreview.file.name}</span>
+                </div>
+              )}
               <button
                 onClick={cancelImagePreview}
                 className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md"
