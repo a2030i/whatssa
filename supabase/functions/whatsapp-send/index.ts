@@ -16,19 +16,46 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+async function logToSystem(
+  client: ReturnType<typeof createClient>,
+  level: string,
+  message: string,
+  metadata: Record<string, unknown> = {},
+  orgId?: string | null,
+  userId?: string | null,
+) {
+  try {
+    await client.from("system_logs").insert({
+      level,
+      source: "edge_function",
+      function_name: "whatsapp-send",
+      message,
+      metadata,
+      org_id: orgId || null,
+      user_id: userId || null,
+    });
+  } catch (e) {
+    console.error("Failed to write system log:", e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
   try {
     const authorization = req.headers.get("Authorization") || "";
-    if (!authorization) return json({ error: "Unauthorized" }, 401);
+    if (!authorization) {
+      await logToSystem(adminClient, "warn", "طلب إرسال بدون توثيق (Authorization header مفقود)");
+      return json({ error: "Unauthorized" }, 401);
+    }
 
     const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authorization } },
     });
-    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const {
       data: { user },
@@ -36,6 +63,7 @@ serve(async (req) => {
     } = await authClient.auth.getUser();
 
     if (userError || !user) {
+      await logToSystem(adminClient, "warn", "فشل التحقق من المستخدم", { error: userError?.message });
       return json({ error: "Unauthorized" }, 401);
     }
 
@@ -46,19 +74,23 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!profile?.org_id) {
+      await logToSystem(adminClient, "warn", "مستخدم بدون مؤسسة حاول إرسال رسالة", {}, null, user.id);
       return json({ error: "لا توجد مؤسسة مرتبطة بهذا الحساب" }, 400);
     }
+
+    const orgId = profile.org_id;
 
     const { data: config, error: configError } = await adminClient
       .from("whatsapp_config")
       .select("*")
-      .eq("org_id", profile.org_id)
+      .eq("org_id", orgId)
       .eq("is_connected", true)
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
 
     if (configError || !config) {
+      await logToSystem(adminClient, "error", "واتساب غير مربوط - فشل الإرسال", { configError: configError?.message }, orgId, user.id);
       return json({ error: "واتساب غير مربوط بشكل حقيقي بعد" }, 400);
     }
 
@@ -107,6 +139,8 @@ serve(async (req) => {
       };
     }
 
+    await logToSystem(adminClient, "info", `إرسال رسالة ${type} إلى ${to}`, { type, to, template_name: template_name || null }, orgId, user.id);
+
     const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
       method: "POST",
       headers: {
@@ -119,11 +153,24 @@ serve(async (req) => {
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("WhatsApp API error:", result);
+      await logToSystem(adminClient, "error", `فشل إرسال رسالة واتساب إلى ${to}`, {
+        to,
+        type,
+        http_status: response.status,
+        wa_error: result?.error?.message || "unknown",
+        wa_error_code: result?.error?.code || null,
+        phone_number_id: config.phone_number_id,
+      }, orgId, user.id);
       return json({ error: result?.error?.message || "Failed to send message", details: result }, response.status);
     }
 
     const waMessageId = result.messages?.[0]?.id;
+
+    await logToSystem(adminClient, "info", `تم إرسال رسالة بنجاح إلى ${to}`, {
+      wa_message_id: waMessageId,
+      type,
+    }, orgId, user.id);
+
     let conversation = null;
 
     if (conversation_id) {
@@ -131,7 +178,7 @@ serve(async (req) => {
         .from("conversations")
         .select("id")
         .eq("id", conversation_id)
-        .eq("org_id", profile.org_id)
+        .eq("org_id", orgId)
         .maybeSingle();
       conversation = data;
     }
@@ -141,7 +188,7 @@ serve(async (req) => {
         .from("conversations")
         .select("id")
         .eq("customer_phone", to)
-        .eq("org_id", profile.org_id)
+        .eq("org_id", orgId)
         .neq("status", "closed")
         .limit(1)
         .maybeSingle();
@@ -172,6 +219,11 @@ serve(async (req) => {
 
     return json({ success: true, message_id: waMessageId });
   } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    await logToSystem(adminClient, "critical", `خطأ غير متوقع في إرسال رسالة واتساب`, {
+      error: errMsg,
+    }, null, null);
     console.error("Send error:", error);
     return json({ error: "Internal error" }, 500);
   }

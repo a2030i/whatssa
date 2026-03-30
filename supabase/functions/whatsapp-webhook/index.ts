@@ -6,6 +6,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+async function logToSystem(
+  client: ReturnType<typeof createClient>,
+  level: string,
+  message: string,
+  metadata: Record<string, unknown> = {},
+  orgId?: string | null,
+) {
+  try {
+    await client.from("system_logs").insert({
+      level,
+      source: "edge_function",
+      function_name: "whatsapp-webhook",
+      message,
+      metadata,
+      org_id: orgId || null,
+    });
+  } catch (e) {
+    console.error("Failed to write system log:", e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -18,6 +39,7 @@ serve(async (req) => {
 
   const url = new URL(req.url);
 
+  // ── GET: Webhook verification ──
   if (req.method === "GET") {
     const mode = url.searchParams.get("hub.mode");
     const token = url.searchParams.get("hub.verify_token");
@@ -32,13 +54,16 @@ serve(async (req) => {
         .maybeSingle();
 
       if (config) {
+        await logToSystem(supabase, "info", "تم التحقق من Webhook بنجاح", { mode, token });
         return new Response(challenge, { status: 200 });
       }
     }
 
+    await logToSystem(supabase, "warn", "فشل التحقق من Webhook", { mode, token });
     return new Response("Forbidden", { status: 403 });
   }
 
+  // ── POST: Incoming messages & statuses ──
   if (req.method === "POST") {
     try {
       const body = await req.json();
@@ -68,16 +93,24 @@ serve(async (req) => {
       }
 
       if (!orgId) {
+        await logToSystem(supabase, "warn", "Webhook وارد بدون مؤسسة مطابقة", { phone_number_id: metadataPhoneId });
         return new Response(JSON.stringify({ status: "no org matched" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
+      // ── Handle incoming messages ──
       if (value.messages && value.messages.length > 0) {
         for (const incomingMessage of value.messages) {
           const customerPhone = incomingMessage.from;
           const contactName = value.contacts?.[0]?.profile?.name || customerPhone;
+
+          await logToSystem(supabase, "info", `رسالة واردة من ${customerPhone}`, {
+            type: incomingMessage.type,
+            wa_message_id: incomingMessage.id,
+            contact_name: contactName,
+          }, orgId);
 
           let { data: conversation } = await supabase
             .from("conversations")
@@ -91,7 +124,7 @@ serve(async (req) => {
           const messageContent = incomingMessage.text?.body || `[${incomingMessage.type}]`;
 
           if (!conversation) {
-            const { data: newConversation } = await supabase
+            const { data: newConversation, error: convError } = await supabase
               .from("conversations")
               .insert({
                 customer_phone: customerPhone,
@@ -104,9 +137,20 @@ serve(async (req) => {
               .select("id, unread_count")
               .single();
 
+            if (convError) {
+              await logToSystem(supabase, "error", "فشل إنشاء محادثة جديدة", {
+                error: convError.message,
+                customer_phone: customerPhone,
+              }, orgId);
+            }
+
             conversation = newConversation;
 
             if (conversation) {
+              await logToSystem(supabase, "info", `محادثة جديدة أُنشئت للعميل ${customerPhone}`, {
+                conversation_id: conversation.id,
+              }, orgId);
+
               try {
                 await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/auto-assign`, {
                   method: "POST",
@@ -117,7 +161,11 @@ serve(async (req) => {
                   body: JSON.stringify({ conversation_id: conversation.id, org_id: orgId }),
                 });
               } catch (error) {
-                console.error("Auto-assign failed:", error);
+                const errMsg = error instanceof Error ? error.message : String(error);
+                await logToSystem(supabase, "error", "فشل التعيين التلقائي للمحادثة", {
+                  conversation_id: conversation.id,
+                  error: errMsg,
+                }, orgId);
               }
             }
           } else {
@@ -148,7 +196,7 @@ serve(async (req) => {
             content = `[${incomingMessage.type}]`;
           }
 
-          await supabase.from("messages").insert({
+          const { error: msgError } = await supabase.from("messages").insert({
             conversation_id: conversation.id,
             wa_message_id: incomingMessage.id,
             sender: "customer",
@@ -158,6 +206,15 @@ serve(async (req) => {
             status: "delivered",
           });
 
+          if (msgError) {
+            await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
+              error: msgError.message,
+              wa_message_id: incomingMessage.id,
+              conversation_id: conversation.id,
+            }, orgId);
+          }
+
+          // ── Automation rules ──
           if (incomingMessage.type === "text") {
             const normalizedContent = content.trim().toLowerCase();
             const { data: rules } = await supabase
@@ -173,6 +230,12 @@ serve(async (req) => {
             );
 
             if (matchedRule) {
+              await logToSystem(supabase, "info", `قاعدة أتمتة مطابقة: ${matchedRule.name}`, {
+                rule_id: matchedRule.id,
+                rule_name: matchedRule.name,
+                customer_phone: customerPhone,
+              }, orgId);
+
               const { data: config } = await supabase
                 .from("whatsapp_config")
                 .select("phone_number_id, access_token")
@@ -217,7 +280,12 @@ serve(async (req) => {
                     })
                     .eq("id", conversation.id);
                 } else {
-                  console.error("Automation send failed:", result);
+                  await logToSystem(supabase, "error", `فشل إرسال الرد التلقائي إلى ${customerPhone}`, {
+                    rule_name: matchedRule.name,
+                    http_status: response.status,
+                    wa_error: result?.error?.message || "unknown",
+                    wa_error_code: result?.error?.code || null,
+                  }, orgId);
                 }
               }
             }
@@ -225,9 +293,19 @@ serve(async (req) => {
         }
       }
 
+      // ── Handle status updates ──
       if (value.statuses && value.statuses.length > 0) {
         for (const status of value.statuses) {
           await supabase.from("messages").update({ status: status.status }).eq("wa_message_id", status.id);
+
+          if (status.status === "failed") {
+            await logToSystem(supabase, "error", `فشل تسليم رسالة واتساب`, {
+              wa_message_id: status.id,
+              recipient: status.recipient_id,
+              error_code: status.errors?.[0]?.code || null,
+              error_title: status.errors?.[0]?.title || null,
+            }, orgId);
+          }
         }
       }
 
@@ -236,6 +314,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      await logToSystem(supabase, "critical", "خطأ غير متوقع في Webhook واتساب", { error: errMsg });
       console.error("Webhook error:", error);
       return new Response(JSON.stringify({ error: "Internal error" }), {
         status: 200,
