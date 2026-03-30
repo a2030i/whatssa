@@ -249,7 +249,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
 };
 
 const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange }: ChatAreaProps) => {
-  const { orgId } = useAuth();
+  const { orgId, user, profile } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -274,11 +274,53 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [savedReplyFilter, setSavedReplyFilter] = useState("");
   const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [otherTypingAgents, setOtherTypingAgents] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Real-time typing presence
+  useEffect(() => {
+    if (!conversation.id || !user?.id) return;
+
+    const channelName = `typing:${conversation.id}`;
+    const channel = supabase.channel(channelName, {
+      config: { presence: { key: user.id } },
+    });
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const typingNames: string[] = [];
+        Object.entries(state).forEach(([key, presences]) => {
+          if (key !== user?.id) {
+            const p = (presences as any[])[0];
+            if (p?.is_typing) {
+              typingNames.push(p.name || "موظف");
+            }
+          }
+        });
+        setOtherTypingAgents(typingNames);
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({ is_typing: false, name: profile?.full_name || "موظف" });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversation.id, user?.id, profile?.full_name]);
+
+  const broadcastTyping = useCallback((typing: boolean) => {
+    const channelName = `typing:${conversation.id}`;
+    const channel = supabase.channel(channelName);
+    channel.track({ is_typing: typing, name: profile?.full_name || "موظف" });
+  }, [conversation.id, profile?.full_name]);
 
   // Fetch real team members from database
   useEffect(() => {
