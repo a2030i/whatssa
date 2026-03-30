@@ -26,7 +26,7 @@ const formatTimestamp = (isoStr: string | null): string => {
 };
 
 const InboxPage = () => {
-  const { orgId } = useAuth();
+  const { orgId, profile } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [allMessages, setAllMessages] = useState<Record<string, Message[]>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
