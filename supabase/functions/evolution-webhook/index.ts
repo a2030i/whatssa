@@ -365,6 +365,36 @@ serve(async (req) => {
           type: messageType, conversation_type: conversationType, wa_message_id: key.id,
         }, orgId);
 
+        // ── Check for satisfaction rating response ──
+        if (messageType === "text" && text) {
+          const ratingNum = parseInt(text.trim());
+          if (ratingNum >= 1 && ratingNum <= 5) {
+            const { data: pendingConv } = await supabase
+              .from("conversations")
+              .select("id, assigned_to")
+              .eq("customer_phone", phone)
+              .eq("org_id", orgId)
+              .eq("status", "closed")
+              .eq("satisfaction_status", "pending")
+              .order("closed_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (pendingConv) {
+              await supabase.from("satisfaction_ratings").insert({
+                conversation_id: pendingConv.id,
+                org_id: orgId,
+                agent_name: pendingConv.assigned_to,
+                rating: ratingNum,
+              });
+              await supabase.from("conversations").update({ satisfaction_status: "rated" }).eq("id", pendingConv.id);
+              await sendBotMessage(supabase, orgId, pendingConv.id, phone, "شكراً لتقييمك! 🙏 نسعد بخدمتك دائماً.", "evolution", logToSystem);
+              await logToSystem(supabase, "info", `تم تسجيل تقييم العميل (Evolution): ${ratingNum}/5`, { conversation_id: pendingConv.id, rating: ratingNum }, orgId);
+              continue;
+            }
+          }
+        }
+
         let { data: conversation } = await supabase
           .from("conversations")
           .select("id")
