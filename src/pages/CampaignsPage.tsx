@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,12 +31,13 @@ interface Recipient {
 }
 
 const CampaignsPage = () => {
-  const { orgId, isEcommerce } = useAuth();
+  const { orgId, isEcommerce, hasMetaApi } = useAuth();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [tagDefs, setTagDefs] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [whatsappChannels, setWhatsappChannels] = useState<any[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [detailCampaign, setDetailCampaign] = useState<any>(null);
   const [recipients, setRecipients] = useState<any[]>([]);
@@ -55,6 +56,9 @@ const CampaignsPage = () => {
     excludeTags: [] as string[],
     excludeCampaignIds: [] as string[],
     variableColumns: [] as string[],
+    channelId: "" as string,
+    messageText: "" as string,
+    delaySeconds: 10 as number,
     // E-commerce filters
     filterProduct: "",
     filterCity: "",
@@ -72,14 +76,16 @@ const CampaignsPage = () => {
   }, [orgId]);
 
   const load = async () => {
-    const [c, cust, tags] = await Promise.all([
+    const [c, cust, tags, channels] = await Promise.all([
       supabase.from("campaigns").select("*").eq("org_id", orgId!).order("created_at", { ascending: false }),
       supabase.from("customers").select("*").eq("org_id", orgId!),
       supabase.from("customer_tag_definitions").select("*").eq("org_id", orgId!),
+      supabase.from("whatsapp_config").select("*").eq("org_id", orgId!).eq("is_connected", true),
     ]);
     setCampaigns(c.data || []);
     setCustomers(cust.data || []);
     setTagDefs(tags.data || []);
+    setWhatsappChannels(channels.data || []);
     if (isEcommerce && orgId) {
       const [o, p] = await Promise.all([
         supabase.from("orders").select("*").eq("org_id", orgId),
@@ -182,17 +188,30 @@ const CampaignsPage = () => {
     return filtered.map((c) => ({ phone: c.phone, name: c.name }));
   };
 
+  const selectedChannel = whatsappChannels.find((c) => c.id === form.channelId);
+  const isEvolutionChannel = selectedChannel?.channel_type === "evolution";
+
+  const getChannelLabel = (ch: any) => {
+    if (ch.channel_type === "evolution") {
+      return ch.evolution_instance_name ? `واتساب ويب — ${ch.evolution_instance_name}` : `واتساب ويب — ${ch.display_phone || "غير مسمى"}`;
+    }
+    return ch.display_phone ? `واتساب رسمي — ${ch.display_phone}` : `واتساب رسمي — ${ch.business_name || ch.phone_number_id}`;
+  };
+
   const handleCreate = async () => {
     if (!form.name.trim()) { toast.error("يرجى كتابة اسم الحملة"); return; }
+    if (!form.channelId) { toast.error("يرجى اختيار قناة الإرسال"); return; }
+    if (isEvolutionChannel && !form.messageText.trim()) { toast.error("يرجى كتابة نص الرسالة"); return; }
+    if (!isEvolutionChannel && !form.templateName.trim()) { toast.error("يرجى تحديد اسم القالب"); return; }
     const recipientList = buildRecipientList();
     if (recipientList.length === 0) { toast.error("لا يوجد مستلمين — اختر جمهوراً"); return; }
 
     const { data: campaign, error } = await supabase.from("campaigns").insert({
       org_id: orgId,
       name: form.name,
-      template_name: form.templateName || null,
+      template_name: isEvolutionChannel ? null : (form.templateName || null),
       template_language: form.templateLang,
-      template_variables: templateVars,
+      template_variables: isEvolutionChannel ? [{ message_text: form.messageText, delay_seconds: form.delaySeconds, channel_type: "evolution", channel_id: form.channelId }] : templateVars,
       audience_type: form.audienceType,
       audience_tags: form.audienceTags,
       exclude_tags: form.excludeTags,
@@ -224,7 +243,7 @@ const CampaignsPage = () => {
 
   const resetForm = () => {
     setShowCreate(false);
-    setForm({ name: "", templateName: "", templateLang: "ar", scheduledAt: "", notes: "", audienceType: "all", audienceTags: [], excludeTags: [], excludeCampaignIds: [], variableColumns: [], filterProduct: "", filterCity: "", filterDateFrom: "", filterDateTo: "", filterMinAmount: "", filterMaxAmount: "" });
+    setForm({ name: "", templateName: "", templateLang: "ar", scheduledAt: "", notes: "", audienceType: "all", audienceTags: [], excludeTags: [], excludeCampaignIds: [], variableColumns: [], channelId: "", messageText: "", delaySeconds: 10, filterProduct: "", filterCity: "", filterDateFrom: "", filterDateTo: "", filterMinAmount: "", filterMaxAmount: "" });
     setUploadedRecipients([]);
     setSelectedCustomerIds([]);
     setTemplateVars([]);
@@ -535,26 +554,112 @@ const CampaignsPage = () => {
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: عروض الصيف" className="text-sm bg-secondary border-0" />
             </div>
 
-            {/* Template */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">اسم القالب (من Meta)</Label>
-                <Input value={form.templateName} onChange={(e) => setForm({ ...form, templateName: e.target.value })} placeholder="مثال: summer_offer" className="text-sm bg-secondary border-0" dir="ltr" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">لغة القالب</Label>
-                <Select value={form.templateLang} onValueChange={(v) => setForm({ ...form, templateLang: v })}>
-                  <SelectTrigger className="text-sm bg-secondary border-0"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ar">العربية</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="en_US">English (US)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Channel Selection */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">قناة الإرسال *</Label>
+              {whatsappChannels.length === 0 ? (
+                <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  لا توجد قنوات واتساب مربوطة — اذهب لصفحة الربط والتكامل أولاً
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {whatsappChannels.map((ch) => (
+                    <button
+                      key={ch.id}
+                      onClick={() => setForm({ ...form, channelId: ch.id })}
+                      className={cn(
+                        "p-3 rounded-lg border text-xs text-right transition-all",
+                        form.channelId === ch.id ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/50"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        {ch.channel_type === "evolution" ? (
+                          <MessageSquare className="w-4 h-4 shrink-0" />
+                        ) : (
+                          <Shield className="w-4 h-4 shrink-0" />
+                        )}
+                        <span className="font-medium">{getChannelLabel(ch)}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        {ch.channel_type === "evolution" ? "رسائل نصية مباشرة" : "قوالب Meta معتمدة"}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Template Variables */}
+            {/* Evolution Warning */}
+            {isEvolutionChannel && (
+              <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 space-y-2">
+                <div className="flex items-start gap-2 text-warning">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-semibold">تحذير — قناة غير رسمية</p>
+                    <p className="text-muted-foreground">إرسال عدد كبير من الرسائل بسرعة قد يؤدي لحظر الرقم. استخدم تأخيراً مناسباً بين الرسائل ولا ترسل لأرقام لم تتواصل معك سابقاً.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">التأخير بين كل رسالة (ثانية) *</Label>
+                    <Input
+                      type="number"
+                      min={5}
+                      max={3600}
+                      value={form.delaySeconds}
+                      onChange={(e) => setForm({ ...form, delaySeconds: Math.max(5, parseInt(e.target.value) || 10) })}
+                      className="text-xs bg-background border-0 h-8"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="flex flex-col justify-end">
+                    <p className="text-[10px] text-muted-foreground">
+                      الوقت المتوقع: <strong className="text-foreground">{Math.ceil((getAudienceCount() * form.delaySeconds) / 60)} دقيقة</strong>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Message Text (Evolution only) */}
+            {isEvolutionChannel && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">نص الرسالة *</Label>
+                <Textarea
+                  value={form.messageText}
+                  onChange={(e) => setForm({ ...form, messageText: e.target.value })}
+                  placeholder="اكتب نص الرسالة هنا... يمكنك استخدام {name} لاسم العميل"
+                  className="text-sm bg-secondary border-0 min-h-[80px]"
+                />
+              </div>
+            )}
+
+            {/* Template (Meta API only) */}
+            {!isEvolutionChannel && form.channelId && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">اسم القالب (من Meta) *</Label>
+                    <Input value={form.templateName} onChange={(e) => setForm({ ...form, templateName: e.target.value })} placeholder="مثال: summer_offer" className="text-sm bg-secondary border-0" dir="ltr" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">لغة القالب</Label>
+                    <Select value={form.templateLang} onValueChange={(v) => setForm({ ...form, templateLang: v })}>
+                      <SelectTrigger className="text-sm bg-secondary border-0"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ar">العربية</SelectItem>
+                        <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="en_US">English (US)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Template Variables (Meta only) */}
+            {!isEvolutionChannel && form.channelId && (
             <div className="space-y-1.5">
               <Label className="text-xs">متغيرات القالب (اختياري)</Label>
               <p className="text-[10px] text-muted-foreground">أضف أسماء المتغيرات بالترتيب مثل: الاسم، رقم_الطلب — يمكنك تعبئتها من الإكسل</p>
@@ -580,6 +685,7 @@ const CampaignsPage = () => {
                 />
               </div>
             </div>
+            )}
 
             {/* Audience */}
             <div className="space-y-3">
