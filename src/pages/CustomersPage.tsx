@@ -108,23 +108,129 @@ const CustomersPage = () => {
     toast.success("تم تصدير العملاء");
   };
 
+  /** Parse a CSV line respecting quoted fields */
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') { current += '"'; i++; } // escaped quote
+        else { inQuotes = !inQuotes; }
+      } else if (char === "," && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  /** Validate phone: must start with + and have 10-15 digits */
+  const isValidPhone = (phone: string): boolean => {
+    const cleaned = phone.replace(/[\s\-()]/g, "");
+    return /^\+?\d{10,15}$/.test(cleaned);
+  };
+
+  /** Validate email loosely */
+  const isValidEmail = (email: string): boolean => !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const text = await file.text();
-    const lines = text.split("\n").slice(1).filter(Boolean);
-    let count = 0;
-    for (const line of lines) {
-      const parts = line.split(",").map((s) => s.replace(/"/g, "").trim());
-      const [name, phone, email, tags, notes] = parts;
-      if (!phone) continue;
-      const { error } = await supabase.from("customers").insert({
-        org_id: orgId, name: name || null, phone, email: email || null,
-        tags: tags ? tags.split(";").filter(Boolean) : [], notes: notes || null,
-      });
-      if (!error) count++;
+    const lines = text.split(/\r?\n/).filter(Boolean);
+
+    if (lines.length < 2) { toast.error("الملف فارغ أو بدون بيانات"); return; }
+
+    const header = parseCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/\s+/g, "_"));
+    const dataLines = lines.slice(1).filter((l) => l.trim());
+
+    // Detect columns by header names (supports Arabic + English)
+    const colMap = {
+      name: header.findIndex((h) => ["name", "الاسم", "اسم"].includes(h)),
+      phone: header.findIndex((h) => ["phone", "الجوال", "جوال", "رقم", "mobile"].includes(h)),
+      email: header.findIndex((h) => ["email", "الإيميل", "ايميل", "بريد"].includes(h)),
+      tags: header.findIndex((h) => ["tags", "التصنيفات", "تصنيف", "وسم"].includes(h)),
+      notes: header.findIndex((h) => ["notes", "ملاحظات", "ملاحظة"].includes(h)),
+      company: header.findIndex((h) => ["company", "شركة", "الشركة"].includes(h)),
+      stage: header.findIndex((h) => ["stage", "المرحلة", "مرحلة", "lifecycle_stage"].includes(h)),
+    };
+
+    if (colMap.phone === -1) {
+      toast.error("لم يتم العثور على عمود الجوال في الملف. تأكد من وجود عمود بعنوان 'الجوال' أو 'phone'");
+      return;
     }
-    toast.success(`تم استيراد ${count} عميل`);
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    // Batch insert for performance
+    const validRows: any[] = [];
+
+    for (let i = 0; i < dataLines.length; i++) {
+      const parts = parseCSVLine(dataLines[i]);
+      const phone = (parts[colMap.phone] || "").replace(/[\s\-()]/g, "");
+      const email = colMap.email >= 0 ? parts[colMap.email] || "" : "";
+      const name = colMap.name >= 0 ? parts[colMap.name] || "" : "";
+
+      if (!phone) { skipped++; continue; }
+
+      if (!isValidPhone(phone)) {
+        errors.push(`سطر ${i + 2}: رقم غير صالح "${phone}"`);
+        skipped++;
+        continue;
+      }
+
+      if (email && !isValidEmail(email)) {
+        errors.push(`سطر ${i + 2}: إيميل غير صالح "${email}"`);
+        skipped++;
+        continue;
+      }
+
+      const tags = colMap.tags >= 0 ? (parts[colMap.tags] || "").split(";").filter(Boolean) : [];
+      const validStages = ["lead", "qualified", "customer", "lost"];
+      const rawStage = colMap.stage >= 0 ? parts[colMap.stage] || "" : "";
+      const stage = validStages.includes(rawStage) ? rawStage : "lead";
+
+      validRows.push({
+        org_id: orgId,
+        name: name || null,
+        phone,
+        email: email || null,
+        tags,
+        notes: colMap.notes >= 0 ? parts[colMap.notes] || null : null,
+        company: colMap.company >= 0 ? parts[colMap.company] || null : null,
+        lifecycle_stage: stage,
+      });
+    }
+
+    // Insert in batches of 50
+    for (let i = 0; i < validRows.length; i += 50) {
+      const batch = validRows.slice(i, i + 50);
+      const { data, error } = await supabase.from("customers").insert(batch).select("id");
+      if (!error && data) imported += data.length;
+      else if (error) {
+        // Fallback: insert one by one for duplicates
+        for (const row of batch) {
+          const { error: singleErr } = await supabase.from("customers").insert(row);
+          if (!singleErr) imported++;
+          else skipped++;
+        }
+      }
+    }
+
+    const msg = `تم استيراد ${imported} عميل` + (skipped > 0 ? ` (تم تخطي ${skipped})` : "");
+    if (errors.length > 0) {
+      toast.warning(msg, { description: errors.slice(0, 3).join("\n") + (errors.length > 3 ? `\n... و${errors.length - 3} أخطاء أخرى` : "") });
+    } else {
+      toast.success(msg);
+    }
     load();
     if (fileRef.current) fileRef.current.value = "";
   };
