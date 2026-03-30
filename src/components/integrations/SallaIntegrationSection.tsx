@@ -102,6 +102,17 @@ const SallaIntegrationSection = () => {
     if (!confirm("هل أنت متأكد من حذف هذا الربط؟")) return;
     await supabase.from("store_integrations").delete().eq("id", id);
     toast.success("تم حذف الربط");
+
+    // If no stores left, check if there are orders — only revert if empty
+    const { count: storeCount } = await supabase.from("store_integrations").select("id", { count: "exact", head: true }).eq("org_id", orgId!);
+    if (storeCount === 0) {
+      const { count: orderCount } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("org_id", orgId!);
+      const { count: cartCount } = await supabase.from("abandoned_carts").select("id", { count: "exact", head: true }).eq("org_id", orgId!);
+      if (!orderCount && !cartCount) {
+        await supabase.from("organizations").update({ is_ecommerce: false, store_platform: null } as any).eq("id", orgId!);
+        refreshOrg();
+      }
+    }
     fetchStores();
   };
 
