@@ -359,10 +359,10 @@ const CustomersPage = () => {
                   </td>
                   <td className="p-3">
                     <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEdit(c)}>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); openEdit(c); }}>
                         <Edit2 className="w-3 h-3" />
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => handleDelete(c.id)}>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}>
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
