@@ -76,7 +76,10 @@ const ApiTokensSection = () => {
     setLoading(false);
   };
 
+  const limitReached = tokens.length >= maxTokens;
+
   const createToken = async () => {
+    if (limitReached) { toast.error(`وصلت للحد الأقصى (${maxTokens} توكنات). قم بترقية باقتك لإنشاء المزيد.`); return; }
     if (!newName.trim()) { toast.error("أدخل اسم التوكن"); return; }
     if (!newPerms.length) { toast.error("اختر صلاحية واحدة على الأقل"); return; }
     setCreating(true);
