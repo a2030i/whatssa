@@ -236,7 +236,7 @@ const InboxPage = () => {
   }, [conversations]);
 
   const handleStatusChange = useCallback(async (convId: string, status: "active" | "waiting" | "closed") => {
-    await supabase.from("conversations").update({ status }).eq("id", convId);
+    await supabase.from("conversations").update({ status, ...(status === "closed" ? { closed_at: new Date().toISOString() } : {}) }).eq("id", convId);
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, status } : conversation)));
     if (status === "closed") {
       await supabase.from("messages").insert({
@@ -245,8 +245,31 @@ const InboxPage = () => {
         sender: "system",
         message_type: "text",
       });
+
+      // Send satisfaction survey if enabled
+      try {
+        const conv = conversations.find(c => c.id === convId);
+        if (conv && orgId) {
+          const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+          const settings = (org?.settings as Record<string, any>) || {};
+          if (settings.satisfaction_enabled && settings.satisfaction_message) {
+            // Invoke the send function to send satisfaction message
+            await supabase.functions.invoke("whatsapp-send", {
+              body: {
+                phone: conv.phone,
+                message: settings.satisfaction_message,
+                org_id: orgId,
+              },
+            });
+            // Update conversation satisfaction status
+            await supabase.from("conversations").update({ satisfaction_status: "pending" }).eq("id", convId);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to send satisfaction survey:", e);
+      }
     }
-  }, []);
+  }, [conversations, orgId]);
 
   const handleTransfer = useCallback(async (convId: string, agent: string) => {
     await supabase.from("conversations").update({ assigned_to: agent }).eq("id", convId);
