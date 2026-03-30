@@ -5,15 +5,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const log = async (supabase: any, level: string, message: string, metadata: any = {}, orgId?: string) => {
+  await supabase.from("system_logs").insert({
+    level,
+    source: "payment",
+    function_name: "moyasar-checkout",
+    message,
+    metadata,
+    org_id: orgId || null,
+  }).then(() => {});
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Validate JWT
+  try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
@@ -22,10 +32,12 @@ Deno.serve(async (req) => {
     const { org_id, plan_id, payment_type, amount, billing_cycle, addon_quantity, callback_url } = await req.json();
 
     if (!org_id || !amount || !callback_url) {
+      await log(supabase, "warn", "Checkout missing required fields", { org_id, amount, callback_url }, org_id);
       return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: corsHeaders });
     }
 
-    // Get Moyasar keys from system_settings
+    await log(supabase, "info", "Checkout initiated", { org_id, plan_id, amount, payment_type }, org_id);
+
     const { data: moyasarSettings } = await supabase
       .from("system_settings")
       .select("key, value")
@@ -35,10 +47,10 @@ Deno.serve(async (req) => {
     const publishableKey = moyasarSettings?.find(s => s.key === "moyasar_publishable_key")?.value;
 
     if (!secretKey || !publishableKey) {
+      await log(supabase, "error", "Payment gateway not configured", { has_secret: !!secretKey, has_pub: !!publishableKey });
       return new Response(JSON.stringify({ error: "Payment gateway not configured" }), { status: 500, headers: corsHeaders });
     }
 
-    // Get plan details
     let description = "اشتراك Respondly";
     if (plan_id) {
       const { data: plan } = await supabase.from("plans").select("name_ar").eq("id", plan_id).maybeSingle();
@@ -48,7 +60,6 @@ Deno.serve(async (req) => {
       description = `ربط غير رسمي (${addon_quantity || 1} رقم)`;
     }
 
-    // Create payment record
     const { data: payment, error: paymentError } = await supabase.from("payments").insert({
       org_id,
       plan_id,
@@ -61,14 +72,16 @@ Deno.serve(async (req) => {
     }).select().single();
 
     if (paymentError) {
+      await log(supabase, "error", "Failed to create payment record", { error: paymentError.message }, org_id);
       return new Response(JSON.stringify({ error: "Failed to create payment record" }), { status: 500, headers: corsHeaders });
     }
 
-    // Return publishable key + payment ID for frontend Moyasar Form
+    await log(supabase, "info", "Payment record created", { payment_id: payment.id, amount }, org_id);
+
     return new Response(JSON.stringify({
       payment_id: payment.id,
       publishable_key: publishableKey,
-      amount: Math.round(amount * 100), // Moyasar uses halalas
+      amount: Math.round(amount * 100),
       currency: "SAR",
       description,
       callback_url: `${callback_url}?payment_id=${payment.id}`,
@@ -76,6 +89,7 @@ Deno.serve(async (req) => {
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (e) {
+    await log(supabase, "critical", "Checkout failed", { error: e.message, stack: e.stack });
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
   }
 });
