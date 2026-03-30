@@ -270,6 +270,11 @@ const TeamPage = () => {
                       حد: {team.max_conversations_per_agent} محادثة
                     </span>
                   )}
+                  {team.sla_enabled && (
+                    <span className="text-[9px] bg-warning/10 text-warning px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                      <Timer className="w-2.5 h-2.5" /> {team.response_timeout_minutes || 30}د
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex -space-x-2 space-x-reverse">
