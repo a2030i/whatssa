@@ -262,6 +262,14 @@ const CustomersPage = () => {
     count: customers.filter((c) => (c.lifecycle_stage || "lead") === s.value).length,
   }));
 
+  if (selectedCustomerId) {
+    return (
+      <div className="p-3 md:p-6 max-w-[1000px]">
+        <CustomerProfile customerId={selectedCustomerId} onBack={() => setSelectedCustomerId(null)} />
+      </div>
+    );
+  }
+
   return (
     <div className="p-3 md:p-6 space-y-4 max-w-[1000px]" dir="rtl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
