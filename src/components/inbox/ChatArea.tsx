@@ -45,8 +45,20 @@ const isWindowExpired = (lastCustomerMessageAt?: string): boolean => {
 const isImageUrl = (url?: string | null) => !!url && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url);
 
 const getStorageUrlFromText = (text: string) => {
-  const match = text.match(/\n(https:\/\/[^\s]+)/i);
+  const match = text.match(/\n(https:\/\/[^\s]+|storage:chat-media\/[^\s]+)/i);
   return match?.[1];
+};
+
+/** Resolve a media URL: if it's a storage path, create a signed URL; otherwise return as-is */
+const resolveMediaUrl = async (url: string | null | undefined): Promise<string | null> => {
+  if (!url) return null;
+  if (url.startsWith("storage:chat-media/")) {
+    const path = url.replace("storage:chat-media/", "");
+    const { data, error } = await supabase.storage.from("chat-media").createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  }
+  return url;
 };
 
 const scrollToMessage = (messageId?: string) => {
@@ -56,6 +68,56 @@ const scrollToMessage = (messageId?: string) => {
   el.scrollIntoView({ behavior: "smooth", block: "center" });
   el.classList.add("ring-2", "ring-primary/60", "rounded-xl");
   setTimeout(() => el.classList.remove("ring-2", "ring-primary/60", "rounded-xl"), 1500);
+};
+
+/** Component to resolve storage: URLs to signed URLs for media display */
+const ResolvedMedia = ({ url, type }: { url: string; type: string }) => {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveMediaUrl(url).then((resolved) => {
+      if (!cancelled) {
+        setResolvedUrl(resolved);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (loading) return <div className="w-[120px] h-[80px] rounded-lg bg-muted animate-pulse mb-1" />;
+  if (!resolvedUrl) return null;
+
+  const isImage = type === "image" || isImageUrl(resolvedUrl) || isImageUrl(url);
+
+  if (isImage) {
+    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(resolvedUrl, "_blank")} />;
+  }
+  if (type === "audio") {
+    return (
+      <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium"><Play className="h-3.5 w-3.5" /><span>مقطع صوتي</span></div>
+        <audio controls preload="none" className="w-full"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الصوت.</audio>
+      </div>
+    );
+  }
+  if (type === "video") {
+    return (
+      <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium"><Video className="h-3.5 w-3.5" /><span>مقطع فيديو</span></div>
+        <video controls preload="metadata" className="max-h-[240px] w-full rounded-md"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الفيديو.</video>
+      </div>
+    );
+  }
+  if (type === "document") {
+    return (
+      <a href={resolvedUrl} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 rounded-lg bg-background/40 p-2 text-xs font-medium hover:bg-background/60">
+        <FileText className="h-4 w-4" /><span>فتح الملف المرفق</span>
+      </a>
+    );
+  }
+  return null;
 };
 
 const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void }) => {
@@ -141,44 +203,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
         {(() => {
           const textMediaUrl = getStorageUrlFromText(msg.text);
           const mediaUrl = msg.mediaUrl || textMediaUrl;
-          const isImage = msg.type === "image" || isImageUrl(mediaUrl);
           const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
           return (
             <>
-              {isImage && mediaUrl && (
-                <img src={mediaUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(mediaUrl, "_blank")} />
-              )}
-              {msg.type === "audio" && mediaUrl && (
-                <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
-                  <div className="mb-2 flex items-center gap-2 text-xs font-medium">
-                    <Play className="h-3.5 w-3.5" />
-                    <span>مقطع صوتي</span>
-                  </div>
-                  <audio controls preload="none" className="w-full">
-                    <source src={mediaUrl} />
-                    متصفحك لا يدعم تشغيل الصوت.
-                  </audio>
-                </div>
-              )}
-              {msg.type === "video" && mediaUrl && (
-                <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
-                  <div className="mb-2 flex items-center gap-2 text-xs font-medium">
-                    <Video className="h-3.5 w-3.5" />
-                    <span>مقطع فيديو</span>
-                  </div>
-                  <video controls preload="metadata" className="max-h-[240px] w-full rounded-md">
-                    <source src={mediaUrl} />
-                    متصفحك لا يدعم تشغيل الفيديو.
-                  </video>
-                </div>
-              )}
-              {msg.type === "document" && mediaUrl && (
-                <a href={mediaUrl} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 rounded-lg bg-background/40 p-2 text-xs font-medium hover:bg-background/60">
-                  <FileText className="h-4 w-4" />
-                  <span>فتح الملف المرفق</span>
-                </a>
-              )}
-              {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImage) || textWithoutUrl) && textWithoutUrl && (
+              {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} />}
+              {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
                 <p className="whitespace-pre-wrap">
                   {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
                     part.startsWith("@") ? (
@@ -395,9 +424,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         .from("chat-media")
         .upload(path, imagePreview.file, { contentType: imagePreview.file.type });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+      const storagePath = `storage:chat-media/${path}`;
       const caption = inputText.trim();
-      onSendMessage(conversation.id, caption ? `📷 ${caption}\n${urlData.publicUrl}` : `📷 صورة\n${urlData.publicUrl}`);
+      onSendMessage(conversation.id, caption ? `📷 ${caption}\n${storagePath}` : `📷 صورة\n${storagePath}`);
       setImagePreview(null);
       setInputText("");
       URL.revokeObjectURL(imagePreview.url);
