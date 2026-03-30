@@ -1046,6 +1046,81 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          addon_quantity: number | null
+          amount: number
+          billing_cycle: string | null
+          callback_verified: boolean | null
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          id: string
+          metadata: Json | null
+          moyasar_payment_id: string | null
+          moyasar_source_type: string | null
+          org_id: string
+          paid_at: string | null
+          payment_type: string
+          plan_id: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          addon_quantity?: number | null
+          amount: number
+          billing_cycle?: string | null
+          callback_verified?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          id?: string
+          metadata?: Json | null
+          moyasar_payment_id?: string | null
+          moyasar_source_type?: string | null
+          org_id: string
+          paid_at?: string | null
+          payment_type?: string
+          plan_id?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          addon_quantity?: number | null
+          amount?: number
+          billing_cycle?: string | null
+          callback_verified?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          id?: string
+          metadata?: Json | null
+          moyasar_payment_id?: string | null
+          moyasar_source_type?: string | null
+          org_id?: string
+          paid_at?: string | null
+          payment_type?: string
+          plan_id?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           billing_cycle: string
