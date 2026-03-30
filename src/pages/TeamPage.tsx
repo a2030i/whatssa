@@ -53,6 +53,9 @@ const TeamPage = () => {
   const [assignStrategy, setAssignStrategy] = useState("round_robin");
   const [assignMaxConv, setAssignMaxConv] = useState<string>("");
   const [assignKeywords, setAssignKeywords] = useState("");
+  const [slaEnabled, setSlaEnabled] = useState(false);
+  const [slaTimeout, setSlaTimeout] = useState("30");
+  const [slaAction, setSlaAction] = useState("reassign");
 
   const dayLabels = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
