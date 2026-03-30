@@ -638,7 +638,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Recording UI */}
       {isRecording && (
-        <div className="border-t border-destructive/30 bg-destructive/5 p-3 flex items-center gap-3">
+        <div className="shrink-0 border-t border-destructive/30 bg-destructive/5 p-3 flex items-center gap-3">
           <button onClick={cancelRecording} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-secondary transition-colors" title="إلغاء">
             <XCircle className="w-4 h-4 text-muted-foreground" />
           </button>
