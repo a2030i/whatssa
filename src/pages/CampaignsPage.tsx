@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,12 +31,13 @@ interface Recipient {
 }
 
 const CampaignsPage = () => {
-  const { orgId, isEcommerce } = useAuth();
+  const { orgId, isEcommerce, hasMetaApi } = useAuth();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [tagDefs, setTagDefs] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [whatsappChannels, setWhatsappChannels] = useState<any[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [detailCampaign, setDetailCampaign] = useState<any>(null);
   const [recipients, setRecipients] = useState<any[]>([]);
@@ -55,6 +56,9 @@ const CampaignsPage = () => {
     excludeTags: [] as string[],
     excludeCampaignIds: [] as string[],
     variableColumns: [] as string[],
+    channelId: "" as string,
+    messageText: "" as string,
+    delaySeconds: 10 as number,
     // E-commerce filters
     filterProduct: "",
     filterCity: "",
