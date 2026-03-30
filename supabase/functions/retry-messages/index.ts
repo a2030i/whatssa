@@ -26,13 +26,31 @@ Deno.serve(async (req) => {
       .limit(20);
 
     if (error || !pendingMessages?.length) {
-      return new Response(JSON.stringify({ processed: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ processed: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let successCount = 0;
     let failCount = 0;
 
     for (const msg of pendingMessages) {
+      // === IDEMPOTENCY LOCK ===
+      // Atomically claim this message by setting status to 'processing'.
+      // If another worker already claimed it, the update returns 0 rows.
+      const { data: claimed } = await supabase
+        .from("message_retry_queue")
+        .update({ status: "processing", last_attempted_at: new Date().toISOString() })
+        .eq("id", msg.id)
+        .eq("status", "pending") // only claim if still pending
+        .select("id")
+        .maybeSingle();
+
+      if (!claimed) {
+        // Another worker already processing this message — skip
+        continue;
+      }
+
       try {
         let success = false;
         let lastError = "";
@@ -53,13 +71,15 @@ Deno.serve(async (req) => {
             if (!config) {
               lastError = "No connected Evolution instance";
             } else {
-              const endpoint = msg.message_type === "text"
-                ? `${EVOLUTION_URL}/message/sendText/${config.evolution_instance_name}`
-                : `${EVOLUTION_URL}/message/sendMedia/${config.evolution_instance_name}`;
+              const endpoint =
+                msg.message_type === "text"
+                  ? `${EVOLUTION_URL}/message/sendText/${config.evolution_instance_name}`
+                  : `${EVOLUTION_URL}/message/sendMedia/${config.evolution_instance_name}`;
 
-              const body = msg.message_type === "text"
-                ? { number: msg.to_phone, text: msg.content }
-                : { number: msg.to_phone, mediatype: msg.message_type, media: msg.media_url, caption: msg.content };
+              const body =
+                msg.message_type === "text"
+                  ? { number: msg.to_phone, text: msg.content }
+                  : { number: msg.to_phone, mediatype: msg.message_type, media: msg.media_url, caption: msg.content };
 
               const res = await fetch(endpoint, {
                 method: "POST",
@@ -112,14 +132,17 @@ Deno.serve(async (req) => {
               };
             }
 
-            const res = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${config.access_token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(messagePayload),
-            });
+            const res = await fetch(
+              `https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${config.access_token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(messagePayload),
+              }
+            );
 
             if (res.ok) {
               success = true;
@@ -133,21 +156,26 @@ Deno.serve(async (req) => {
         const newRetryCount = msg.retry_count + 1;
 
         if (success) {
-          await supabase.from("message_retry_queue").update({
-            status: "sent",
-            resolved_at: new Date().toISOString(),
-            retry_count: newRetryCount,
-            last_attempted_at: new Date().toISOString(),
-          }).eq("id", msg.id);
+          await supabase
+            .from("message_retry_queue")
+            .update({
+              status: "sent",
+              resolved_at: new Date().toISOString(),
+              retry_count: newRetryCount,
+            })
+            .eq("id", msg.id);
           successCount++;
         } else if (newRetryCount >= msg.max_retries) {
-          await supabase.from("message_retry_queue").update({
-            status: "failed",
-            retry_count: newRetryCount,
-            last_error: lastError,
-            last_attempted_at: new Date().toISOString(),
-            resolved_at: new Date().toISOString(),
-          }).eq("id", msg.id);
+          // Exhausted all retries — mark as permanently failed
+          await supabase
+            .from("message_retry_queue")
+            .update({
+              status: "failed",
+              retry_count: newRetryCount,
+              last_error: lastError,
+              resolved_at: new Date().toISOString(),
+            })
+            .eq("id", msg.id);
 
           await supabase.from("system_logs").insert({
             level: "error",
@@ -159,42 +187,56 @@ Deno.serve(async (req) => {
           });
           failCount++;
         } else {
-          // Exponential backoff: 1min, 5min, 15min
-          const delayMinutes = Math.pow(3, newRetryCount);
+          // Backoff schedule: attempt 1 → 2min, attempt 2 → 8min, attempt 3 → 18min
+          // Formula: (retryCount ^ 2) * 2 minutes
+          const delayMinutes = Math.pow(newRetryCount, 2) * 2;
           const nextRetry = new Date(Date.now() + delayMinutes * 60 * 1000);
 
-          await supabase.from("message_retry_queue").update({
-            retry_count: newRetryCount,
-            last_error: lastError,
-            last_attempted_at: new Date().toISOString(),
-            next_retry_at: nextRetry.toISOString(),
-          }).eq("id", msg.id);
+          await supabase
+            .from("message_retry_queue")
+            .update({
+              status: "pending", // release lock back to pending for next attempt
+              retry_count: newRetryCount,
+              last_error: lastError,
+              next_retry_at: nextRetry.toISOString(),
+            })
+            .eq("id", msg.id);
           failCount++;
         }
       } catch (e) {
-        await supabase.from("message_retry_queue").update({
-          retry_count: msg.retry_count + 1,
-          last_error: e.message,
-          last_attempted_at: new Date().toISOString(),
-          next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-        }).eq("id", msg.id);
+        // On unexpected error, release lock with backoff
+        await supabase
+          .from("message_retry_queue")
+          .update({
+            status: "pending",
+            retry_count: msg.retry_count + 1,
+            last_error: e.message,
+            next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          })
+          .eq("id", msg.id);
         failCount++;
       }
     }
 
-    await supabase.from("system_logs").insert({
-      level: "info",
-      source: "retry",
-      function_name: "retry-messages",
-      message: `Retry batch: ${successCount} sent, ${failCount} failed/retrying`,
-      metadata: { total: pendingMessages.length, success: successCount, fail: failCount },
-    });
+    if (successCount > 0 || failCount > 0) {
+      await supabase.from("system_logs").insert({
+        level: "info",
+        source: "retry",
+        function_name: "retry-messages",
+        message: `Retry batch complete: ${successCount} sent, ${failCount} failed/retrying`,
+        metadata: { total: pendingMessages.length, success: successCount, fail: failCount },
+      });
+    }
 
-    return new Response(JSON.stringify({ processed: pendingMessages.length, success: successCount, failed: failCount }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ processed: pendingMessages.length, success: successCount, failed: failCount }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (e) {
     console.error("Retry error:", e);
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 });
