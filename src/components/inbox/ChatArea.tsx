@@ -35,6 +35,7 @@ const MessageStatus = ({ status }: { status?: string }) => {
   if (status === "sent") return <Check className="w-3 h-3 text-muted-foreground inline-block mr-1" />;
   if (status === "delivered") return <CheckCheck className="w-3 h-3 text-muted-foreground inline-block mr-1" />;
   if (status === "read") return <CheckCheck className="w-3 h-3 text-primary inline-block mr-1" />;
+  if (status === "failed") return <AlertTriangle className="w-3 h-3 text-destructive inline-block mr-1" />;
   return null;
 };
 

@@ -517,7 +517,70 @@ serve(async (req) => {
             content = incomingMessage.text.body;
           } else if (["image", "audio", "video", "document"].includes(incomingMessage.type)) {
             content = incomingMessage[incomingMessage.type]?.caption || `[${incomingMessage.type}]`;
-            mediaUrl = incomingMessage[incomingMessage.type]?.id;
+            const mediaId = incomingMessage[incomingMessage.type]?.id;
+            
+            // Download media from Meta and upload to Supabase storage
+            if (mediaId) {
+              try {
+                // Step 1: Get media URL from Meta
+                const { data: metaConfig } = await supabase
+                  .from("whatsapp_config")
+                  .select("access_token")
+                  .eq("org_id", orgId)
+                  .eq("is_connected", true)
+                  .eq("channel_type", "meta_api")
+                  .limit(1)
+                  .maybeSingle();
+
+                if (metaConfig) {
+                  const mediaInfoRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+                    headers: { Authorization: `Bearer ${metaConfig.access_token}` },
+                  });
+                  const mediaInfo = await mediaInfoRes.json();
+
+                  if (mediaInfo.url) {
+                    // Step 2: Download the actual media file
+                    const mediaFileRes = await fetch(mediaInfo.url, {
+                      headers: { Authorization: `Bearer ${metaConfig.access_token}` },
+                    });
+
+                    if (mediaFileRes.ok) {
+                      const fileBuffer = await mediaFileRes.arrayBuffer();
+                      const mimeType = mediaInfo.mime_type || "application/octet-stream";
+                      const ext = mimeType.split("/")[1]?.split(";")[0] || "bin";
+                      const storagePath = `${conversation.id}/${Date.now()}_${mediaId}.${ext}`;
+
+                      const { error: uploadErr } = await supabase.storage
+                        .from("chat-media")
+                        .upload(storagePath, new Uint8Array(fileBuffer), {
+                          contentType: mimeType,
+                          upsert: false,
+                        });
+
+                      if (!uploadErr) {
+                        mediaUrl = `storage:chat-media/${storagePath}`;
+                      } else {
+                        await logToSystem(supabase, "warn", "فشل رفع الوسائط للتخزين", { error: uploadErr.message, mediaId }, orgId);
+                        mediaUrl = mediaId; // fallback to media ID
+                      }
+                    }
+                  }
+                }
+              } catch (mediaErr) {
+                await logToSystem(supabase, "warn", "فشل تحميل الوسائط من Meta", { error: (mediaErr as Error).message, mediaId }, orgId);
+                mediaUrl = mediaId; // fallback
+              }
+            }
+          } else if (incomingMessage.type === "interactive") {
+            // Handle interactive message responses (button replies, list replies)
+            const interReply = incomingMessage.interactive;
+            if (interReply?.type === "button_reply") {
+              content = interReply.button_reply?.title || "[رد زر]";
+            } else if (interReply?.type === "list_reply") {
+              content = interReply.list_reply?.title || "[رد قائمة]";
+            } else {
+              content = `[${incomingMessage.type}]`;
+            }
           } else {
             content = `[${incomingMessage.type}]`;
           }
