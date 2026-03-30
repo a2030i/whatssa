@@ -3,7 +3,7 @@ import {
   MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X,
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
-  Zap, Bell, CircleDot, Headphones, TrendingUp
+  Zap, Bell, CircleDot, Headphones, TrendingUp, Clock
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -53,6 +53,7 @@ const buildGroups = (isEcommerce: boolean): (NavItem | NavGroup)[] => [
       { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true },
       { label: "الأتمتة", icon: Bot, path: "/automation" },
       { label: "الشات بوت", icon: Zap, path: "/chatbot" },
+      { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages" },
     ],
   },
   { label: "التحليلات", icon: BarChart3, path: "/analytics" },

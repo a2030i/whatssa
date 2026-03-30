@@ -78,7 +78,7 @@ const ReportsPage = () => {
 
     const [convsRes, msgsRes, profilesRes, ratingsRes] = await Promise.all([
       supabase.from("conversations").select("id, status, assigned_to, created_at, closed_at").eq("org_id", orgId),
-      supabase.from("messages").select("id, conversation_id, sender, created_at").gte("created_at", since).limit(5000),
+      supabase.from("messages").select("id, conversation_id, sender, created_at").gte("created_at", since).order("created_at", { ascending: true }).limit(5000),
       supabase.from("profiles").select("id, full_name, is_online").eq("org_id", orgId),
       supabase.from("satisfaction_ratings").select("id, agent_name, rating, created_at").eq("org_id", orgId).gte("created_at", since),
     ]);
@@ -97,12 +97,44 @@ const ReportsPage = () => {
     const totalRatingSum = ratings.reduce((sum, r) => sum + r.rating, 0);
     const avgSatisfaction = ratings.length > 0 ? Math.round((totalRatingSum / ratings.length) * 10) / 10 : null;
 
+    // Calculate real avg response time
+    // Group messages by conversation, find time between customer msg and next agent msg
+    const msgsByConv = new Map<string, { sender: string; created_at: string }[]>();
+    msgs.forEach((m) => {
+      if (!msgsByConv.has(m.conversation_id)) msgsByConv.set(m.conversation_id, []);
+      msgsByConv.get(m.conversation_id)!.push(m);
+    });
+
+    const responseTimes: number[] = [];
+    const agentResponseTimes = new Map<string, number[]>();
+
+    msgsByConv.forEach((convMsgs, convId) => {
+      const conv = convs.find((c) => c.id === convId);
+      const agentName = conv?.assigned_to;
+      for (let i = 0; i < convMsgs.length - 1; i++) {
+        if (convMsgs[i].sender === "customer" && convMsgs[i + 1].sender === "agent") {
+          const diff = (new Date(convMsgs[i + 1].created_at).getTime() - new Date(convMsgs[i].created_at).getTime()) / 60000;
+          if (diff > 0 && diff < 1440) { // ignore > 24h
+            responseTimes.push(diff);
+            if (agentName) {
+              if (!agentResponseTimes.has(agentName)) agentResponseTimes.set(agentName, []);
+              agentResponseTimes.get(agentName)!.push(diff);
+            }
+          }
+        }
+      }
+    });
+
+    const avgResponseMin = responseTimes.length > 0 
+      ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) 
+      : 0;
+
     setOverview({
       totalConversations: filteredConvs.length,
       activeConversations: activeConvs,
       closedToday: closedInPeriod,
       totalMessages: msgs.length,
-      avgResponseMin: Math.round(Math.random() * 5 + 1),
+      avgResponseMin,
       unassignedCount: unassigned,
       avgSatisfaction,
       totalRatings: ratings.length,
@@ -110,6 +142,10 @@ const ReportsPage = () => {
 
     const agentMap = new Map<string, AgentStats>();
     profiles.forEach((p) => {
+      const agentRTs = agentResponseTimes.get(p.full_name || p.id);
+      const avgRT = agentRTs && agentRTs.length > 0
+        ? Math.round(agentRTs.reduce((a, b) => a + b, 0) / agentRTs.length)
+        : null;
       agentMap.set(p.full_name || p.id, {
         id: p.id,
         name: p.full_name || "بدون اسم",
@@ -117,7 +153,7 @@ const ReportsPage = () => {
         activeConversations: 0,
         closedConversations: 0,
         totalMessages: 0,
-        avgResponseTime: `${Math.round(Math.random() * 4 + 1)} د`,
+        avgResponseTime: avgRT !== null ? `${avgRT} د` : "—",
         isOnline: p.is_online || false,
         avgRating: null,
         ratingsCount: 0,
