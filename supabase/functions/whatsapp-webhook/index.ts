@@ -376,12 +376,14 @@ serve(async (req) => {
       if (metadataPhoneId) {
         const { data: config } = await supabase
           .from("whatsapp_config")
-          .select("org_id")
+          .select("org_id, default_team_id, default_agent_id")
           .eq("phone_number_id", metadataPhoneId)
           .eq("is_connected", true)
           .maybeSingle();
 
         orgId = config?.org_id || null;
+        var channelDefaultTeamId = config?.default_team_id || null;
+        var channelDefaultAgentId = config?.default_agent_id || null;
       }
 
       if (!orgId) {
@@ -450,16 +452,28 @@ serve(async (req) => {
             .maybeSingle();
 
           if (!conversation) {
+            // Build initial routing from channel config
+            const convInsert: Record<string, any> = {
+              customer_phone: customerPhone,
+              customer_name: contactName,
+              org_id: orgId,
+              status: "active",
+              last_message: messageContent,
+              unread_count: 1,
+              conversation_type: "meta_api",
+            };
+            if (channelDefaultAgentId) {
+              convInsert.assigned_to = channelDefaultAgentId;
+              convInsert.assigned_at = new Date().toISOString();
+            } else if (channelDefaultTeamId) {
+              // Fetch team name for assigned_team column
+              const { data: teamData } = await supabase.from("teams").select("name").eq("id", channelDefaultTeamId).single();
+              if (teamData) convInsert.assigned_team = teamData.name;
+            }
+
             const { data: newConversation, error: convError } = await supabase
               .from("conversations")
-              .insert({
-                customer_phone: customerPhone,
-                customer_name: contactName,
-                org_id: orgId,
-                status: "active",
-                last_message: messageContent,
-                unread_count: 1,
-              })
+              .insert(convInsert)
               .select("id, unread_count")
               .single();
 
