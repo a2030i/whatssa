@@ -856,13 +856,23 @@ const CampaignsPage = () => {
                 <div className="space-y-2">
                   <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
                     <Upload className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-xs text-muted-foreground mb-2">ارفع ملف CSV/Excel يحتوي على الأرقام</p>
-                    <p className="text-[10px] text-muted-foreground mb-3">يجب أن يحتوي عمود "phone" أو "رقم" — أعمدة إضافية تُستخدم كمتغيرات للقالب</p>
-                    <Button size="sm" variant="outline" className="text-xs" onClick={() => fileRef.current?.click()}>
-                      <Upload className="w-3 h-3 ml-1" /> اختر ملف
-                    </Button>
+                    <p className="text-xs text-muted-foreground mb-1">ارفع ملف Excel يحتوي على الأرقام</p>
+                    <p className="text-[10px] text-muted-foreground mb-3">العمود الأول: phone (رقم الجوال) — الأعمدة الإضافية تُستخدم كمتغيرات للقالب</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <Button size="sm" variant="outline" className="text-xs" onClick={() => fileRef.current?.click()}>
+                        <Upload className="w-3 h-3 ml-1" /> رفع ملف
+                      </Button>
+                      {form.channelId && (
+                        <Button size="sm" variant="ghost" className="text-xs text-primary" onClick={downloadTemplate}>
+                          <Download className="w-3 h-3 ml-1" /> تنزيل القالب
+                        </Button>
+                      )}
+                    </div>
                     <input ref={fileRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileUpload} />
                   </div>
+                  {!form.channelId && (
+                    <p className="text-[10px] text-warning text-center">⚠️ اختر قناة الإرسال أولاً لتنزيل قالب مناسب</p>
+                  )}
                   {uploadedRecipients.length > 0 && (
                     <div className="bg-success/5 rounded-lg p-3 flex items-center justify-between">
                       <span className="text-xs text-success font-medium">✅ تم تحميل {uploadedRecipients.length} رقم</span>
