@@ -461,6 +461,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
           ))
         )}
       </div>
+
+      {/* Custom Inbox Builder */}
+      <CustomInboxBuilder
+        open={builderOpen}
+        onOpenChange={setBuilderOpen}
+        editInbox={editingInbox}
+        onSaved={loadCustomInboxes}
+      />
     </div>
   );
 };
