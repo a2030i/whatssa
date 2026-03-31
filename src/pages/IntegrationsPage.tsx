@@ -693,89 +693,72 @@ const IntegrationsPage = () => {
           </div>
         )}
 
-        {/* All Channels */}
+        {/* WhatsApp Channel */}
         <div className="space-y-3">
           <h2 className="text-base font-bold text-foreground">قنوات التواصل</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {/* WhatsApp Official */}
-            <ChannelCard
-              icon={MessageSquare}
-              iconBg="bg-emerald-500/10 text-emerald-600"
-              name="واتساب"
-              description="WhatsApp Business API"
-              actions={
-                hasConnected ? (
-                  <div className="flex flex-col items-center gap-1.5">
-                    <Badge className="bg-success/10 text-success border-0 text-[10px] gap-1 px-2 py-0.5">
-                      <CheckCircle2 className="w-2.5 h-2.5" /> متصل ({connectedOfficialConfigs.length})
-                    </Badge>
-                    {(connectedOfficialConfigs.length < maxPhones || isSuperAdmin) && (
-                      <Button size="sm" variant="outline" className="text-[10px] h-7 gap-1 rounded-lg" onClick={startConnect} disabled={!sdkLoaded}>
-                        <Plus className="w-3 h-3" /> إضافة رقم
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <Button size="sm" className="text-[10px] h-8 gap-1 rounded-lg px-4" onClick={startConnect} disabled={!sdkLoaded || isLoading}>
-                    {!sdkLoaded ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                    يتصل
-                  </Button>
-                )
-              }
-            />
-
-            {/* WhatsApp Web */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* WhatsApp — unified card */}
             <div className="bg-card rounded-xl border border-border p-4 flex flex-col items-center text-center gap-2 hover:shadow-md transition-shadow">
-              <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
-                <QrCode className="w-5 h-5 text-warning" />
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <h3 className="font-bold text-xs">واتساب ويب</h3>
-                <Badge variant="outline" className="text-[8px] px-1 py-0 text-warning border-warning/30 mt-0.5">غير رسمي</Badge>
+                <h3 className="font-bold text-xs">واتساب</h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">رسمي أو عبر واتساب ويب</p>
               </div>
-              <p className="text-[10px] text-muted-foreground leading-relaxed">ربط عبر مسح QR</p>
-              <div className="w-full mt-auto">
+              <div className="flex flex-col items-center gap-1.5 mt-auto w-full">
+                {hasConnected && (
+                  <Badge className="bg-success/10 text-success border-0 text-[10px] gap-1 px-2 py-0.5">
+                    <CheckCircle2 className="w-2.5 h-2.5" /> رسمي ({connectedOfficialConfigs.length})
+                  </Badge>
+                )}
+                <Button size="sm" className="text-[10px] h-8 gap-1 rounded-lg px-4 w-full" onClick={() => setShowWhatsAppChoice(true)}>
+                  <Plus className="w-3 h-3" /> إضافة رقم
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* WhatsApp Type Choice Dialog */}
+        <Dialog open={showWhatsAppChoice} onOpenChange={setShowWhatsAppChoice}>
+          <DialogContent className="max-w-md" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="text-center text-lg">اختر نوع الربط</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 gap-3 pt-2">
+              {/* Official */}
+              <button
+                onClick={() => { setShowWhatsAppChoice(false); startConnect(); }}
+                className="flex items-center gap-3 p-4 rounded-xl border-2 border-border hover:border-emerald-500 hover:bg-emerald-500/5 transition-all text-right"
+              >
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm">واتساب رسمي</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">WhatsApp Business API — ربط رسمي عبر Meta مع قوالب وحملات</p>
+                </div>
+              </button>
+              {/* Web / Unofficial */}
+              <div className="rounded-xl border-2 border-border hover:border-warning hover:bg-warning/5 transition-all p-4">
+                <div className="flex items-center gap-3 text-right mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+                    <QrCode className="w-6 h-6 text-warning" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-bold text-sm">واتساب ويب</p>
+                      <Badge variant="outline" className="text-[8px] px-1 py-0 text-warning border-warning/30">غير رسمي</Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">ربط عبر مسح QR — بدون حساب بزنس رسمي</p>
+                  </div>
+                </div>
                 <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} />
               </div>
             </div>
-
-            {/* Instagram */}
-            <ChannelCard
-              icon={Instagram}
-              iconBg="bg-pink-500/10 text-pink-500"
-              name="انستغرام"
-              description="Instagram Business API"
-              actions={<Badge variant="outline" className="text-[10px] px-2 py-0.5">قريباً</Badge>}
-            />
-
-            {/* Telegram */}
-            <ChannelCard
-              icon={Radio}
-              iconBg="bg-blue-500/10 text-blue-500"
-              name="تيليغرام"
-              description="استقبال رسائل تيليغرام"
-              actions={<Badge variant="outline" className="text-[10px] px-2 py-0.5">قريباً</Badge>}
-            />
-
-            {/* SMS */}
-            <ChannelCard
-              icon={Smartphone}
-              iconBg="bg-violet-500/10 text-violet-500"
-              name="رسالة قصيرة"
-              description="إرسال واستقبال SMS"
-              actions={<Badge variant="outline" className="text-[10px] px-2 py-0.5">قريباً</Badge>}
-            />
-
-            {/* Phone */}
-            <ChannelCard
-              icon={PhoneCall}
-              iconBg="bg-sky-500/10 text-sky-500"
-              name="هاتف"
-              description="مكالمات صوتية"
-              actions={<Badge variant="outline" className="text-[10px] px-2 py-0.5">قريباً</Badge>}
-            />
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
 
         {/* E-commerce Integrations */}
         <div className="space-y-4">
