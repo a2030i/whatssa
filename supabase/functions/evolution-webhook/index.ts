@@ -364,7 +364,7 @@ serve(async (req) => {
         const key = msg.key || {};
         const messageContent = msg.message || {};
 
-        if (key.fromMe) continue;
+        const isFromMe = !!key.fromMe;
 
         const remoteJid = key.remoteJid || "";
         let conversationType = "private";
@@ -397,6 +397,53 @@ serve(async (req) => {
         else if (messageContent.documentMessage) messageType = "document";
 
         if (!text && messageType === "text") continue;
+
+        // ── Handle outgoing messages sent from phone ──
+        if (isFromMe) {
+          // Find existing conversation to sync the outgoing message
+          const { data: existingConv } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("customer_phone", phone)
+            .eq("org_id", orgId)
+            .eq("conversation_type", conversationType)
+            .neq("status", "closed")
+            .limit(1)
+            .maybeSingle();
+
+          if (existingConv) {
+            // Check duplicate by wa_message_id
+            if (key.id) {
+              const { data: existingMsg } = await supabase
+                .from("messages")
+                .select("id")
+                .eq("wa_message_id", key.id)
+                .limit(1)
+                .maybeSingle();
+              if (existingMsg) continue;
+            }
+
+            await supabase.from("messages").insert({
+              conversation_id: existingConv.id,
+              sender: "agent",
+              message_type: messageType,
+              content: text || `[${messageType}]`,
+              media_url: mediaUrl,
+              wa_message_id: key.id || null,
+              status: "delivered",
+            });
+
+            await supabase.from("conversations").update({
+              last_message: text || `[${messageType}]`,
+              last_message_at: new Date().toISOString(),
+            }).eq("id", existingConv.id);
+
+            await logToSystem(supabase, "info", `رسالة صادرة من الجوال (Evolution) إلى ${phone}`, {
+              type: messageType, wa_message_id: key.id,
+            }, orgId);
+          }
+          continue;
+        }
 
         await logToSystem(supabase, "info", `رسالة واردة (Evolution) من ${phone}`, {
           type: messageType, conversation_type: conversationType, wa_message_id: key.id,
