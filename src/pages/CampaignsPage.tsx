@@ -1068,11 +1068,13 @@ function CampaignDetailContent({
   recipients,
   recipientStatusBadge,
   exportReport,
+  onSend,
 }: {
   campaign: any;
   recipients: any[];
   recipientStatusBadge: (status: string) => JSX.Element;
   exportReport: () => void;
+  onSend?: () => void;
 }) {
   const total = campaign.total_recipients || 0;
   const sent = campaign.sent_count || 0;
