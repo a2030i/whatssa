@@ -119,6 +119,7 @@ const AutomationPage = () => {
     setFormActionType(rule.action_type || "reply");
     setFormActionTag(rule.action_tag || "");
     setFormActionTeamId(rule.action_team_id || "");
+    setFormChannelIds((rule as any).channel_ids || []);
     setDialogOpen(true);
   };
 
