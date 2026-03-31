@@ -116,36 +116,27 @@ export const useDashboardData = (): DashboardData => {
         businessAccountId: waData?.business_account_id || null,
         displayPhone: waData?.display_phone || null,
         businessName: waData?.business_name || null,
-        accessToken: waData?.access_token || null,
         lastSync: waData?.updated_at || null,
       };
 
-      // Fetch Meta API status if connected
+      // Fetch Meta API status via edge function (server-side token usage)
       let metaPhoneStatus: string | null = null;
       let metaBusinessVerification: string | null = null;
       let metaQualityRating: string | null = null;
       let metaMessagingLimit: string | null = null;
 
-      if (waData?.access_token && waData?.phone_number_id) {
+      if (waData?.is_connected && waData?.id) {
         try {
-          const phoneRes = await fetch(
-            `https://graph.facebook.com/v21.0/${waData.phone_number_id}?fields=code_verification_status,quality_rating,messaging_limit_tier,name_status,status&access_token=${waData.access_token}`
-          );
-          if (phoneRes.ok) {
-            const phoneData = await phoneRes.json();
-            metaPhoneStatus = phoneData.code_verification_status || phoneData.status || null;
-            metaQualityRating = phoneData.quality_rating || null;
-            metaMessagingLimit = phoneData.messaging_limit_tier || null;
+          const { data: statusData } = await supabase.functions.invoke("whatsapp-check-status", {
+            body: { config_id: waData.id },
+          });
+          if (statusData?.phone) {
+            metaPhoneStatus = statusData.phone.code_verification_status || statusData.phone.status || null;
+            metaQualityRating = statusData.phone.quality_rating || null;
+            metaMessagingLimit = statusData.phone.messaging_limit_tier || null;
           }
-        } catch { /* silent */ }
-
-        try {
-          const wabaRes = await fetch(
-            `https://graph.facebook.com/v21.0/${waData.business_account_id}?fields=account_review_status,business_verification_status&access_token=${waData.access_token}`
-          );
-          if (wabaRes.ok) {
-            const wabaData = await wabaRes.json();
-            metaBusinessVerification = wabaData.business_verification_status || null;
+          if (statusData?.waba) {
+            metaBusinessVerification = statusData.waba.business_verification_status || null;
           }
         } catch { /* silent */ }
       }
