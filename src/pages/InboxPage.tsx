@@ -48,7 +48,7 @@ const InboxPage = () => {
 
     const loadTemplates = async () => {
       const { data: metaConfig } = await supabase
-        .from("whatsapp_config")
+        .from("whatsapp_config_safe")
         .select("id")
         .eq("org_id", orgId)
         .eq("channel_type", "meta_api")
