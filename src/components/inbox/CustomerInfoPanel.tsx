@@ -72,6 +72,24 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes }: CustomerInfoPanelPro
     toast.success("تم حذف الوسم");
   };
 
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`تم نسخ ${label}`);
+  };
+
+  const CopyField = ({ label, value }: { label: string; value: string }) => (
+    <div className="flex items-center justify-between">
+      <button onClick={() => copyToClipboard(value, label)} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
+        <Copy className="w-3 h-3" />
+        <span>نسخ</span>
+      </button>
+      <div className="text-left">
+        <span className="text-[10px] text-muted-foreground block">{label}</span>
+        <span className="text-xs font-medium" dir="ltr">{value}</span>
+      </div>
+    </div>
+  );
+
   const SectionHeader = ({ title, icon: Icon, sectionKey }: { title: string; icon: any; sectionKey: keyof typeof sections }) => (
     <button onClick={() => toggleSection(sectionKey)} className="w-full flex items-center justify-between py-2 group">
       <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
