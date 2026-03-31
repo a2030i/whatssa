@@ -322,16 +322,16 @@ const CustomersPage = () => {
         <Input placeholder="بحث بالاسم أو الرقم..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm bg-card/70 backdrop-blur-sm border-border/40 rounded-xl" />
       </div>
 
-      <div className="bg-card rounded-xl shadow-card overflow-x-auto">
+      <div className="bg-card/70 backdrop-blur-sm rounded-2xl shadow-card border border-border/40 overflow-x-auto">
         <table className="w-full text-sm min-w-[600px]">
           <thead>
-            <tr className="border-b border-border text-muted-foreground text-[11px]">
-              <th className="text-right p-3">الاسم</th>
-              <th className="text-right p-3">الجوال</th>
-              <th className="text-right p-3">المرحلة</th>
-              <th className="text-right p-3 hidden md:table-cell">الإيميل</th>
-              <th className="text-right p-3">التصنيفات</th>
-              <th className="text-right p-3 w-20">إجراء</th>
+            <tr className="border-b border-border/30 text-muted-foreground text-[11px] bg-secondary/20">
+              <th className="text-right p-3.5 font-semibold">الاسم</th>
+              <th className="text-right p-3.5 font-semibold">الجوال</th>
+              <th className="text-right p-3.5 font-semibold">المرحلة</th>
+              <th className="text-right p-3.5 font-semibold hidden md:table-cell">الإيميل</th>
+              <th className="text-right p-3.5 font-semibold">التصنيفات</th>
+              <th className="text-right p-3.5 font-semibold w-20">إجراء</th>
             </tr>
           </thead>
           <tbody>
