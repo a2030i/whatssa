@@ -936,6 +936,18 @@ const CampaignsPage = () => {
               recipients={recipients}
               recipientStatusBadge={recipientStatusBadge}
               exportReport={exportReport}
+              onSend={async () => {
+                const { error } = await supabase.functions.invoke("send-campaign", {
+                  body: { campaign_id: detailCampaign.id },
+                });
+                if (error) {
+                  toast.error("فشل إرسال الحملة: " + error.message);
+                } else {
+                  toast.success("بدأ إرسال الحملة!");
+                  setDetailCampaign(null);
+                  load();
+                }
+              }}
             />
           )}
         </DialogContent>
