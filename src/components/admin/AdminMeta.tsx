@@ -27,7 +27,7 @@ const AdminMeta = () => {
 
   const load = async () => {
     const [c, o] = await Promise.all([
-      supabase.from("whatsapp_config").select("*"),
+      supabase.from("whatsapp_config_safe").select("*"),
       supabase.from("organizations").select("id, name"),
     ]);
     setConfigs(c.data || []);

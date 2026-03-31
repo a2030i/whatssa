@@ -121,7 +121,7 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
   const loadChannels = async () => {
     if (!orgId) return;
     const { data } = await supabase
-      .from("whatsapp_config")
+      .from("whatsapp_config_safe")
       .select("id, display_phone, business_name, channel_type, is_connected, evolution_instance_name")
       .eq("org_id", orgId)
       .eq("is_connected", true);

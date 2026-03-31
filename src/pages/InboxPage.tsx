@@ -48,7 +48,7 @@ const InboxPage = () => {
 
     const loadTemplates = async () => {
       const { data: metaConfig } = await supabase
-        .from("whatsapp_config")
+        .from("whatsapp_config_safe")
         .select("id")
         .eq("org_id", orgId)
         .eq("channel_type", "meta_api")
@@ -251,7 +251,7 @@ const InboxPage = () => {
     // Determine channel: check if org has an evolution config that's connected
     // Try evolution-send first if evolution config exists, fall back to whatsapp-send
     const { data: evoConfig } = await supabase
-      .from("whatsapp_config")
+      .from("whatsapp_config_safe")
       .select("id, channel_type")
       .eq("org_id", orgId)
       .eq("channel_type", "evolution")

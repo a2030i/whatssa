@@ -46,7 +46,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     setIsLoadingConfig(true);
     if (!orgId) { setIsLoadingConfig(false); return; }
     const { data } = await supabase
-      .from("whatsapp_config")
+      .from("whatsapp_config_safe")
       .select("*")
       .eq("org_id", orgId)
       .eq("channel_type", "evolution")
@@ -69,7 +69,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
   const loadUnofficialLimits = async () => {
     if (!orgId) return;
     const [countRes, orgRes] = await Promise.all([
-      supabase.from("whatsapp_config").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("channel_type", "evolution"),
+      supabase.from("whatsapp_config_safe").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("channel_type", "evolution"),
       supabase.from("organizations").select("plans(max_unofficial_phones)").eq("id", orgId).maybeSingle(),
     ]);
     setUnofficialCount(countRes.count || 0);

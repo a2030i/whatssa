@@ -38,15 +38,15 @@ interface WhatsAppConfig {
   id: string;
   phone_number_id: string;
   business_account_id: string;
-  access_token: string;
   display_phone: string | null;
   business_name: string | null;
   is_connected: boolean | null;
-  webhook_verify_token: string;
   org_id: string | null;
   registration_status: string | null;
   registration_error: string | null;
   registered_at: string | null;
+  channel_type?: string;
+  [key: string]: any;
 }
 
 type FlowStep = "idle" | "checklist" | "connecting" | "pick_phone" | "success" | "error";
@@ -90,7 +90,7 @@ const IntegrationsPage = () => {
   const loadConfigs = async () => {
     if (!orgId) return;
     const [configsRes, orgRes] = await Promise.all([
-      supabase.from("whatsapp_config").select("*").eq("org_id", orgId).neq("channel_type", "evolution").order("created_at", { ascending: true }),
+      supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).neq("channel_type", "evolution").order("created_at", { ascending: true }),
       supabase.from("organizations").select("plans(max_phone_numbers)").eq("id", orgId).maybeSingle(),
     ]);
     const data = configsRes.data || [];
@@ -99,7 +99,7 @@ const IntegrationsPage = () => {
     if (planData?.plans?.max_phone_numbers) setMaxPhones(planData.plans.max_phone_numbers);
     // Fetch Meta status for connected configs — sequentially with delay to avoid rate limits
     if (data) {
-      const connected = data.filter(c => c.is_connected && c.access_token && c.phone_number_id);
+      const connected = data.filter(c => c.is_connected && c.phone_number_id);
       for (let i = 0; i < connected.length; i++) {
         if (i > 0) await new Promise(r => setTimeout(r, 2000));
         fetchMetaStatus(connected[i]);
@@ -381,7 +381,7 @@ const IntegrationsPage = () => {
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", {
         body: {
-          access_token: config.access_token,
+          config_id: config.id,
           phone_number_id: config.phone_number_id,
           waba_id: config.business_account_id,
           org_id: config.org_id,

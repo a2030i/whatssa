@@ -107,6 +107,7 @@ serve(async (req) => {
     const {
       code,
       access_token: directToken,
+      config_id: configId,
       redirect_uri: redirectUri,
       waba_id: sessionWabaId,
       phone_number_id: sessionPhoneId,
@@ -125,8 +126,21 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // ── Step 1: Obtain access token ──
-    log("step1_token", { hasCode: !!code, hasDirect: !!directToken });
+    log("step1_token", { hasCode: !!code, hasDirect: !!directToken, hasConfigId: !!configId });
     let accessToken = directToken;
+
+    // If config_id provided (retry scenario), fetch token from DB
+    if (!accessToken && configId) {
+      const { data: configData } = await supabase
+        .from("whatsapp_config")
+        .select("access_token")
+        .eq("id", configId)
+        .single();
+      if (configData?.access_token) {
+        accessToken = configData.access_token;
+        log("step1_token_from_db", { configId });
+      }
+    }
 
     if (code) {
       const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}${redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ""}`;
@@ -146,7 +160,7 @@ serve(async (req) => {
       log("step1_token_obtained", { longLived: !!longData.access_token });
     }
 
-    if (!accessToken) return error("code or access_token is required", 400);
+    if (!accessToken) return error("code, access_token, or config_id is required", 400);
 
     // ── Step 2: Resolve WABA ID & phone numbers ──
     log("step2_resolve", { sessionWabaId, sessionPhoneId });

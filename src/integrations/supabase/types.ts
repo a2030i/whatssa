@@ -2308,7 +2308,93 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      whatsapp_config_safe: {
+        Row: {
+          business_account_id: string | null
+          business_name: string | null
+          channel_type: string | null
+          created_at: string | null
+          default_agent_id: string | null
+          default_team_id: string | null
+          display_phone: string | null
+          evolution_instance_name: string | null
+          evolution_instance_status: string | null
+          id: string | null
+          is_connected: boolean | null
+          last_register_attempt_at: string | null
+          org_id: string | null
+          phone_number_id: string | null
+          registered_at: string | null
+          registration_error: string | null
+          registration_status: string | null
+          token_expires_at: string | null
+          token_last_refreshed_at: string | null
+          token_refresh_error: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          business_account_id?: string | null
+          business_name?: string | null
+          channel_type?: string | null
+          created_at?: string | null
+          default_agent_id?: string | null
+          default_team_id?: string | null
+          display_phone?: string | null
+          evolution_instance_name?: string | null
+          evolution_instance_status?: string | null
+          id?: string | null
+          is_connected?: boolean | null
+          last_register_attempt_at?: string | null
+          org_id?: string | null
+          phone_number_id?: string | null
+          registered_at?: string | null
+          registration_error?: string | null
+          registration_status?: string | null
+          token_expires_at?: string | null
+          token_last_refreshed_at?: string | null
+          token_refresh_error?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          business_account_id?: string | null
+          business_name?: string | null
+          channel_type?: string | null
+          created_at?: string | null
+          default_agent_id?: string | null
+          default_team_id?: string | null
+          display_phone?: string | null
+          evolution_instance_name?: string | null
+          evolution_instance_status?: string | null
+          id?: string | null
+          is_connected?: boolean | null
+          last_register_attempt_at?: string | null
+          org_id?: string | null
+          phone_number_id?: string | null
+          registered_at?: string | null
+          registration_error?: string | null
+          registration_status?: string | null
+          token_expires_at?: string | null
+          token_last_refreshed_at?: string | null
+          token_refresh_error?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_config_default_team_id_fkey"
+            columns: ["default_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_config_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       check_org_limit: {
