@@ -23,12 +23,19 @@ interface Props {
 
 interface EventNotifConfig {
   enabled: boolean;
-  channel_id: string; // whatsapp_config id
+  channel_id: string;
   // For meta_api
   template_name?: string;
   template_language?: string;
   // For evolution
   message_text?: string;
+}
+
+interface MetaTemplate {
+  name: string;
+  language: string;
+  status: string;
+  category: string;
 }
 
 interface ChannelOption {
