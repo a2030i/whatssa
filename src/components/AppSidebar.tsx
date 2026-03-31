@@ -112,6 +112,48 @@ const AppSidebar = () => {
 
   const renderItem = (item: NavItem, nested = false) => {
     const active = isActive(item.path);
+    const locked = isLocked(item);
+
+    if (locked) {
+      const lockedContent = (
+        <button
+          key={item.path}
+          onClick={() => {
+            toast.info(item.lockedMessage || "هذه الميزة غير متاحة حالياً", {
+              action: {
+                label: "الربط والتكامل",
+                onClick: () => window.location.href = "/integrations",
+              },
+            });
+          }}
+          className={cn(
+            "group flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all duration-200 w-full opacity-50 cursor-not-allowed",
+            nested ? "px-3 py-[7px]" : "px-3 py-2",
+            "text-sidebar-foreground/50"
+          )}
+        >
+          <item.icon className={cn("shrink-0", nested ? "w-4 h-4" : "w-[18px] h-[18px]")} />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-right">{item.label}</span>
+              <Lock className="w-3 h-3 text-sidebar-foreground/30" />
+            </>
+          )}
+        </button>
+      );
+
+      if (collapsed) {
+        return (
+          <Tooltip key={item.path}>
+            <TooltipTrigger asChild>{lockedContent}</TooltipTrigger>
+            <TooltipContent side="left" className="text-xs">
+              🔒 {item.label}
+            </TooltipContent>
+          </Tooltip>
+        );
+      }
+      return lockedContent;
+    }
 
     const content = (
       <NavLink
