@@ -1055,7 +1055,7 @@ const IntegrationsPage = () => {
 
   // ============ MAIN: Connected Numbers Management ============
   return (
-    <div className="p-3 md:p-6 space-y-8 max-w-[900px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir="rtl">
       {renderAllChannelsView(configs)}
     </div>
   );
