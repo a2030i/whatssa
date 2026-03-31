@@ -441,13 +441,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
                         {conv.tags.length > 1 && ` +${conv.tags.length - 1}`}
                       </Badge>
                     )}
-                    {/* SLA Timer */}
-                    {conv.status !== "closed" && (() => {
-                      const wait = getWaitTime(conv.lastCustomerMessageAt);
-                      return wait ? (
-                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5", wait.color)}>
+                    {/* 24h Meta Session Countdown */}
+                    {conv.status !== "closed" && conv.channelType === "meta_api" && (() => {
+                      const countdown = get24hCountdown(conv.lastCustomerMessageAt);
+                      return countdown ? (
+                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5", countdown.color)}>
                           <Clock className="w-2.5 h-2.5" />
-                          {wait.text}
+                          {countdown.text}
                         </span>
                       ) : null;
                     })()}
