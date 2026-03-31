@@ -99,7 +99,7 @@ const IntegrationsPage = () => {
     if (planData?.plans?.max_phone_numbers) setMaxPhones(planData.plans.max_phone_numbers);
     // Fetch Meta status for connected configs — sequentially with delay to avoid rate limits
     if (data) {
-      const connected = data.filter(c => c.is_connected && c.access_token && c.phone_number_id);
+      const connected = data.filter(c => c.is_connected && c.phone_number_id);
       for (let i = 0; i < connected.length; i++) {
         if (i > 0) await new Promise(r => setTimeout(r, 2000));
         fetchMetaStatus(connected[i]);
