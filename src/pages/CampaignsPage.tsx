@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield, Repeat, RefreshCw, RotateCcw } from "lucide-react";
+import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield, Repeat, RefreshCw, RotateCcw, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -857,6 +857,26 @@ const CampaignsPage = () => {
                       <p className="text-[10px] text-muted-foreground leading-relaxed">
                         ⚠️ <strong>هذه أسعار تقريبية</strong> — التكلفة الفعلية تُخصم مباشرة من حسابك في Meta وتعتمد على فئة القالب (تسويقي / خدمي / مصادقة) والمنطقة الجغرافية للمستلم. <strong>منصة Respondly لا تتحكم في هذه الرسوم ولا تحصّلها.</strong>
                       </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <a
+                          href="https://developers.facebook.com/docs/whatsapp/pricing"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-primary hover:underline flex items-center gap-1"
+                        >
+                          📄 تسعيرة Meta الرسمية
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                        <span className="text-muted-foreground text-[10px]">|</span>
+                        <button
+                          type="button"
+                          onClick={() => window.open("https://developers.facebook.com/docs/whatsapp/pricing", "_blank")}
+                          className="text-[10px] text-primary hover:underline flex items-center gap-1"
+                        >
+                          💰 صفحة الأسعار التفصيلية
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
