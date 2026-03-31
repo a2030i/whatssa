@@ -820,12 +820,12 @@ const CampaignsPage = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {(() => {
                         const count = getAudienceCount();
-                        // Meta pricing (approximate per conversation - Marketing category)
-                        // Saudi Arabia: ~$0.0638 USD ≈ 0.24 SAR per marketing conversation
-                        // Utility: ~$0.0140 USD ≈ 0.053 SAR
-                        const marketingRate = 0.24; // SAR
-                        const utilityRate = 0.053; // SAR
-                        const authRate = 0.042; // SAR
+                        // Meta per-message pricing (2026) - Saudi Arabia
+                        // Marketing: ~0.35 SAR, Utility: ~0.15 SAR, Auth: ~0.20 SAR
+                        // Service (customer-initiated): FREE
+                        const marketingRate = 0.35; // SAR
+                        const utilityRate = 0.15; // SAR
+                        const authRate = 0.20; // SAR
                         const marketingCost = (count * marketingRate).toFixed(2);
                         const utilityCost = (count * utilityRate).toFixed(2);
                         return (
@@ -837,14 +837,17 @@ const CampaignsPage = () => {
                             <div className="bg-background rounded-lg p-2.5 text-center border">
                               <p className="text-[10px] text-muted-foreground">تسويقية (Marketing)</p>
                               <p className="text-sm font-bold mt-0.5 text-warning">~{marketingCost} ر.س</p>
+                              <p className="text-[9px] text-muted-foreground">{marketingRate} ر.س/رسالة</p>
                             </div>
                             <div className="bg-background rounded-lg p-2.5 text-center border">
                               <p className="text-[10px] text-muted-foreground">خدمية (Utility)</p>
                               <p className="text-sm font-bold mt-0.5 text-primary">~{utilityCost} ر.س</p>
+                              <p className="text-[9px] text-muted-foreground">{utilityRate} ر.س/رسالة</p>
                             </div>
                             <div className="bg-background rounded-lg p-2.5 text-center border">
-                              <p className="text-[10px] text-muted-foreground">السعر لكل محادثة</p>
-                              <p className="text-sm font-bold mt-0.5">{marketingRate} ر.س</p>
+                              <p className="text-[10px] text-muted-foreground">مصادقة (Auth)</p>
+                              <p className="text-sm font-bold mt-0.5">{(count * authRate).toFixed(2)} ر.س</p>
+                              <p className="text-[9px] text-muted-foreground">{authRate} ر.س/رسالة</p>
                             </div>
                           </>
                         );
