@@ -32,10 +32,13 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
   const [testSending, setTestSending] = useState(false);
   const [existingConfig, setExistingConfig] = useState<any>(null);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [maxUnofficialPhones, setMaxUnofficialPhones] = useState<number>(1);
+  const [unofficialCount, setUnofficialCount] = useState<number>(0);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadExistingConfig();
+    loadUnofficialLimits();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
@@ -63,7 +66,22 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     setIsLoadingConfig(false);
   };
 
+  const loadUnofficialLimits = async () => {
+    if (!orgId) return;
+    const [countRes, orgRes] = await Promise.all([
+      supabase.from("whatsapp_config").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("channel_type", "evolution"),
+      supabase.from("organizations").select("plans(max_unofficial_phones)").eq("id", orgId).maybeSingle(),
+    ]);
+    setUnofficialCount(countRes.count || 0);
+    const planData = orgRes?.data as any;
+    if (planData?.plans?.max_unofficial_phones != null) setMaxUnofficialPhones(planData.plans.max_unofficial_phones);
+  };
+
   const createInstance = async () => {
+    if (unofficialCount >= maxUnofficialPhones && !isSuperAdmin) {
+      toast.error(`وصلت للحد الأقصى (${maxUnofficialPhones} رقم غير رسمي). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
+      return;
+    }
     setIsCreating(true);
     try {
       const { data, error } = await supabase.functions.invoke("evolution-manage", {
