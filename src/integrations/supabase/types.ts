@@ -2446,6 +2446,7 @@ export type Database = {
           registered_at: string | null
           registration_error: string | null
           registration_status: string | null
+          settings: Json | null
           token_expires_at: string | null
           token_last_refreshed_at: string | null
           token_refresh_error: string | null
@@ -2472,6 +2473,7 @@ export type Database = {
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
+          settings?: Json | null
           token_expires_at?: string | null
           token_last_refreshed_at?: string | null
           token_refresh_error?: string | null
@@ -2498,6 +2500,7 @@ export type Database = {
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
+          settings?: Json | null
           token_expires_at?: string | null
           token_last_refreshed_at?: string | null
           token_refresh_error?: string | null
