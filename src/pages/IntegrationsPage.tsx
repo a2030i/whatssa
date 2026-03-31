@@ -452,7 +452,7 @@ const IntegrationsPage = () => {
     const ms = metaStatus[config.id];
 
     return (
-      <div key={config.id} className="bg-card rounded-2xl border border-border p-5 flex flex-col items-center text-center gap-3 hover:shadow-md transition-shadow">
+      <div key={config.id} className="bg-card rounded-xl border border-border p-4 flex flex-col items-center text-center gap-2 hover:shadow-md transition-shadow">
         <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
           <MessageSquare className="w-7 h-7 text-emerald-600" />
         </div>
