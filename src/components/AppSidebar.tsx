@@ -9,6 +9,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import respondlyLogo from "@/assets/respondly-logo.png";
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -277,17 +278,7 @@ const AppSidebar = () => {
     <>
       {/* Logo */}
       <div className={cn("border-b border-sidebar-border/50 flex items-center", collapsed ? "p-3 justify-center" : "p-4 gap-3")}>
-        <div className="w-9 h-9 rounded-xl gradient-whatsapp flex items-center justify-center shadow-lg shadow-primary/20">
-          <MessageSquare className="w-[18px] h-[18px] text-white" />
-        </div>
-        {!collapsed && (
-          <div>
-            <span className="text-base font-bold text-sidebar-accent-foreground tracking-tight block leading-tight">
-              Respondly
-            </span>
-            <span className="text-[10px] text-sidebar-foreground/60">منصة إدارة المحادثات</span>
-          </div>
-        )}
+        <img src={respondlyLogo} alt="Respondly" className={cn(collapsed ? "h-8" : "h-10")} />
       </div>
 
       {/* Navigation */}

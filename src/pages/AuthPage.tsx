@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { MessageSquare, Loader2, Eye, EyeOff, ArrowRight, Mail, KeyRound } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowRight, Mail, KeyRound } from "lucide-react";
+import respondlyLogo from "@/assets/respondly-logo.png";
 
 type Step = "email" | "password" | "set-password" | "signup";
 
@@ -100,11 +101,8 @@ const AuthPage = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4" dir="rtl">
       <div className="w-full max-w-[400px] space-y-6">
         {/* Logo */}
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 rounded-2xl gradient-whatsapp flex items-center justify-center mx-auto shadow-lg">
-            <MessageSquare className="w-8 h-8 text-whatsapp-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Respondly</h1>
+        <div className="text-center space-y-3">
+          <img src={respondlyLogo} alt="Respondly" className="h-14 mx-auto object-contain" />
           <p className="text-sm text-muted-foreground">
             {step === "email" && "أدخل بريدك الإلكتروني للمتابعة"}
             {step === "password" && "أدخل كلمة المرور لتسجيل الدخول"}
