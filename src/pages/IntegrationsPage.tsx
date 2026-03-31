@@ -426,6 +426,14 @@ const IntegrationsPage = () => {
     toast.success(`تم نسخ ${label}`);
   };
 
+  const saveChannelLabel = async (configId: string) => {
+    const label = editingLabelText.trim();
+    await supabase.from("whatsapp_config").update({ channel_label: label || null }).eq("id", configId);
+    setEditingLabelId(null);
+    toast.success("تم تحديث اسم القناة");
+    loadConfigs();
+  };
+
   const resetFlow = () => {
     setFlowStep("idle");
     setPhoneNumbers([]);
