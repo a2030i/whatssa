@@ -104,52 +104,33 @@ const SettingsPage = () => {
     if (orgId) {
       loadAllSettings();
       loadSavedReplies();
+      loadChannels();
     }
   }, [orgId]);
 
-  const loadSavedReplies = async () => {
+  const loadChannels = async () => {
     const { data } = await supabase
-      .from("saved_replies")
-      .select("id, shortcut, title, content, category")
+      .from("whatsapp_config_safe" as any)
+      .select("id, display_phone, business_name, evolution_instance_name, channel_type, settings")
       .eq("org_id", orgId)
-      .order("shortcut");
-    if (data) setSavedReplies(data);
-  };
-
-  const saveReply = async () => {
-    if (!replyForm.shortcut.trim() || !replyForm.title.trim() || !replyForm.content.trim()) {
-      toast.error("جميع الحقول مطلوبة");
-      return;
+      .eq("is_connected", true)
+      .order("created_at");
+    const chs = (data || []) as any[];
+    setChannels(chs.map((c: any) => ({
+      id: c.id,
+      label: c.business_name || c.display_phone || c.evolution_instance_name || "قناة",
+      channelType: c.channel_type || "meta_api",
+    })));
+    // Load per-channel settings
+    const oohMap: typeof oohSettings = {};
+    const satMap: typeof satSettings = {};
+    for (const ch of chs) {
+      const s = (ch.settings as Record<string, any>) || {};
+      if (s.ooh) oohMap[ch.id] = s.ooh;
+      if (s.sat) satMap[ch.id] = s.sat;
     }
-    if (editingReply) {
-      await supabase.from("saved_replies").update({
-        shortcut: replyForm.shortcut.trim(),
-        title: replyForm.title.trim(),
-        content: replyForm.content.trim(),
-        category: replyForm.category,
-      }).eq("id", editingReply.id);
-      toast.success("تم تحديث الرد المحفوظ");
-    } else {
-      await supabase.from("saved_replies").insert({
-        org_id: orgId,
-        shortcut: replyForm.shortcut.trim(),
-        title: replyForm.title.trim(),
-        content: replyForm.content.trim(),
-        category: replyForm.category,
-        created_by: profile?.id,
-      } as any);
-      toast.success("تم إضافة الرد المحفوظ");
-    }
-    setShowReplyDialog(false);
-    setEditingReply(null);
-    setReplyForm({ shortcut: "", title: "", content: "", category: "عام" });
-    loadSavedReplies();
-  };
-
-  const deleteReply = async (id: string) => {
-    await supabase.from("saved_replies").delete().eq("id", id);
-    toast.success("تم حذف الرد المحفوظ");
-    loadSavedReplies();
+    setOohSettings(prev => ({ ...prev, ...oohMap }));
+    setSatSettings(prev => ({ ...prev, ...satMap }));
   };
 
   const loadAllSettings = async () => {
@@ -164,15 +145,25 @@ const SettingsPage = () => {
       setDefaultMaxConv(data.default_max_conversations ? String(data.default_max_conversations) : "");
       
       const settings = (data.settings as Record<string, any>) || {};
-      // Out-of-hours
-      setOohEnabled(settings.out_of_hours_enabled || false);
-      if (settings.out_of_hours_message) setOohMessage(settings.out_of_hours_message);
-      if (settings.work_start) setOohWorkStart(settings.work_start);
-      if (settings.work_end) setOohWorkEnd(settings.work_end);
-      if (Array.isArray(settings.work_days)) setOohWorkDays(settings.work_days);
-      // Satisfaction
-      setSatEnabled(settings.satisfaction_enabled || false);
-      if (settings.satisfaction_message) setSatMessage(settings.satisfaction_message);
+      // Global OOH
+      setOohSettings(prev => ({
+        ...prev,
+        global: {
+          enabled: settings.out_of_hours_enabled || false,
+          message: settings.out_of_hours_message || defaultOoh.message,
+          work_start: settings.work_start || "09:00",
+          work_end: settings.work_end || "17:00",
+          work_days: Array.isArray(settings.work_days) ? settings.work_days : [0, 1, 2, 3, 4],
+        }
+      }));
+      // Global satisfaction
+      setSatSettings(prev => ({
+        ...prev,
+        global: {
+          enabled: settings.satisfaction_enabled || false,
+          message: settings.satisfaction_message || defaultSat.message,
+        }
+      }));
     }
     setLoadingAssign(false);
   };
