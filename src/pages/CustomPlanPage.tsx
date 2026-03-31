@@ -25,8 +25,8 @@ interface PlanItem {
 const planItems: PlanItem[] = [
   { key: "team_members", label: "أعضاء الفريق", icon: Users, min: 1, max: 50, step: 1, default: 1, pricePerUnit: 25, unit: "عضو", included: 1 },
   { key: "teams", label: "الفرق", icon: Users2, min: 1, max: 20, step: 1, default: 1, pricePerUnit: 15, unit: "فريق", included: 1 },
-  { key: "official_phones", label: "أرقام رسمية (Meta API)", icon: ShieldCheck, min: 0, max: 20, step: 1, default: 1, pricePerUnit: 40, unit: "رقم", included: 0 },
-  { key: "unofficial_phones", label: "أرقام غير رسمية (QR)", icon: Wifi, min: 0, max: 10, step: 1, default: 0, pricePerUnit: 25, unit: "رقم", included: 0 },
+  { key: "official_phones", label: "أرقام رسمية (Meta API)", icon: ShieldCheck, min: 0, max: 20, step: 1, default: 0, pricePerUnit: 40, unit: "رقم", included: 0 },
+  { key: "unofficial_phones", label: "أرقام غير رسمية (QR)", icon: Wifi, min: 1, max: 10, step: 1, default: 1, pricePerUnit: 25, unit: "رقم", included: 1 },
   { key: "stores", label: "المتاجر الإلكترونية", icon: ShoppingBag, min: 0, max: 10, step: 1, default: 0, pricePerUnit: 30, unit: "متجر", included: 0 },
   { key: "conversations", label: "المحادثات / شهر", icon: MessageSquare, min: 100, max: 10000, step: 100, default: 500, pricePerUnit: 0.06, unit: "محادثة", included: 100 },
   { key: "campaigns", label: "الحملات / شهر", icon: Megaphone, min: 1, max: 100, step: 1, default: 5, pricePerUnit: 10, unit: "حملة", included: 1 },
