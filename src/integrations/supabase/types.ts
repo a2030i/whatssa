@@ -2279,6 +2279,7 @@ export type Database = {
           access_token: string
           business_account_id: string
           business_name: string | null
+          channel_label: string | null
           channel_type: string
           created_at: string | null
           default_agent_id: string | null
@@ -2304,6 +2305,7 @@ export type Database = {
           access_token: string
           business_account_id: string
           business_name?: string | null
+          channel_label?: string | null
           channel_type?: string
           created_at?: string | null
           default_agent_id?: string | null
@@ -2329,6 +2331,7 @@ export type Database = {
           access_token?: string
           business_account_id?: string
           business_name?: string | null
+          channel_label?: string | null
           channel_type?: string
           created_at?: string | null
           default_agent_id?: string | null
@@ -2373,6 +2376,7 @@ export type Database = {
         Row: {
           business_account_id: string | null
           business_name: string | null
+          channel_label: string | null
           channel_type: string | null
           created_at: string | null
           default_agent_id: string | null
@@ -2396,6 +2400,7 @@ export type Database = {
         Insert: {
           business_account_id?: string | null
           business_name?: string | null
+          channel_label?: string | null
           channel_type?: string | null
           created_at?: string | null
           default_agent_id?: string | null
@@ -2419,6 +2424,7 @@ export type Database = {
         Update: {
           business_account_id?: string | null
           business_name?: string | null
+          channel_label?: string | null
           channel_type?: string | null
           created_at?: string | null
           default_agent_id?: string | null
