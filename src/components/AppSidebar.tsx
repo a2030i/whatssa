@@ -204,9 +204,9 @@ const AppSidebar = () => {
     <>
       {/* Logo Area */}
       {!collapsed && (
-        <div className="px-4 pt-5 pb-3">
-          <h2 className="text-lg font-bold text-sidebar-accent-foreground tracking-tight">Respondly</h2>
-          <p className="text-[10px] text-sidebar-foreground/40 mt-0.5">منصة إدارة المحادثات</p>
+        <div className="px-4 pt-5 pb-4 text-center">
+          <h2 className="text-2xl font-extrabold text-sidebar-accent-foreground tracking-tight">Respondly</h2>
+          <p className="text-[11px] text-sidebar-foreground/40 mt-1">منصة إدارة المحادثات</p>
         </div>
       )}
       {collapsed && <div className="pt-4" />}
