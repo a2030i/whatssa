@@ -515,6 +515,15 @@ const InboxPage = () => {
       )}
 
       {selected && !isMobile && <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} />}
+
+      <NewConversationDialog
+        open={newConvOpen}
+        onOpenChange={setNewConvOpen}
+        templates={templates}
+        onConversationCreated={(convId) => {
+          setSelectedId(convId);
+        }}
+      />
     </div>
   );
 };
