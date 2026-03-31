@@ -172,10 +172,12 @@ const OrdersPage = () => {
 
       {/* AI Insights */}
       {aiInsight && (
-        <div className="bg-gradient-to-l from-primary/5 to-accent/30 rounded-xl p-4 border border-primary/10">
+        <div className="bg-gradient-to-l from-primary/5 to-accent/20 rounded-2xl p-5 border border-primary/10 backdrop-blur-sm animate-fade-in">
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold">تحليل الذكاء الاصطناعي</h3>
+            <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <h3 className="text-sm font-bold">تحليل الذكاء الاصطناعي</h3>
           </div>
           <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{aiInsight}</p>
         </div>
