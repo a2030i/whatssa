@@ -1231,8 +1231,13 @@ function CampaignDetailContent({
                 <Send className="w-3 h-3" /> إرسال الآن
               </Button>
             )}
+            {failed > 0 && onResendFailed && campaign.status === "sent" && (
+              <Button size="sm" variant="outline" className="text-xs gap-1 border-warning text-warning hover:bg-warning/10" onClick={onResendFailed}>
+                <RotateCcw className="w-3 h-3" /> إعادة إرسال الفاشلة ({failed})
+              </Button>
+            )}
             <Button size="sm" variant="outline" className="text-xs gap-1" onClick={exportReport}>
-              <Download className="w-3 h-3" /> تصدير التقرير
+              <Download className="w-3 h-3" /> تصدير Excel
             </Button>
           </div>
         </DialogTitle>
