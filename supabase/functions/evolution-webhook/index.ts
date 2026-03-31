@@ -612,6 +612,41 @@ serve(async (req) => {
 
         if (!conversation) continue;
 
+        // Auto-save customer record
+        try {
+          const contactDisplayName = msg.pushName || convName || "";
+          const { data: existingCustomer } = await supabase
+            .from("customers")
+            .select("id, name")
+            .eq("org_id", orgId)
+            .eq("phone", phone)
+            .maybeSingle();
+
+          if (!existingCustomer) {
+            await supabase.from("customers").insert({
+              org_id: orgId,
+              phone: phone,
+              name: contactDisplayName || null,
+              source: "whatsapp",
+            });
+          } else if (contactDisplayName && (!existingCustomer.name || existingCustomer.name === phone)) {
+            await supabase.from("customers").update({ name: contactDisplayName }).eq("id", existingCustomer.id);
+          }
+
+          // Link customer to conversation if not linked
+          if (conversation) {
+            const { data: convCheck } = await supabase.from("conversations").select("customer_id").eq("id", conversation.id).single();
+            if (convCheck && !convCheck.customer_id) {
+              const { data: cust } = await supabase.from("customers").select("id").eq("org_id", orgId).eq("phone", phone).maybeSingle();
+              if (cust) {
+                await supabase.from("conversations").update({ customer_id: cust.id }).eq("id", conversation.id);
+              }
+            }
+          }
+        } catch (custErr) {
+          // Non-critical — log and continue
+        }
+
         if (messageType !== "text") {
           mediaUrl = await uploadMediaFromEvolution({
             instanceName,
