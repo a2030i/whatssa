@@ -2681,6 +2681,19 @@ export type Database = {
         Args: { _check_type: string; _org_id: string }
         Returns: Json
       }
+      create_api_token_secure: {
+        Args: {
+          _created_by: string
+          _expires_at?: string
+          _name: string
+          _org_id: string
+          _permissions: string[]
+        }
+        Returns: {
+          id: string
+          token: string
+        }[]
+      }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
