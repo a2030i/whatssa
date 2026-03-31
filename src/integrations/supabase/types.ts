@@ -2689,6 +2689,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      hash_api_token: { Args: { _token_id: string }; Returns: undefined }
       increment_unread: { Args: { conv_id: string }; Returns: undefined }
       validate_coupon: { Args: { _code: string }; Returns: Json }
     }
