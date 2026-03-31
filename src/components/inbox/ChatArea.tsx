@@ -983,7 +983,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Input Area */}
       {!isRecording && conversation.status !== "closed" && (
-        <div className={cn("shrink-0 border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
+        <div className={cn("shrink-0 border-t bg-card/80 backdrop-blur-sm p-2.5 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border/30")}>
           {/* Reply Preview Bar */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
