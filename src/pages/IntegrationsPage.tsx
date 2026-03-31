@@ -456,9 +456,32 @@ const IntegrationsPage = () => {
         <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
           <MessageSquare className="w-7 h-7 text-emerald-600" />
         </div>
-        <div>
-          <h3 className="font-bold text-sm">واتساب</h3>
-          <p className="text-xs text-muted-foreground mt-0.5 font-mono" dir="ltr">
+        <div className="space-y-1">
+          {editingLabelId === config.id ? (
+            <div className="flex items-center gap-1.5 justify-center">
+              <Input
+                value={editingLabelText}
+                onChange={(e) => setEditingLabelText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") saveChannelLabel(config.id); if (e.key === "Escape") setEditingLabelId(null); }}
+                className="h-7 text-xs text-center w-36 bg-secondary border-0"
+                placeholder="اسم القناة..."
+                autoFocus
+              />
+              <button onClick={() => saveChannelLabel(config.id)} className="text-success hover:text-success/80"><Check className="w-4 h-4" /></button>
+              <button onClick={() => setEditingLabelId(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 justify-center group">
+              <h3 className="font-bold text-sm">{(config as any).channel_label || "واتساب"}</h3>
+              <button
+                onClick={() => { setEditingLabelId(config.id); setEditingLabelText((config as any).channel_label || ""); }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground font-mono" dir="ltr">
             {config.display_phone || config.phone_number_id}
           </p>
         </div>
