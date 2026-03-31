@@ -222,45 +222,48 @@ const AnalyticsPage = () => {
   }
 
   return (
-    <div className="p-3 md:p-6 space-y-5 max-w-[1200px] mx-auto" dir="rtl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">التحليلات والأداء</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">نظرة شاملة على المحادثات والحملات وأداء الفريق</p>
+    <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1200px] mx-auto" dir="rtl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-kpi-3/10 flex items-center justify-center ring-1 ring-kpi-3/15">
+            <BarChart3 className="w-5 h-5 text-kpi-3" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-foreground tracking-tight">التحليلات والأداء</h1>
+            <p className="text-sm text-muted-foreground">نظرة شاملة على المحادثات والحملات وأداء الفريق</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[130px] text-xs bg-secondary border-0">
-              <Calendar className="w-3 h-3 ml-1" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">اليوم</SelectItem>
-              <SelectItem value="week">هذا الأسبوع</SelectItem>
-              <SelectItem value="month">هذا الشهر</SelectItem>
-              <SelectItem value="quarter">هذا الربع</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={period} onValueChange={setPeriod}>
+          <SelectTrigger className="w-[130px] text-xs bg-card/70 border-border/40 rounded-xl backdrop-blur-sm">
+            <Calendar className="w-3 h-3 ml-1" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">اليوم</SelectItem>
+            <SelectItem value="week">هذا الأسبوع</SelectItem>
+            <SelectItem value="month">هذا الشهر</SelectItem>
+            <SelectItem value="quarter">هذا الربع</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="relative overflow-hidden">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                <MessageSquare className="w-4 h-4 text-primary" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-in">
+        <Card className="relative overflow-hidden bg-card/70 backdrop-blur-sm border-border/40 rounded-2xl">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/15">
+                <MessageSquare className="w-5 h-5 text-primary" />
               </div>
               {changePercent !== null && (
-                <Badge variant="outline" className={cn("text-[10px] gap-0.5", changePercent >= 0 ? "text-primary" : "text-destructive")}>
+                <Badge variant="outline" className={cn("text-[10px] gap-0.5 rounded-lg", changePercent >= 0 ? "text-primary border-primary/20" : "text-destructive border-destructive/20")}>
                   {changePercent >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                   {Math.abs(changePercent)}%
                 </Badge>
               )}
             </div>
-            <p className="text-2xl font-bold">{totalConversations}</p>
-            <p className="text-[11px] text-muted-foreground">إجمالي المحادثات</p>
+            <p className="text-2xl font-black">{totalConversations}</p>
+            <p className="text-xs text-muted-foreground mt-1 font-medium">إجمالي المحادثات</p>
           </CardContent>
         </Card>
         <KpiCard icon={Clock} title="متوسط أول رد" value={avgFirstResponse > 0 ? `${avgFirstResponse} د` : "—"} subtitle="الهدف: أقل من 2 دقيقة" colorIndex={2} />
@@ -269,39 +272,28 @@ const AnalyticsPage = () => {
       </div>
 
       {/* Messages & Campaign summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-lg font-bold text-primary">{messageStats.inbound}</p>
-            <p className="text-[11px] text-muted-foreground">رسائل واردة</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-lg font-bold text-info">{messageStats.outbound}</p>
-            <p className="text-[11px] text-muted-foreground">رسائل صادرة</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-lg font-bold text-warning">{campaignStats.total}</p>
-            <p className="text-[11px] text-muted-foreground">حملات</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-lg font-bold">{campaignStats.delivered}</p>
-            <p className="text-[11px] text-muted-foreground">تم توصيلها</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-in">
+        {[
+          { value: messageStats.inbound, label: "رسائل واردة", color: "text-primary" },
+          { value: messageStats.outbound, label: "رسائل صادرة", color: "text-info" },
+          { value: campaignStats.total, label: "حملات", color: "text-warning" },
+          { value: campaignStats.delivered, label: "تم توصيلها", color: "text-foreground" },
+        ].map((s) => (
+          <Card key={s.label} className="bg-card/70 backdrop-blur-sm border-border/40 rounded-2xl">
+            <CardContent className="p-3.5 text-center">
+              <p className={cn("text-lg font-black", s.color)}>{s.value}</p>
+              <p className="text-[11px] text-muted-foreground font-medium">{s.label}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="bg-secondary w-full sm:w-auto overflow-x-auto flex-wrap">
-          <TabsTrigger value="overview" className="text-xs gap-1"><BarChart3 className="w-3 h-3" /> نظرة عامة</TabsTrigger>
-          <TabsTrigger value="team" className="text-xs gap-1"><Users className="w-3 h-3" /> الفريق</TabsTrigger>
-          <TabsTrigger value="campaigns" className="text-xs gap-1"><Megaphone className="w-3 h-3" /> الحملات</TabsTrigger>
-          <TabsTrigger value="channels" className="text-xs gap-1"><Phone className="w-3 h-3" /> القنوات</TabsTrigger>
+        <TabsList className="bg-card/70 backdrop-blur-sm border border-border/40 rounded-xl w-full sm:w-auto overflow-x-auto flex-wrap">
+          <TabsTrigger value="overview" className="text-xs gap-1 rounded-lg"><BarChart3 className="w-3 h-3" /> نظرة عامة</TabsTrigger>
+          <TabsTrigger value="team" className="text-xs gap-1 rounded-lg"><Users className="w-3 h-3" /> الفريق</TabsTrigger>
+          <TabsTrigger value="campaigns" className="text-xs gap-1 rounded-lg"><Megaphone className="w-3 h-3" /> الحملات</TabsTrigger>
+          <TabsTrigger value="channels" className="text-xs gap-1 rounded-lg"><Phone className="w-3 h-3" /> القنوات</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
