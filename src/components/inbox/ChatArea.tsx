@@ -1106,8 +1106,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   {isUploading ? <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />}
                 </button>
               ) : inputText.trim() ? (
-                <button onClick={handleSend} className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-opacity", isNoteMode ? "bg-amber-500 hover:opacity-90" : "gradient-whatsapp hover:opacity-90")}>
-                  <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
+                <button onClick={handleSend} className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all shadow-md", isNoteMode ? "bg-amber-500 hover:bg-amber-600" : "bg-primary hover:bg-primary/90")}>
+                  <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
               ) : !isNoteMode ? (
                 <button onClick={startRecording} className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 gradient-whatsapp hover:opacity-90 transition-opacity">
