@@ -1116,9 +1116,16 @@ function CampaignDetailContent({
       <DialogHeader>
         <DialogTitle className="flex items-center justify-between">
           <span>تفاصيل: {campaign.name}</span>
-          <Button size="sm" variant="outline" className="text-xs gap-1" onClick={exportReport}>
-            <Download className="w-3 h-3" /> تصدير التقرير
-          </Button>
+          <div className="flex items-center gap-2">
+            {(campaign.status === "draft" || campaign.status === "scheduled") && onSend && (
+              <Button size="sm" className="text-xs gap-1 gradient-whatsapp text-whatsapp-foreground" onClick={onSend}>
+                <Send className="w-3 h-3" /> إرسال الآن
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="text-xs gap-1" onClick={exportReport}>
+              <Download className="w-3 h-3" /> تصدير التقرير
+            </Button>
+          </div>
         </DialogTitle>
       </DialogHeader>
 
