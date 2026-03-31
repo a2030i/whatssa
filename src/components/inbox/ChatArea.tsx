@@ -848,7 +848,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-3 bg-secondary/30">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 bg-gradient-to-b from-secondary/20 to-secondary/40">
         {messages.map((msg) => (
           <div key={msg.id} className={cn(
             "flex",
