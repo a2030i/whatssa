@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield } from "lucide-react";
+import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield, Repeat, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ const statusConfig: Record<string, { label: string; icon: any; className: string
   sending: { label: "جاري الإرسال", icon: Send, className: "bg-warning/10 text-warning" },
   sent: { label: "تم الإرسال", icon: Check, className: "bg-success/10 text-success" },
   failed: { label: "فشل", icon: AlertCircle, className: "bg-destructive/10 text-destructive" },
+  recurring: { label: "متكررة", icon: Repeat, className: "bg-primary/10 text-primary" },
 };
 
 interface Recipient {
@@ -59,6 +60,8 @@ const CampaignsPage = () => {
     channelId: "" as string,
     messageText: "" as string,
     delaySeconds: 10 as number,
+    recurringType: "" as string,
+    recurringEndAt: "" as string,
     // E-commerce filters
     filterProduct: "",
     filterCity: "",
@@ -206,6 +209,7 @@ const CampaignsPage = () => {
     const recipientList = buildRecipientList();
     if (recipientList.length === 0) { toast.error("لا يوجد مستلمين — اختر جمهوراً"); return; }
 
+    const isRecurring = !!form.recurringType;
     const { data: campaign, error } = await supabase.from("campaigns").insert({
       org_id: orgId,
       name: form.name,
@@ -216,10 +220,12 @@ const CampaignsPage = () => {
       audience_tags: form.audienceTags,
       exclude_tags: form.excludeTags,
       exclude_campaign_ids: form.excludeCampaignIds,
-      status: form.scheduledAt ? "scheduled" : "draft",
+      status: isRecurring ? "scheduled" : (form.scheduledAt ? "scheduled" : "draft"),
       scheduled_at: form.scheduledAt || null,
       notes: form.notes || null,
       total_recipients: recipientList.length,
+      recurring_type: form.recurringType || null,
+      recurring_end_at: form.recurringEndAt || null,
     } as any).select().single();
 
     if (error) { toast.error("حدث خطأ في إنشاء الحملة"); return; }
@@ -243,7 +249,7 @@ const CampaignsPage = () => {
 
   const resetForm = () => {
     setShowCreate(false);
-    setForm({ name: "", templateName: "", templateLang: "ar", scheduledAt: "", notes: "", audienceType: "all", audienceTags: [], excludeTags: [], excludeCampaignIds: [], variableColumns: [], channelId: "", messageText: "", delaySeconds: 10, filterProduct: "", filterCity: "", filterDateFrom: "", filterDateTo: "", filterMinAmount: "", filterMaxAmount: "" });
+    setForm({ name: "", templateName: "", templateLang: "ar", scheduledAt: "", notes: "", audienceType: "all", audienceTags: [], excludeTags: [], excludeCampaignIds: [], variableColumns: [], channelId: "", messageText: "", delaySeconds: 10, recurringType: "", recurringEndAt: "", filterProduct: "", filterCity: "", filterDateFrom: "", filterDateTo: "", filterMinAmount: "", filterMaxAmount: "" });
     setUploadedRecipients([]);
     setSelectedCustomerIds([]);
     setTemplateVars([]);
@@ -510,6 +516,13 @@ const CampaignsPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {campaign.recurring_type && (
+                    <Badge className="border-0 text-[9px] bg-primary/10 text-primary gap-0.5">
+                      <Repeat className="w-2.5 h-2.5" />
+                      {campaign.recurring_type === "daily" ? "يومي" : campaign.recurring_type === "weekly" ? "أسبوعي" : "شهري"}
+                      {campaign.recurring_count > 0 && <span>({campaign.recurring_count})</span>}
+                    </Badge>
+                  )}
                   <Badge className={cn("border-0 text-xs", status.className)}>
                     <status.icon className="w-3 h-3 ml-1" />
                     {status.label}
@@ -854,9 +867,44 @@ const CampaignsPage = () => {
               </div>
             </div>
 
+            {/* Recurring */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold flex items-center gap-1"><Repeat className="w-3 h-3" /> تكرار الحملة (اختياري)</Label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[
+                  { value: "", label: "مرة واحدة" },
+                  { value: "daily", label: "يومي" },
+                  { value: "weekly", label: "أسبوعي" },
+                  { value: "monthly", label: "شهري" },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setForm({ ...form, recurringType: opt.value })}
+                    className={cn(
+                      "text-[10px] py-1.5 px-2 rounded-lg border transition-all",
+                      form.recurringType === opt.value ? "border-primary bg-primary/5 text-primary font-medium" : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {form.recurringType && (
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] text-muted-foreground">ينتهي التكرار في (اختياري):</Label>
+                  <Input type="date" value={form.recurringEndAt} onChange={(e) => setForm({ ...form, recurringEndAt: e.target.value })} className="text-sm bg-secondary border-0" dir="ltr" />
+                  <p className="text-[10px] text-muted-foreground">
+                    {form.recurringType === "daily" && "سيتم إعادة إرسال الحملة يومياً لنفس الجمهور"}
+                    {form.recurringType === "weekly" && "سيتم إعادة إرسال الحملة كل أسبوع في نفس اليوم"}
+                    {form.recurringType === "monthly" && "سيتم إعادة إرسال الحملة كل شهر في نفس التاريخ"}
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Schedule */}
             <div className="space-y-1.5">
-              <Label className="text-xs">جدولة الإرسال (اختياري)</Label>
+              <Label className="text-xs">جدولة الإرسال {form.recurringType ? "(موعد أول إرسال)" : "(اختياري)"}</Label>
               <Input type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} className="text-sm bg-secondary border-0" dir="ltr" />
             </div>
 
@@ -873,7 +921,7 @@ const CampaignsPage = () => {
             </div>
 
             <Button onClick={handleCreate} className="w-full gradient-whatsapp text-whatsapp-foreground gap-1">
-              {form.scheduledAt ? <><CalendarDays className="w-4 h-4" /> جدولة الحملة</> : <><FileText className="w-4 h-4" /> حفظ كمسودة</>}
+              {form.recurringType ? <><Repeat className="w-4 h-4" /> إنشاء حملة متكررة</> : form.scheduledAt ? <><CalendarDays className="w-4 h-4" /> جدولة الحملة</> : <><FileText className="w-4 h-4" /> حفظ كمسودة</>}
             </Button>
           </div>
         </DialogContent>

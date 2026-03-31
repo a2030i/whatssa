@@ -314,10 +314,16 @@ export type Database = {
           exclude_tags: string[] | null
           failed_count: number | null
           id: string
+          last_recurring_at: string | null
           name: string
           notes: string | null
           org_id: string
+          parent_campaign_id: string | null
           read_count: number | null
+          recurring_count: number | null
+          recurring_cron: string | null
+          recurring_end_at: string | null
+          recurring_type: string | null
           scheduled_at: string | null
           sent_at: string | null
           sent_count: number | null
@@ -339,10 +345,16 @@ export type Database = {
           exclude_tags?: string[] | null
           failed_count?: number | null
           id?: string
+          last_recurring_at?: string | null
           name: string
           notes?: string | null
           org_id: string
+          parent_campaign_id?: string | null
           read_count?: number | null
+          recurring_count?: number | null
+          recurring_cron?: string | null
+          recurring_end_at?: string | null
+          recurring_type?: string | null
           scheduled_at?: string | null
           sent_at?: string | null
           sent_count?: number | null
@@ -364,10 +376,16 @@ export type Database = {
           exclude_tags?: string[] | null
           failed_count?: number | null
           id?: string
+          last_recurring_at?: string | null
           name?: string
           notes?: string | null
           org_id?: string
+          parent_campaign_id?: string | null
           read_count?: number | null
+          recurring_count?: number | null
+          recurring_cron?: string | null
+          recurring_end_at?: string | null
+          recurring_type?: string | null
           scheduled_at?: string | null
           sent_at?: string | null
           sent_count?: number | null
@@ -384,6 +402,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_parent_campaign_id_fkey"
+            columns: ["parent_campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
         ]
