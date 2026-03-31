@@ -178,10 +178,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
         case "closed": if (conv.status !== "closed") return false; break;
       }
       if (agentFilter !== "all" && conv.assignedTo !== agentFilter) return false;
+      if (channelFilter !== "all") {
+        if (channelFilter === "meta_api" && conv.channelType !== "meta_api") return false;
+        if (channelFilter === "evolution" && conv.channelType !== "evolution") return false;
+      }
       if (selectedTags.length > 0 && !selectedTags.some((t) => conv.tags.includes(t))) return false;
       return true;
     });
-  }, [conversations, searchQuery, activeQuickFilter, agentFilter, selectedTags, activeInbox]);
+  }, [conversations, searchQuery, activeQuickFilter, agentFilter, channelFilter, selectedTags, activeInbox]);
 
   const hasActiveFilters = agentFilter !== "all" || selectedTags.length > 0 || !!activeCustomInbox;
   const clearFilters = () => { setAgentFilter("all"); setSelectedTags([]); setActiveCustomInbox(null); setActiveQuickFilter("all"); };
