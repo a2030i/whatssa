@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield, Repeat, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield, Repeat, RefreshCw, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import * as XLSX from "xlsx";
 
 const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
   draft: { label: "مسودة", icon: FileText, className: "bg-muted text-muted-foreground" },
@@ -102,21 +103,35 @@ const CampaignsPage = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const text = await file.text();
-    const lines = text.split("\n").filter(Boolean);
-    const headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim().toLowerCase());
+
+    let headers: string[] = [];
+    let rows: string[][] = [];
+
+    if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 });
+      if (data.length === 0) { toast.error("الملف فارغ"); return; }
+      headers = (data[0] || []).map((h) => String(h).trim().toLowerCase());
+      rows = data.slice(1).map((row) => row.map((cell) => String(cell || "").trim()));
+    } else {
+      const text = await file.text();
+      const lines = text.split("\n").filter(Boolean);
+      headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim().toLowerCase());
+      rows = lines.slice(1).map((line) => line.split(",").map((s) => s.replace(/"/g, "").trim()));
+    }
+
     const phoneIdx = headers.findIndex((h) => h.includes("phone") || h.includes("رقم") || h.includes("جوال"));
     const nameIdx = headers.findIndex((h) => h.includes("name") || h.includes("اسم"));
 
     if (phoneIdx === -1) { toast.error("لم يتم العثور على عمود الأرقام — تأكد من وجود عمود phone أو رقم"); return; }
 
-    // Detect variable columns (any column that's not phone/name)
     const varCols = headers.filter((_, i) => i !== phoneIdx && i !== nameIdx);
     setForm((f) => ({ ...f, variableColumns: varCols }));
 
     const recs: Recipient[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const parts = lines[i].split(",").map((s) => s.replace(/"/g, "").trim());
+    for (const parts of rows) {
       const phone = parts[phoneIdx];
       if (!phone) continue;
       const vars: Record<string, string> = {};
@@ -263,17 +278,109 @@ const CampaignsPage = () => {
 
   const exportReport = () => {
     if (!detailCampaign || recipients.length === 0) return;
-    const csv = [
-      "الرقم,الاسم,الحالة,وقت الإرسال,وقت التوصيل,وقت القراءة,كود الخطأ,سبب الخطأ",
-      ...recipients.map((r) => `"${r.phone}","${r.customer_name || ""}","${r.status}","${r.sent_at || ""}","${r.delivered_at || ""}","${r.read_at || ""}","${r.error_code || ""}","${r.error_message || ""}"`),
-    ].join("\n");
-    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `campaign_${detailCampaign.name}_report.csv`;
-    a.click();
-    toast.success("تم تصدير التقرير");
+    const data = recipients.map((r) => ({
+      "الرقم": r.phone,
+      "الاسم": r.customer_name || "",
+      "الحالة": r.status === "pending" ? "قيد الانتظار" : r.status === "sent" ? "أُرسلت" : r.status === "delivered" ? "تم التوصيل" : r.status === "read" ? "تمت القراءة" : r.status === "failed" ? "فشل" : r.status,
+      "وقت الإرسال": r.sent_at ? new Date(r.sent_at).toLocaleString("ar-SA") : "",
+      "وقت التوصيل": r.delivered_at ? new Date(r.delivered_at).toLocaleString("ar-SA") : "",
+      "وقت القراءة": r.read_at ? new Date(r.read_at).toLocaleString("ar-SA") : "",
+      "كود الخطأ": r.error_code || "",
+      "سبب الخطأ": r.error_message || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws["!cols"] = [{ wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "تقرير الحملة");
+    XLSX.writeFile(wb, `حملة_${detailCampaign.name}_تقرير.xlsx`);
+    toast.success("تم تصدير التقرير كملف Excel");
+  };
+
+  const downloadTemplate = () => {
+    const selectedCh = whatsappChannels.find((c) => c.id === form.channelId);
+    const isMeta = selectedCh?.channel_type !== "evolution";
+
+    if (isMeta && templateVars.length > 0) {
+      // Meta template with variables: phone + variable columns
+      const headers = ["phone", ...templateVars.map((v) => v)];
+      const sampleRow = ["966501234567", ...templateVars.map(() => "")];
+      const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+      ws["!cols"] = headers.map(() => ({ wch: 20 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "المستلمون");
+      XLSX.writeFile(wb, `قالب_حملة_${form.templateName || "campaign"}.xlsx`);
+    } else if (!isMeta) {
+      // Evolution: phone + name + dynamic variable columns extracted from message
+      const placeholders = (form.messageText.match(/\{(\w+)\}/g) || []).map((p) => p.replace(/[{}]/g, "")).filter((p) => p !== "name");
+      const headers = ["phone", "name", ...placeholders];
+      const sampleRow = ["966501234567", "أحمد", ...placeholders.map(() => "")];
+      const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+      ws["!cols"] = headers.map(() => ({ wch: 20 }));
+      // Add note about placeholders
+      if (placeholders.length > 0) {
+        const noteWs = XLSX.utils.aoa_to_sheet([
+          ["متغيرات الرسالة"],
+          ["استخدم {name} لاسم العميل في نص الرسالة"],
+          ...placeholders.map((p) => [`استخدم {${p}} — العمود "${p}" في الإكسل`]),
+        ]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "المستلمون");
+        XLSX.utils.book_append_sheet(wb, noteWs, "تعليمات");
+        XLSX.writeFile(wb, "قالب_حملة_واتساب.xlsx");
+      } else {
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "المستلمون");
+        XLSX.writeFile(wb, "قالب_حملة_واتساب.xlsx");
+      }
+    } else {
+      // Meta without variables: just phone
+      const ws = XLSX.utils.aoa_to_sheet([["phone"], ["966501234567"]]);
+      ws["!cols"] = [{ wch: 20 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "المستلمون");
+      XLSX.writeFile(wb, "قالب_حملة.xlsx");
+    }
+    toast.success("تم تنزيل ملف القالب");
+  };
+
+  const resendFailed = async () => {
+    if (!detailCampaign) return;
+    const failedRecipients = recipients.filter((r) => r.status === "failed");
+    if (failedRecipients.length === 0) { toast.error("لا توجد رسائل فاشلة"); return; }
+
+    // Check 24h cooldown
+    const sentAt = detailCampaign.sent_at ? new Date(detailCampaign.sent_at) : null;
+    if (sentAt) {
+      const hoursSince = (Date.now() - sentAt.getTime()) / (1000 * 60 * 60);
+      if (hoursSince < 24) {
+        toast.error(`يرجى الانتظار ${Math.ceil(24 - hoursSince)} ساعة قبل إعادة الإرسال`);
+        return;
+      }
+    }
+
+    // Reset failed recipients to pending
+    const failedIds = failedRecipients.map((r) => r.id);
+    for (let i = 0; i < failedIds.length; i += 50) {
+      const batch = failedIds.slice(i, i + 50);
+      await supabase.from("campaign_recipients").update({
+        status: "pending",
+        error_code: null,
+        error_message: null,
+        failed_at: null,
+      } as any).in("id", batch);
+    }
+
+    // Trigger send
+    const { error } = await supabase.functions.invoke("send-campaign", {
+      body: { campaign_id: detailCampaign.id },
+    });
+    if (error) {
+      toast.error("فشل إعادة الإرسال: " + error.message);
+    } else {
+      toast.success(`بدأ إعادة إرسال ${failedRecipients.length} رسالة فاشلة`);
+      setDetailCampaign(null);
+      load();
+    }
   };
 
   const toggleTag = (tag: string, field: "audienceTags" | "excludeTags") => {
@@ -642,9 +749,12 @@ const CampaignsPage = () => {
                 <Textarea
                   value={form.messageText}
                   onChange={(e) => setForm({ ...form, messageText: e.target.value })}
-                  placeholder="اكتب نص الرسالة هنا... يمكنك استخدام {name} لاسم العميل"
+                  placeholder={"مرحباً {name}، عرض خاص لك! الخصم {discount}"}
                   className="text-sm bg-secondary border-0 min-h-[80px]"
                 />
+                <p className="text-[10px] text-muted-foreground">
+                  💡 استخدم <code className="bg-secondary px-1 rounded">{"{name}"}</code> لاسم العميل. يمكنك إضافة متغيرات مخصصة مثل <code className="bg-secondary px-1 rounded">{"{discount}"}</code> — عند رفع الإكسل أضف عمود بنفس الاسم
+                </p>
               </div>
             )}
 
@@ -763,13 +873,23 @@ const CampaignsPage = () => {
                 <div className="space-y-2">
                   <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
                     <Upload className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-xs text-muted-foreground mb-2">ارفع ملف CSV/Excel يحتوي على الأرقام</p>
-                    <p className="text-[10px] text-muted-foreground mb-3">يجب أن يحتوي عمود "phone" أو "رقم" — أعمدة إضافية تُستخدم كمتغيرات للقالب</p>
-                    <Button size="sm" variant="outline" className="text-xs" onClick={() => fileRef.current?.click()}>
-                      <Upload className="w-3 h-3 ml-1" /> اختر ملف
-                    </Button>
+                    <p className="text-xs text-muted-foreground mb-1">ارفع ملف Excel يحتوي على الأرقام</p>
+                    <p className="text-[10px] text-muted-foreground mb-3">العمود الأول: phone (رقم الجوال) — الأعمدة الإضافية تُستخدم كمتغيرات للقالب</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <Button size="sm" variant="outline" className="text-xs" onClick={() => fileRef.current?.click()}>
+                        <Upload className="w-3 h-3 ml-1" /> رفع ملف
+                      </Button>
+                      {form.channelId && (
+                        <Button size="sm" variant="ghost" className="text-xs text-primary" onClick={downloadTemplate}>
+                          <Download className="w-3 h-3 ml-1" /> تنزيل القالب
+                        </Button>
+                      )}
+                    </div>
                     <input ref={fileRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileUpload} />
                   </div>
+                  {!form.channelId && (
+                    <p className="text-[10px] text-warning text-center">⚠️ اختر قناة الإرسال أولاً لتنزيل قالب مناسب</p>
+                  )}
                   {uploadedRecipients.length > 0 && (
                     <div className="bg-success/5 rounded-lg p-3 flex items-center justify-between">
                       <span className="text-xs text-success font-medium">✅ تم تحميل {uploadedRecipients.length} رقم</span>
@@ -936,6 +1056,7 @@ const CampaignsPage = () => {
               recipients={recipients}
               recipientStatusBadge={recipientStatusBadge}
               exportReport={exportReport}
+              onResendFailed={resendFailed}
               onSend={async () => {
                 const { error } = await supabase.functions.invoke("send-campaign", {
                   body: { campaign_id: detailCampaign.id },
@@ -1069,12 +1190,14 @@ function CampaignDetailContent({
   recipientStatusBadge,
   exportReport,
   onSend,
+  onResendFailed,
 }: {
   campaign: any;
   recipients: any[];
   recipientStatusBadge: (status: string) => JSX.Element;
   exportReport: () => void;
   onSend?: () => void;
+  onResendFailed?: () => void;
 }) {
   const total = campaign.total_recipients || 0;
   const sent = campaign.sent_count || 0;
@@ -1122,8 +1245,13 @@ function CampaignDetailContent({
                 <Send className="w-3 h-3" /> إرسال الآن
               </Button>
             )}
+            {failed > 0 && onResendFailed && campaign.status === "sent" && (
+              <Button size="sm" variant="outline" className="text-xs gap-1 border-warning text-warning hover:bg-warning/10" onClick={onResendFailed}>
+                <RotateCcw className="w-3 h-3" /> إعادة إرسال الفاشلة ({failed})
+              </Button>
+            )}
             <Button size="sm" variant="outline" className="text-xs gap-1" onClick={exportReport}>
-              <Download className="w-3 h-3" /> تصدير التقرير
+              <Download className="w-3 h-3" /> تصدير Excel
             </Button>
           </div>
         </DialogTitle>
@@ -1277,10 +1405,18 @@ function CampaignDetailContent({
               </thead>
               <tbody>
                 {recipients.map((r) => (
-                  <tr key={r.id} className="border-b border-border/50 hover:bg-secondary/20">
+                  <tr key={r.id} className={cn("border-b border-border/50 hover:bg-secondary/20", r.status === "failed" && "bg-destructive/5")}>
                     <td className="p-2.5 font-mono text-xs" dir="ltr">{r.phone}</td>
                     <td className="p-2.5 text-xs">{r.customer_name || "-"}</td>
-                    <td className="p-2.5">{recipientStatusBadge(r.status)}</td>
+                    <td className="p-2.5">
+                      {recipientStatusBadge(r.status)}
+                      {r.status === "failed" && r.error_message && (
+                        <p className="text-[9px] text-destructive mt-0.5 max-w-[200px] truncate" title={`${r.error_code ? r.error_code + ": " : ""}${r.error_message}`}>
+                          {r.error_code && <span className="font-mono">{r.error_code} — </span>}
+                          {r.error_message}
+                        </p>
+                      )}
+                    </td>
                     <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.sent_at ? new Date(r.sent_at).toLocaleString("ar-SA") : "-"}</td>
                     <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.delivered_at ? new Date(r.delivered_at).toLocaleString("ar-SA") : "-"}</td>
                     <td className="p-2.5 text-[10px] text-destructive hidden lg:table-cell">
@@ -1289,6 +1425,7 @@ function CampaignDetailContent({
                     </td>
                   </tr>
                 ))}
+
                 {recipients.length === 0 && (
                   <tr><td colSpan={6} className="text-center py-6 text-muted-foreground text-xs">لا يوجد مستلمين</td></tr>
                 )}
