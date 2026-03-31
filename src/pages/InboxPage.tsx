@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ConversationList from "@/components/inbox/ConversationList";
 import ChatArea from "@/components/inbox/ChatArea";
 import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";
+import NewConversationDialog from "@/components/inbox/NewConversationDialog";
 import { toast } from "sonner";
 import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
 
