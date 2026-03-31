@@ -102,6 +102,9 @@ const AppRoutes = () => {
       <Route path="/plans" element={<ProtectedRoute><AppLayout><PlanUpgradePage /></AppLayout></ProtectedRoute>} />
       <Route path="/integrations" element={<ProtectedRoute><AppLayout><IntegrationsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/conversation-settings" element={<ProtectedRoute><AppLayout><ConversationSettingsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/ai-settings" element={<ProtectedRoute><AppLayout><AiSettingsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/api-tokens" element={<ProtectedRoute><AppLayout><ApiTokensPage /></AppLayout></ProtectedRoute>} />
       <Route path="/templates" element={<MetaApiRoute><AppLayout><TemplatesPage /></AppLayout></MetaApiRoute>} />
       <Route path="/wallet" element={<ProtectedRoute><AppLayout><WalletPage /></AppLayout></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><AppLayout><OrdersPage /></AppLayout></ProtectedRoute>} />
