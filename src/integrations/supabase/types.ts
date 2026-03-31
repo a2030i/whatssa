@@ -143,6 +143,53 @@ export type Database = {
           },
         ]
       }
+      ai_provider_configs: {
+        Row: {
+          api_key: string
+          capabilities: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          model: string
+          org_id: string
+          provider: string
+          settings: Json
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          capabilities?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          model?: string
+          org_id: string
+          provider?: string
+          settings?: Json
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          capabilities?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          model?: string
+          org_id?: string
+          provider?: string
+          settings?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_provider_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_tokens: {
         Row: {
           created_at: string
