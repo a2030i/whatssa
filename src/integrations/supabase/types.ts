@@ -1466,14 +1466,19 @@ export type Database = {
           id: string
           is_active: boolean
           max_api_tokens: number
+          max_campaigns_per_month: number
           max_conversations: number
           max_messages_per_month: number
           max_phone_numbers: number
+          max_stores: number
           max_team_members: number
+          max_teams: number
+          max_unofficial_phones: number
           name: string
           name_ar: string
           price: number
           sort_order: number
+          trial_days: number
           updated_at: string | null
         }
         Insert: {
@@ -1485,14 +1490,19 @@ export type Database = {
           id?: string
           is_active?: boolean
           max_api_tokens?: number
+          max_campaigns_per_month?: number
           max_conversations?: number
           max_messages_per_month?: number
           max_phone_numbers?: number
+          max_stores?: number
           max_team_members?: number
+          max_teams?: number
+          max_unofficial_phones?: number
           name: string
           name_ar: string
           price?: number
           sort_order?: number
+          trial_days?: number
           updated_at?: string | null
         }
         Update: {
@@ -1504,14 +1514,19 @@ export type Database = {
           id?: string
           is_active?: boolean
           max_api_tokens?: number
+          max_campaigns_per_month?: number
           max_conversations?: number
           max_messages_per_month?: number
           max_phone_numbers?: number
+          max_stores?: number
           max_team_members?: number
+          max_teams?: number
+          max_unofficial_phones?: number
           name?: string
           name_ar?: string
           price?: number
           sort_order?: number
+          trial_days?: number
           updated_at?: string | null
         }
         Relationships: []
