@@ -105,21 +105,38 @@ const InboxPage = () => {
         return;
       }
 
-      const mapped: Conversation[] = (data || []).map((conversation) => ({
-        id: conversation.id,
-        customerName: conversation.customer_name || conversation.customer_phone,
-        customerPhone: conversation.customer_phone,
-        lastMessage: conversation.last_message || "",
-        timestamp: formatTimestamp(conversation.last_message_at),
-        unread: conversation.unread_count || 0,
-        assignedTo: conversation.assigned_to || "غير معيّن",
-        status: (conversation.status as "active" | "waiting" | "closed") || "active",
-        tags: conversation.tags || [],
-        notes: conversation.notes || "",
-        lastCustomerMessageAt: conversation.last_message_at || undefined,
-        conversationType: (conversation.conversation_type as "private" | "group" | "broadcast") || "private",
-        channelType: (conversation.conversation_type as "meta_api" | "evolution") === "meta_api" ? "meta_api" : "evolution",
-      }));
+      // Load channel configs for channel name mapping
+      const { data: channelConfigs } = await supabase
+        .from("whatsapp_config_safe")
+        .select("id, display_phone, business_name, channel_type, evolution_instance_name")
+        .eq("org_id", currentOrgId)
+        .eq("is_connected", true);
+
+      const channelMap = new Map((channelConfigs || []).map((c: any) => [c.id, c]));
+
+      const mapped: Conversation[] = (data || []).map((conversation: any) => {
+        const channelConfig = conversation.channel_id ? channelMap.get(conversation.channel_id) : null;
+        const channelType = channelConfig?.channel_type === "evolution" ? "evolution" : 
+          channelConfig?.channel_type === "meta_api" ? "meta_api" : undefined;
+
+        return {
+          id: conversation.id,
+          customerName: conversation.customer_name || conversation.customer_phone,
+          customerPhone: conversation.customer_phone,
+          lastMessage: conversation.last_message || "",
+          timestamp: formatTimestamp(conversation.last_message_at),
+          unread: conversation.unread_count || 0,
+          assignedTo: conversation.assigned_to || "غير معيّن",
+          status: (conversation.status as "active" | "waiting" | "closed") || "active",
+          tags: conversation.tags || [],
+          notes: conversation.notes || "",
+          lastCustomerMessageAt: conversation.last_message_at || undefined,
+          conversationType: (conversation.conversation_type as "private" | "group" | "broadcast") || "private",
+          channelType,
+          channelId: conversation.channel_id || undefined,
+          channelName: channelConfig ? (channelConfig.display_phone || channelConfig.business_name || channelConfig.evolution_instance_name || "") : undefined,
+        };
+      });
 
       setConversations(mapped);
       if (!isMobile && mapped.length > 0) {
