@@ -1,0 +1,1 @@
+ALTER TABLE public.conversations ADD COLUMN IF NOT EXISTS channel_id uuid REFERENCES public.whatsapp_config(id) ON DELETE SET NULL;
