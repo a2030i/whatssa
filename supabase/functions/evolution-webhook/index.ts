@@ -102,12 +102,20 @@ async function processChatbotFlow(
 
   const { data: flows } = await client
     .from("chatbot_flows")
-    .select("id, trigger_type, trigger_keywords, welcome_message, nodes, name")
+    .select("id, trigger_type, trigger_keywords, welcome_message, nodes, name, channel_ids")
     .eq("org_id", orgId)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
 
   if (!flows || flows.length === 0) return false;
+
+  // Filter flows by channel
+  const filteredFlows = flows.filter((flow: any) => {
+    if (!flow.channel_ids || flow.channel_ids.length === 0) return true;
+    return channelConfigId ? flow.channel_ids.includes(channelConfigId) : true;
+  });
+
+  if (filteredFlows.length === 0) return false;
 
   const { count: msgCount } = await client
     .from("messages")
@@ -118,7 +126,7 @@ async function processChatbotFlow(
   const isFirstMessage = (msgCount || 0) <= 1;
 
   let matchedFlow = null;
-  for (const flow of flows) {
+  for (const flow of filteredFlows) {
     if (flow.trigger_type === "first_message" && isFirstMessage) { matchedFlow = flow; break; }
     if (flow.trigger_type === "always") { matchedFlow = flow; break; }
     if (flow.trigger_type === "keyword" && Array.isArray(flow.trigger_keywords)) {
