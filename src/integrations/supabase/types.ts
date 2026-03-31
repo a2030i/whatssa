@@ -2410,6 +2410,7 @@ export type Database = {
         Returns: boolean
       }
       increment_unread: { Args: { conv_id: string }; Returns: undefined }
+      validate_coupon: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "member" | "supervisor"
