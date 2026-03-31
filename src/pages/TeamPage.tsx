@@ -194,39 +194,37 @@ const TeamPage = () => {
   const isAdmin = userRole === "admin" || userRole === "super_admin";
 
   return (
-    <div className="p-3 md:p-6 space-y-6 max-w-[1000px]" dir="rtl">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold">الفريق</h1>
-          <p className="text-sm text-muted-foreground mt-1">إدارة الفرق والأعضاء والصلاحيات</p>
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-[1100px] mx-auto" dir="rtl">
+      <div className="flex items-center justify-between flex-wrap gap-3 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-info/10 flex items-center justify-center ring-1 ring-info/15">
+            <Users className="w-5 h-5 text-info" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-foreground tracking-tight">الفريق</h1>
+            <p className="text-sm text-muted-foreground">إدارة الفرق والأعضاء والصلاحيات</p>
+          </div>
         </div>
         {isAdmin && (
-          <div className="flex gap-2">
-            <Button variant="outline" className="gap-2 text-xs" onClick={() => setTeamDialogOpen(true)}>
-              <Layers className="w-4 h-4" /> فريق جديد
-            </Button>
-          </div>
+          <Button variant="outline" className="gap-2 text-xs rounded-xl border-border/50" onClick={() => setTeamDialogOpen(true)}>
+            <Layers className="w-4 h-4" /> فريق جديد
+          </Button>
         )}
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-card rounded-lg p-4 shadow-card text-center">
-          <p className="text-2xl font-bold">{profiles.length}</p>
-          <p className="text-xs text-muted-foreground">إجمالي الأعضاء</p>
-        </div>
-        <div className="bg-card rounded-lg p-4 shadow-card text-center">
-          <p className="text-2xl font-bold text-success">{profiles.filter((m) => m.is_online).length}</p>
-          <p className="text-xs text-muted-foreground">متصلون الآن</p>
-        </div>
-        <div className="bg-card rounded-lg p-4 shadow-card text-center">
-          <p className="text-2xl font-bold text-primary">{teams.length}</p>
-          <p className="text-xs text-muted-foreground">عدد الفرق</p>
-        </div>
-        <div className="bg-card rounded-lg p-4 shadow-card text-center">
-          <p className="text-2xl font-bold text-kpi-3">{roles.filter((r) => r.role === "admin").length}</p>
-          <p className="text-xs text-muted-foreground">مدراء</p>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in">
+        {[
+          { value: profiles.length, label: "إجمالي الأعضاء", color: "text-foreground", iconBg: "bg-secondary/60" },
+          { value: profiles.filter((m) => m.is_online).length, label: "متصلون الآن", color: "text-success", iconBg: "bg-success/10" },
+          { value: teams.length, label: "عدد الفرق", color: "text-primary", iconBg: "bg-primary/10" },
+          { value: roles.filter((r) => r.role === "admin").length, label: "مدراء", color: "text-kpi-3", iconBg: "bg-kpi-3/10" },
+        ].map((stat, i) => (
+          <div key={i} className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 border border-border/40 hover:border-border/80 transition-all">
+            <p className={cn("text-2xl font-black", stat.color)}>{stat.value}</p>
+            <p className="text-xs text-muted-foreground mt-1 font-medium">{stat.label}</p>
+          </div>
+        ))}
       </div>
 
       {/* Teams */}
