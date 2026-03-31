@@ -62,6 +62,7 @@ const ChatbotPage = () => {
   const [formKeywords, setFormKeywords] = useState("");
   const [formWelcome, setFormWelcome] = useState("");
   const [formNodes, setFormNodes] = useState<ChatbotNode[]>([]);
+  const [formChannelIds, setFormChannelIds] = useState<string[]>([]);
 
   // Quick add buttons
   const [quickButtonsText, setQuickButtonsText] = useState("");
