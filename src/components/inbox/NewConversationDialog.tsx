@@ -1,0 +1,532 @@
+import { useState, useEffect, useMemo } from "react";
+import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, FileText, Loader2, Plus, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import type { WhatsAppTemplate } from "@/types/whatsapp";
+import { buildTemplateComponents } from "@/types/whatsapp";
+
+interface Channel {
+  id: string;
+  display_phone: string;
+  channel_type: string;
+  evolution_instance_name: string | null;
+  business_name: string | null;
+}
+
+interface Customer {
+  id: string;
+  name: string | null;
+  phone: string;
+}
+
+interface NewConversationDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  templates: WhatsAppTemplate[];
+  onConversationCreated: (convId: string) => void;
+}
+
+type Step = "contact" | "channel" | "message";
+
+const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCreated }: NewConversationDialogProps) => {
+  const { orgId } = useAuth();
+  const [step, setStep] = useState<Step>("contact");
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
+  const [phone, setPhone] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [messageText, setMessageText] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null);
+  const [templateVars, setTemplateVars] = useState<string[]>([]);
+  const [sending, setSending] = useState(false);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+
+  // Reset on open
+  useEffect(() => {
+    if (open) {
+      setStep("contact");
+      setSelectedChannel(null);
+      setPhone("");
+      setCustomerName("");
+      setMessageText("");
+      setSelectedTemplate(null);
+      setTemplateVars([]);
+      setSearchQuery("");
+    }
+  }, [open]);
+
+  // Load channels
+  useEffect(() => {
+    if (!orgId || !open) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("whatsapp_config_safe")
+        .select("id, display_phone, channel_type, evolution_instance_name, business_name")
+        .eq("org_id", orgId)
+        .eq("is_connected", true)
+        .order("created_at");
+      setChannels((data || []) as Channel[]);
+    };
+    load();
+  }, [orgId, open]);
+
+  // Search customers
+  useEffect(() => {
+    if (!orgId || !open) return;
+    const load = async () => {
+      setLoadingCustomers(true);
+      let query = supabase
+        .from("customers")
+        .select("id, name, phone")
+        .eq("org_id", orgId)
+        .order("updated_at", { ascending: false })
+        .limit(50);
+
+      if (searchQuery.trim()) {
+        query = query.or(`name.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`);
+      }
+
+      const { data } = await query;
+      setCustomers((data || []) as Customer[]);
+      setLoadingCustomers(false);
+    };
+    const timer = setTimeout(load, 300);
+    return () => clearTimeout(timer);
+  }, [orgId, open, searchQuery]);
+
+  const isMeta = selectedChannel?.channel_type === "meta_api";
+  const approvedTemplates = useMemo(() => templates.filter(t => t.status === "APPROVED"), [templates]);
+
+  const selectCustomer = (c: Customer) => {
+    setPhone(c.phone);
+    setCustomerName(c.name || "");
+    if (channels.length === 1) {
+      setSelectedChannel(channels[0]);
+      setStep("message");
+    } else {
+      setStep("channel");
+    }
+  };
+
+  const enterNewPhone = () => {
+    if (!phone.trim()) {
+      toast.error("أدخل رقم الهاتف");
+      return;
+    }
+    if (channels.length === 1) {
+      setSelectedChannel(channels[0]);
+      setStep("message");
+    } else {
+      setStep("channel");
+    }
+  };
+
+  const selectChannel = (ch: Channel) => {
+    setSelectedChannel(ch);
+    setSelectedTemplate(null);
+    setTemplateVars([]);
+    setMessageText("");
+    setStep("message");
+  };
+
+  const handleSelectTemplate = (t: WhatsAppTemplate) => {
+    setSelectedTemplate(t);
+    const varCount = t.components?.reduce((acc, c) => {
+      const matches = c.text?.match(/\{\{(\d+)\}\}/g);
+      return acc + (matches ? matches.length : 0);
+    }, 0) || 0;
+    setTemplateVars(Array(varCount).fill(""));
+  };
+
+  const handleSend = async () => {
+    if (!selectedChannel || !phone.trim()) return;
+
+    setSending(true);
+    try {
+      // Normalize phone
+      const cleanPhone = phone.replace(/[^0-9+]/g, "");
+
+      if (isMeta && selectedTemplate) {
+        // Send template via Meta API
+        const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+          body: {
+            to: cleanPhone,
+            type: "template",
+            template_name: selectedTemplate.name,
+            template_language: selectedTemplate.language,
+            template_components: buildTemplateComponents(selectedTemplate, templateVars),
+            channel_id: selectedChannel.id,
+          },
+        });
+        if (error || data?.error) throw new Error(data?.error || "فشل إرسال القالب");
+      } else if (!isMeta && messageText.trim()) {
+        // Send free text via Evolution
+        const { data, error } = await supabase.functions.invoke("evolution-send", {
+          body: {
+            to: cleanPhone,
+            message: messageText,
+            channel_id: selectedChannel.id,
+          },
+        });
+        if (error || data?.error) throw new Error(data?.error || "فشل إرسال الرسالة");
+      } else if (isMeta && !selectedTemplate) {
+        toast.error("يجب اختيار قالب للقناة الرسمية");
+        setSending(false);
+        return;
+      } else {
+        toast.error("أدخل نص الرسالة");
+        setSending(false);
+        return;
+      }
+
+      // Find or wait for conversation to appear
+      // Check if conversation already exists
+      const { data: existingConv } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("customer_phone", cleanPhone)
+        .eq("channel_id", selectedChannel.id)
+        .neq("status", "closed")
+        .limit(1)
+        .maybeSingle();
+
+      if (existingConv) {
+        onConversationCreated(existingConv.id);
+      } else {
+        // Create conversation manually
+        const { data: newConv } = await supabase
+          .from("conversations")
+          .insert({
+            org_id: orgId!,
+            customer_phone: cleanPhone,
+            customer_name: customerName || cleanPhone,
+            channel_id: selectedChannel.id,
+            status: "active",
+            last_message: isMeta ? `📋 ${selectedTemplate?.name}` : messageText,
+            last_message_at: new Date().toISOString(),
+          })
+          .select("id")
+          .single();
+
+        if (newConv) {
+          onConversationCreated(newConv.id);
+        }
+      }
+
+      toast.success("تم إرسال الرسالة بنجاح");
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err.message || "حدث خطأ");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const canSend = isMeta ? !!selectedTemplate : messageText.trim().length > 0;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden" dir="rtl">
+        {/* Header */}
+        <DialogHeader className="p-4 pb-3 border-b border-border/40 bg-card">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Plus className="w-4 h-4 text-primary" />
+            </div>
+            محادثة جديدة
+          </DialogTitle>
+          {/* Steps indicator */}
+          <div className="flex items-center gap-2 mt-3">
+            {(["contact", "channel", "message"] as Step[]).map((s, i) => {
+              const labels = ["جهة الاتصال", "القناة", "الرسالة"];
+              const isActive = s === step;
+              const isDone = (step === "channel" && i === 0) || (step === "message" && i < 2);
+              return (
+                <div key={s} className="flex items-center gap-1.5 flex-1">
+                  <div className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
+                    isActive ? "bg-primary text-primary-foreground" :
+                    isDone ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                  )}>
+                    {i + 1}
+                  </div>
+                  <span className={cn("text-[11px]", isActive ? "text-foreground font-medium" : "text-muted-foreground")}>
+                    {labels[i]}
+                  </span>
+                  {i < 2 && <div className="flex-1 h-px bg-border/60" />}
+                </div>
+              );
+            })}
+          </div>
+        </DialogHeader>
+
+        {/* Step: Contact */}
+        {step === "contact" && (
+          <div className="flex flex-col">
+            {/* New number input */}
+            <div className="p-4 pb-2 space-y-2">
+              <Label className="text-xs text-muted-foreground">أدخل رقم جديد أو اختر عميل</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="966512345678+"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="pr-9 text-sm h-10 bg-background"
+                    dir="ltr"
+                  />
+                </div>
+                <Button size="sm" className="h-10 px-4" onClick={enterNewPhone} disabled={!phone.trim()}>
+                  التالي
+                </Button>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 px-4 py-2">
+              <div className="flex-1 h-px bg-border/50" />
+              <span className="text-[10px] text-muted-foreground">أو اختر من العملاء</span>
+              <div className="flex-1 h-px bg-border/50" />
+            </div>
+
+            {/* Customer search */}
+            <div className="px-4 pb-2">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="ابحث بالاسم أو الرقم..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pr-9 text-sm h-9 bg-background"
+                />
+              </div>
+            </div>
+
+            {/* Customer list */}
+            <ScrollArea className="h-[250px]">
+              <div className="px-2 pb-2">
+                {loadingCustomers ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : customers.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground text-xs">
+                    لا يوجد عملاء
+                  </div>
+                ) : (
+                  customers.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => selectCustomer(c)}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-accent/50 transition-colors text-right"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <User className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{c.name || "بدون اسم"}</p>
+                        <p className="text-[11px] text-muted-foreground" dir="ltr">{c.phone}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* Step: Channel Selection */}
+        {step === "channel" && (
+          <div className="p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Phone className="w-4 h-4" />
+              <span dir="ltr">{phone}</span>
+              {customerName && <Badge variant="outline" className="text-[10px]">{customerName}</Badge>}
+              <button onClick={() => setStep("contact")} className="mr-auto text-xs text-primary hover:underline">تغيير</button>
+            </div>
+
+            <Label className="text-xs font-medium">اختر القناة للإرسال</Label>
+
+            <div className="grid gap-2">
+              {channels.map((ch) => {
+                const isMetaCh = ch.channel_type === "meta_api";
+                return (
+                  <button
+                    key={ch.id}
+                    onClick={() => selectChannel(ch)}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-card/50 hover:border-primary/40 hover:bg-primary/5 transition-all text-right"
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center",
+                      isMetaCh ? "bg-emerald-500/10" : "bg-amber-500/10"
+                    )}>
+                      {isMetaCh ? <ShieldCheck className="w-5 h-5 text-emerald-500" /> : <Wifi className="w-5 h-5 text-amber-500" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">
+                        {ch.business_name || ch.display_phone || ch.evolution_instance_name || "قناة"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {ch.display_phone || ch.evolution_instance_name}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className={cn(
+                      "text-[9px] shrink-0",
+                      isMetaCh ? "border-emerald-500/30 text-emerald-600 bg-emerald-500/5" : "border-amber-500/30 text-amber-600 bg-amber-500/5"
+                    )}>
+                      {isMetaCh ? "رسمي - يتطلب قالب" : "ويب - رسالة حرة"}
+                    </Badge>
+                  </button>
+                );
+              })}
+            </div>
+
+            {channels.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground text-xs">
+                لا توجد قنوات متصلة. اربط واتساب أولاً
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step: Message */}
+        {step === "message" && selectedChannel && (
+          <div className="flex flex-col">
+            {/* Summary bar */}
+            <div className="p-3 border-b border-border/30 flex items-center gap-2 text-xs text-muted-foreground bg-muted/30">
+              <User className="w-3.5 h-3.5" />
+              <span>{customerName || phone}</span>
+              <span className="mx-1">•</span>
+              {isMeta ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Wifi className="w-3.5 h-3.5 text-amber-500" />}
+              <span>{selectedChannel.business_name || selectedChannel.display_phone || selectedChannel.evolution_instance_name}</span>
+              <button onClick={() => setStep(channels.length > 1 ? "channel" : "contact")} className="mr-auto text-primary hover:underline text-[11px]">تغيير</button>
+            </div>
+
+            {isMeta ? (
+              /* Meta: Template picker */
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" />
+                  <Label className="text-xs font-medium">اختر قالب للإرسال</Label>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  القناة الرسمية تتطلب إرسال قالب معتمد كأول رسالة
+                </p>
+
+                {!selectedTemplate ? (
+                  <ScrollArea className="h-[200px]">
+                    <div className="grid gap-1.5">
+                      {approvedTemplates.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground text-xs">
+                          لا توجد قوالب معتمدة
+                        </div>
+                      ) : (
+                        approvedTemplates.map((t) => (
+                          <button
+                            key={t.id || t.name}
+                            onClick={() => handleSelectTemplate(t)}
+                            className="w-full text-right p-3 rounded-xl border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all"
+                          >
+                            <p className="text-sm font-medium">{t.name}</p>
+                            <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">
+                              {t.components?.find(c => c.type === "BODY")?.text || ""}
+                            </p>
+                            <div className="flex gap-1.5 mt-1.5">
+                              <Badge variant="outline" className="text-[9px]">{t.language}</Badge>
+                              <Badge variant="outline" className="text-[9px]">{t.category}</Badge>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium">{selectedTemplate.name}</p>
+                        <button onClick={() => setSelectedTemplate(null)} className="text-muted-foreground hover:text-foreground">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {selectedTemplate.components?.find(c => c.type === "BODY")?.text || ""}
+                      </p>
+                    </div>
+
+                    {templateVars.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">المتغيرات</Label>
+                        {templateVars.map((v, i) => (
+                          <Input
+                            key={i}
+                            placeholder={`متغير {{${i + 1}}}`}
+                            value={v}
+                            onChange={(e) => {
+                              const next = [...templateVars];
+                              next[i] = e.target.value;
+                              setTemplateVars(next);
+                            }}
+                            className="h-9 text-sm"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Evolution: Free text */
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                  <Label className="text-xs font-medium">اكتب رسالتك</Label>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  القناة غير الرسمية تتيح إرسال رسائل حرة مباشرة
+                </p>
+                <Textarea
+                  placeholder="اكتب رسالتك هنا..."
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  className="min-h-[100px] text-sm resize-none bg-background"
+                />
+              </div>
+            )}
+
+            {/* Send button */}
+            <div className="p-4 pt-2 border-t border-border/30">
+              <Button
+                className="w-full h-11 gap-2"
+                disabled={!canSend || sending}
+                onClick={handleSend}
+              >
+                {sending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                {sending ? "جاري الإرسال..." : "إرسال"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default NewConversationDialog;
