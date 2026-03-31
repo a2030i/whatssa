@@ -202,6 +202,8 @@ export type Database = {
           org_id: string
           permissions: string[]
           token: string
+          token_hash: string | null
+          token_preview: string | null
         }
         Insert: {
           created_at?: string
@@ -214,6 +216,8 @@ export type Database = {
           org_id: string
           permissions?: string[]
           token?: string
+          token_hash?: string | null
+          token_preview?: string | null
         }
         Update: {
           created_at?: string
@@ -226,6 +230,8 @@ export type Database = {
           org_id?: string
           permissions?: string[]
           token?: string
+          token_hash?: string | null
+          token_preview?: string | null
         }
         Relationships: [
           {
