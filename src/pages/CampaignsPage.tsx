@@ -1391,10 +1391,18 @@ function CampaignDetailContent({
               </thead>
               <tbody>
                 {recipients.map((r) => (
-                  <tr key={r.id} className="border-b border-border/50 hover:bg-secondary/20">
+                  <tr key={r.id} className={cn("border-b border-border/50 hover:bg-secondary/20", r.status === "failed" && "bg-destructive/5")}>
                     <td className="p-2.5 font-mono text-xs" dir="ltr">{r.phone}</td>
                     <td className="p-2.5 text-xs">{r.customer_name || "-"}</td>
-                    <td className="p-2.5">{recipientStatusBadge(r.status)}</td>
+                    <td className="p-2.5">
+                      {recipientStatusBadge(r.status)}
+                      {r.status === "failed" && r.error_message && (
+                        <p className="text-[9px] text-destructive mt-0.5 max-w-[200px] truncate" title={`${r.error_code ? r.error_code + ": " : ""}${r.error_message}`}>
+                          {r.error_code && <span className="font-mono">{r.error_code} — </span>}
+                          {r.error_message}
+                        </p>
+                      )}
+                    </td>
                     <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.sent_at ? new Date(r.sent_at).toLocaleString("ar-SA") : "-"}</td>
                     <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.delivered_at ? new Date(r.delivered_at).toLocaleString("ar-SA") : "-"}</td>
                     <td className="p-2.5 text-[10px] text-destructive hidden lg:table-cell">
@@ -1403,6 +1411,7 @@ function CampaignDetailContent({
                     </td>
                   </tr>
                 ))}
+
                 {recipients.length === 0 && (
                   <tr><td colSpan={6} className="text-center py-6 text-muted-foreground text-xs">لا يوجد مستلمين</td></tr>
                 )}
