@@ -68,6 +68,8 @@ const IntegrationsPage = () => {
   const [manualWabaId, setManualWabaId] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [connectedPhone, setConnectedPhone] = useState<string>("");
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [editingLabelText, setEditingLabelText] = useState("");
   const [testSending, setTestSending] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [twoStepPin, setTwoStepPin] = useState("");
