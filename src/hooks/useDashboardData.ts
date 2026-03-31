@@ -8,7 +8,6 @@ export interface WhatsAppStatus {
   businessAccountId: string | null;
   displayPhone: string | null;
   businessName: string | null;
-  accessToken: string | null;
   lastSync: string | null;
 }
 
