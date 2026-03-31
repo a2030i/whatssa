@@ -14,6 +14,17 @@ const statusColors: Record<string, string> = {
 };
 const statusLabels: Record<string, string> = { active: "نشط", waiting: "بانتظار", closed: "مغلق" };
 
+const getWaitTime = (lastCustomerMessageAt?: string): { text: string; color: string } | null => {
+  if (!lastCustomerMessageAt) return null;
+  const diff = Date.now() - new Date(lastCustomerMessageAt).getTime();
+  const hours = Math.floor(diff / 3600000);
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 5) return null;
+  const text = hours > 0 ? `${hours} س` : `${minutes} د`;
+  const color = hours >= 12 ? "bg-destructive/15 text-destructive" : hours >= 4 ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground";
+  return { text, color };
+};
+
 interface QuickFilter {
   id: string;
   label: string;
