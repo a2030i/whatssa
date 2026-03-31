@@ -1110,8 +1110,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
               ) : !isNoteMode ? (
-                <button onClick={startRecording} className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 gradient-whatsapp hover:opacity-90 transition-opacity">
-                  <Mic className="w-4 h-4 text-whatsapp-foreground" />
+                <button onClick={startRecording} className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
+                  <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
               ) : (
                 <button disabled className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-muted">
