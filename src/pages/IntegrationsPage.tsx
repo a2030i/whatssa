@@ -823,7 +823,7 @@ const IntegrationsPage = () => {
   // ============ EMPTY STATE: Show all channels ============
   if (configs.length === 0 && flowStep === "idle") {
     return (
-      <div className="p-3 md:p-6 space-y-8 max-w-[900px]" dir="rtl">
+      <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir="rtl">
         {renderAllChannelsView([])}
       </div>
     );
