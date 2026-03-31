@@ -166,7 +166,8 @@ const ChatbotPage = () => {
       trigger_keywords: keywords,
       welcome_message: formWelcome.trim() || null,
       nodes: linkedNodes as any,
-    };
+      channel_ids: formChannelIds,
+    } as any;
 
     if (editingFlow) {
       const { error } = await supabase
