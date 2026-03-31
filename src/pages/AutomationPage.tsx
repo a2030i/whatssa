@@ -168,6 +168,7 @@ const AutomationPage = () => {
       action_type: formActionType,
       action_tag: needsTag ? formActionTag.trim() : null,
       action_team_id: needsTeam ? formActionTeamId : null,
+      channel_ids: formChannelIds,
     };
 
     const response = editingRule
