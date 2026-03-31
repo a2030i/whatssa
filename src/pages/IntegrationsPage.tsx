@@ -381,7 +381,7 @@ const IntegrationsPage = () => {
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", {
         body: {
-          access_token: config.access_token,
+          config_id: config.id,
           phone_number_id: config.phone_number_id,
           waba_id: config.business_account_id,
           org_id: config.org_id,
