@@ -62,7 +62,7 @@ const AutomationPage = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("automation_rules" as any)
-      .select("id, name, keywords, reply_text, enabled, action_type, action_tag, action_team_id")
+      .select("id, name, keywords, reply_text, enabled, action_type, action_tag, action_team_id, channel_ids")
       .order("created_at", { ascending: false });
 
     if (error) {
