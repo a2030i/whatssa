@@ -1,11 +1,15 @@
-import { useState, useMemo } from "react";
-import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Conversation } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import CustomInboxBuilder, { type CustomInbox } from "./CustomInboxBuilder";
+import { toast } from "sonner";
 
 const statusColors: Record<string, string> = {
   active: "bg-success/10 text-success",
@@ -13,6 +17,17 @@ const statusColors: Record<string, string> = {
   closed: "bg-muted text-muted-foreground",
 };
 const statusLabels: Record<string, string> = { active: "نشط", waiting: "بانتظار", closed: "مغلق" };
+
+const getWaitTime = (lastCustomerMessageAt?: string): { text: string; color: string } | null => {
+  if (!lastCustomerMessageAt) return null;
+  const diff = Date.now() - new Date(lastCustomerMessageAt).getTime();
+  const hours = Math.floor(diff / 3600000);
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 5) return null;
+  const text = hours > 0 ? `${hours} س` : `${minutes} د`;
+  const color = hours >= 12 ? "bg-destructive/15 text-destructive" : hours >= 4 ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground";
+  return { text, color };
+};
 
 interface QuickFilter {
   id: string;
@@ -29,13 +44,88 @@ interface ConversationListProps {
 }
 
 const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }: ConversationListProps) => {
+  const { orgId } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const [customInboxes, setCustomInboxes] = useState<CustomInbox[]>([]);
+  const [activeCustomInbox, setActiveCustomInbox] = useState<string | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [editingInbox, setEditingInbox] = useState<CustomInbox | null>(null);
   const isMobile = useIsMobile();
+
+  // Load custom inboxes
+  const loadCustomInboxes = async () => {
+    if (!orgId) return;
+    const { data } = await supabase
+      .from("custom_inboxes")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("sort_order");
+    if (data) {
+      setCustomInboxes(data.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        filters: d.filters || [],
+        is_shared: d.is_shared,
+      })));
+    }
+  };
+
+  useEffect(() => {
+    loadCustomInboxes();
+  }, [orgId]);
+
+  // Apply custom inbox filters
+  const applyCustomFilters = (conv: Conversation, inbox: CustomInbox): boolean => {
+    if (!inbox.filters || inbox.filters.length === 0) return true;
+    
+    return inbox.filters.some((group) => {
+      return group.conditions.every((cond) => {
+        const val = cond.value;
+        switch (cond.field) {
+          case "status":
+            if (cond.operator === "eq") return conv.status === val;
+            if (cond.operator === "neq") return conv.status !== val;
+            break;
+          case "assigned_to":
+            if (cond.operator === "eq") return conv.assignedTo === val;
+            if (cond.operator === "neq") return conv.assignedTo !== val;
+            if (cond.operator === "is_null") return !conv.assignedTo || conv.assignedTo === "غير معيّن";
+            if (cond.operator === "is_not_null") return conv.assignedTo && conv.assignedTo !== "غير معيّن";
+            break;
+          case "tags":
+            if (cond.operator === "contains") return conv.tags.includes(val);
+            if (cond.operator === "not_contains") return !conv.tags.includes(val);
+            break;
+          case "conversation_type":
+            if (cond.operator === "eq") return (conv.conversationType || "private") === val;
+            if (cond.operator === "neq") return (conv.conversationType || "private") !== val;
+            break;
+          case "unread_count":
+            if (cond.operator === "gt") return conv.unread > Number(val);
+            if (cond.operator === "eq") return conv.unread === Number(val);
+            if (cond.operator === "lt") return conv.unread < Number(val);
+            break;
+          case "customer_name":
+            if (cond.operator === "contains") return conv.customerName.includes(val);
+            if (cond.operator === "eq") return conv.customerName === val;
+            break;
+        }
+        return true;
+      });
+    });
+  };
+
+  const deleteCustomInbox = async (id: string) => {
+    await supabase.from("custom_inboxes").delete().eq("id", id);
+    if (activeCustomInbox === id) setActiveCustomInbox(null);
+    loadCustomInboxes();
+    toast.success("تم حذف الصندوق");
+  };
 
   const allAgents = useMemo(() => [...new Set(conversations.map((c) => c.assignedTo))], [conversations]);
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
@@ -63,9 +153,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
     { id: "closed", label: "منتهية", icon: XCircle, count: counts.closed },
   ];
 
+  const activeInbox = customInboxes.find((i) => i.id === activeCustomInbox);
+
   const filtered = useMemo(() => {
     return conversations.filter((conv) => {
       if (searchQuery && !conv.customerName.includes(searchQuery) && !conv.lastMessage.includes(searchQuery) && !conv.customerPhone.includes(searchQuery)) return false;
+      
+      // If custom inbox is active, use its filters
+      if (activeInbox) {
+        return applyCustomFilters(conv, activeInbox);
+      }
+      
       switch (activeQuickFilter) {
         case "active": if (conv.status !== "active") return false; break;
         case "private": if (conv.conversationType && conv.conversationType !== "private") return false; break;
@@ -80,10 +178,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
       if (selectedTags.length > 0 && !selectedTags.some((t) => conv.tags.includes(t))) return false;
       return true;
     });
-  }, [conversations, searchQuery, activeQuickFilter, agentFilter, selectedTags]);
+  }, [conversations, searchQuery, activeQuickFilter, agentFilter, selectedTags, activeInbox]);
 
-  const hasActiveFilters = agentFilter !== "all" || selectedTags.length > 0;
-  const clearFilters = () => { setAgentFilter("all"); setSelectedTags([]); };
+  const hasActiveFilters = agentFilter !== "all" || selectedTags.length > 0 || !!activeCustomInbox;
+  const clearFilters = () => { setAgentFilter("all"); setSelectedTags([]); setActiveCustomInbox(null); setActiveQuickFilter("all"); };
   const toggleTag = (tag: string) => setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
 
   return (
@@ -94,11 +192,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
       {/* Header */}
       <div className="p-3 border-b border-border space-y-2 shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold">المحادثات</h1>
+          <h1 className="text-lg font-bold">
+            {activeInbox ? `${activeInbox.name}` : "المحادثات"}
+          </h1>
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => { setEditingInbox(null); setBuilderOpen(true); }}
+              className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground transition-colors"
+              title="محادثة جديدة / صندوق مخصص"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors" title="مسح الفلاتر">
-                <X className="w-4 h-4 text-destructive" />
+              <button onClick={clearFilters} className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors" title="إعادة ضبط">
+                <RotateCcw className="w-4 h-4 text-muted-foreground" />
               </button>
             )}
             <button
@@ -110,6 +217,41 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
             </button>
           </div>
         </div>
+
+        {/* Custom Inbox Chips */}
+        {customInboxes.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-1">
+            {customInboxes.map((inbox) => (
+              <div key={inbox.id} className="flex items-center gap-0.5 group">
+                <button
+                  onClick={() => {
+                    if (activeCustomInbox === inbox.id) {
+                      setActiveCustomInbox(null);
+                    } else {
+                      setActiveCustomInbox(inbox.id);
+                      setActiveQuickFilter("all");
+                    }
+                  }}
+                  className={cn(
+                    "text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap font-medium transition-colors flex items-center gap-1",
+                    activeCustomInbox === inbox.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-muted-foreground hover:bg-accent"
+                  )}
+                >
+                  <Inbox className="w-3 h-3" />
+                  {inbox.name}
+                </button>
+                <button
+                  onClick={() => { setEditingInbox(inbox); setBuilderOpen(true); }}
+                  className="hidden group-hover:flex p-0.5 rounded text-muted-foreground hover:text-primary"
+                >
+                  <Pencil className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="relative">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -216,8 +358,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
       )}
 
       {/* Results count */}
-      {(hasActiveFilters || searchQuery) && (
-        <div className="px-4 py-1.5 bg-accent/50 text-[11px] text-accent-foreground shrink-0">{filtered.length} محادثة</div>
+      {(hasActiveFilters || searchQuery || activeCustomInbox) && (
+        <div className="px-4 py-1.5 bg-accent/50 text-[11px] text-accent-foreground shrink-0 flex items-center justify-between">
+          <span>
+            {activeInbox ? `${activeInbox.name} - (المحادثات المفتوحه )` : ""} {filtered.length}
+          </span>
+          {activeInbox && (
+            <button
+              onClick={() => deleteCustomInbox(activeInbox.id)}
+              className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       )}
 
       {/* Conversation Items */}
@@ -252,7 +406,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
                     <span className="text-[10px] text-muted-foreground shrink-0 mr-1">{conv.timestamp}</span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
-                  <div className="flex items-center gap-1.5 mt-1.5">
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                     {conv.channelType === "meta_api" ? (
                       <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 border-success/40 text-success bg-success/10">
                         <ShieldCheck className="w-2.5 h-2.5" />
@@ -271,11 +425,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
                         {conv.conversationType === "group" ? "قروب" : "بث"}
                       </Badge>
                     )}
-                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 border-0", statusColors[conv.status])}>
-                      {statusLabels[conv.status]}
-                    </Badge>
                     {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                      <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{conv.assignedTo}</span>
+                      <div className="flex items-center gap-1">
+                        <div className="w-4 h-4 rounded-full bg-primary/15 flex items-center justify-center">
+                          <User className="w-2.5 h-2.5 text-primary" />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[60px]">{conv.assignedTo}</span>
+                      </div>
                     )}
                     {conv.tags.length > 0 && (
                       <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/20 text-primary">
@@ -283,8 +439,18 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
                         {conv.tags.length > 1 && ` +${conv.tags.length - 1}`}
                       </Badge>
                     )}
+                    {/* SLA Timer */}
+                    {conv.status !== "closed" && (() => {
+                      const wait = getWaitTime(conv.lastCustomerMessageAt);
+                      return wait ? (
+                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5", wait.color)}>
+                          <Clock className="w-2.5 h-2.5" />
+                          {wait.text}
+                        </span>
+                      ) : null;
+                    })()}
                     {conv.unread > 0 && (
-                      <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center mr-auto">
+                      <span className="w-5 h-5 rounded-full bg-success text-white text-[10px] font-bold flex items-center justify-center mr-auto">
                         {conv.unread}
                       </span>
                     )}
@@ -295,6 +461,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
           ))
         )}
       </div>
+
+      {/* Custom Inbox Builder */}
+      <CustomInboxBuilder
+        open={builderOpen}
+        onOpenChange={setBuilderOpen}
+        editInbox={editingInbox}
+        onSaved={loadCustomInboxes}
+      />
     </div>
   );
 };
