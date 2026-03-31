@@ -108,6 +108,51 @@ const SettingsPage = () => {
     }
   }, [orgId]);
 
+  const loadSavedReplies = async () => {
+    const { data } = await supabase
+      .from("saved_replies")
+      .select("id, shortcut, title, content, category")
+      .eq("org_id", orgId)
+      .order("shortcut");
+    if (data) setSavedReplies(data);
+  };
+
+  const saveReply = async () => {
+    if (!replyForm.shortcut.trim() || !replyForm.title.trim() || !replyForm.content.trim()) {
+      toast.error("جميع الحقول مطلوبة");
+      return;
+    }
+    if (editingReply) {
+      await supabase.from("saved_replies").update({
+        shortcut: replyForm.shortcut.trim(),
+        title: replyForm.title.trim(),
+        content: replyForm.content.trim(),
+        category: replyForm.category,
+      }).eq("id", editingReply.id);
+      toast.success("تم تحديث الرد المحفوظ");
+    } else {
+      await supabase.from("saved_replies").insert({
+        org_id: orgId,
+        shortcut: replyForm.shortcut.trim(),
+        title: replyForm.title.trim(),
+        content: replyForm.content.trim(),
+        category: replyForm.category,
+        created_by: profile?.id,
+      } as any);
+      toast.success("تم إضافة الرد المحفوظ");
+    }
+    setShowReplyDialog(false);
+    setEditingReply(null);
+    setReplyForm({ shortcut: "", title: "", content: "", category: "عام" });
+    loadSavedReplies();
+  };
+
+  const deleteReply = async (id: string) => {
+    await supabase.from("saved_replies").delete().eq("id", id);
+    toast.success("تم حذف الرد المحفوظ");
+    loadSavedReplies();
+  };
+
   const loadChannels = async () => {
     const { data } = await supabase
       .from("whatsapp_config_safe" as any)
