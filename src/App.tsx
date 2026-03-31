@@ -31,6 +31,7 @@ import PaymentCallbackPage from "./pages/PaymentCallbackPage";
 import BillingPage from "./pages/BillingPage";
 import ScheduledMessagesPage from "./pages/ScheduledMessagesPage";
 import CustomPlanPage from "./pages/CustomPlanPage";
+import WhatsAppFlowsPage from "./pages/WhatsAppFlowsPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -109,6 +110,7 @@ const AppRoutes = () => {
       <Route path="/billing" element={<ProtectedRoute><AppLayout><BillingPage /></AppLayout></ProtectedRoute>} />
       <Route path="/scheduled-messages" element={<ProtectedRoute><AppLayout><ScheduledMessagesPage /></AppLayout></ProtectedRoute>} />
       <Route path="/custom-plan" element={<ProtectedRoute><AppLayout><CustomPlanPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/wa-flows" element={<ProtectedRoute><AppLayout><WhatsAppFlowsPage /></AppLayout></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

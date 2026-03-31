@@ -3,7 +3,7 @@ import {
   MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X,
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
-  Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock
+  Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock, ClipboardList
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): (NavItem | NavG
       { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب" },
       { label: "الأتمتة", icon: Bot, path: "/automation" },
       { label: "الشات بوت", icon: Zap, path: "/chatbot" },
+      { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages" },
     ],
   },
