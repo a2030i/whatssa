@@ -403,6 +403,15 @@ const AutomationPage = () => {
               </div>
             )}
 
+            {orgId && (
+              <ChannelSelector
+                orgId={orgId}
+                selectedIds={formChannelIds}
+                onChange={setFormChannelIds}
+                label="القنوات التي تعمل عليها هذه القاعدة"
+              />
+            )}
+
             <div className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2">
               <Label className="text-xs">تفعيل القاعدة مباشرة</Label>
               <Switch checked={formEnabled} onCheckedChange={setFormEnabled} />
