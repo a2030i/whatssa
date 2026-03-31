@@ -5,6 +5,7 @@ import {
   LogOut, Send
 } from "lucide-react";
 import ChannelRoutingConfig from "./ChannelRoutingConfig";
+import WhatsAppProfileEditor from "./WhatsAppProfileEditor";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -350,6 +351,13 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
                   </Button>
                 </div>
               </div>
+
+              {/* Profile Editor */}
+              {existingConfig?.id && (
+                <div className="flex justify-center">
+                  <WhatsAppProfileEditor configId={existingConfig.id} channelType="evolution" />
+                </div>
+              )}
 
               {/* Channel Routing */}
               {orgId && existingConfig?.id && (

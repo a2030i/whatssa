@@ -8,6 +8,7 @@ import {
 import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import SallaIntegrationSection from "@/components/integrations/SallaIntegrationSection";
 import ChannelRoutingConfig from "@/components/integrations/ChannelRoutingConfig";
+import WhatsAppProfileEditor from "@/components/integrations/WhatsAppProfileEditor";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -523,6 +524,13 @@ const IntegrationsPage = () => {
                   <AlertTriangle className="w-3.5 h-3.5" /> سبب الفشل
                 </p>
                 <p className="text-[11px] text-foreground mt-1">{friendlyError(config.registration_error)}</p>
+              </div>
+            )}
+
+            {/* Profile Editor */}
+            {isConnected && (
+              <div className="flex justify-center">
+                <WhatsAppProfileEditor configId={config.id} channelType="meta_api" />
               </div>
             )}
 
