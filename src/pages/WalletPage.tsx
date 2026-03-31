@@ -37,13 +37,14 @@ const WalletPage = () => {
 
     // Validate coupon via secure RPC (no direct table access)
     const { data: result, error: rpcError } = await supabase.rpc("validate_coupon", { _code: couponCode.trim() });
-    if (rpcError || !result || !result.valid) {
-      toast.error(result?.error || "كوبون غير صالح");
+    const parsed = result as any;
+    if (rpcError || !parsed || !parsed.valid) {
+      toast.error(parsed?.error || "كوبون غير صالح");
       setIsRedeeming(false);
       return;
     }
 
-    const coupon = result;
+    const coupon = parsed as { id: string; discount_type: string; discount_value: number; applicable_plans: string[]; min_plan_price: number };
 
     const { data: existing } = await supabase.from("coupon_redemptions").select("id").eq("coupon_id", coupon.id).eq("org_id", orgId!).maybeSingle();
     if (existing) { toast.error("تم استخدام هذا الكوبون مسبقاً"); setIsRedeeming(false); return; }
