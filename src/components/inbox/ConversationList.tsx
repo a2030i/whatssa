@@ -190,6 +190,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             {activeInbox ? activeInbox.name : "المحادثات"}
           </h1>
           <div className="flex items-center gap-1">
+            {onNewConversation && (
+              <button
+                onClick={onNewConversation}
+                className="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+                title="محادثة جديدة"
+              >
+                <MessageSquare className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={() => { setEditingInbox(null); setBuilderOpen(true); }}
               className="p-2 rounded-xl hover:bg-secondary/80 text-muted-foreground transition-all hover:text-foreground"
