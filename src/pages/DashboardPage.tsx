@@ -14,16 +14,19 @@ const DashboardPage = () => {
   if (data.isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">جاري التحميل...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-[1280px] mx-auto space-y-6 bg-mesh min-h-screen">
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1280px] mx-auto space-y-6 min-h-screen">
       {/* Header */}
       <div className="flex items-center gap-4 animate-fade-in">
-        <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-glow shrink-0">
+        <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-glow shrink-0">
           <LayoutDashboard className="w-6 h-6 text-primary-foreground" />
         </div>
         <div>
@@ -39,25 +42,12 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* 1. Status Bar */}
       <StatusBar data={data} />
-
-      {/* Token Expiry Alert */}
       <TokenAlert data={data} />
-
-      {/* 2. Verification Card */}
       <VerificationCard data={data} />
-
-      {/* 3. Smart Alerts */}
       <SmartAlerts data={data} />
-
-      {/* 4. Smart Insight */}
       <SmartInsight data={data} />
-
-      {/* 5. Operational Metrics */}
       <OperationalMetrics data={data} />
-
-      {/* 6. Account Health */}
       <AccountHealth data={data} />
     </div>
   );
