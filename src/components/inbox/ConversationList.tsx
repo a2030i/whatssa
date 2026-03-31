@@ -134,15 +134,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
 
   const counts = useMemo(() => ({
-    all: conversations.length,
+    all: conversations.filter(c => c.status !== "closed").length,
     active: conversations.filter(c => c.status === "active").length,
-    unassigned: conversations.filter(c => !c.assignedTo || c.assignedTo === "غير معيّن").length,
-    unread: conversations.filter(c => c.unread > 0).length,
+    unassigned: conversations.filter(c => c.status !== "closed" && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
+    unread: conversations.filter(c => c.status !== "closed" && c.unread > 0).length,
     waiting: conversations.filter(c => c.status === "waiting").length,
     closed: conversations.filter(c => c.status === "closed").length,
-    private: conversations.filter(c => !c.conversationType || c.conversationType === "private").length,
-    group: conversations.filter(c => c.conversationType === "group").length,
-    broadcast: conversations.filter(c => c.conversationType === "broadcast").length,
+    private: conversations.filter(c => c.status !== "closed" && (!c.conversationType || c.conversationType === "private")).length,
+    group: conversations.filter(c => c.status !== "closed" && c.conversationType === "group").length,
+    broadcast: conversations.filter(c => c.status !== "closed" && c.conversationType === "broadcast").length,
   }), [conversations]);
 
   const quickFilters: QuickFilter[] = [
@@ -153,7 +153,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
     { id: "group", label: "قروبات", icon: Users, count: counts.group },
     { id: "broadcast", label: "بث", icon: Radio, count: counts.broadcast },
     { id: "waiting", label: "بانتظار", icon: Clock, count: counts.waiting },
-    { id: "closed", label: "منتهية", icon: XCircle, count: counts.closed },
+    { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed },
   ];
 
   const activeInbox = customInboxes.find((i) => i.id === activeCustomInbox);
