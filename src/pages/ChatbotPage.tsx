@@ -593,6 +593,15 @@ const ChatbotPage = () => {
                     rows={2}
                   />
                 </div>
+
+                {orgId && (
+                  <ChannelSelector
+                    orgId={orgId}
+                    selectedIds={formChannelIds}
+                    onChange={setFormChannelIds}
+                    label="القنوات التي يعمل عليها هذا البوت"
+                  />
+                )}
               </div>
               <div className="flex justify-end">
                 <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")}>
