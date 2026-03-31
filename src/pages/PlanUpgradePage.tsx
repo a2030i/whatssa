@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   Check, Crown, Zap, Building2, Rocket, CreditCard, ShieldCheck, Wifi,
   MessageSquare, Users, ShoppingBag, Megaphone, Bot, Code2, Headphones,
-  Star, ArrowLeft
+  Star, ArrowLeft, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -236,6 +236,23 @@ const PlanUpgradePage = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* Custom Plan CTA */}
+      <div className="bg-gradient-to-l from-primary/10 via-primary/5 to-transparent rounded-2xl border border-primary/20 p-6 flex flex-col md:flex-row items-center gap-4">
+        <div className="flex-1 text-center md:text-right">
+          <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-bold">باقة مخصصة</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            الباقات الجاهزة ما تناسبك؟ صمّم باقتك بنفسك — حدد عدد الموظفين، الأرقام، المتاجر، والمحادثات وادفع فقط مقابل ما تحتاجه
+          </p>
+        </div>
+        <Button onClick={() => navigate("/custom-plan")} className="gap-2 px-6 whitespace-nowrap">
+          <Sparkles className="w-4 h-4" />
+          صمّم باقتك الآن
+        </Button>
       </div>
 
       {/* Comparison Table - Desktop */}
