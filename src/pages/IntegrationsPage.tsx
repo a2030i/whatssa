@@ -527,6 +527,13 @@ const IntegrationsPage = () => {
               </div>
             )}
 
+            {/* Profile Editor */}
+            {isConnected && (
+              <div className="flex justify-center">
+                <WhatsAppProfileEditor configId={config.id} channelType="meta_api" />
+              </div>
+            )}
+
             {/* Channel Routing */}
             {orgId && (
               <ChannelRoutingConfig
