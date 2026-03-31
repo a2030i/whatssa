@@ -227,9 +227,11 @@ const TeamPage = () => {
         ))}
       </div>
 
-      {/* Teams */}
       <div>
-        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2"><Users className="w-4 h-4 text-primary" /> الفرق</h3>
+        <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
+          <div className="w-1.5 h-5 rounded-full bg-primary" />
+          الفرق
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {teams.map((team) => {
             const teamMembers = profiles.filter((m) => m.team_id === team.id);
@@ -237,7 +239,7 @@ const TeamPage = () => {
             const sc = strategyConfig[team.assignment_strategy] || strategyConfig.round_robin;
             const StrategyIcon = sc.icon;
             return (
-              <div key={team.id} className="bg-card rounded-lg p-4 shadow-card border border-border hover:shadow-card-hover transition-shadow">
+              <div key={team.id} className="bg-card/70 backdrop-blur-sm rounded-2xl p-4 border border-border/40 hover:border-border/80 hover:shadow-card-hover transition-all duration-200">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-primary" />
