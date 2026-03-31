@@ -20,7 +20,6 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const isMobile = useIsMobile();
   const [orgName, setOrgName] = useState("");
 
-  // Hide bottom nav on inbox page (it has its own full-screen mobile layout)
   const hideBottomNav = location.pathname === "/inbox";
 
   useEffect(() => {
@@ -59,15 +58,14 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </div>
       )}
 
-      {/* Top notification bar */}
-      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[240px] h-14 bg-card/80 backdrop-blur-lg border-b border-border/50 flex items-center justify-end px-4 z-30 transition-all`}>
+      {/* Top bar - glass effect */}
+      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[250px] h-14 bg-card/60 backdrop-blur-xl border-b border-border/30 flex items-center justify-end px-4 z-30 transition-all`}>
         <NotificationBell />
       </div>
-      <main className={`md:mr-[240px] min-h-screen ${isImpersonating ? "pt-[92px]" : "pt-14"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
+      <main className={`md:mr-[250px] min-h-screen ${isImpersonating ? "pt-[92px]" : "pt-14"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
         {children}
       </main>
 
-      {/* Mobile bottom navigation */}
       {isMobile && !hideBottomNav && <MobileBottomNav />}
     </div>
   );

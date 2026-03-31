@@ -171,12 +171,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
         </button>
       )}
       <div className={cn(
-        "rounded-xl px-4 py-2.5 text-sm",
+        "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
         msg.type === "note"
           ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
           : msg.sender === "agent"
-            ? "bg-card shadow-card text-foreground rounded-bl-sm"
-            : "gradient-whatsapp text-white rounded-br-sm shadow-md"
+            ? "bg-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] text-foreground rounded-bl-sm"
+            : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-md"
       )}>
         {msg.senderName && msg.sender === "customer" && conversation.conversationType === "group" && (
           <div className="text-[11px] font-bold mb-1" style={{ color: "#a8f0c8" }}>{msg.senderName}</div>
@@ -674,37 +674,37 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden">
-      {/* Header - fixed */}
-      <div className="shrink-0 border-b border-border bg-card">
-        <div className="h-14 md:h-16 flex items-center justify-between px-2 md:px-5">
-          <div className="flex items-center gap-2">
-            <button className="w-9 h-9 rounded-lg hover:bg-secondary transition-colors flex items-center justify-center shrink-0" onClick={onBack}>
+      {/* Header - modern glass */}
+      <div className="shrink-0 border-b border-border/30 bg-card/80 backdrop-blur-xl">
+        <div className="h-16 md:h-[68px] flex items-center justify-between px-3 md:px-5">
+          <div className="flex items-center gap-3">
+            <button className="w-9 h-9 rounded-xl hover:bg-secondary/80 transition-all flex items-center justify-center shrink-0" onClick={onBack}>
               <ArrowRight className="w-5 h-5 text-foreground" />
             </button>
             <div className="relative">
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full gradient-whatsapp flex items-center justify-center text-sm font-bold text-whatsapp-foreground">
+              <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-gradient-to-br from-primary/25 to-primary/10 flex items-center justify-center text-sm font-bold text-primary shadow-sm">
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-success border-2 border-card" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card shadow-sm" />
               )}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="font-semibold text-sm truncate">{conversation.customerName}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-sm truncate">{conversation.customerName}</p>
                 {isMetaChannel ? (
-                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 gap-0.5 border-success/40 text-success bg-success/10 shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-semibold shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
                     رسمي
-                  </Badge>
+                  </span>
                 ) : (
-                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 gap-0.5 border-muted-foreground/40 text-muted-foreground bg-muted shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground font-semibold shrink-0">
                     <Wifi className="w-2.5 h-2.5" />
                     غير رسمي
-                  </Badge>
+                  </span>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground truncate">{conversation.lastSeen || conversation.customerPhone}</p>
+              <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{conversation.lastSeen || conversation.customerPhone}</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -848,7 +848,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-3 bg-secondary/30">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 bg-gradient-to-b from-secondary/20 to-secondary/40">
         {messages.map((msg) => (
           <div key={msg.id} className={cn(
             "flex",
@@ -983,7 +983,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Input Area */}
       {!isRecording && conversation.status !== "closed" && (
-        <div className={cn("shrink-0 border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
+        <div className={cn("shrink-0 border-t bg-card/80 backdrop-blur-sm p-2.5 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border/30")}>
           {/* Reply Preview Bar */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
@@ -1097,21 +1097,21 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
-                className={cn("flex-1 border-0", isNoteMode ? "bg-amber-500/5" : "bg-secondary")}
+                className={cn("flex-1 border-0 rounded-xl h-11", isNoteMode ? "bg-amber-500/5" : "bg-secondary/60 focus:bg-secondary")}
               />
             )}
             {(isNoteMode || !windowExpired) && (
               imagePreview ? (
-                <button onClick={handleSendImage} disabled={isUploading} className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 gradient-whatsapp hover:opacity-90 transition-opacity">
-                  {isUploading ? <Loader2 className="w-4 h-4 text-whatsapp-foreground animate-spin" /> : <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />}
+                <button onClick={handleSendImage} disabled={isUploading} className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
+                  {isUploading ? <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />}
                 </button>
               ) : inputText.trim() ? (
-                <button onClick={handleSend} className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-opacity", isNoteMode ? "bg-amber-500 hover:opacity-90" : "gradient-whatsapp hover:opacity-90")}>
-                  <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
+                <button onClick={handleSend} className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all shadow-md", isNoteMode ? "bg-amber-500 hover:bg-amber-600" : "bg-primary hover:bg-primary/90")}>
+                  <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
               ) : !isNoteMode ? (
-                <button onClick={startRecording} className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 gradient-whatsapp hover:opacity-90 transition-opacity">
-                  <Mic className="w-4 h-4 text-whatsapp-foreground" />
+                <button onClick={startRecording} className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
+                  <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
               ) : (
                 <button disabled className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-muted">
