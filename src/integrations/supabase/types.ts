@@ -904,6 +904,70 @@ export type Database = {
           },
         ]
       }
+      flow_submissions: {
+        Row: {
+          conversation_id: string | null
+          created_at: string | null
+          customer_name: string | null
+          customer_phone: string
+          flow_id: string
+          id: string
+          metadata: Json | null
+          org_id: string
+          processed_at: string | null
+          responses: Json
+          status: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone: string
+          flow_id: string
+          id?: string
+          metadata?: Json | null
+          org_id: string
+          processed_at?: string | null
+          responses?: Json
+          status?: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone?: string
+          flow_id?: string
+          id?: string
+          metadata?: Json | null
+          org_id?: string
+          processed_at?: string | null
+          responses?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flow_submissions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flow_submissions_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "wa_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flow_submissions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_notes: {
         Row: {
           author_id: string
@@ -2203,6 +2267,62 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wa_flows: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          flow_type: string
+          id: string
+          meta_flow_id: string | null
+          name: string
+          org_id: string
+          screens: Json
+          status: string
+          success_message: string | null
+          updated_at: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          flow_type?: string
+          id?: string
+          meta_flow_id?: string | null
+          name: string
+          org_id: string
+          screens?: Json
+          status?: string
+          success_message?: string | null
+          updated_at?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          flow_type?: string
+          id?: string
+          meta_flow_id?: string | null
+          name?: string
+          org_id?: string
+          screens?: Json
+          status?: string
+          success_message?: string | null
+          updated_at?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_flows_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wallet_transactions: {
         Row: {
