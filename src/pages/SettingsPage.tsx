@@ -57,6 +57,12 @@ const dayLabels = [
   { value: 6, label: "سبت" },
 ];
 
+interface ChannelOption {
+  id: string;
+  label: string;
+  channelType: string;
+}
+
 const SettingsPage = () => {
   const { orgId, profile } = useAuth();
   const navigate = useNavigate();
@@ -69,18 +75,24 @@ const SettingsPage = () => {
   const [loadingAssign, setLoadingAssign] = useState(true);
   const [savingAssign, setSavingAssign] = useState(false);
 
-  // Out-of-hours settings
-  const [oohEnabled, setOohEnabled] = useState(false);
-  const [oohMessage, setOohMessage] = useState("شكراً لتواصلك معنا 🙏\nنحن حالياً خارج أوقات العمل وسنرد عليك في أقرب وقت ممكن خلال ساعات الدوام.");
-  const [oohWorkStart, setOohWorkStart] = useState("09:00");
-  const [oohWorkEnd, setOohWorkEnd] = useState("17:00");
-  const [oohWorkDays, setOohWorkDays] = useState<number[]>([0, 1, 2, 3, 4]);
+  // Channels for per-channel settings
+  const [channels, setChannels] = useState<ChannelOption[]>([]);
+  const [selectedOohChannel, setSelectedOohChannel] = useState<string>("global");
+  const [selectedSatChannel, setSelectedSatChannel] = useState<string>("global");
+
+  // Out-of-hours settings (per channel)
+  const [oohSettings, setOohSettings] = useState<Record<string, { enabled: boolean; message: string; work_start: string; work_end: string; work_days: number[] }>>({});
   const [savingOoh, setSavingOoh] = useState(false);
 
-  // Satisfaction survey settings
-  const [satEnabled, setSatEnabled] = useState(false);
-  const [satMessage, setSatMessage] = useState("شكراً لتواصلك معنا! 🌟\nنود معرفة رأيك في الخدمة:\n\n1. ممتاز ⭐⭐⭐⭐⭐\n2. جيد جداً ⭐⭐⭐⭐\n3. جيد ⭐⭐⭐\n4. مقبول ⭐⭐\n5. ضعيف ⭐");
+  // Satisfaction survey settings (per channel)
+  const [satSettings, setSatSettings] = useState<Record<string, { enabled: boolean; message: string }>>({});
   const [savingSat, setSavingSat] = useState(false);
+
+  const defaultOoh = { enabled: false, message: "شكراً لتواصلك معنا 🙏\nنحن حالياً خارج أوقات العمل وسنرد عليك في أقرب وقت ممكن خلال ساعات الدوام.", work_start: "09:00", work_end: "17:00", work_days: [0, 1, 2, 3, 4] };
+  const defaultSat = { enabled: false, message: "شكراً لتواصلك معنا! 🌟\nنود معرفة رأيك في الخدمة:\n\n1. ممتاز ⭐⭐⭐⭐⭐\n2. جيد جداً ⭐⭐⭐⭐\n3. جيد ⭐⭐⭐\n4. مقبول ⭐⭐\n5. ضعيف ⭐" };
+
+  const currentOoh = oohSettings[selectedOohChannel] || defaultOoh;
+  const currentSat = satSettings[selectedSatChannel] || defaultSat;
 
   // Saved replies
   const [savedReplies, setSavedReplies] = useState<Array<{ id: string; shortcut: string; title: string; content: string; category: string }>>([]);
@@ -92,6 +104,7 @@ const SettingsPage = () => {
     if (orgId) {
       loadAllSettings();
       loadSavedReplies();
+      loadChannels();
     }
   }, [orgId]);
 
@@ -140,6 +153,31 @@ const SettingsPage = () => {
     loadSavedReplies();
   };
 
+  const loadChannels = async () => {
+    const { data } = await supabase
+      .from("whatsapp_config_safe" as any)
+      .select("id, display_phone, business_name, evolution_instance_name, channel_type, settings")
+      .eq("org_id", orgId)
+      .eq("is_connected", true)
+      .order("created_at");
+    const chs = (data || []) as any[];
+    setChannels(chs.map((c: any) => ({
+      id: c.id,
+      label: c.business_name || c.display_phone || c.evolution_instance_name || "قناة",
+      channelType: c.channel_type || "meta_api",
+    })));
+    // Load per-channel settings
+    const oohMap: typeof oohSettings = {};
+    const satMap: typeof satSettings = {};
+    for (const ch of chs) {
+      const s = (ch.settings as Record<string, any>) || {};
+      if (s.ooh) oohMap[ch.id] = s.ooh;
+      if (s.sat) satMap[ch.id] = s.sat;
+    }
+    setOohSettings(prev => ({ ...prev, ...oohMap }));
+    setSatSettings(prev => ({ ...prev, ...satMap }));
+  };
+
   const loadAllSettings = async () => {
     setLoadingAssign(true);
     const { data } = await supabase
@@ -152,15 +190,25 @@ const SettingsPage = () => {
       setDefaultMaxConv(data.default_max_conversations ? String(data.default_max_conversations) : "");
       
       const settings = (data.settings as Record<string, any>) || {};
-      // Out-of-hours
-      setOohEnabled(settings.out_of_hours_enabled || false);
-      if (settings.out_of_hours_message) setOohMessage(settings.out_of_hours_message);
-      if (settings.work_start) setOohWorkStart(settings.work_start);
-      if (settings.work_end) setOohWorkEnd(settings.work_end);
-      if (Array.isArray(settings.work_days)) setOohWorkDays(settings.work_days);
-      // Satisfaction
-      setSatEnabled(settings.satisfaction_enabled || false);
-      if (settings.satisfaction_message) setSatMessage(settings.satisfaction_message);
+      // Global OOH
+      setOohSettings(prev => ({
+        ...prev,
+        global: {
+          enabled: settings.out_of_hours_enabled || false,
+          message: settings.out_of_hours_message || defaultOoh.message,
+          work_start: settings.work_start || "09:00",
+          work_end: settings.work_end || "17:00",
+          work_days: Array.isArray(settings.work_days) ? settings.work_days : [0, 1, 2, 3, 4],
+        }
+      }));
+      // Global satisfaction
+      setSatSettings(prev => ({
+        ...prev,
+        global: {
+          enabled: settings.satisfaction_enabled || false,
+          message: settings.satisfaction_message || defaultSat.message,
+        }
+      }));
     }
     setLoadingAssign(false);
   };
@@ -181,41 +229,75 @@ const SettingsPage = () => {
     toast.success("تم حفظ البيانات");
   };
 
+  const updateOoh = (key: string, value: any) => {
+    setOohSettings(prev => ({
+      ...prev,
+      [selectedOohChannel]: { ...(prev[selectedOohChannel] || defaultOoh), [key]: value }
+    }));
+  };
+
+  const updateSat = (key: string, value: any) => {
+    setSatSettings(prev => ({
+      ...prev,
+      [selectedSatChannel]: { ...(prev[selectedSatChannel] || defaultSat), [key]: value }
+    }));
+  };
+
   const saveOohSettings = async () => {
     setSavingOoh(true);
-    const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
-    const currentSettings = (org?.settings as Record<string, any>) || {};
-    await supabase.from("organizations").update({
-      settings: {
-        ...currentSettings,
-        out_of_hours_enabled: oohEnabled,
-        out_of_hours_message: oohMessage,
-        work_start: oohWorkStart,
-        work_end: oohWorkEnd,
-        work_days: oohWorkDays,
-      },
-    }).eq("id", orgId);
+    const s = oohSettings[selectedOohChannel] || defaultOoh;
+    if (selectedOohChannel === "global") {
+      const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+      const currentSettings = (org?.settings as Record<string, any>) || {};
+      await supabase.from("organizations").update({
+        settings: {
+          ...currentSettings,
+          out_of_hours_enabled: s.enabled,
+          out_of_hours_message: s.message,
+          work_start: s.work_start,
+          work_end: s.work_end,
+          work_days: s.work_days,
+        },
+      }).eq("id", orgId);
+    } else {
+      // Save to channel's settings
+      const { data: ch } = await supabase.from("whatsapp_config" as any).select("settings").eq("id", selectedOohChannel).single();
+      const chSettings = ((ch as any)?.settings as Record<string, any>) || {};
+      await supabase.from("whatsapp_config" as any).update({
+        settings: { ...chSettings, ooh: s },
+      }).eq("id", selectedOohChannel);
+    }
     toast.success("تم حفظ إعدادات الرسالة خارج الدوام");
     setSavingOoh(false);
   };
 
   const saveSatSettings = async () => {
     setSavingSat(true);
-    const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
-    const currentSettings = (org?.settings as Record<string, any>) || {};
-    await supabase.from("organizations").update({
-      settings: {
-        ...currentSettings,
-        satisfaction_enabled: satEnabled,
-        satisfaction_message: satMessage,
-      },
-    }).eq("id", orgId);
+    const s = satSettings[selectedSatChannel] || defaultSat;
+    if (selectedSatChannel === "global") {
+      const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+      const currentSettings = (org?.settings as Record<string, any>) || {};
+      await supabase.from("organizations").update({
+        settings: {
+          ...currentSettings,
+          satisfaction_enabled: s.enabled,
+          satisfaction_message: s.message,
+        },
+      }).eq("id", orgId);
+    } else {
+      const { data: ch } = await supabase.from("whatsapp_config" as any).select("settings").eq("id", selectedSatChannel).single();
+      const chSettings = ((ch as any)?.settings as Record<string, any>) || {};
+      await supabase.from("whatsapp_config" as any).update({
+        settings: { ...chSettings, sat: s },
+      }).eq("id", selectedSatChannel);
+    }
     toast.success("تم حفظ إعدادات استبيان الرضا");
     setSavingSat(false);
   };
 
   const toggleOohDay = (day: number) => {
-    setOohWorkDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort());
+    const current = currentOoh.work_days;
+    updateOoh("work_days", current.includes(day) ? current.filter((d: number) => d !== day) : [...current, day].sort());
   };
 
   return (
@@ -255,55 +337,49 @@ const SettingsPage = () => {
             <Moon className="w-4 h-4 text-primary" />
             <h3 className="font-semibold text-sm">رسالة خارج أوقات العمل</h3>
           </div>
-          <Switch checked={oohEnabled} onCheckedChange={setOohEnabled} />
+          <Switch checked={currentOoh.enabled} onCheckedChange={(v) => updateOoh("enabled", v)} />
         </div>
-        {oohEnabled && (
+        {channels.length > 0 && (
+          <div className="px-5 pt-4 flex flex-wrap gap-2">
+            <button onClick={() => setSelectedOohChannel("global")} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-all", selectedOohChannel === "global" ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/30")}>
+              الكل (افتراضي)
+            </button>
+            {channels.map(ch => (
+              <button key={ch.id} onClick={() => setSelectedOohChannel(ch.id)} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-all", selectedOohChannel === ch.id ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/30")}>
+                {ch.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {currentOoh.enabled ? (
           <div className="p-5 space-y-4">
             <p className="text-xs text-muted-foreground">
-              عند تفعيل هذه الميزة، سيتم إرسال رسالة تلقائية للعملاء الذين يتواصلون خارج أوقات الدوام المحددة.
+              {selectedOohChannel === "global" ? "إعداد افتراضي لجميع القنوات — يمكنك تخصيص كل قناة." : "إعداد خاص بهذه القناة فقط."}
             </p>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-xs">بداية الدوام</Label>
-                <Input type="time" value={oohWorkStart} onChange={(e) => setOohWorkStart(e.target.value)} className="bg-secondary border-0" dir="ltr" />
+                <Input type="time" value={currentOoh.work_start} onChange={(e) => updateOoh("work_start", e.target.value)} className="bg-secondary border-0" dir="ltr" />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">نهاية الدوام</Label>
-                <Input type="time" value={oohWorkEnd} onChange={(e) => setOohWorkEnd(e.target.value)} className="bg-secondary border-0" dir="ltr" />
+                <Input type="time" value={currentOoh.work_end} onChange={(e) => updateOoh("work_end", e.target.value)} className="bg-secondary border-0" dir="ltr" />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label className="text-xs">أيام العمل</Label>
               <div className="flex flex-wrap gap-2">
                 {dayLabels.map(day => (
-                  <button
-                    key={day.value}
-                    onClick={() => toggleOohDay(day.value)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-medium transition-all border",
-                      oohWorkDays.includes(day.value)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-secondary text-muted-foreground border-border hover:border-primary/30"
-                    )}
-                  >
+                  <button key={day.value} onClick={() => toggleOohDay(day.value)} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-all border", currentOoh.work_days.includes(day.value) ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/30")}>
                     {day.label}
                   </button>
                 ))}
               </div>
             </div>
-
             <div className="space-y-2">
               <Label className="text-xs">نص الرسالة</Label>
-              <Textarea
-                value={oohMessage}
-                onChange={(e) => setOohMessage(e.target.value)}
-                className="bg-secondary border-0 min-h-[80px] text-sm"
-                placeholder="اكتب رسالة خارج الدوام..."
-              />
+              <Textarea value={currentOoh.message} onChange={(e) => updateOoh("message", e.target.value)} className="bg-secondary border-0 min-h-[80px] text-sm" placeholder="اكتب رسالة خارج الدوام..." />
             </div>
-
             <div className="flex justify-end">
               <Button size="sm" onClick={saveOohSettings} disabled={savingOoh} className="gap-1.5">
                 <Save className="w-3.5 h-3.5" />
@@ -311,14 +387,12 @@ const SettingsPage = () => {
               </Button>
             </div>
           </div>
-        )}
-        {!oohEnabled && (
+        ) : (
           <div className="p-5">
-            <p className="text-xs text-muted-foreground">الميزة معطلة حالياً. فعّلها لإرسال رسالة تلقائية خارج الدوام.</p>
+            <p className="text-xs text-muted-foreground">الميزة معطلة. فعّلها لإرسال رسالة تلقائية خارج الدوام.</p>
             <div className="flex justify-end mt-3">
               <Button size="sm" onClick={saveOohSettings} disabled={savingOoh} variant="outline" className="gap-1.5">
-                <Save className="w-3.5 h-3.5" />
-                حفظ
+                <Save className="w-3.5 h-3.5" /> حفظ
               </Button>
             </div>
           </div>
@@ -332,34 +406,38 @@ const SettingsPage = () => {
             <Star className="w-4 h-4 text-primary" />
             <h3 className="font-semibold text-sm">استبيان رضا العملاء</h3>
           </div>
-          <Switch checked={satEnabled} onCheckedChange={setSatEnabled} />
+          <Switch checked={currentSat.enabled} onCheckedChange={(v) => updateSat("enabled", v)} />
         </div>
-        {satEnabled && (
+        {channels.length > 0 && (
+          <div className="px-5 pt-4 flex flex-wrap gap-2">
+            <button onClick={() => setSelectedSatChannel("global")} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-all", selectedSatChannel === "global" ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/30")}>
+              الكل (افتراضي)
+            </button>
+            {channels.map(ch => (
+              <button key={ch.id} onClick={() => setSelectedSatChannel(ch.id)} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-all", selectedSatChannel === ch.id ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/30")}>
+                {ch.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {currentSat.enabled ? (
           <div className="p-5 space-y-4">
             <p className="text-xs text-muted-foreground">
-              عند تفعيل هذه الميزة، سيتم إرسال رسالة تقييم للعميل تلقائياً بعد إغلاق المحادثة. يمكن للعميل الرد برقم من 1 إلى 5 ويتم تسجيل التقييم وربطه بالموظف المسؤول. النتائج تظهر في تقارير الأداء.
+              {selectedSatChannel === "global" ? "إعداد افتراضي — يمكنك تخصيص كل قناة." : "إعداد خاص بهذه القناة فقط."}
             </p>
-
             <div className="space-y-2">
               <Label className="text-xs">نص رسالة التقييم</Label>
-              <Textarea
-                value={satMessage}
-                onChange={(e) => setSatMessage(e.target.value)}
-                className="bg-secondary border-0 min-h-[120px] text-sm"
-                placeholder="اكتب رسالة التقييم..."
-              />
+              <Textarea value={currentSat.message} onChange={(e) => updateSat("message", e.target.value)} className="bg-secondary border-0 min-h-[120px] text-sm" placeholder="اكتب رسالة التقييم..." />
             </div>
-
             <div className="bg-primary/5 rounded-xl p-3 space-y-1.5">
               <p className="text-xs font-semibold text-primary">كيف يعمل؟</p>
               <ul className="text-[11px] text-muted-foreground space-y-1 list-disc list-inside">
                 <li>بعد إغلاق المحادثة يُرسل الاستبيان تلقائياً للعميل</li>
                 <li>العميل يرد برقم من 1 (ممتاز) إلى 5 (ضعيف)</li>
-                <li>يتم ربط التقييم بالموظف الذي أغلق أو كان مسؤولاً عن المحادثة</li>
-                <li>تظهر النتائج في صفحة التقارير → تبويب "التقييمات"</li>
+                <li>يتم ربط التقييم بالموظف المسؤول</li>
+                <li>النتائج تظهر في التقارير</li>
               </ul>
             </div>
-
             <div className="flex justify-end">
               <Button size="sm" onClick={saveSatSettings} disabled={savingSat} className="gap-1.5">
                 <Save className="w-3.5 h-3.5" />
@@ -367,14 +445,12 @@ const SettingsPage = () => {
               </Button>
             </div>
           </div>
-        )}
-        {!satEnabled && (
+        ) : (
           <div className="p-5">
-            <p className="text-xs text-muted-foreground">الميزة معطلة حالياً. فعّلها لإرسال استبيان تقييم تلقائي بعد إغلاق المحادثة.</p>
+            <p className="text-xs text-muted-foreground">الميزة معطلة. فعّلها لإرسال استبيان تقييم بعد إغلاق المحادثة.</p>
             <div className="flex justify-end mt-3">
               <Button size="sm" onClick={saveSatSettings} disabled={savingSat} variant="outline" className="gap-1.5">
-                <Save className="w-3.5 h-3.5" />
-                حفظ
+                <Save className="w-3.5 h-3.5" /> حفظ
               </Button>
             </div>
           </div>

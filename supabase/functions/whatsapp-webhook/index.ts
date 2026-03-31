@@ -628,34 +628,52 @@ serve(async (req) => {
             }, orgId);
           }
 
-          // ── Out-of-hours check ──
-          if (orgSettings.out_of_hours_enabled && incomingMessage.type === "text") {
-            const now = new Date();
-            const riyadhTime = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
-            const riyadhDay = parseInt(new Intl.DateTimeFormat("en-US", { weekday: "narrow", timeZone: "Asia/Riyadh" }).format(now).replace(/[^0-6]/, ""), 10);
-            const dayOfWeek = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" })).getDay();
-            const workStart = orgSettings.work_start || "09:00";
-            const workEnd = orgSettings.work_end || "17:00";
-            const workDays: number[] = orgSettings.work_days || [0, 1, 2, 3, 4];
+          // ── Out-of-hours check (per-channel first, then org fallback) ──
+          if (incomingMessage.type === "text") {
+            let oohConfig: { enabled: boolean; message: string; work_start: string; work_end: string; work_days: number[] } | null = null;
             
-            const isWorkDay = workDays.includes(dayOfWeek);
-            const isWorkHour = riyadhTime >= workStart && riyadhTime <= workEnd;
-            const isOutOfHours = !isWorkDay || !isWorkHour;
-            
-            if (isOutOfHours && orgSettings.out_of_hours_message) {
-              // Check if we already sent an OOH message in the last 4 hours for this conversation
-              const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
-              const { count: recentOoh } = await supabase
-                .from("messages")
-                .select("id", { count: "exact", head: true })
-                .eq("conversation_id", conversation.id)
-                .eq("sender", "agent")
-                .eq("content", orgSettings.out_of_hours_message)
-                .gte("created_at", fourHoursAgo);
+            // Check channel-level OOH settings first
+            if (channelConfigId) {
+              const { data: chData } = await supabase.from("whatsapp_config").select("settings").eq("id", channelConfigId).single();
+              const chSettings = (chData?.settings as Record<string, any>) || {};
+              if (chSettings.ooh?.enabled) {
+                oohConfig = chSettings.ooh;
+              }
+            }
+            // Fallback to org-level
+            if (!oohConfig && orgSettings.out_of_hours_enabled) {
+              oohConfig = {
+                enabled: true,
+                message: orgSettings.out_of_hours_message,
+                work_start: orgSettings.work_start || "09:00",
+                work_end: orgSettings.work_end || "17:00",
+                work_days: orgSettings.work_days || [0, 1, 2, 3, 4],
+              };
+            }
+
+            if (oohConfig) {
+              const now = new Date();
+              const riyadhTime = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
+              const dayOfWeek = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" })).getDay();
               
-              if (!recentOoh || recentOoh === 0) {
-                await sendBotMessage(supabase, orgId, conversation.id, customerPhone, orgSettings.out_of_hours_message, "meta", logToSystem);
-                await logToSystem(supabase, "info", "تم إرسال رسالة خارج الدوام", { conversation_id: conversation.id }, orgId);
+              const isWorkDay = oohConfig.work_days.includes(dayOfWeek);
+              const isWorkHour = riyadhTime >= oohConfig.work_start && riyadhTime <= oohConfig.work_end;
+              const isOutOfHours = !isWorkDay || !isWorkHour;
+              
+              if (isOutOfHours && oohConfig.message) {
+                const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+                const { count: recentOoh } = await supabase
+                  .from("messages")
+                  .select("id", { count: "exact", head: true })
+                  .eq("conversation_id", conversation.id)
+                  .eq("sender", "agent")
+                  .eq("content", oohConfig.message)
+                  .gte("created_at", fourHoursAgo);
+                
+                if (!recentOoh || recentOoh === 0) {
+                  await sendBotMessage(supabase, orgId, conversation.id, customerPhone, oohConfig.message, "meta", logToSystem);
+                  await logToSystem(supabase, "info", "تم إرسال رسالة خارج الدوام", { conversation_id: conversation.id }, orgId);
+                }
               }
             }
           }

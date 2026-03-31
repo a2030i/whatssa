@@ -341,16 +341,37 @@ const InboxPage = () => {
     }
 
     if (status === "closed") {
-      // Send satisfaction survey if enabled
+      // Send satisfaction survey if enabled (check channel-level first, then org)
       try {
         if (conv && orgId) {
-          const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
-          const settings = (org?.settings as Record<string, any>) || {};
-          if (settings.satisfaction_enabled && settings.satisfaction_message) {
+          let satEnabled = false;
+          let satMessage = "";
+
+          // Check channel-level settings first
+          if (conv.channelId) {
+            const { data: chData } = await supabase.from("whatsapp_config" as any).select("settings").eq("id", conv.channelId).single();
+            const chSettings = ((chData as any)?.settings as Record<string, any>) || {};
+            if (chSettings.sat?.enabled && chSettings.sat?.message) {
+              satEnabled = true;
+              satMessage = chSettings.sat.message;
+            }
+          }
+
+          // Fallback to org-level
+          if (!satEnabled) {
+            const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+            const settings = (org?.settings as Record<string, any>) || {};
+            if (settings.satisfaction_enabled && settings.satisfaction_message) {
+              satEnabled = true;
+              satMessage = settings.satisfaction_message;
+            }
+          }
+
+          if (satEnabled && satMessage) {
             await supabase.functions.invoke("whatsapp-send", {
               body: {
                 phone: conv.customerPhone,
-                message: settings.satisfaction_message,
+                message: satMessage,
                 org_id: orgId,
               },
             });
