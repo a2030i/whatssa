@@ -29,30 +29,26 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const buildGroups = (isEcommerce: boolean): (NavItem | NavGroup)[] => [
+const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): (NavItem | NavGroup)[] => [
   { label: "لوحة التحكم", icon: LayoutDashboard, path: "/" },
   { label: "المحادثات", icon: MessageSquare, path: "/inbox" },
   { label: "العملاء", icon: UserCircle, path: "/customers" },
-  // E-commerce group
-  ...(isEcommerce
-    ? [
-        {
-          label: "المتجر",
-          icon: ShoppingBag,
-          items: [
-            { label: "الطلبات", icon: ShoppingCart, path: "/orders" },
-            { label: "السلات المتروكة", icon: ShoppingBag, path: "/abandoned-carts" },
-          ],
-        } as NavGroup,
-      ]
-    : []),
+  // E-commerce group — always visible
+  {
+    label: "المتجر",
+    icon: ShoppingBag,
+    items: [
+      { label: "الطلبات", icon: ShoppingCart, path: "/orders", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً من صفحة الربط والتكامل لعرض الطلبات" },
+      { label: "السلات المتروكة", icon: ShoppingBag, path: "/abandoned-carts", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً من صفحة الربط والتكامل لاسترداد السلات المتروكة" },
+    ],
+  } as NavGroup,
   // Marketing group
   {
     label: "التسويق",
     icon: Megaphone,
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns" },
-      { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true },
+      { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب" },
       { label: "الأتمتة", icon: Bot, path: "/automation" },
       { label: "الشات بوت", icon: Zap, path: "/chatbot" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages" },
