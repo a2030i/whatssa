@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Bell, MessageSquare, Loader2, Save, ChevronDown, ChevronUp,
-  Smartphone, FileText, Power, PowerOff
+  Smartphone, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
