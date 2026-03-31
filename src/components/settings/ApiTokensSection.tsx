@@ -62,7 +62,7 @@ const ApiTokensSection = () => {
     setLoading(true);
     const { data } = await supabase
       .from("api_tokens")
-      .select("id, name, token_preview, permissions, is_active, last_used_at, created_at, expires_at")
+      .select("id, name, token_preview, token_hash, permissions, is_active, last_used_at, created_at, expires_at")
       .eq("org_id", orgId)
       .order("created_at", { ascending: false });
     setTokens((data as any) || []);
