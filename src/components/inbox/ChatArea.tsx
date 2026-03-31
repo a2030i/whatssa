@@ -1097,7 +1097,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
-                className={cn("flex-1 border-0", isNoteMode ? "bg-amber-500/5" : "bg-secondary")}
+                className={cn("flex-1 border-0 rounded-xl h-11", isNoteMode ? "bg-amber-500/5" : "bg-secondary/60 focus:bg-secondary")}
               />
             )}
             {(isNoteMode || !windowExpired) && (
