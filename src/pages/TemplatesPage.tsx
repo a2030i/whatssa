@@ -134,6 +134,7 @@ const ecommerceTemplateSuggestions: TemplateSuggestion[] = [
 const TemplatesPage = () => {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
