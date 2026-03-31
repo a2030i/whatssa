@@ -373,15 +373,17 @@ serve(async (req) => {
       const metadataPhoneId = value.metadata?.phone_number_id;
       let orgId: string | null = null;
 
+      var channelConfigId: string | null = null;
       if (metadataPhoneId) {
         const { data: config } = await supabase
           .from("whatsapp_config")
-          .select("org_id, default_team_id, default_agent_id")
+          .select("id, org_id, default_team_id, default_agent_id")
           .eq("phone_number_id", metadataPhoneId)
           .eq("is_connected", true)
           .maybeSingle();
 
         orgId = config?.org_id || null;
+        channelConfigId = config?.id || null;
         var channelDefaultTeamId = config?.default_team_id || null;
         var channelDefaultAgentId = config?.default_agent_id || null;
       }
