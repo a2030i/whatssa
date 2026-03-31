@@ -436,7 +436,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
       <CustomInboxBuilder
         open={builderOpen}
         onOpenChange={setBuilderOpen}
-        editingInbox={editingInbox}
+        editInbox={editingInbox}
         onSaved={loadCustomInboxes}
       />
     </div>
