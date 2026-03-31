@@ -53,7 +53,7 @@ const getDateRange = (days: number) => {
 export const useDashboardData = (): DashboardData => {
   const { orgId } = useAuth();
   const [data, setData] = useState<DashboardData>({
-    waStatus: { isConnected: false, phoneNumberId: null, businessAccountId: null, displayPhone: null, businessName: null, accessToken: null, lastSync: null },
+    waStatus: { isConnected: false, phoneNumberId: null, businessAccountId: null, displayPhone: null, businessName: null, lastSync: null },
     messageStats: { sentToday: 0, sent7Days: 0, sent30Days: 0, deliveredToday: 0, failedToday: 0, delivered7Days: 0, failed7Days: 0, delivered30Days: 0, failed30Days: 0, totalReceived: 0 },
     openConversations: 0,
     totalConversations: 0,

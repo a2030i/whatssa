@@ -38,15 +38,15 @@ interface WhatsAppConfig {
   id: string;
   phone_number_id: string;
   business_account_id: string;
-  access_token: string;
   display_phone: string | null;
   business_name: string | null;
   is_connected: boolean | null;
-  webhook_verify_token: string;
   org_id: string | null;
   registration_status: string | null;
   registration_error: string | null;
   registered_at: string | null;
+  channel_type?: string;
+  [key: string]: any;
 }
 
 type FlowStep = "idle" | "checklist" | "connecting" | "pick_phone" | "success" | "error";
