@@ -779,7 +779,7 @@ const IntegrationsPage = () => {
 
         {/* E-commerce Integrations */}
         <div className="space-y-4">
-          <h2 className="text-lg font-bold text-foreground">تكاملات المتاجر</h2>
+          <h2 className="text-lg font-bold text-foreground">تكاملات المتاجر الإلكترونية</h2>
           <div className="bg-card rounded-2xl border border-border p-5">
             <SallaIntegrationSection />
           </div>
