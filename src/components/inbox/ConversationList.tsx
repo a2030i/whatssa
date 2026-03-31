@@ -187,8 +187,8 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
     });
   }, [conversations, searchQuery, activeQuickFilter, agentFilter, channelFilter, selectedTags, activeInbox]);
 
-  const hasActiveFilters = agentFilter !== "all" || selectedTags.length > 0 || !!activeCustomInbox;
-  const clearFilters = () => { setAgentFilter("all"); setSelectedTags([]); setActiveCustomInbox(null); setActiveQuickFilter("all"); };
+  const hasActiveFilters = agentFilter !== "all" || channelFilter !== "all" || selectedTags.length > 0 || !!activeCustomInbox;
+  const clearFilters = () => { setAgentFilter("all"); setChannelFilter("all"); setSelectedTags([]); setActiveCustomInbox(null); setActiveQuickFilter("all"); };
   const toggleTag = (tag: string) => setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
 
   return (
