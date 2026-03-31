@@ -82,25 +82,8 @@ const OrdersPage = () => {
     if (selectedOrder?.id === orderId) setSelectedOrder({ ...selectedOrder, ...updates });
   };
 
-  const getAiInsights = async () => {
-    setAiLoading(true);
-    setAiInsight("");
-    try {
-      const ordersSummary = orders.slice(0, 50).map(o => ({
-        total: o.total, status: o.status, city: o.customer_city, date: o.created_at?.slice(0, 10), payment: o.payment_status
-      }));
-      
-      const { data, error } = await supabase.functions.invoke("ai-order-insights", {
-        body: { orders: ordersSummary, stats }
-      });
-      
-      if (error) throw error;
-      setAiInsight(data?.insight || "لم يتم الحصول على تحليل");
-    } catch {
-      setAiInsight("⚠️ تعذر الحصول على التحليل الآن. تأكد من إعداد خدمة الذكاء الاصطناعي.");
-    }
-    setAiLoading(false);
-  };
+
+
 
   const exportOrders = () => {
     const headers = ["رقم الطلب", "العميل", "الهاتف", "المدينة", "المبلغ", "الحالة", "الدفع", "التاريخ"];
