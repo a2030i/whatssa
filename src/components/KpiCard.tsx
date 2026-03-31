@@ -11,31 +11,30 @@ interface KpiCardProps {
 }
 
 const gradientMap = {
-  1: "from-kpi-1/15 to-kpi-1/5",
-  2: "from-kpi-2/15 to-kpi-2/5",
-  3: "from-kpi-3/15 to-kpi-3/5",
-  4: "from-kpi-4/15 to-kpi-4/5",
+  1: "from-kpi-1/10 to-transparent",
+  2: "from-kpi-2/10 to-transparent",
+  3: "from-kpi-3/10 to-transparent",
+  4: "from-kpi-4/10 to-transparent",
 };
 
 const iconBgMap = {
-  1: "bg-kpi-1/12 text-kpi-1 ring-kpi-1/20",
-  2: "bg-kpi-2/12 text-kpi-2 ring-kpi-2/20",
-  3: "bg-kpi-3/12 text-kpi-3 ring-kpi-3/20",
-  4: "bg-kpi-4/12 text-kpi-4 ring-kpi-4/20",
+  1: "bg-kpi-1/10 text-kpi-1 ring-1 ring-kpi-1/15",
+  2: "bg-kpi-2/10 text-kpi-2 ring-1 ring-kpi-2/15",
+  3: "bg-kpi-3/10 text-kpi-3 ring-1 ring-kpi-3/15",
+  4: "bg-kpi-4/10 text-kpi-4 ring-1 ring-kpi-4/15",
 };
 
 const KpiCard = ({ title, value, subtitle, icon: Icon, trend, colorIndex = 1 }: KpiCardProps) => {
   return (
     <div className={cn(
-      "relative bg-card rounded-xl p-5 border border-border/50 hover:border-border transition-all duration-300 hover:shadow-card-hover group animate-fade-in overflow-hidden"
+      "group relative bg-card/70 backdrop-blur-sm rounded-2xl p-5 border border-border/40 hover:border-border/80 transition-all duration-300 hover:shadow-card-hover animate-fade-in overflow-hidden"
     )}>
-      {/* Subtle gradient overlay */}
-      <div className={cn("absolute inset-0 bg-gradient-to-br opacity-40 rounded-xl pointer-events-none", gradientMap[colorIndex])} />
+      <div className={cn("absolute inset-0 bg-gradient-to-br opacity-50 rounded-2xl pointer-events-none", gradientMap[colorIndex])} />
       
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-4">
           <div className={cn(
-            "w-11 h-11 rounded-xl flex items-center justify-center ring-1 transition-transform duration-300 group-hover:scale-110",
+            "w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110",
             iconBgMap[colorIndex]
           )}>
             <Icon className="w-5 h-5" />
