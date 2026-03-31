@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { MessageSquare, Loader2, Eye, EyeOff, ArrowRight, Mail, KeyRound } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowRight, Mail, KeyRound } from "lucide-react";
+import respondlyLogo from "@/assets/respondly-logo.png";
 
 type Step = "email" | "password" | "set-password" | "signup";
 
