@@ -32,10 +32,13 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
   const [testSending, setTestSending] = useState(false);
   const [existingConfig, setExistingConfig] = useState<any>(null);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [maxUnofficialPhones, setMaxUnofficialPhones] = useState<number>(1);
+  const [unofficialCount, setUnofficialCount] = useState<number>(0);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadExistingConfig();
+    loadUnofficialLimits();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
