@@ -50,6 +50,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
+  const [channelFilter, setChannelFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
