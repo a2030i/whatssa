@@ -44,6 +44,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
       { label: "الشات بوت", icon: Bot, path: "/chatbot" },
       { label: "قواعد الأتمتة", icon: Workflow, path: "/automation" },
       { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows" },
+      { label: "مزود الذكاء", icon: Zap, path: "/ai-settings" },
     ],
   },
   {
@@ -68,15 +69,22 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     ],
   },
   {
+    section: "المطورين",
+    items: [
+      { label: "توكنات API", icon: Code2, path: "/api-tokens" },
+      { label: "مستندات API", icon: FileText, path: "/api-docs" },
+    ],
+  },
+  {
     section: "الإعدادات والإدارة",
     items: [
       { label: "الفريق", icon: Users, path: "/team" },
       { label: "الربط والتكامل", icon: Plug, path: "/integrations" },
+      { label: "إعدادات المحادثات", icon: Headphones, path: "/conversation-settings" },
       { label: "الباقات", icon: CreditCard, path: "/plans" },
       { label: "المحفظة", icon: Wallet, path: "/wallet" },
       { label: "الفواتير", icon: FileText, path: "/billing" },
-      { label: "الإعدادات", icon: Settings, path: "/settings" },
-      { label: "مستندات API", icon: Code2, path: "/api-docs" },
+      { label: "الإعدادات العامة", icon: Settings, path: "/settings" },
     ],
   },
 ];
