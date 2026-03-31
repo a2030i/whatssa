@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   AlertTriangle, CheckCircle2, Loader2, QrCode,
   Server, Trash2, Wifi, Settings, Smartphone, RefreshCw,
-  LogOut, Send
+  LogOut, Send, Pencil, Check, X
 } from "lucide-react";
 import ChannelRoutingConfig from "./ChannelRoutingConfig";
 import WhatsAppProfileEditor from "./WhatsAppProfileEditor";
