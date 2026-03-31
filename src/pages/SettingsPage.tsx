@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import ApiTokensSection from "@/components/settings/ApiTokensSection";
+import AiProviderSettings from "@/components/settings/AiProviderSettings";
 import usePushNotifications from "@/hooks/usePushNotifications";
 
 const PushNotificationSettings = () => {
@@ -544,6 +545,9 @@ const SettingsPage = () => {
           ))}
         </div>
       </div>
+
+      {/* AI Provider Settings */}
+      <AiProviderSettings />
 
       {/* API Tokens */}
       <div className="bg-card rounded-lg shadow-card p-5">
