@@ -546,6 +546,9 @@ const SettingsPage = () => {
         </div>
       </div>
 
+      {/* AI Provider Settings */}
+      <AiProviderSettings />
+
       {/* API Tokens */}
       <div className="bg-card rounded-lg shadow-card p-5">
         <ApiTokensSection />
