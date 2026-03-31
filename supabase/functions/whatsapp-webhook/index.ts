@@ -660,15 +660,19 @@ serve(async (req) => {
               const normalizedContent = content.trim().toLowerCase();
               const { data: rules } = await supabase
                 .from("automation_rules")
-                .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id")
+                .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id, channel_ids")
                 .eq("org_id", orgId)
                 .eq("enabled", true)
                 .order("created_at", { ascending: true });
 
-              const matchedRule = (rules || []).find((rule: any) =>
-                Array.isArray(rule.keywords) &&
-                rule.keywords.some((keyword: string) => keyword?.trim() && normalizedContent.includes(keyword.trim().toLowerCase())),
-              );
+              const matchedRule = (rules || []).find((rule: any) => {
+                // Channel filter: if channel_ids is set and non-empty, only match if current channel is included
+                if (rule.channel_ids && rule.channel_ids.length > 0 && channelConfigId) {
+                  if (!rule.channel_ids.includes(channelConfigId)) return false;
+                }
+                return Array.isArray(rule.keywords) &&
+                  rule.keywords.some((keyword: string) => keyword?.trim() && normalizedContent.includes(keyword.trim().toLowerCase()));
+              });
 
               if (matchedRule) {
                 const actionType = matchedRule.action_type || "reply";
