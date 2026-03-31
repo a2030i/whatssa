@@ -208,6 +208,7 @@ const CampaignsPage = () => {
     const recipientList = buildRecipientList();
     if (recipientList.length === 0) { toast.error("لا يوجد مستلمين — اختر جمهوراً"); return; }
 
+    const isRecurring = !!form.recurringType;
     const { data: campaign, error } = await supabase.from("campaigns").insert({
       org_id: orgId,
       name: form.name,
@@ -218,10 +219,12 @@ const CampaignsPage = () => {
       audience_tags: form.audienceTags,
       exclude_tags: form.excludeTags,
       exclude_campaign_ids: form.excludeCampaignIds,
-      status: form.scheduledAt ? "scheduled" : "draft",
+      status: isRecurring ? "scheduled" : (form.scheduledAt ? "scheduled" : "draft"),
       scheduled_at: form.scheduledAt || null,
       notes: form.notes || null,
       total_recipients: recipientList.length,
+      recurring_type: form.recurringType || null,
+      recurring_end_at: form.recurringEndAt || null,
     } as any).select().single();
 
     if (error) { toast.error("حدث خطأ في إنشاء الحملة"); return; }
