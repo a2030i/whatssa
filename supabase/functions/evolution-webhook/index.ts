@@ -712,30 +712,50 @@ serve(async (req) => {
           })
           .eq("id", conversation.id);
 
-        // ── Out-of-hours check ──
-        if (orgSettings.out_of_hours_enabled && messageType === "text") {
-          const now = new Date();
-          const riyadhTime = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
-          const dayOfWeek = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" })).getDay();
-          const workStart = orgSettings.work_start || "09:00";
-          const workEnd = orgSettings.work_end || "17:00";
-          const workDays: number[] = orgSettings.work_days || [0, 1, 2, 3, 4];
+        // ── Out-of-hours check (per-channel first, then org fallback) ──
+        if (messageType === "text") {
+          let oohConfig: { enabled: boolean; message: string; work_start: string; work_end: string; work_days: number[] } | null = null;
           
-          const isOutOfHours = !workDays.includes(dayOfWeek) || !(riyadhTime >= workStart && riyadhTime <= workEnd);
-          
-          if (isOutOfHours && orgSettings.out_of_hours_message) {
-            const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
-            const { count: recentOoh } = await supabase
-              .from("messages")
-              .select("id", { count: "exact", head: true })
-              .eq("conversation_id", conversation.id)
-              .eq("sender", "agent")
-              .eq("content", orgSettings.out_of_hours_message)
-              .gte("created_at", fourHoursAgo);
+          // Check channel-level OOH settings first
+          if (config?.id) {
+            const { data: chData } = await supabase.from("whatsapp_config").select("settings").eq("id", config.id).single();
+            const chSettings = (chData?.settings as Record<string, any>) || {};
+            if (chSettings.ooh?.enabled) {
+              oohConfig = chSettings.ooh;
+            }
+          }
+          // Fallback to org-level
+          if (!oohConfig && orgSettings.out_of_hours_enabled) {
+            oohConfig = {
+              enabled: true,
+              message: orgSettings.out_of_hours_message,
+              work_start: orgSettings.work_start || "09:00",
+              work_end: orgSettings.work_end || "17:00",
+              work_days: orgSettings.work_days || [0, 1, 2, 3, 4],
+            };
+          }
+
+          if (oohConfig) {
+            const now = new Date();
+            const riyadhTime = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
+            const dayOfWeek = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" })).getDay();
             
-            if (!recentOoh || recentOoh === 0) {
-              await sendBotMessage(supabase, orgId, conversation.id, phone, orgSettings.out_of_hours_message, "evolution", logToSystem);
-              await logToSystem(supabase, "info", "تم إرسال رسالة خارج الدوام (Evolution)", { conversation_id: conversation.id }, orgId);
+            const isOutOfHours = !oohConfig.work_days.includes(dayOfWeek) || !(riyadhTime >= oohConfig.work_start && riyadhTime <= oohConfig.work_end);
+            
+            if (isOutOfHours && oohConfig.message) {
+              const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+              const { count: recentOoh } = await supabase
+                .from("messages")
+                .select("id", { count: "exact", head: true })
+                .eq("conversation_id", conversation.id)
+                .eq("sender", "agent")
+                .eq("content", oohConfig.message)
+                .gte("created_at", fourHoursAgo);
+              
+              if (!recentOoh || recentOoh === 0) {
+                await sendBotMessage(supabase, orgId, conversation.id, phone, oohConfig.message, "evolution", logToSystem);
+                await logToSystem(supabase, "info", "تم إرسال رسالة خارج الدوام (Evolution)", { conversation_id: conversation.id }, orgId);
+              }
             }
           }
         }
