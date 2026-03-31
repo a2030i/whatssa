@@ -810,6 +810,56 @@ const CampaignsPage = () => {
             </div>
             )}
 
+            {/* Meta Cost Estimator */}
+            {!isEvolutionChannel && form.channelId && getAudienceCount() > 0 && (
+              <div className="bg-info/5 border border-info/20 rounded-lg p-4 space-y-2">
+                <div className="flex items-start gap-2">
+                  <BarChart3 className="w-4 h-4 text-info shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-2">
+                    <p className="text-xs font-semibold text-info">التكلفة التقديرية لهذه الحملة</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {(() => {
+                        const count = getAudienceCount();
+                        // Meta pricing (approximate per conversation - Marketing category)
+                        // Saudi Arabia: ~$0.0638 USD ≈ 0.24 SAR per marketing conversation
+                        // Utility: ~$0.0140 USD ≈ 0.053 SAR
+                        const marketingRate = 0.24; // SAR
+                        const utilityRate = 0.053; // SAR
+                        const authRate = 0.042; // SAR
+                        const marketingCost = (count * marketingRate).toFixed(2);
+                        const utilityCost = (count * utilityRate).toFixed(2);
+                        return (
+                          <>
+                            <div className="bg-background rounded-lg p-2.5 text-center border">
+                              <p className="text-[10px] text-muted-foreground">عدد المستلمين</p>
+                              <p className="text-sm font-bold mt-0.5">{count.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-background rounded-lg p-2.5 text-center border">
+                              <p className="text-[10px] text-muted-foreground">تسويقية (Marketing)</p>
+                              <p className="text-sm font-bold mt-0.5 text-warning">~{marketingCost} ر.س</p>
+                            </div>
+                            <div className="bg-background rounded-lg p-2.5 text-center border">
+                              <p className="text-[10px] text-muted-foreground">خدمية (Utility)</p>
+                              <p className="text-sm font-bold mt-0.5 text-primary">~{utilityCost} ر.س</p>
+                            </div>
+                            <div className="bg-background rounded-lg p-2.5 text-center border">
+                              <p className="text-[10px] text-muted-foreground">السعر لكل محادثة</p>
+                              <p className="text-sm font-bold mt-0.5">{marketingRate} ر.س</p>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <div className="bg-warning/10 rounded-md px-3 py-2 mt-1">
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        ⚠️ <strong>هذه أسعار تقريبية</strong> — التكلفة الفعلية تُخصم مباشرة من حسابك في Meta وتعتمد على فئة القالب (تسويقي / خدمي / مصادقة) والمنطقة الجغرافية للمستلم. <strong>منصة Respondly لا تتحكم في هذه الرسوم ولا تحصّلها.</strong>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Audience */}
             <div className="space-y-3">
               <Label className="text-xs font-semibold">الجمهور المستهدف</Label>
