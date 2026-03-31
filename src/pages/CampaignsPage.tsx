@@ -914,7 +914,7 @@ const CampaignsPage = () => {
             </div>
 
             <Button onClick={handleCreate} className="w-full gradient-whatsapp text-whatsapp-foreground gap-1">
-              {form.scheduledAt ? <><CalendarDays className="w-4 h-4" /> جدولة الحملة</> : <><FileText className="w-4 h-4" /> حفظ كمسودة</>}
+              {form.recurringType ? <><Repeat className="w-4 h-4" /> إنشاء حملة متكررة</> : form.scheduledAt ? <><CalendarDays className="w-4 h-4" /> جدولة الحملة</> : <><FileText className="w-4 h-4" /> حفظ كمسودة</>}
             </Button>
           </div>
         </DialogContent>
