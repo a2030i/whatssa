@@ -148,10 +148,6 @@ const OrdersPage = () => {
           <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl border-border/50" onClick={exportOrders}>
             <Download className="w-3.5 h-3.5" /> تصدير
           </Button>
-          <Button size="sm" className="gap-1.5 text-xs rounded-xl gradient-primary text-primary-foreground shadow-glow" onClick={getAiInsights} disabled={aiLoading}>
-            {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-            تحليل ذكي
-          </Button>
         </div>
       </div>
 
