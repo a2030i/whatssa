@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   Check, Crown, Zap, Building2, Rocket, CreditCard, ShieldCheck, Wifi,
   MessageSquare, Users, ShoppingBag, Megaphone, Bot, Code2, Headphones,
-  Star, ArrowLeft
+  Star, ArrowLeft, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
