@@ -1176,12 +1176,14 @@ function CampaignDetailContent({
   recipientStatusBadge,
   exportReport,
   onSend,
+  onResendFailed,
 }: {
   campaign: any;
   recipients: any[];
   recipientStatusBadge: (status: string) => JSX.Element;
   exportReport: () => void;
   onSend?: () => void;
+  onResendFailed?: () => void;
 }) {
   const total = campaign.total_recipients || 0;
   const sent = campaign.sent_count || 0;
