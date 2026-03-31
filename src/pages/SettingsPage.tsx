@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Bell, CreditCard, Shield, ChevronLeft, Hand, RotateCcw, Scale, Target, Save, Zap, Code2, Clock, Star, Moon, BellRing, Plus, Trash2, Edit, MessageSquare, X } from "lucide-react";
+import { Building2, Bell, CreditCard, Shield, ChevronLeft, Hand, RotateCcw, Scale, Target, Save, Zap, Code2, Clock, Star, Moon, BellRing, Plus, Trash2, Edit, MessageSquare, X, Brain, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
