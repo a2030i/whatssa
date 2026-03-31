@@ -15,6 +15,7 @@ async function processChatbotFlow(
   messageText: string,
   channel: "meta" | "evolution",
   log: typeof logToSystem,
+  channelConfigId?: string | null,
 ): Promise<boolean> {
   const normalizedText = messageText.trim().toLowerCase();
 
