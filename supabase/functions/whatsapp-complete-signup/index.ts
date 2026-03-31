@@ -229,6 +229,7 @@ serve(async (req) => {
         is_connected: alreadyRegistered,
         registration_status: alreadyRegistered ? "connected" : "registering",
         registration_error: null,
+        channel_type: "meta_api",
         last_register_attempt_at: new Date().toISOString(),
         ...(alreadyRegistered ? { registered_at: new Date().toISOString() } : {}),
       };

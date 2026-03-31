@@ -1,0 +1,1 @@
+UPDATE whatsapp_config SET channel_type = 'meta_api', registration_status = 'connected', is_connected = true, registered_at = NOW() WHERE id = '9b6cde47-6702-450e-81d2-18ebe4a12ebd' AND business_account_id = '1458812202381140';
