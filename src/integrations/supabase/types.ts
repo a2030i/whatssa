@@ -724,6 +724,53 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_inboxes: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          filters: Json
+          icon: string | null
+          id: string
+          is_shared: boolean | null
+          name: string
+          org_id: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          filters?: Json
+          icon?: string | null
+          id?: string
+          is_shared?: boolean | null
+          name: string
+          org_id: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          filters?: Json
+          icon?: string | null
+          id?: string
+          is_shared?: boolean | null
+          name?: string
+          org_id?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_inboxes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_tag_definitions: {
         Row: {
           color: string | null
