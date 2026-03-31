@@ -36,7 +36,7 @@ const AdminAccounts = () => {
       supabase.from("plans").select("*").order("sort_order"),
       supabase.from("wallets").select("*"),
       supabase.from("conversations").select("org_id, last_message_at").order("last_message_at", { ascending: false }),
-      supabase.from("whatsapp_config").select("*"),
+      supabase.from("whatsapp_config_safe").select("*"),
     ]);
     setOrgs(o.data || []);
     setProfiles(p.data || []);

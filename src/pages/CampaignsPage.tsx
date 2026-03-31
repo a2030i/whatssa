@@ -80,7 +80,7 @@ const CampaignsPage = () => {
       supabase.from("campaigns").select("*").eq("org_id", orgId!).order("created_at", { ascending: false }),
       supabase.from("customers").select("*").eq("org_id", orgId!),
       supabase.from("customer_tag_definitions").select("*").eq("org_id", orgId!),
-      supabase.from("whatsapp_config").select("*").eq("org_id", orgId!).eq("is_connected", true),
+      supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId!).eq("is_connected", true),
     ]);
     setCampaigns(c.data || []);
     setCustomers(cust.data || []);

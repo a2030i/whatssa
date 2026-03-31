@@ -72,7 +72,7 @@ const WalletPage = () => {
     const loadCounts = async () => {
       const [team, phones] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_active", true),
-        supabase.from("whatsapp_config").select("id", { count: "exact", head: true }).eq("org_id", orgId),
+        supabase.from("whatsapp_config_safe").select("id", { count: "exact", head: true }).eq("org_id", orgId),
       ]);
       setTeamCount(team.count || 0);
       setPhoneCount(phones.count || 0);

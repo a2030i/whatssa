@@ -81,7 +81,7 @@ export const useDashboardData = (): DashboardData => {
       const days30 = getDateRange(30);
 
       const [waConfig, convs, msgs, automations, wallet, org] = await Promise.all([
-        supabase.from("whatsapp_config").select("*").eq("org_id", orgId).maybeSingle(),
+        supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).maybeSingle(),
         supabase.from("conversations").select("id, status").eq("org_id", orgId),
         supabase.from("messages").select("id, sender, status, created_at, conversation_id").order("created_at", { ascending: false }),
         supabase.from("automation_rules").select("id").eq("org_id", orgId),
