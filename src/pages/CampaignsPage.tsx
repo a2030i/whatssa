@@ -103,21 +103,35 @@ const CampaignsPage = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const text = await file.text();
-    const lines = text.split("\n").filter(Boolean);
-    const headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim().toLowerCase());
+
+    let headers: string[] = [];
+    let rows: string[][] = [];
+
+    if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 });
+      if (data.length === 0) { toast.error("الملف فارغ"); return; }
+      headers = (data[0] || []).map((h) => String(h).trim().toLowerCase());
+      rows = data.slice(1).map((row) => row.map((cell) => String(cell || "").trim()));
+    } else {
+      const text = await file.text();
+      const lines = text.split("\n").filter(Boolean);
+      headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim().toLowerCase());
+      rows = lines.slice(1).map((line) => line.split(",").map((s) => s.replace(/"/g, "").trim()));
+    }
+
     const phoneIdx = headers.findIndex((h) => h.includes("phone") || h.includes("رقم") || h.includes("جوال"));
     const nameIdx = headers.findIndex((h) => h.includes("name") || h.includes("اسم"));
 
     if (phoneIdx === -1) { toast.error("لم يتم العثور على عمود الأرقام — تأكد من وجود عمود phone أو رقم"); return; }
 
-    // Detect variable columns (any column that's not phone/name)
     const varCols = headers.filter((_, i) => i !== phoneIdx && i !== nameIdx);
     setForm((f) => ({ ...f, variableColumns: varCols }));
 
     const recs: Recipient[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const parts = lines[i].split(",").map((s) => s.replace(/"/g, "").trim());
+    for (const parts of rows) {
       const phone = parts[phoneIdx];
       if (!phone) continue;
       const vars: Record<string, string> = {};
