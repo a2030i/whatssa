@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, Package, Truck, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, TrendingUp, DollarSign, BarChart3, ArrowUpCircle, ArrowDownCircle, Sparkles, Loader2 } from "lucide-react";
+import { ShoppingCart, Package, Truck, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, TrendingUp, DollarSign, BarChart3, ArrowUpCircle, ArrowDownCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,8 +35,6 @@ const OrdersPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
-  const [aiInsight, setAiInsight] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
   const [stats, setStats] = useState({ total: 0, revenue: 0, avgOrder: 0, pendingCount: 0, todayOrders: 0, todayRevenue: 0 });
 
   useEffect(() => { if (orgId) loadOrders(); }, [orgId]);
@@ -84,25 +82,8 @@ const OrdersPage = () => {
     if (selectedOrder?.id === orderId) setSelectedOrder({ ...selectedOrder, ...updates });
   };
 
-  const getAiInsights = async () => {
-    setAiLoading(true);
-    setAiInsight("");
-    try {
-      const ordersSummary = orders.slice(0, 50).map(o => ({
-        total: o.total, status: o.status, city: o.customer_city, date: o.created_at?.slice(0, 10), payment: o.payment_status
-      }));
-      
-      const { data, error } = await supabase.functions.invoke("ai-order-insights", {
-        body: { orders: ordersSummary, stats }
-      });
-      
-      if (error) throw error;
-      setAiInsight(data?.insight || "لم يتم الحصول على تحليل");
-    } catch {
-      setAiInsight("⚠️ تعذر الحصول على التحليل الآن. تأكد من إعداد خدمة الذكاء الاصطناعي.");
-    }
-    setAiLoading(false);
-  };
+
+
 
   const exportOrders = () => {
     const headers = ["رقم الطلب", "العميل", "الهاتف", "المدينة", "المبلغ", "الحالة", "الدفع", "التاريخ"];
@@ -150,10 +131,6 @@ const OrdersPage = () => {
           <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl border-border/50" onClick={exportOrders}>
             <Download className="w-3.5 h-3.5" /> تصدير
           </Button>
-          <Button size="sm" className="gap-1.5 text-xs rounded-xl gradient-primary text-primary-foreground shadow-glow" onClick={getAiInsights} disabled={aiLoading}>
-            {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-            تحليل ذكي
-          </Button>
         </div>
       </div>
 
@@ -170,18 +147,6 @@ const OrdersPage = () => {
         ))}
       </div>
 
-      {/* AI Insights */}
-      {aiInsight && (
-        <div className="bg-gradient-to-l from-primary/5 to-accent/20 rounded-2xl p-5 border border-primary/10 backdrop-blur-sm animate-fade-in">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-            </div>
-            <h3 className="text-sm font-bold">تحليل الذكاء الاصطناعي</h3>
-          </div>
-          <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{aiInsight}</p>
-        </div>
-      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
