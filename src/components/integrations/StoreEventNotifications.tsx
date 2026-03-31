@@ -83,6 +83,41 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
     }
   }, [open]);
 
+  // Fetch templates when a meta_api channel exists
+  useEffect(() => {
+    const hasMetaChannel = channels.some((c) => c.type === "meta_api");
+    if (hasMetaChannel && templates.length === 0 && !loadingTemplates) {
+      fetchTemplates();
+    }
+  }, [channels]);
+
+  const fetchTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await supabase.functions.invoke("whatsapp-templates", {
+        body: { action: "list" },
+      });
+      if (res.data?.templates) {
+        setTemplates(
+          (res.data.templates as any[])
+            .filter((t: any) => t.status === "APPROVED")
+            .map((t: any) => ({
+              name: t.name,
+              language: t.language,
+              status: t.status,
+              category: t.category,
+            }))
+        );
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
   const loadChannels = async () => {
     if (!orgId) return;
     const { data } = await supabase
