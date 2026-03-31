@@ -32,7 +32,7 @@ const AuthContext = createContext<AuthContextType>({
   hasMetaApi: false,
   isImpersonating: false,
   impersonatedOrgId: null,
-  startImpersonation: () => {},
+  startImpersonation: async () => {},
   stopImpersonation: () => {},
   refreshOrg: () => {},
   signOut: async () => {},
