@@ -593,12 +593,23 @@ const IntegrationsPage = () => {
           )}
         </div>
         {ms.healthIssues && ms.healthIssues.length > 0 && (
-          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-2.5 space-y-1">
-            {ms.healthIssues.map((issue: any, i: number) => (
-              <p key={i} className="text-[10px] text-foreground/80">
-                <span className="text-destructive">•</span> [{issue.entity}] {issue.error}
-              </p>
-            ))}
+          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
+            <p className="text-[11px] font-semibold text-destructive flex items-center gap-1">
+              <AlertTriangle className="w-3.5 h-3.5" /> مشاكل تحتاج معالجة
+            </p>
+            {ms.healthIssues.map((issue: any, i: number) => {
+              const translated = translateHealthIssue(issue);
+              if (!translated) return null;
+              return (
+                <div key={i} className="bg-background/50 rounded-md p-2 space-y-0.5">
+                  <p className="text-[11px] font-medium text-foreground flex items-center gap-1">
+                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", translated.severity === "critical" ? "bg-destructive" : "bg-warning")} />
+                    {translated.title}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground pr-3">{translated.solution}</p>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
