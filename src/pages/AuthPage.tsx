@@ -114,7 +114,9 @@ const AuthPage = () => {
         </div>
 
         <div className="relative z-10 max-w-lg text-center space-y-8">
-          <img src={respondlyLogo} alt="Respondly" className="h-20 mx-auto object-contain brightness-0 invert opacity-90" />
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/30">
+            <MessageSquareText className="w-8 h-8 text-primary-glow" />
+          </div>
           
           <div className="space-y-3">
             <h1 className="text-3xl font-black text-white/95 leading-tight">
