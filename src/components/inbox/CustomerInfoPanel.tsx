@@ -130,22 +130,16 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes }: CustomerInfoPanelPro
         {/* Contact Info */}
         <SectionHeader title="معلومات التواصل" icon={Phone} sectionKey="contact" />
         {sections.contact && (
-          <div className="space-y-2 pb-3 border-b border-border">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">الهاتف</span>
-              <span className="text-xs font-medium" dir="ltr">{conversation.customerPhone}</span>
-            </div>
-            {(customer?.email || conversation.email) && (
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-muted-foreground">البريد</span>
-                <span className="text-xs truncate max-w-[150px]">{customer?.email || conversation.email}</span>
-              </div>
+          <div className="space-y-3 pb-3 border-b border-border">
+            <CopyField label="رقم الهاتف" value={conversation.customerPhone} />
+            {conversation.customerName && (
+              <CopyField label="اسم الواتساب" value={conversation.customerName} />
             )}
-            {customer?.name && (
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-muted-foreground">الاسم المسجل</span>
-                <span className="text-xs font-medium">{customer.name}</span>
-              </div>
+            {customer?.name && customer.name !== conversation.customerName && (
+              <CopyField label="اسم الملف الشخصي" value={customer.name} />
+            )}
+            {(customer?.email || conversation.email) && (
+              <CopyField label="عنوان الايميل" value={customer?.email || conversation.email || "N/A"} />
             )}
           </div>
         )}
