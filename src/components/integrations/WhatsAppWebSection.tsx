@@ -78,6 +78,10 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
   };
 
   const createInstance = async () => {
+    if (unofficialCount >= maxUnofficialPhones && !isSuperAdmin) {
+      toast.error(`وصلت للحد الأقصى (${maxUnofficialPhones} رقم غير رسمي). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
+      return;
+    }
     setIsCreating(true);
     try {
       const { data, error } = await supabase.functions.invoke("evolution-manage", {
