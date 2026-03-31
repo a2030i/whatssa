@@ -41,17 +41,25 @@ const InboxPage = () => {
   }, [selectedId]);
 
   useEffect(() => {
+    if (!orgId) {
+      setTemplates([]);
+      return;
+    }
+
     const loadTemplates = async () => {
-      // Check if there's a Meta API config before calling templates
       const { data: metaConfig } = await supabase
         .from("whatsapp_config")
         .select("id")
+        .eq("org_id", orgId)
         .eq("channel_type", "meta_api")
         .eq("is_connected", true)
         .limit(1)
         .maybeSingle();
 
-      if (!metaConfig) return; // No Meta API config, skip templates
+      if (!metaConfig) {
+        setTemplates([]);
+        return;
+      }
 
       const { data, error } = await supabase.functions.invoke("whatsapp-templates", {
         body: { action: "list" },
@@ -63,7 +71,7 @@ const InboxPage = () => {
     };
 
     loadTemplates();
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
     if (!orgId) return;

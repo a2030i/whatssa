@@ -14,7 +14,7 @@ interface AuthContextType {
   hasMetaApi: boolean;
   isImpersonating: boolean;
   impersonatedOrgId: string | null;
-  startImpersonation: (orgId: string) => void;
+  startImpersonation: (orgId: string) => Promise<void>;
   stopImpersonation: () => void;
   refreshOrg: () => void;
   signOut: () => Promise<void>;
