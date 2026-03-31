@@ -2053,6 +2053,50 @@ export type Database = {
           },
         ]
       }
+      template_status_cache: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string
+          language: string | null
+          last_checked_at: string | null
+          org_id: string
+          status: string
+          template_meta_id: string
+          template_name: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          language?: string | null
+          last_checked_at?: string | null
+          org_id: string
+          status: string
+          template_meta_id: string
+          template_name: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          language?: string | null
+          last_checked_at?: string | null
+          org_id?: string
+          status?: string
+          template_meta_id?: string
+          template_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_status_cache_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usage_tracking: {
         Row: {
           api_calls: number
