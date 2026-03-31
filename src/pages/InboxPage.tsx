@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ConversationList from "@/components/inbox/ConversationList";
 import ChatArea from "@/components/inbox/ChatArea";
 import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";
+import NewConversationDialog from "@/components/inbox/NewConversationDialog";
 import { toast } from "sonner";
 import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
 
@@ -32,6 +33,7 @@ const InboxPage = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newConvOpen, setNewConvOpen] = useState(false);
   const selectedIdRef = useRef<string | null>(null);
 
   const isMobile = useIsMobile();
@@ -483,6 +485,7 @@ const InboxPage = () => {
             supabase.from("conversations").update({ unread_count: 0 }).eq("id", id).then();
           }}
           hasSelection={!!selected}
+          onNewConversation={() => setNewConvOpen(true)}
         />
       )}
 
@@ -512,6 +515,15 @@ const InboxPage = () => {
       )}
 
       {selected && !isMobile && <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} />}
+
+      <NewConversationDialog
+        open={newConvOpen}
+        onOpenChange={setNewConvOpen}
+        templates={templates}
+        onConversationCreated={(convId) => {
+          setSelectedId(convId);
+        }}
+      />
     </div>
   );
 };

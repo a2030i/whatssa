@@ -43,9 +43,10 @@ interface ConversationListProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   hasSelection: boolean;
+  onNewConversation?: () => void;
 }
 
-const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }: ConversationListProps) => {
+const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation }: ConversationListProps) => {
   const { orgId } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("all");
@@ -189,6 +190,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
             {activeInbox ? activeInbox.name : "المحادثات"}
           </h1>
           <div className="flex items-center gap-1">
+            {onNewConversation && (
+              <button
+                onClick={onNewConversation}
+                className="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+                title="محادثة جديدة"
+              >
+                <MessageSquare className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={() => { setEditingInbox(null); setBuilderOpen(true); }}
               className="p-2 rounded-xl hover:bg-secondary/80 text-muted-foreground transition-all hover:text-foreground"
