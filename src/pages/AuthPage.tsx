@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, ArrowRight, Mail, KeyRound, MessageSquare, Shield, Zap } from "lucide-react";
-import respondlyLogo from "@/assets/respondly-logo.png";
+import { MessageSquareText } from "lucide-react";
 
 type Step = "email" | "password" | "set-password" | "signup";
 
@@ -114,7 +114,9 @@ const AuthPage = () => {
         </div>
 
         <div className="relative z-10 max-w-lg text-center space-y-8">
-          <img src={respondlyLogo} alt="Respondly" className="h-20 mx-auto object-contain brightness-0 invert opacity-90" />
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/30">
+            <MessageSquareText className="w-8 h-8 text-primary-glow" />
+          </div>
           
           <div className="space-y-3">
             <h1 className="text-3xl font-black text-white/95 leading-tight">
@@ -149,7 +151,9 @@ const AuthPage = () => {
         <div className="w-full max-w-[420px] space-y-8 animate-fade-in">
           {/* Logo (mobile only) */}
           <div className="lg:hidden text-center">
-            <img src={respondlyLogo} alt="Respondly" className="h-20 mx-auto object-contain" />
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-primary/15 flex items-center justify-center border border-primary/20">
+              <MessageSquareText className="w-7 h-7 text-primary" />
+            </div>
           </div>
 
           {/* Header */}
