@@ -52,6 +52,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): (NavItem | NavG
       { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب" },
       { label: "الأتمتة", icon: Bot, path: "/automation" },
       { label: "الشات بوت", icon: Zap, path: "/chatbot" },
+      { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages" },
     ],
   },
