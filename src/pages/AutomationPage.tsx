@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import ChannelSelector from "@/components/ChannelSelector";
 
 interface AutomationRule {
   id: string;
@@ -53,6 +54,7 @@ const AutomationPage = () => {
   const [formActionTag, setFormActionTag] = useState("");
   const [formActionTeamId, setFormActionTeamId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [formChannelIds, setFormChannelIds] = useState<string[]>([]);
 
   const table = supabase.from("automation_rules" as any);
 
@@ -60,7 +62,7 @@ const AutomationPage = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("automation_rules" as any)
-      .select("id, name, keywords, reply_text, enabled, action_type, action_tag, action_team_id")
+      .select("id, name, keywords, reply_text, enabled, action_type, action_tag, action_team_id, channel_ids")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -104,6 +106,7 @@ const AutomationPage = () => {
     setFormActionType("reply");
     setFormActionTag("");
     setFormActionTeamId("");
+    setFormChannelIds([]);
     setDialogOpen(true);
   };
 
@@ -116,6 +119,7 @@ const AutomationPage = () => {
     setFormActionType(rule.action_type || "reply");
     setFormActionTag(rule.action_tag || "");
     setFormActionTeamId(rule.action_team_id || "");
+    setFormChannelIds((rule as any).channel_ids || []);
     setDialogOpen(true);
   };
 
@@ -164,6 +168,7 @@ const AutomationPage = () => {
       action_type: formActionType,
       action_tag: needsTag ? formActionTag.trim() : null,
       action_team_id: needsTeam ? formActionTeamId : null,
+      channel_ids: formChannelIds,
     };
 
     const response = editingRule
@@ -396,6 +401,15 @@ const AutomationPage = () => {
                   <p className="text-[10px] text-warning">لا توجد فرق — أنشئ فريقاً من صفحة إدارة الفريق أولاً</p>
                 )}
               </div>
+            )}
+
+            {orgId && (
+              <ChannelSelector
+                orgId={orgId}
+                selectedIds={formChannelIds}
+                onChange={setFormChannelIds}
+                label="القنوات التي تعمل عليها هذه القاعدة"
+              />
             )}
 
             <div className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2">

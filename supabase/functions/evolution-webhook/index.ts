@@ -15,6 +15,7 @@ async function processChatbotFlow(
   messageText: string,
   channel: "meta" | "evolution",
   log: typeof logToSystem,
+  channelConfigId?: string | null,
 ): Promise<boolean> {
   const normalizedText = messageText.trim().toLowerCase();
 
@@ -101,12 +102,20 @@ async function processChatbotFlow(
 
   const { data: flows } = await client
     .from("chatbot_flows")
-    .select("id, trigger_type, trigger_keywords, welcome_message, nodes, name")
+    .select("id, trigger_type, trigger_keywords, welcome_message, nodes, name, channel_ids")
     .eq("org_id", orgId)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
 
   if (!flows || flows.length === 0) return false;
+
+  // Filter flows by channel
+  const filteredFlows = flows.filter((flow: any) => {
+    if (!flow.channel_ids || flow.channel_ids.length === 0) return true;
+    return channelConfigId ? flow.channel_ids.includes(channelConfigId) : true;
+  });
+
+  if (filteredFlows.length === 0) return false;
 
   const { count: msgCount } = await client
     .from("messages")
@@ -117,7 +126,7 @@ async function processChatbotFlow(
   const isFirstMessage = (msgCount || 0) <= 1;
 
   let matchedFlow = null;
-  for (const flow of flows) {
+  for (const flow of filteredFlows) {
     if (flow.trigger_type === "first_message" && isFirstMessage) { matchedFlow = flow; break; }
     if (flow.trigger_type === "always") { matchedFlow = flow; break; }
     if (flow.trigger_type === "keyword" && Array.isArray(flow.trigger_keywords)) {
@@ -733,22 +742,25 @@ serve(async (req) => {
 
         // ── Chatbot flow processing ──
         if (messageType === "text" && content) {
-          const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, phone, content, "evolution", logToSystem);
+          const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, phone, content, "evolution", logToSystem, config.id);
           
           // ── Automation rules (only if chatbot didn't handle) ──
           if (!chatbotHandled) {
             const normalizedContent = content.trim().toLowerCase();
             const { data: rules } = await supabase
               .from("automation_rules")
-              .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id")
+              .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id, channel_ids")
               .eq("org_id", orgId)
               .eq("enabled", true)
               .order("created_at", { ascending: true });
 
-            const matchedRule = (rules || []).find((rule: any) =>
-              Array.isArray(rule.keywords) &&
-              rule.keywords.some((kw: string) => kw?.trim() && normalizedContent.includes(kw.trim().toLowerCase())),
-            );
+            const matchedRule = (rules || []).find((rule: any) => {
+              if (rule.channel_ids && rule.channel_ids.length > 0 && config.id) {
+                if (!rule.channel_ids.includes(config.id)) return false;
+              }
+              return Array.isArray(rule.keywords) &&
+                rule.keywords.some((kw: string) => kw?.trim() && normalizedContent.includes(kw.trim().toLowerCase()));
+            });
 
             if (matchedRule) {
               const actionType = matchedRule.action_type || "reply";

@@ -195,6 +195,7 @@ export type Database = {
           action_tag: string | null
           action_team_id: string | null
           action_type: string
+          channel_ids: string[] | null
           created_at: string
           created_by: string | null
           enabled: boolean
@@ -209,6 +210,7 @@ export type Database = {
           action_tag?: string | null
           action_team_id?: string | null
           action_type?: string
+          channel_ids?: string[] | null
           created_at?: string
           created_by?: string | null
           enabled?: boolean
@@ -223,6 +225,7 @@ export type Database = {
           action_tag?: string | null
           action_team_id?: string | null
           action_type?: string
+          channel_ids?: string[] | null
           created_at?: string
           created_by?: string | null
           enabled?: boolean
@@ -415,6 +418,7 @@ export type Database = {
       }
       chatbot_flows: {
         Row: {
+          channel_ids: string[] | null
           created_at: string | null
           id: string
           is_active: boolean | null
@@ -427,6 +431,7 @@ export type Database = {
           welcome_message: string | null
         }
         Insert: {
+          channel_ids?: string[] | null
           created_at?: string | null
           id?: string
           is_active?: boolean | null
@@ -439,6 +444,7 @@ export type Database = {
           welcome_message?: string | null
         }
         Update: {
+          channel_ids?: string[] | null
           created_at?: string | null
           id?: string
           is_active?: boolean | null

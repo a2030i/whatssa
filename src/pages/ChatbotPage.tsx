@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageSquare, ArrowRight, Copy, ToggleLeft, GitBranch, ChevronDown, ChevronUp, GripVertical, HelpCircle, Eye, ListOrdered } from "lucide-react";
+import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageSquare, ArrowRight, Copy, ToggleLeft, GitBranch, ChevronDown, ChevronUp, GripVertical, HelpCircle, Eye, ListOrdered, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import ChannelSelector from "@/components/ChannelSelector";
 
 interface ChatbotNode {
   id: string;
@@ -61,6 +62,7 @@ const ChatbotPage = () => {
   const [formKeywords, setFormKeywords] = useState("");
   const [formWelcome, setFormWelcome] = useState("");
   const [formNodes, setFormNodes] = useState<ChatbotNode[]>([]);
+  const [formChannelIds, setFormChannelIds] = useState<string[]>([]);
 
   // Quick add buttons
   const [quickButtonsText, setQuickButtonsText] = useState("");
@@ -108,6 +110,7 @@ const ChatbotPage = () => {
         buttons: [],
       },
     ]);
+    setFormChannelIds([]);
     setQuickButtonsText("");
     setActiveTab("basics");
   };
@@ -127,6 +130,11 @@ const ChatbotPage = () => {
     setFormNodes(flow.nodes.length > 0 ? flow.nodes : [
       { id: generateId(), type: "message", content: "", buttons: [] },
     ]);
+    // Load channel_ids from DB
+    (async () => {
+      const { data } = await supabase.from("chatbot_flows").select("channel_ids").eq("id", flow.id).single();
+      setFormChannelIds((data as any)?.channel_ids || []);
+    })();
     setActiveTab("basics");
     setDialogOpen(true);
   };
@@ -158,7 +166,8 @@ const ChatbotPage = () => {
       trigger_keywords: keywords,
       welcome_message: formWelcome.trim() || null,
       nodes: linkedNodes as any,
-    };
+      channel_ids: formChannelIds,
+    } as any;
 
     if (editingFlow) {
       const { error } = await supabase
@@ -584,6 +593,15 @@ const ChatbotPage = () => {
                     rows={2}
                   />
                 </div>
+
+                {orgId && (
+                  <ChannelSelector
+                    orgId={orgId}
+                    selectedIds={formChannelIds}
+                    onChange={setFormChannelIds}
+                    label="القنوات التي يعمل عليها هذا البوت"
+                  />
+                )}
               </div>
               <div className="flex justify-end">
                 <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")}>

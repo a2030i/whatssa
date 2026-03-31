@@ -15,6 +15,7 @@ async function processChatbotFlow(
   messageText: string,
   channel: "meta" | "evolution",
   log: typeof logToSystem,
+  channelConfigId?: string | null,
 ): Promise<boolean> {
   const normalizedText = messageText.trim().toLowerCase();
 
@@ -115,12 +116,20 @@ async function processChatbotFlow(
   // No active session — check if any flow should be triggered
   const { data: flows } = await client
     .from("chatbot_flows")
-    .select("id, trigger_type, trigger_keywords, welcome_message, nodes, name")
+    .select("id, trigger_type, trigger_keywords, welcome_message, nodes, name, channel_ids")
     .eq("org_id", orgId)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
 
   if (!flows || flows.length === 0) return false;
+
+  // Filter flows by channel
+  const filteredFlows = flows.filter((flow: any) => {
+    if (!flow.channel_ids || flow.channel_ids.length === 0) return true;
+    return channelConfigId ? flow.channel_ids.includes(channelConfigId) : true;
+  });
+
+  if (filteredFlows.length === 0) return false;
 
   // Check if this is the first message in conversation
   const { count: msgCount } = await client
@@ -132,7 +141,7 @@ async function processChatbotFlow(
   const isFirstMessage = (msgCount || 0) <= 1;
 
   let matchedFlow = null;
-  for (const flow of flows) {
+  for (const flow of filteredFlows) {
     if (flow.trigger_type === "first_message" && isFirstMessage) {
       matchedFlow = flow;
       break;
@@ -373,15 +382,17 @@ serve(async (req) => {
       const metadataPhoneId = value.metadata?.phone_number_id;
       let orgId: string | null = null;
 
+      var channelConfigId: string | null = null;
       if (metadataPhoneId) {
         const { data: config } = await supabase
           .from("whatsapp_config")
-          .select("org_id, default_team_id, default_agent_id")
+          .select("id, org_id, default_team_id, default_agent_id")
           .eq("phone_number_id", metadataPhoneId)
           .eq("is_connected", true)
           .maybeSingle();
 
         orgId = config?.org_id || null;
+        channelConfigId = config?.id || null;
         var channelDefaultTeamId = config?.default_team_id || null;
         var channelDefaultAgentId = config?.default_agent_id || null;
       }
@@ -651,22 +662,26 @@ serve(async (req) => {
 
           // ── Chatbot flow processing ──
           if (incomingMessage.type === "text") {
-            const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, customerPhone, content, "meta", logToSystem);
+            const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, customerPhone, content, "meta", logToSystem, channelConfigId);
             
             // ── Automation rules (only if chatbot didn't handle) ──
             if (!chatbotHandled) {
               const normalizedContent = content.trim().toLowerCase();
               const { data: rules } = await supabase
                 .from("automation_rules")
-                .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id")
+                .select("id, name, keywords, reply_text, action_type, action_tag, action_team_id, channel_ids")
                 .eq("org_id", orgId)
                 .eq("enabled", true)
                 .order("created_at", { ascending: true });
 
-              const matchedRule = (rules || []).find((rule: any) =>
-                Array.isArray(rule.keywords) &&
-                rule.keywords.some((keyword: string) => keyword?.trim() && normalizedContent.includes(keyword.trim().toLowerCase())),
-              );
+              const matchedRule = (rules || []).find((rule: any) => {
+                // Channel filter: if channel_ids is set and non-empty, only match if current channel is included
+                if (rule.channel_ids && rule.channel_ids.length > 0 && channelConfigId) {
+                  if (!rule.channel_ids.includes(channelConfigId)) return false;
+                }
+                return Array.isArray(rule.keywords) &&
+                  rule.keywords.some((keyword: string) => keyword?.trim() && normalizedContent.includes(keyword.trim().toLowerCase()));
+              });
 
               if (matchedRule) {
                 const actionType = matchedRule.action_type || "reply";
