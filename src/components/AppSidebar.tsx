@@ -3,11 +3,12 @@ import {
   MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X,
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
-  Zap, Bell, CircleDot, Headphones, TrendingUp, Clock
+  Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,6 +20,7 @@ interface NavItem {
   badge?: string;
   ecommerceOnly?: boolean;
   metaApiOnly?: boolean;
+  lockedMessage?: string;
 }
 
 interface NavGroup {
@@ -27,30 +29,26 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const buildGroups = (isEcommerce: boolean): (NavItem | NavGroup)[] => [
+const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): (NavItem | NavGroup)[] => [
   { label: "لوحة التحكم", icon: LayoutDashboard, path: "/" },
   { label: "المحادثات", icon: MessageSquare, path: "/inbox" },
   { label: "العملاء", icon: UserCircle, path: "/customers" },
-  // E-commerce group
-  ...(isEcommerce
-    ? [
-        {
-          label: "المتجر",
-          icon: ShoppingBag,
-          items: [
-            { label: "الطلبات", icon: ShoppingCart, path: "/orders" },
-            { label: "السلات المتروكة", icon: ShoppingBag, path: "/abandoned-carts" },
-          ],
-        } as NavGroup,
-      ]
-    : []),
+  // E-commerce group — always visible
+  {
+    label: "المتجر",
+    icon: ShoppingBag,
+    items: [
+      { label: "الطلبات", icon: ShoppingCart, path: "/orders", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً من صفحة الربط والتكامل لعرض الطلبات" },
+      { label: "السلات المتروكة", icon: ShoppingBag, path: "/abandoned-carts", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً من صفحة الربط والتكامل لاسترداد السلات المتروكة" },
+    ],
+  } as NavGroup,
   // Marketing group
   {
     label: "التسويق",
     icon: Megaphone,
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns" },
-      { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true },
+      { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب" },
       { label: "الأتمتة", icon: Bot, path: "/automation" },
       { label: "الشات بوت", icon: Zap, path: "/chatbot" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages" },
@@ -92,17 +90,13 @@ const AppSidebar = () => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState(false);
 
-  const navStructure = buildGroups(isEcommerce)
-    .map((item) => {
-      if (isGroup(item)) {
-        return {
-          ...item,
-          items: item.items.filter((i) => !i.metaApiOnly || hasMetaApi),
-        };
-      }
-      return !item.metaApiOnly || hasMetaApi ? item : null;
-    })
-    .filter(Boolean) as (NavItem | NavGroup)[];
+  const navStructure = buildGroups(isEcommerce, hasMetaApi);
+
+  const isLocked = (item: NavItem): boolean => {
+    if (item.metaApiOnly && !hasMetaApi) return true;
+    if (item.ecommerceOnly && !isEcommerce) return true;
+    return false;
+  };
 
   const isActive = (path: string) => location.pathname === path;
   const isGroupActive = (group: NavGroup) => group.items.some((i) => isActive(i.path));
@@ -118,6 +112,48 @@ const AppSidebar = () => {
 
   const renderItem = (item: NavItem, nested = false) => {
     const active = isActive(item.path);
+    const locked = isLocked(item);
+
+    if (locked) {
+      const lockedContent = (
+        <button
+          key={item.path}
+          onClick={() => {
+            toast.info(item.lockedMessage || "هذه الميزة غير متاحة حالياً", {
+              action: {
+                label: "الربط والتكامل",
+                onClick: () => window.location.href = "/integrations",
+              },
+            });
+          }}
+          className={cn(
+            "group flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all duration-200 w-full opacity-50 cursor-not-allowed",
+            nested ? "px-3 py-[7px]" : "px-3 py-2",
+            "text-sidebar-foreground/50"
+          )}
+        >
+          <item.icon className={cn("shrink-0", nested ? "w-4 h-4" : "w-[18px] h-[18px]")} />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-right">{item.label}</span>
+              <Lock className="w-3 h-3 text-sidebar-foreground/30" />
+            </>
+          )}
+        </button>
+      );
+
+      if (collapsed) {
+        return (
+          <Tooltip key={item.path}>
+            <TooltipTrigger asChild>{lockedContent}</TooltipTrigger>
+            <TooltipContent side="left" className="text-xs">
+              🔒 {item.label}
+            </TooltipContent>
+          </Tooltip>
+        );
+      }
+      return lockedContent;
+    }
 
     const content = (
       <NavLink
