@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import ChannelSelector from "@/components/ChannelSelector";
 
 interface AutomationRule {
   id: string;
