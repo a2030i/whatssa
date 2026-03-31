@@ -12,6 +12,9 @@ import CampaignsPage from "./pages/CampaignsPage";
 import AutomationPage from "./pages/AutomationPage";
 import TeamPage from "./pages/TeamPage";
 import SettingsPage from "./pages/SettingsPage";
+import ConversationSettingsPage from "./pages/ConversationSettingsPage";
+import AiSettingsPage from "./pages/AiSettingsPage";
+import ApiTokensPage from "./pages/ApiTokensPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import WalletPage from "./pages/WalletPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -99,6 +102,9 @@ const AppRoutes = () => {
       <Route path="/plans" element={<ProtectedRoute><AppLayout><PlanUpgradePage /></AppLayout></ProtectedRoute>} />
       <Route path="/integrations" element={<ProtectedRoute><AppLayout><IntegrationsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/conversation-settings" element={<ProtectedRoute><AppLayout><ConversationSettingsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/ai-settings" element={<ProtectedRoute><AppLayout><AiSettingsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/api-tokens" element={<ProtectedRoute><AppLayout><ApiTokensPage /></AppLayout></ProtectedRoute>} />
       <Route path="/templates" element={<MetaApiRoute><AppLayout><TemplatesPage /></AppLayout></MetaApiRoute>} />
       <Route path="/wallet" element={<ProtectedRoute><AppLayout><WalletPage /></AppLayout></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><AppLayout><OrdersPage /></AppLayout></ProtectedRoute>} />
