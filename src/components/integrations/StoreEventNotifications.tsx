@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Bell, MessageSquare, Loader2, Save, ChevronDown, ChevronUp,
-  Smartphone, FileText, Power, PowerOff
+  Smartphone, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,12 +23,19 @@ interface Props {
 
 interface EventNotifConfig {
   enabled: boolean;
-  channel_id: string; // whatsapp_config id
+  channel_id: string;
   // For meta_api
   template_name?: string;
   template_language?: string;
   // For evolution
   message_text?: string;
+}
+
+interface MetaTemplate {
+  name: string;
+  language: string;
+  status: string;
+  category: string;
 }
 
 interface ChannelOption {
@@ -66,6 +73,8 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [templates, setTemplates] = useState<MetaTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -73,6 +82,41 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
       loadConfigs();
     }
   }, [open]);
+
+  // Fetch templates when a meta_api channel exists
+  useEffect(() => {
+    const hasMetaChannel = channels.some((c) => c.type === "meta_api");
+    if (hasMetaChannel && templates.length === 0 && !loadingTemplates) {
+      fetchTemplates();
+    }
+  }, [channels]);
+
+  const fetchTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await supabase.functions.invoke("whatsapp-templates", {
+        body: { action: "list" },
+      });
+      if (res.data?.templates) {
+        setTemplates(
+          (res.data.templates as any[])
+            .filter((t: any) => t.status === "APPROVED")
+            .map((t: any) => ({
+              name: t.name,
+              language: t.language,
+              status: t.status,
+              category: t.category,
+            }))
+        );
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
 
   const loadChannels = async () => {
     if (!orgId) return;
@@ -240,36 +284,44 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
                         </Select>
                       </div>
 
-                      {/* Meta API: Template Config */}
+                      {/* Meta API: Template Select */}
                       {channelType === "meta_api" && (
-                        <div className="space-y-2">
-                          <div className="space-y-1">
-                            <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                              <FileText className="w-3 h-3" /> اسم القالب (Template Name)
-                            </Label>
-                            <Input
-                              value={cfg.template_name || ""}
-                              onChange={(e) => updateEventConfig(evt.key, { template_name: e.target.value })}
-                              placeholder="order_confirmation"
-                              className="text-xs h-8 font-mono"
-                              dir="ltr"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-[10px] text-muted-foreground">لغة القالب</Label>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <FileText className="w-3 h-3" /> القالب
+                          </Label>
+                          {loadingTemplates ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              جاري تحميل القوالب...
+                            </div>
+                          ) : templates.length === 0 ? (
+                            <p className="text-[10px] text-muted-foreground py-1">لا توجد قوالب معتمدة</p>
+                          ) : (
                             <Select
-                              value={cfg.template_language || "ar"}
-                              onValueChange={(v) => updateEventConfig(evt.key, { template_language: v })}
+                              value={cfg.template_name && cfg.template_language ? `${cfg.template_name}::${cfg.template_language}` : "none"}
+                              onValueChange={(v) => {
+                                if (v === "none") {
+                                  updateEventConfig(evt.key, { template_name: "", template_language: "" });
+                                } else {
+                                  const [name, lang] = v.split("::");
+                                  updateEventConfig(evt.key, { template_name: name, template_language: lang });
+                                }
+                              }}
                             >
                               <SelectTrigger className="h-8 text-xs">
-                                <SelectValue />
+                                <SelectValue placeholder="اختر القالب" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="ar" className="text-xs">العربية</SelectItem>
-                                <SelectItem value="en" className="text-xs">English</SelectItem>
+                                <SelectItem value="none" className="text-xs">بدون تحديد</SelectItem>
+                                {templates.map((t) => (
+                                  <SelectItem key={`${t.name}::${t.language}`} value={`${t.name}::${t.language}`} className="text-xs">
+                                    {t.name} ({t.language})
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
-                          </div>
+                          )}
                         </div>
                       )}
 
