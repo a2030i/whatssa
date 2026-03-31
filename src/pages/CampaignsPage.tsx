@@ -59,6 +59,8 @@ const CampaignsPage = () => {
     channelId: "" as string,
     messageText: "" as string,
     delaySeconds: 10 as number,
+    recurringType: "" as string,
+    recurringEndAt: "" as string,
     // E-commerce filters
     filterProduct: "",
     filterCity: "",
