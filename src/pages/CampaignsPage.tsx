@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield, Repeat, RefreshCw } from "lucide-react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield, Repeat, RefreshCw, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import * as XLSX from "xlsx";
 
 const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
   draft: { label: "مسودة", icon: FileText, className: "bg-muted text-muted-foreground" },
