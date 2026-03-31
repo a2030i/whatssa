@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { MessageSquare, Clock, CheckCircle2, AlertTriangle, Users, Download, Calendar, BarChart3, PieChart as PieChartIcon, Loader2, TrendingUp, Send, Megaphone, Phone, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import KpiCard from "@/components/KpiCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
