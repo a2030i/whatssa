@@ -337,55 +337,49 @@ const SettingsPage = () => {
             <Moon className="w-4 h-4 text-primary" />
             <h3 className="font-semibold text-sm">رسالة خارج أوقات العمل</h3>
           </div>
-          <Switch checked={oohEnabled} onCheckedChange={setOohEnabled} />
+          <Switch checked={currentOoh.enabled} onCheckedChange={(v) => updateOoh("enabled", v)} />
         </div>
-        {oohEnabled && (
+        {channels.length > 0 && (
+          <div className="px-5 pt-4 flex flex-wrap gap-2">
+            <button onClick={() => setSelectedOohChannel("global")} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-all", selectedOohChannel === "global" ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/30")}>
+              الكل (افتراضي)
+            </button>
+            {channels.map(ch => (
+              <button key={ch.id} onClick={() => setSelectedOohChannel(ch.id)} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-all", selectedOohChannel === ch.id ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/30")}>
+                {ch.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {currentOoh.enabled ? (
           <div className="p-5 space-y-4">
             <p className="text-xs text-muted-foreground">
-              عند تفعيل هذه الميزة، سيتم إرسال رسالة تلقائية للعملاء الذين يتواصلون خارج أوقات الدوام المحددة.
+              {selectedOohChannel === "global" ? "إعداد افتراضي لجميع القنوات — يمكنك تخصيص كل قناة." : "إعداد خاص بهذه القناة فقط."}
             </p>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-xs">بداية الدوام</Label>
-                <Input type="time" value={oohWorkStart} onChange={(e) => setOohWorkStart(e.target.value)} className="bg-secondary border-0" dir="ltr" />
+                <Input type="time" value={currentOoh.work_start} onChange={(e) => updateOoh("work_start", e.target.value)} className="bg-secondary border-0" dir="ltr" />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">نهاية الدوام</Label>
-                <Input type="time" value={oohWorkEnd} onChange={(e) => setOohWorkEnd(e.target.value)} className="bg-secondary border-0" dir="ltr" />
+                <Input type="time" value={currentOoh.work_end} onChange={(e) => updateOoh("work_end", e.target.value)} className="bg-secondary border-0" dir="ltr" />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label className="text-xs">أيام العمل</Label>
               <div className="flex flex-wrap gap-2">
                 {dayLabels.map(day => (
-                  <button
-                    key={day.value}
-                    onClick={() => toggleOohDay(day.value)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-medium transition-all border",
-                      oohWorkDays.includes(day.value)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-secondary text-muted-foreground border-border hover:border-primary/30"
-                    )}
-                  >
+                  <button key={day.value} onClick={() => toggleOohDay(day.value)} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-all border", currentOoh.work_days.includes(day.value) ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/30")}>
                     {day.label}
                   </button>
                 ))}
               </div>
             </div>
-
             <div className="space-y-2">
               <Label className="text-xs">نص الرسالة</Label>
-              <Textarea
-                value={oohMessage}
-                onChange={(e) => setOohMessage(e.target.value)}
-                className="bg-secondary border-0 min-h-[80px] text-sm"
-                placeholder="اكتب رسالة خارج الدوام..."
-              />
+              <Textarea value={currentOoh.message} onChange={(e) => updateOoh("message", e.target.value)} className="bg-secondary border-0 min-h-[80px] text-sm" placeholder="اكتب رسالة خارج الدوام..." />
             </div>
-
             <div className="flex justify-end">
               <Button size="sm" onClick={saveOohSettings} disabled={savingOoh} className="gap-1.5">
                 <Save className="w-3.5 h-3.5" />
@@ -393,14 +387,12 @@ const SettingsPage = () => {
               </Button>
             </div>
           </div>
-        )}
-        {!oohEnabled && (
+        ) : (
           <div className="p-5">
-            <p className="text-xs text-muted-foreground">الميزة معطلة حالياً. فعّلها لإرسال رسالة تلقائية خارج الدوام.</p>
+            <p className="text-xs text-muted-foreground">الميزة معطلة. فعّلها لإرسال رسالة تلقائية خارج الدوام.</p>
             <div className="flex justify-end mt-3">
               <Button size="sm" onClick={saveOohSettings} disabled={savingOoh} variant="outline" className="gap-1.5">
-                <Save className="w-3.5 h-3.5" />
-                حفظ
+                <Save className="w-3.5 h-3.5" /> حفظ
               </Button>
             </div>
           </div>
@@ -414,34 +406,38 @@ const SettingsPage = () => {
             <Star className="w-4 h-4 text-primary" />
             <h3 className="font-semibold text-sm">استبيان رضا العملاء</h3>
           </div>
-          <Switch checked={satEnabled} onCheckedChange={setSatEnabled} />
+          <Switch checked={currentSat.enabled} onCheckedChange={(v) => updateSat("enabled", v)} />
         </div>
-        {satEnabled && (
+        {channels.length > 0 && (
+          <div className="px-5 pt-4 flex flex-wrap gap-2">
+            <button onClick={() => setSelectedSatChannel("global")} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-all", selectedSatChannel === "global" ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/30")}>
+              الكل (افتراضي)
+            </button>
+            {channels.map(ch => (
+              <button key={ch.id} onClick={() => setSelectedSatChannel(ch.id)} className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-all", selectedSatChannel === ch.id ? "bg-primary text-primary-foreground border-primary" : "bg-secondary text-muted-foreground border-border hover:border-primary/30")}>
+                {ch.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {currentSat.enabled ? (
           <div className="p-5 space-y-4">
             <p className="text-xs text-muted-foreground">
-              عند تفعيل هذه الميزة، سيتم إرسال رسالة تقييم للعميل تلقائياً بعد إغلاق المحادثة. يمكن للعميل الرد برقم من 1 إلى 5 ويتم تسجيل التقييم وربطه بالموظف المسؤول. النتائج تظهر في تقارير الأداء.
+              {selectedSatChannel === "global" ? "إعداد افتراضي — يمكنك تخصيص كل قناة." : "إعداد خاص بهذه القناة فقط."}
             </p>
-
             <div className="space-y-2">
               <Label className="text-xs">نص رسالة التقييم</Label>
-              <Textarea
-                value={satMessage}
-                onChange={(e) => setSatMessage(e.target.value)}
-                className="bg-secondary border-0 min-h-[120px] text-sm"
-                placeholder="اكتب رسالة التقييم..."
-              />
+              <Textarea value={currentSat.message} onChange={(e) => updateSat("message", e.target.value)} className="bg-secondary border-0 min-h-[120px] text-sm" placeholder="اكتب رسالة التقييم..." />
             </div>
-
             <div className="bg-primary/5 rounded-xl p-3 space-y-1.5">
               <p className="text-xs font-semibold text-primary">كيف يعمل؟</p>
               <ul className="text-[11px] text-muted-foreground space-y-1 list-disc list-inside">
                 <li>بعد إغلاق المحادثة يُرسل الاستبيان تلقائياً للعميل</li>
                 <li>العميل يرد برقم من 1 (ممتاز) إلى 5 (ضعيف)</li>
-                <li>يتم ربط التقييم بالموظف الذي أغلق أو كان مسؤولاً عن المحادثة</li>
-                <li>تظهر النتائج في صفحة التقارير → تبويب "التقييمات"</li>
+                <li>يتم ربط التقييم بالموظف المسؤول</li>
+                <li>النتائج تظهر في التقارير</li>
               </ul>
             </div>
-
             <div className="flex justify-end">
               <Button size="sm" onClick={saveSatSettings} disabled={savingSat} className="gap-1.5">
                 <Save className="w-3.5 h-3.5" />
@@ -449,14 +445,12 @@ const SettingsPage = () => {
               </Button>
             </div>
           </div>
-        )}
-        {!satEnabled && (
+        ) : (
           <div className="p-5">
-            <p className="text-xs text-muted-foreground">الميزة معطلة حالياً. فعّلها لإرسال استبيان تقييم تلقائي بعد إغلاق المحادثة.</p>
+            <p className="text-xs text-muted-foreground">الميزة معطلة. فعّلها لإرسال استبيان تقييم بعد إغلاق المحادثة.</p>
             <div className="flex justify-end mt-3">
               <Button size="sm" onClick={saveSatSettings} disabled={savingSat} variant="outline" className="gap-1.5">
-                <Save className="w-3.5 h-3.5" />
-                حفظ
+                <Save className="w-3.5 h-3.5" /> حفظ
               </Button>
             </div>
           </div>
