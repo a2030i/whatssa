@@ -130,6 +130,11 @@ const ChatbotPage = () => {
     setFormNodes(flow.nodes.length > 0 ? flow.nodes : [
       { id: generateId(), type: "message", content: "", buttons: [] },
     ]);
+    // Load channel_ids from DB
+    (async () => {
+      const { data } = await supabase.from("chatbot_flows").select("channel_ids").eq("id", flow.id).single();
+      setFormChannelIds((data as any)?.channel_ids || []);
+    })();
     setActiveTab("basics");
     setDialogOpen(true);
   };
