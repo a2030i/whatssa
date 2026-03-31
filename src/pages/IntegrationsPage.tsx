@@ -3,7 +3,7 @@ import {
   CheckCircle2, Copy, Loader2, Phone, RefreshCw,
   MessageSquare, KeyRound, Plus, Trash2, Instagram,
   Plug, Radio, Smartphone, Send, AlertTriangle, ExternalLink,
-  ShieldCheck, CreditCard, PhoneCall, Building2, Circle, QrCode
+  ShieldCheck, CreditCard, PhoneCall, Building2, Circle, QrCode, Pencil, Check, X
 } from "lucide-react";
 import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import SallaIntegrationSection from "@/components/integrations/SallaIntegrationSection";
