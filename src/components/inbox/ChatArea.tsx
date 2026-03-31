@@ -600,7 +600,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       // Check if using Evolution — send media via evolution-send with media_url
       const { data: evoConfig } = await supabase
-        .from("whatsapp_config")
+        .from("whatsapp_config_safe")
         .select("id")
         .eq("channel_type", "evolution")
         .eq("is_connected", true)

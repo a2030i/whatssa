@@ -46,7 +46,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     setIsLoadingConfig(true);
     if (!orgId) { setIsLoadingConfig(false); return; }
     const { data } = await supabase
-      .from("whatsapp_config")
+      .from("whatsapp_config_safe")
       .select("*")
       .eq("org_id", orgId)
       .eq("channel_type", "evolution")
