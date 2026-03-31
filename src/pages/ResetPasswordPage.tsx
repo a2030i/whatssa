@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { MessageSquare, Loader2, Eye, EyeOff, CheckCircle2, KeyRound } from "lucide-react";
+import { Loader2, Eye, EyeOff, CheckCircle2, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import respondlyLogo from "@/assets/respondly-logo.png";
 
 const ResetPasswordPage = () => {
   const [password, setPassword] = useState("");
