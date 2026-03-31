@@ -263,7 +263,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
                     <span className="text-[10px] text-muted-foreground shrink-0 mr-1">{conv.timestamp}</span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
-                  <div className="flex items-center gap-1.5 mt-1.5">
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                     {conv.channelType === "meta_api" ? (
                       <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 border-success/40 text-success bg-success/10">
                         <ShieldCheck className="w-2.5 h-2.5" />
@@ -282,11 +282,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
                         {conv.conversationType === "group" ? "قروب" : "بث"}
                       </Badge>
                     )}
-                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 border-0", statusColors[conv.status])}>
-                      {statusLabels[conv.status]}
-                    </Badge>
                     {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                      <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{conv.assignedTo}</span>
+                      <div className="flex items-center gap-1">
+                        <div className="w-4 h-4 rounded-full bg-primary/15 flex items-center justify-center">
+                          <User className="w-2.5 h-2.5 text-primary" />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[60px]">{conv.assignedTo}</span>
+                      </div>
                     )}
                     {conv.tags.length > 0 && (
                       <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/20 text-primary">
@@ -294,8 +296,18 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
                         {conv.tags.length > 1 && ` +${conv.tags.length - 1}`}
                       </Badge>
                     )}
+                    {/* SLA Timer */}
+                    {conv.status !== "closed" && (() => {
+                      const wait = getWaitTime(conv.lastCustomerMessageAt);
+                      return wait ? (
+                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5", wait.color)}>
+                          <Clock className="w-2.5 h-2.5" />
+                          {wait.text}
+                        </span>
+                      ) : null;
+                    })()}
                     {conv.unread > 0 && (
-                      <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center mr-auto">
+                      <span className="w-5 h-5 rounded-full bg-success text-white text-[10px] font-bold flex items-center justify-center mr-auto">
                         {conv.unread}
                       </span>
                     )}
