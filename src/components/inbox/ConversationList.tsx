@@ -167,6 +167,9 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
         return applyCustomFilters(conv, activeInbox);
       }
       
+      // Default: hide closed unless explicitly viewing "closed" tab
+      if (activeQuickFilter !== "closed" && conv.status === "closed") return false;
+
       switch (activeQuickFilter) {
         case "active": if (conv.status !== "active") return false; break;
         case "private": if (conv.conversationType && conv.conversationType !== "private") return false; break;
