@@ -683,41 +683,41 @@ const IntegrationsPage = () => {
 
     return (
       <>
-        {/* Connected Section */}
+        {/* Connected Numbers */}
         {hasConnected && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-foreground">متصل</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <h2 className="text-base font-bold text-foreground">الأرقام المتصلة</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {connectedOfficialConfigs.map(renderConfigCard)}
             </div>
           </div>
         )}
 
         {/* All Channels */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-bold text-foreground">جميع القنوات</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3">
+          <h2 className="text-base font-bold text-foreground">قنوات التواصل</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {/* WhatsApp Official */}
             <ChannelCard
               icon={MessageSquare}
               iconBg="bg-emerald-500/10 text-emerald-600"
               name="واتساب"
-              description="تواصل مع المستخدمين من خلال WhatsApp Business API"
+              description="WhatsApp Business API"
               actions={
                 hasConnected ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Badge className="bg-success/10 text-success border-0 text-xs gap-1 px-3 py-1">
-                      <CheckCircle2 className="w-3 h-3" /> متصل ({connectedOfficialConfigs.length})
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Badge className="bg-success/10 text-success border-0 text-[10px] gap-1 px-2 py-0.5">
+                      <CheckCircle2 className="w-2.5 h-2.5" /> متصل ({connectedOfficialConfigs.length})
                     </Badge>
                     {(connectedOfficialConfigs.length < maxPhones || isSuperAdmin) && (
-                      <Button size="sm" variant="outline" className="text-xs h-8 gap-1 rounded-lg" onClick={startConnect} disabled={!sdkLoaded}>
+                      <Button size="sm" variant="outline" className="text-[10px] h-7 gap-1 rounded-lg" onClick={startConnect} disabled={!sdkLoaded}>
                         <Plus className="w-3 h-3" /> إضافة رقم
                       </Button>
                     )}
                   </div>
                 ) : (
-                  <Button size="sm" className="text-xs h-9 gap-1.5 rounded-lg px-5" onClick={startConnect} disabled={!sdkLoaded || isLoading}>
-                    {!sdkLoaded ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  <Button size="sm" className="text-[10px] h-8 gap-1 rounded-lg px-4" onClick={startConnect} disabled={!sdkLoaded || isLoading}>
+                    {!sdkLoaded ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                     يتصل
                   </Button>
                 )
@@ -725,15 +725,15 @@ const IntegrationsPage = () => {
             />
 
             {/* WhatsApp Web */}
-            <div className="bg-card rounded-2xl border border-border p-5 flex flex-col items-center text-center gap-3 hover:shadow-md transition-shadow min-h-[180px]">
-              <div className="w-14 h-14 rounded-2xl bg-warning/10 flex items-center justify-center">
-                <QrCode className="w-7 h-7 text-warning" />
+            <div className="bg-card rounded-xl border border-border p-4 flex flex-col items-center text-center gap-2 hover:shadow-md transition-shadow">
+              <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
+                <QrCode className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <h3 className="font-bold text-sm">واتساب ويب</h3>
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-warning border-warning/30 mt-1">غير رسمي</Badge>
+                <h3 className="font-bold text-xs">واتساب ويب</h3>
+                <Badge variant="outline" className="text-[8px] px-1 py-0 text-warning border-warning/30 mt-0.5">غير رسمي</Badge>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">ربط عبر مسح QR — Evolution API</p>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">ربط عبر مسح QR</p>
               <div className="w-full mt-auto">
                 <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} />
               </div>
@@ -744,8 +744,8 @@ const IntegrationsPage = () => {
               icon={Instagram}
               iconBg="bg-pink-500/10 text-pink-500"
               name="انستغرام"
-              description="تواصل مع المستخدمين من خلال Instagram Business API"
-              actions={<Badge variant="outline" className="text-[10px] px-2.5 py-1">قريباً</Badge>}
+              description="Instagram Business API"
+              actions={<Badge variant="outline" className="text-[10px] px-2 py-0.5">قريباً</Badge>}
             />
 
             {/* Telegram */}
@@ -753,8 +753,8 @@ const IntegrationsPage = () => {
               icon={Radio}
               iconBg="bg-blue-500/10 text-blue-500"
               name="تيليغرام"
-              description="استقبل رسائل تيليغرام عبر المنصة"
-              actions={<Badge variant="outline" className="text-[10px] px-2.5 py-1">قريباً</Badge>}
+              description="استقبال رسائل تيليغرام"
+              actions={<Badge variant="outline" className="text-[10px] px-2 py-0.5">قريباً</Badge>}
             />
 
             {/* SMS */}
@@ -762,8 +762,8 @@ const IntegrationsPage = () => {
               icon={Smartphone}
               iconBg="bg-violet-500/10 text-violet-500"
               name="رسالة قصيرة"
-              description="دمج إمكانيات الرسائل القصيرة في النظام الأساسي"
-              actions={<Badge variant="outline" className="text-[10px] px-2.5 py-1">قريباً</Badge>}
+              description="إرسال واستقبال SMS"
+              actions={<Badge variant="outline" className="text-[10px] px-2 py-0.5">قريباً</Badge>}
             />
 
             {/* Phone */}
@@ -771,8 +771,8 @@ const IntegrationsPage = () => {
               icon={PhoneCall}
               iconBg="bg-sky-500/10 text-sky-500"
               name="هاتف"
-              description="التواصل مع المستخدمين من خلال الهاتف"
-              actions={<Badge variant="outline" className="text-[10px] px-2.5 py-1">قريباً</Badge>}
+              description="مكالمات صوتية"
+              actions={<Badge variant="outline" className="text-[10px] px-2 py-0.5">قريباً</Badge>}
             />
           </div>
         </div>
