@@ -982,7 +982,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Input Area */}
-      {!isRecording && (
+      {!isRecording && conversation.status !== "closed" && (
         <div className={cn("shrink-0 border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
           {/* Reply Preview Bar */}
           {replyTo && (
