@@ -485,6 +485,7 @@ const InboxPage = () => {
             supabase.from("conversations").update({ unread_count: 0 }).eq("id", id).then();
           }}
           hasSelection={!!selected}
+          onNewConversation={() => setNewConvOpen(true)}
         />
       )}
 
