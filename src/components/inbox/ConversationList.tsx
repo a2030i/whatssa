@@ -44,13 +44,88 @@ interface ConversationListProps {
 }
 
 const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }: ConversationListProps) => {
+  const { orgId } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
+  const [customInboxes, setCustomInboxes] = useState<CustomInbox[]>([]);
+  const [activeCustomInbox, setActiveCustomInbox] = useState<string | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [editingInbox, setEditingInbox] = useState<CustomInbox | null>(null);
   const isMobile = useIsMobile();
+
+  // Load custom inboxes
+  const loadCustomInboxes = async () => {
+    if (!orgId) return;
+    const { data } = await supabase
+      .from("custom_inboxes")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("sort_order");
+    if (data) {
+      setCustomInboxes(data.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        filters: d.filters || [],
+        is_shared: d.is_shared,
+      })));
+    }
+  };
+
+  useEffect(() => {
+    loadCustomInboxes();
+  }, [orgId]);
+
+  // Apply custom inbox filters
+  const applyCustomFilters = (conv: Conversation, inbox: CustomInbox): boolean => {
+    if (!inbox.filters || inbox.filters.length === 0) return true;
+    
+    return inbox.filters.some((group) => {
+      return group.conditions.every((cond) => {
+        const val = cond.value;
+        switch (cond.field) {
+          case "status":
+            if (cond.operator === "eq") return conv.status === val;
+            if (cond.operator === "neq") return conv.status !== val;
+            break;
+          case "assigned_to":
+            if (cond.operator === "eq") return conv.assignedTo === val;
+            if (cond.operator === "neq") return conv.assignedTo !== val;
+            if (cond.operator === "is_null") return !conv.assignedTo || conv.assignedTo === "غير معيّن";
+            if (cond.operator === "is_not_null") return conv.assignedTo && conv.assignedTo !== "غير معيّن";
+            break;
+          case "tags":
+            if (cond.operator === "contains") return conv.tags.includes(val);
+            if (cond.operator === "not_contains") return !conv.tags.includes(val);
+            break;
+          case "conversation_type":
+            if (cond.operator === "eq") return (conv.conversationType || "private") === val;
+            if (cond.operator === "neq") return (conv.conversationType || "private") !== val;
+            break;
+          case "unread_count":
+            if (cond.operator === "gt") return conv.unread > Number(val);
+            if (cond.operator === "eq") return conv.unread === Number(val);
+            if (cond.operator === "lt") return conv.unread < Number(val);
+            break;
+          case "customer_name":
+            if (cond.operator === "contains") return conv.customerName.includes(val);
+            if (cond.operator === "eq") return conv.customerName === val;
+            break;
+        }
+        return true;
+      });
+    });
+  };
+
+  const deleteCustomInbox = async (id: string) => {
+    await supabase.from("custom_inboxes").delete().eq("id", id);
+    if (activeCustomInbox === id) setActiveCustomInbox(null);
+    loadCustomInboxes();
+    toast.success("تم حذف الصندوق");
+  };
 
   const allAgents = useMemo(() => [...new Set(conversations.map((c) => c.assignedTo))], [conversations]);
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
