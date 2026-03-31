@@ -66,10 +66,12 @@ const InboxPage = () => {
   }, []);
 
   useEffect(() => {
+    if (!orgId) return;
     const fetchConversations = async () => {
       const { data, error } = await supabase
         .from("conversations")
         .select("*")
+        .eq("org_id", orgId)
         .order("last_message_at", { ascending: false });
 
       if (error) {
@@ -113,7 +115,7 @@ const InboxPage = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
     if (!selectedId) return;
