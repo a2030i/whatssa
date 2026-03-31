@@ -478,6 +478,39 @@ const TemplatesPage = () => {
                 : "أنشئ قالب رسالة جديد يُرسل مباشرة إلى Meta للمراجعة"}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Template Suggestions - only in create mode */}
+          {!isEditing && (
+            <div className="mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs gap-2 border-dashed"
+                onClick={() => setShowSuggestions(!showSuggestions)}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                {showSuggestions ? "إخفاء النماذج الجاهزة" : "📋 نماذج جاهزة للمتاجر — اضغط للاختيار"}
+              </Button>
+              {showSuggestions && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {ecommerceTemplateSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.form.name}
+                      className="bg-secondary hover:bg-accent rounded-lg p-2.5 text-right transition-colors border border-transparent hover:border-primary/30"
+                      onClick={() => {
+                        setFormData(suggestion.form);
+                        setShowSuggestions(false);
+                      }}
+                    >
+                      <p className="text-xs font-medium">{suggestion.label}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{suggestion.description}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-4 mt-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
