@@ -22,6 +22,7 @@ const statusConfig: Record<string, { label: string; icon: any; className: string
   sending: { label: "جاري الإرسال", icon: Send, className: "bg-warning/10 text-warning" },
   sent: { label: "تم الإرسال", icon: Check, className: "bg-success/10 text-success" },
   failed: { label: "فشل", icon: AlertCircle, className: "bg-destructive/10 text-destructive" },
+  recurring: { label: "متكررة", icon: Repeat, className: "bg-primary/10 text-primary" },
 };
 
 interface Recipient {
