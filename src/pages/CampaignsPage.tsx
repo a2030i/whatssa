@@ -264,17 +264,109 @@ const CampaignsPage = () => {
 
   const exportReport = () => {
     if (!detailCampaign || recipients.length === 0) return;
-    const csv = [
-      "الرقم,الاسم,الحالة,وقت الإرسال,وقت التوصيل,وقت القراءة,كود الخطأ,سبب الخطأ",
-      ...recipients.map((r) => `"${r.phone}","${r.customer_name || ""}","${r.status}","${r.sent_at || ""}","${r.delivered_at || ""}","${r.read_at || ""}","${r.error_code || ""}","${r.error_message || ""}"`),
-    ].join("\n");
-    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `campaign_${detailCampaign.name}_report.csv`;
-    a.click();
-    toast.success("تم تصدير التقرير");
+    const data = recipients.map((r) => ({
+      "الرقم": r.phone,
+      "الاسم": r.customer_name || "",
+      "الحالة": r.status === "pending" ? "قيد الانتظار" : r.status === "sent" ? "أُرسلت" : r.status === "delivered" ? "تم التوصيل" : r.status === "read" ? "تمت القراءة" : r.status === "failed" ? "فشل" : r.status,
+      "وقت الإرسال": r.sent_at ? new Date(r.sent_at).toLocaleString("ar-SA") : "",
+      "وقت التوصيل": r.delivered_at ? new Date(r.delivered_at).toLocaleString("ar-SA") : "",
+      "وقت القراءة": r.read_at ? new Date(r.read_at).toLocaleString("ar-SA") : "",
+      "كود الخطأ": r.error_code || "",
+      "سبب الخطأ": r.error_message || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws["!cols"] = [{ wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "تقرير الحملة");
+    XLSX.writeFile(wb, `حملة_${detailCampaign.name}_تقرير.xlsx`);
+    toast.success("تم تصدير التقرير كملف Excel");
+  };
+
+  const downloadTemplate = () => {
+    const selectedCh = whatsappChannels.find((c) => c.id === form.channelId);
+    const isMeta = selectedCh?.channel_type !== "evolution";
+
+    if (isMeta && templateVars.length > 0) {
+      // Meta template with variables: phone + variable columns
+      const headers = ["phone", ...templateVars.map((v) => v)];
+      const sampleRow = ["966501234567", ...templateVars.map(() => "")];
+      const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+      ws["!cols"] = headers.map(() => ({ wch: 20 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "المستلمون");
+      XLSX.writeFile(wb, `قالب_حملة_${form.templateName || "campaign"}.xlsx`);
+    } else if (!isMeta) {
+      // Evolution: phone + name + dynamic variable columns extracted from message
+      const placeholders = (form.messageText.match(/\{(\w+)\}/g) || []).map((p) => p.replace(/[{}]/g, "")).filter((p) => p !== "name");
+      const headers = ["phone", "name", ...placeholders];
+      const sampleRow = ["966501234567", "أحمد", ...placeholders.map(() => "")];
+      const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+      ws["!cols"] = headers.map(() => ({ wch: 20 }));
+      // Add note about placeholders
+      if (placeholders.length > 0) {
+        const noteWs = XLSX.utils.aoa_to_sheet([
+          ["متغيرات الرسالة"],
+          ["استخدم {name} لاسم العميل في نص الرسالة"],
+          ...placeholders.map((p) => [`استخدم {${p}} — العمود "${p}" في الإكسل`]),
+        ]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "المستلمون");
+        XLSX.utils.book_append_sheet(wb, noteWs, "تعليمات");
+        XLSX.writeFile(wb, "قالب_حملة_واتساب.xlsx");
+      } else {
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "المستلمون");
+        XLSX.writeFile(wb, "قالب_حملة_واتساب.xlsx");
+      }
+    } else {
+      // Meta without variables: just phone
+      const ws = XLSX.utils.aoa_to_sheet([["phone"], ["966501234567"]]);
+      ws["!cols"] = [{ wch: 20 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "المستلمون");
+      XLSX.writeFile(wb, "قالب_حملة.xlsx");
+    }
+    toast.success("تم تنزيل ملف القالب");
+  };
+
+  const resendFailed = async () => {
+    if (!detailCampaign) return;
+    const failedRecipients = recipients.filter((r) => r.status === "failed");
+    if (failedRecipients.length === 0) { toast.error("لا توجد رسائل فاشلة"); return; }
+
+    // Check 24h cooldown
+    const sentAt = detailCampaign.sent_at ? new Date(detailCampaign.sent_at) : null;
+    if (sentAt) {
+      const hoursSince = (Date.now() - sentAt.getTime()) / (1000 * 60 * 60);
+      if (hoursSince < 24) {
+        toast.error(`يرجى الانتظار ${Math.ceil(24 - hoursSince)} ساعة قبل إعادة الإرسال`);
+        return;
+      }
+    }
+
+    // Reset failed recipients to pending
+    const failedIds = failedRecipients.map((r) => r.id);
+    for (let i = 0; i < failedIds.length; i += 50) {
+      const batch = failedIds.slice(i, i + 50);
+      await supabase.from("campaign_recipients").update({
+        status: "pending",
+        error_code: null,
+        error_message: null,
+        failed_at: null,
+      } as any).in("id", batch);
+    }
+
+    // Trigger send
+    const { error } = await supabase.functions.invoke("send-campaign", {
+      body: { campaign_id: detailCampaign.id },
+    });
+    if (error) {
+      toast.error("فشل إعادة الإرسال: " + error.message);
+    } else {
+      toast.success(`بدأ إعادة إرسال ${failedRecipients.length} رسالة فاشلة`);
+      setDetailCampaign(null);
+      load();
+    }
   };
 
   const toggleTag = (tag: string, field: "audienceTags" | "excludeTags") => {
