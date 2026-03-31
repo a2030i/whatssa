@@ -43,6 +43,7 @@ interface ConversationListProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   hasSelection: boolean;
+  onNewConversation?: () => void;
 }
 
 const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }: ConversationListProps) => {
