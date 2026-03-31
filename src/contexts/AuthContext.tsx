@@ -84,10 +84,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const startImpersonation = async (targetOrgId: string) => {
     setImpersonatedOrgId(targetOrgId);
+    setIsEcommerce(false);
+    setHasMetaApi(false);
+
     const [orgRes, metaRes] = await Promise.all([
       supabase.from("organizations").select("is_ecommerce").eq("id", targetOrgId).maybeSingle(),
       supabase.from("whatsapp_config").select("id").eq("org_id", targetOrgId).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
     ]);
+
     setIsEcommerce(orgRes.data?.is_ecommerce || false);
     setHasMetaApi(!!metaRes.data);
   };
@@ -106,9 +110,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const stopImpersonation = () => {
     setImpersonatedOrgId(null);
-    if (orgId) {
-      refreshOrg();
+    if (!orgId) {
+      setIsEcommerce(false);
+      setHasMetaApi(false);
+      return;
     }
+
+    Promise.all([
+      supabase.from("organizations").select("is_ecommerce").eq("id", orgId).maybeSingle(),
+      supabase.from("whatsapp_config").select("id").eq("org_id", orgId).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
+    ]).then(([orgRes, metaRes]) => {
+      setIsEcommerce(orgRes.data?.is_ecommerce || false);
+      setHasMetaApi(!!metaRes.data);
+    });
   };
 
   useEffect(() => {

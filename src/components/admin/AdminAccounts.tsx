@@ -139,10 +139,10 @@ const AdminAccounts = () => {
 
   const { startImpersonation } = useAuth();
 
-  const impersonateOrg = (orgId: string) => {
+  const impersonateOrg = async (orgId: string) => {
     const org = orgs.find(o => o.id === orgId);
     toast.success(`دخول كعميل: ${org?.name || orgId.slice(0, 8)}`);
-    startImpersonation(orgId);
+    await startImpersonation(orgId);
     navigate("/");
   };
 

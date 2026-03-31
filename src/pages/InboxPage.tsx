@@ -253,6 +253,7 @@ const InboxPage = () => {
     const { data: evoConfig } = await supabase
       .from("whatsapp_config")
       .select("id, channel_type")
+      .eq("org_id", orgId)
       .eq("channel_type", "evolution")
       .eq("is_connected", true)
       .limit(1)

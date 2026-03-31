@@ -397,8 +397,8 @@ const AppSidebar = () => {
       <button
         onClick={() => setMobileOpen(true)}
         className={cn(
-          "md:hidden fixed left-3 z-50 w-10 h-10 rounded-xl bg-card shadow-card flex items-center justify-center border border-border/50",
-          isImpersonating ? "top-12" : "top-3"
+          "md:hidden fixed left-3 z-[60] w-10 h-10 rounded-xl bg-card shadow-card flex items-center justify-center border border-border/50",
+          isImpersonating ? "top-14" : "top-3"
         )}
       >
         <Menu className="w-5 h-5 text-foreground" />

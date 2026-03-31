@@ -42,27 +42,28 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
       {/* Impersonation Banner */}
       {isImpersonating && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            <span>أنت تعرض المنصة كعميل: <strong>{orgName}</strong></span>
+        <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-destructive text-destructive-foreground px-3 md:px-4 flex items-center justify-between gap-2 text-xs">
+          <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+            <Shield className="w-4 h-4 shrink-0" />
+            <span className="truncate">أنت تعرض المنصة كعميل: <strong>{orgName}</strong></span>
           </div>
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 text-xs gap-1 text-destructive-foreground hover:bg-destructive-foreground/20"
+            className="h-7 shrink-0 text-xs gap-1 text-destructive-foreground hover:bg-destructive-foreground/20"
             onClick={handleStopImpersonation}
           >
-            <X className="w-3 h-3" /> العودة للسوبر أدمن
+            <X className="w-3 h-3" />
+            <span className="hidden sm:inline">العودة للسوبر أدمن</span>
           </Button>
         </div>
       )}
 
       {/* Top notification bar */}
-      <div className={`fixed ${isImpersonating ? "top-9" : "top-0"} left-0 right-0 md:right-[240px] h-12 bg-card border-b border-border flex items-center justify-end px-4 z-30 transition-all`}>
+      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[240px] h-12 bg-card border-b border-border flex items-center justify-end px-4 z-30 transition-all`}>
         <NotificationBell />
       </div>
-      <main className={`md:mr-[240px] min-h-screen ${isImpersonating ? "pt-[84px]" : "pt-12"} ${isMobile && !hideBottomNav ? "pb-14" : ""} transition-all duration-300`}>
+      <main className={`md:mr-[240px] min-h-screen ${isImpersonating ? "pt-[88px]" : "pt-12"} ${isMobile && !hideBottomNav ? "pb-14" : ""} transition-all duration-300`}>
         {children}
       </main>
 
