@@ -171,12 +171,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
         </button>
       )}
       <div className={cn(
-        "rounded-xl px-4 py-2.5 text-sm",
+        "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
         msg.type === "note"
           ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
           : msg.sender === "agent"
-            ? "bg-card shadow-card text-foreground rounded-bl-sm"
-            : "gradient-whatsapp text-white rounded-br-sm shadow-md"
+            ? "bg-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] text-foreground rounded-bl-sm"
+            : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-md"
       )}>
         {msg.senderName && msg.sender === "customer" && conversation.conversationType === "group" && (
           <div className="text-[11px] font-bold mb-1" style={{ color: "#a8f0c8" }}>{msg.senderName}</div>
