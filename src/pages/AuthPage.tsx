@@ -102,7 +102,7 @@ const AuthPage = () => {
       <div className="w-full max-w-[400px] space-y-6">
         {/* Logo */}
         <div className="text-center space-y-3">
-          <img src={respondlyLogo} alt="Respondly" className="h-14 mx-auto object-contain" />
+          <img src={respondlyLogo} alt="Respondly" className="h-28 mx-auto object-contain" />
           <p className="text-sm text-muted-foreground">
             {step === "email" && "أدخل بريدك الإلكتروني للمتابعة"}
             {step === "password" && "أدخل كلمة المرور لتسجيل الدخول"}
