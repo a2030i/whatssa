@@ -106,6 +106,7 @@ const AutomationPage = () => {
     setFormActionType("reply");
     setFormActionTag("");
     setFormActionTeamId("");
+    setFormChannelIds([]);
     setDialogOpen(true);
   };
 
