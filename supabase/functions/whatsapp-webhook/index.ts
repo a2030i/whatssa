@@ -116,10 +116,18 @@ async function processChatbotFlow(
   // No active session — check if any flow should be triggered
   const { data: flows } = await client
     .from("chatbot_flows")
-    .select("id, trigger_type, trigger_keywords, welcome_message, nodes, name")
+    .select("id, trigger_type, trigger_keywords, welcome_message, nodes, name, channel_ids")
     .eq("org_id", orgId)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
+
+  if (!flows || flows.length === 0) return false;
+
+  // Filter flows by channel
+  const filteredFlows = flows.filter((flow: any) => {
+    if (!flow.channel_ids || flow.channel_ids.length === 0) return true; // No restriction
+    return channelConfigId ? flow.channel_ids.includes(channelConfigId) : true;
+  });
 
   if (!flows || flows.length === 0) return false;
 
