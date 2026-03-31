@@ -271,60 +271,67 @@ const CustomersPage = () => {
   }
 
   return (
-    <div className="p-3 md:p-6 space-y-4 max-w-[1000px]" dir="rtl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">العملاء</h1>
-          <p className="text-sm text-muted-foreground">{customers.length} عميل</p>
+    <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1100px] mx-auto" dir="rtl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/15">
+            <Users className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-foreground tracking-tight">العملاء</h1>
+            <p className="text-sm text-muted-foreground">{customers.length} عميل مسجّل</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button size="sm" variant="outline" className="text-xs gap-1" onClick={handleExport}>
-            <Download className="w-3 h-3" /> تصدير
+          <Button size="sm" variant="outline" className="text-xs gap-1.5 rounded-xl border-border/50 hover:bg-secondary/60" onClick={handleExport}>
+            <Download className="w-3.5 h-3.5" /> تصدير
           </Button>
-          <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => fileRef.current?.click()}>
-            <Upload className="w-3 h-3" /> استيراد
+          <Button size="sm" variant="outline" className="text-xs gap-1.5 rounded-xl border-border/50 hover:bg-secondary/60" onClick={() => fileRef.current?.click()}>
+            <Upload className="w-3.5 h-3.5" /> استيراد
           </Button>
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
-          <Button size="sm" className="text-xs gap-1" onClick={() => { setEditCustomer(null); resetForm(); setShowAdd(true); }}>
-            <UserPlus className="w-3 h-3" /> إضافة عميل
+          <Button size="sm" className="text-xs gap-1.5 rounded-xl gradient-primary text-primary-foreground shadow-glow" onClick={() => { setEditCustomer(null); resetForm(); setShowAdd(true); }}>
+            <UserPlus className="w-3.5 h-3.5" /> إضافة عميل
           </Button>
         </div>
       </div>
 
       {/* Stage summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in">
         {stageCounts.map((s) => (
           <button
             key={s.value}
             onClick={() => setStageFilter(stageFilter === s.value ? "all" : s.value)}
-            className={`rounded-lg p-3 text-right transition-all border ${
-              stageFilter === s.value ? "ring-2 ring-primary border-primary" : "border-border hover:border-primary/50"
-            } bg-card`}
+            className={`group rounded-2xl p-4 text-right transition-all duration-200 border backdrop-blur-sm ${
+              stageFilter === s.value ? "ring-2 ring-primary border-primary/30 bg-primary/5" : "border-border/40 hover:border-primary/30 bg-card/70"
+            }`}
           >
             <div className="flex items-center justify-between">
-              <s.icon className="w-4 h-4 text-muted-foreground" />
-              <span className="text-lg font-bold">{s.count}</span>
+              <div className="w-8 h-8 rounded-xl bg-secondary/60 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <s.icon className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <span className="text-2xl font-black">{s.count}</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">{s.label}</p>
+            <p className="text-xs text-muted-foreground mt-2 font-medium">{s.label}</p>
           </button>
         ))}
       </div>
 
       <div className="relative max-w-sm">
         <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="بحث بالاسم أو الرقم..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm" />
+        <Input placeholder="بحث بالاسم أو الرقم..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm bg-card/70 backdrop-blur-sm border-border/40 rounded-xl" />
       </div>
 
-      <div className="bg-card rounded-xl shadow-card overflow-x-auto">
+      <div className="bg-card/70 backdrop-blur-sm rounded-2xl shadow-card border border-border/40 overflow-x-auto">
         <table className="w-full text-sm min-w-[600px]">
           <thead>
-            <tr className="border-b border-border text-muted-foreground text-[11px]">
-              <th className="text-right p-3">الاسم</th>
-              <th className="text-right p-3">الجوال</th>
-              <th className="text-right p-3">المرحلة</th>
-              <th className="text-right p-3 hidden md:table-cell">الإيميل</th>
-              <th className="text-right p-3">التصنيفات</th>
-              <th className="text-right p-3 w-20">إجراء</th>
+            <tr className="border-b border-border/30 text-muted-foreground text-[11px] bg-secondary/20">
+              <th className="text-right p-3.5 font-semibold">الاسم</th>
+              <th className="text-right p-3.5 font-semibold">الجوال</th>
+              <th className="text-right p-3.5 font-semibold">المرحلة</th>
+              <th className="text-right p-3.5 font-semibold hidden md:table-cell">الإيميل</th>
+              <th className="text-right p-3.5 font-semibold">التصنيفات</th>
+              <th className="text-right p-3.5 font-semibold w-20">إجراء</th>
             </tr>
           </thead>
           <tbody>

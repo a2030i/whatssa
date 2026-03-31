@@ -135,17 +135,22 @@ const OrdersPage = () => {
   if (loading) return <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="p-3 md:p-6 space-y-5" dir="rtl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2"><ShoppingCart className="w-5 h-5 text-primary" /> الطلبات</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">إدارة ومتابعة طلبات المتجر</p>
+    <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1100px] mx-auto" dir="rtl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-warning/10 flex items-center justify-center ring-1 ring-warning/15">
+            <ShoppingCart className="w-5 h-5 text-warning" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-foreground tracking-tight">الطلبات</h1>
+            <p className="text-sm text-muted-foreground">إدارة ومتابعة طلبات المتجر</p>
+          </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={exportOrders}>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs rounded-xl border-border/50" onClick={exportOrders}>
             <Download className="w-3.5 h-3.5" /> تصدير
           </Button>
-          <Button size="sm" className="gap-1.5 text-xs" onClick={getAiInsights} disabled={aiLoading}>
+          <Button size="sm" className="gap-1.5 text-xs rounded-xl gradient-primary text-primary-foreground shadow-glow" onClick={getAiInsights} disabled={aiLoading}>
             {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
             تحليل ذكي
           </Button>
@@ -153,24 +158,26 @@ const OrdersPage = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in">
         {kpiCards.map((kpi) => (
-          <div key={kpi.label} className="bg-card rounded-xl shadow-card p-4">
+          <div key={kpi.label} className="group bg-card/70 backdrop-blur-sm rounded-2xl border border-border/40 p-4 hover:border-border/80 transition-all">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground">{kpi.label}</span>
-              <kpi.icon className={cn("w-4 h-4", kpi.color)} />
+              <span className="text-xs text-muted-foreground font-medium">{kpi.label}</span>
+              <kpi.icon className={cn("w-4 h-4 transition-transform group-hover:scale-110", kpi.color)} />
             </div>
-            <p className="text-xl font-bold">{kpi.value}</p>
+            <p className="text-xl font-black">{kpi.value}</p>
           </div>
         ))}
       </div>
 
       {/* AI Insights */}
       {aiInsight && (
-        <div className="bg-gradient-to-l from-primary/5 to-accent/30 rounded-xl p-4 border border-primary/10">
+        <div className="bg-gradient-to-l from-primary/5 to-accent/20 rounded-2xl p-5 border border-primary/10 backdrop-blur-sm animate-fade-in">
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold">تحليل الذكاء الاصطناعي</h3>
+            <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <h3 className="text-sm font-bold">تحليل الذكاء الاصطناعي</h3>
           </div>
           <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">{aiInsight}</p>
         </div>

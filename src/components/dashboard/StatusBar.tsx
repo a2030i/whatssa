@@ -1,4 +1,4 @@
-import { Wifi, WifiOff, Phone, ShieldCheck, ShieldX, Signal, Gauge, RefreshCw, Clock, AlertTriangle } from "lucide-react";
+import { Wifi, WifiOff, Phone, ShieldCheck, ShieldX, Signal, Gauge, Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardData } from "@/hooks/useDashboardData";
 import { format } from "date-fns";
@@ -16,16 +16,16 @@ interface StatusItem {
 }
 
 const statusColors = {
-  success: "bg-success/10 text-success border-success/20",
-  warning: "bg-warning/10 text-warning border-warning/20",
-  danger: "bg-destructive/10 text-destructive border-destructive/20",
-  neutral: "bg-muted text-muted-foreground border-border",
+  success: "bg-success/8 text-success border-success/15 shadow-[0_0_15px_-3px_hsl(var(--success)/0.15)]",
+  warning: "bg-warning/8 text-warning border-warning/15 shadow-[0_0_15px_-3px_hsl(var(--warning)/0.15)]",
+  danger: "bg-destructive/8 text-destructive border-destructive/15 shadow-[0_0_15px_-3px_hsl(var(--destructive)/0.15)]",
+  neutral: "bg-muted/50 text-muted-foreground border-border/50",
 };
 
 const dotColors = {
-  success: "bg-success",
-  warning: "bg-warning",
-  danger: "bg-destructive",
+  success: "bg-success shadow-[0_0_6px_hsl(var(--success)/0.6)]",
+  warning: "bg-warning shadow-[0_0_6px_hsl(var(--warning)/0.6)]",
+  danger: "bg-destructive shadow-[0_0_6px_hsl(var(--destructive)/0.6)]",
   neutral: "bg-muted-foreground",
 };
 
@@ -97,12 +97,15 @@ const StatusBar = ({ data }: StatusBarProps) => {
     : "لم تتم المزامنة";
 
   return (
-    <div className="bg-card rounded-xl border border-border shadow-card p-4 animate-fade-in">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-bold text-foreground">حالة الحساب</h2>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+    <div className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/40 shadow-card p-5 animate-fade-in">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+          <div className="w-1.5 h-5 rounded-full bg-primary" />
+          حالة الحساب
+        </h2>
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-secondary/50 rounded-lg px-2.5 py-1">
           <Clock className="w-3 h-3" />
-          <span>آخر تحديث: {lastSync}</span>
+          <span>{lastSync}</span>
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -110,16 +113,16 @@ const StatusBar = ({ data }: StatusBarProps) => {
           <div
             key={item.label}
             className={cn(
-              "rounded-lg border px-3 py-2.5 flex flex-col gap-1.5 transition-all",
+              "rounded-xl border px-3.5 py-3 flex flex-col gap-2 transition-all hover:scale-[1.02] duration-200",
               statusColors[item.status]
             )}
           >
             <div className="flex items-center gap-2">
-              <item.icon className="w-4 h-4" />
-              <span className="text-[11px] font-medium opacity-80">{item.label}</span>
+              <item.icon className="w-4 h-4 opacity-70" />
+              <span className="text-[11px] font-medium opacity-70">{item.label}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className={cn("w-2 h-2 rounded-full animate-pulse", dotColors[item.status])} />
+            <div className="flex items-center gap-2">
+              <div className={cn("w-2 h-2 rounded-full", dotColors[item.status])} />
               <span className="text-sm font-bold">{item.value}</span>
             </div>
           </div>
