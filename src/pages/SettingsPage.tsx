@@ -184,41 +184,75 @@ const SettingsPage = () => {
     toast.success("تم حفظ البيانات");
   };
 
+  const updateOoh = (key: string, value: any) => {
+    setOohSettings(prev => ({
+      ...prev,
+      [selectedOohChannel]: { ...(prev[selectedOohChannel] || defaultOoh), [key]: value }
+    }));
+  };
+
+  const updateSat = (key: string, value: any) => {
+    setSatSettings(prev => ({
+      ...prev,
+      [selectedSatChannel]: { ...(prev[selectedSatChannel] || defaultSat), [key]: value }
+    }));
+  };
+
   const saveOohSettings = async () => {
     setSavingOoh(true);
-    const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
-    const currentSettings = (org?.settings as Record<string, any>) || {};
-    await supabase.from("organizations").update({
-      settings: {
-        ...currentSettings,
-        out_of_hours_enabled: oohEnabled,
-        out_of_hours_message: oohMessage,
-        work_start: oohWorkStart,
-        work_end: oohWorkEnd,
-        work_days: oohWorkDays,
-      },
-    }).eq("id", orgId);
+    const s = oohSettings[selectedOohChannel] || defaultOoh;
+    if (selectedOohChannel === "global") {
+      const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+      const currentSettings = (org?.settings as Record<string, any>) || {};
+      await supabase.from("organizations").update({
+        settings: {
+          ...currentSettings,
+          out_of_hours_enabled: s.enabled,
+          out_of_hours_message: s.message,
+          work_start: s.work_start,
+          work_end: s.work_end,
+          work_days: s.work_days,
+        },
+      }).eq("id", orgId);
+    } else {
+      // Save to channel's settings
+      const { data: ch } = await supabase.from("whatsapp_config" as any).select("settings").eq("id", selectedOohChannel).single();
+      const chSettings = ((ch as any)?.settings as Record<string, any>) || {};
+      await supabase.from("whatsapp_config" as any).update({
+        settings: { ...chSettings, ooh: s },
+      }).eq("id", selectedOohChannel);
+    }
     toast.success("تم حفظ إعدادات الرسالة خارج الدوام");
     setSavingOoh(false);
   };
 
   const saveSatSettings = async () => {
     setSavingSat(true);
-    const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
-    const currentSettings = (org?.settings as Record<string, any>) || {};
-    await supabase.from("organizations").update({
-      settings: {
-        ...currentSettings,
-        satisfaction_enabled: satEnabled,
-        satisfaction_message: satMessage,
-      },
-    }).eq("id", orgId);
+    const s = satSettings[selectedSatChannel] || defaultSat;
+    if (selectedSatChannel === "global") {
+      const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+      const currentSettings = (org?.settings as Record<string, any>) || {};
+      await supabase.from("organizations").update({
+        settings: {
+          ...currentSettings,
+          satisfaction_enabled: s.enabled,
+          satisfaction_message: s.message,
+        },
+      }).eq("id", orgId);
+    } else {
+      const { data: ch } = await supabase.from("whatsapp_config" as any).select("settings").eq("id", selectedSatChannel).single();
+      const chSettings = ((ch as any)?.settings as Record<string, any>) || {};
+      await supabase.from("whatsapp_config" as any).update({
+        settings: { ...chSettings, sat: s },
+      }).eq("id", selectedSatChannel);
+    }
     toast.success("تم حفظ إعدادات استبيان الرضا");
     setSavingSat(false);
   };
 
   const toggleOohDay = (day: number) => {
-    setOohWorkDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort());
+    const current = currentOoh.work_days;
+    updateOoh("work_days", current.includes(day) ? current.filter((d: number) => d !== day) : [...current, day].sort());
   };
 
   return (
