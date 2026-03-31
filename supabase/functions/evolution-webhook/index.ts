@@ -423,12 +423,25 @@ serve(async (req) => {
               if (existingMsg) continue;
             }
 
+            // Upload media for outgoing messages (images, videos, audio, documents)
+            let outgoingMediaUrl: string | null = null;
+            if (messageType !== "text") {
+              outgoingMediaUrl = await uploadMediaFromEvolution({
+                instanceName,
+                key,
+                conversationId: existingConv.id,
+                messageType,
+                supabase,
+                orgId,
+              });
+            }
+
             await supabase.from("messages").insert({
               conversation_id: existingConv.id,
               sender: "agent",
               message_type: messageType,
               content: text || `[${messageType}]`,
-              media_url: mediaUrl,
+              media_url: outgoingMediaUrl,
               wa_message_id: key.id || null,
               status: "delivered",
             });
@@ -439,7 +452,7 @@ serve(async (req) => {
             }).eq("id", existingConv.id);
 
             await logToSystem(supabase, "info", `رسالة صادرة من الجوال (Evolution) إلى ${phone}`, {
-              type: messageType, wa_message_id: key.id,
+              type: messageType, has_media: !!outgoingMediaUrl, wa_message_id: key.id,
             }, orgId);
           }
           continue;
