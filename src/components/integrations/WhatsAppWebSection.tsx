@@ -284,9 +284,36 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
           <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
             <QrCode className="w-4 h-4 text-warning" />
           </div>
-          <div>
+           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-sm">واتساب ويب</h2>
+              {editingLabel ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    value={labelText}
+                    onChange={(e) => setLabelText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        supabase.from("whatsapp_config").update({ channel_label: labelText.trim() || null }).eq("id", existingConfig?.id).then(() => { setEditingLabel(false); toast.success("تم تحديث الاسم"); loadExistingConfig(); });
+                      }
+                      if (e.key === "Escape") setEditingLabel(false);
+                    }}
+                    className="h-6 text-xs w-28 bg-secondary border-0"
+                    placeholder="اسم القناة..."
+                    autoFocus
+                  />
+                  <button onClick={() => { supabase.from("whatsapp_config").update({ channel_label: labelText.trim() || null }).eq("id", existingConfig?.id).then(() => { setEditingLabel(false); toast.success("تم تحديث الاسم"); loadExistingConfig(); }); }} className="text-success"><Check className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => setEditingLabel(false)} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 group">
+                  <h2 className="font-semibold text-sm">{existingConfig?.channel_label || "واتساب ويب"}</h2>
+                  {existingConfig && (
+                    <button onClick={() => { setEditingLabel(true); setLabelText(existingConfig?.channel_label || ""); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary">
+                      <Pencil className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                </div>
+              )}
               <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-warning border-warning/30">غير رسمي</Badge>
               {instanceStatus === "connected" && (
                 <Badge className="bg-success/10 text-success border-0 text-[9px] gap-0.5">
