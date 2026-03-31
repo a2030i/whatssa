@@ -50,6 +50,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
+  const [channelFilter, setChannelFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
@@ -177,13 +178,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
         case "closed": if (conv.status !== "closed") return false; break;
       }
       if (agentFilter !== "all" && conv.assignedTo !== agentFilter) return false;
+      if (channelFilter !== "all") {
+        if (channelFilter === "meta_api" && conv.channelType !== "meta_api") return false;
+        if (channelFilter === "evolution" && conv.channelType !== "evolution") return false;
+      }
       if (selectedTags.length > 0 && !selectedTags.some((t) => conv.tags.includes(t))) return false;
       return true;
     });
-  }, [conversations, searchQuery, activeQuickFilter, agentFilter, selectedTags, activeInbox]);
+  }, [conversations, searchQuery, activeQuickFilter, agentFilter, channelFilter, selectedTags, activeInbox]);
 
-  const hasActiveFilters = agentFilter !== "all" || selectedTags.length > 0 || !!activeCustomInbox;
-  const clearFilters = () => { setAgentFilter("all"); setSelectedTags([]); setActiveCustomInbox(null); setActiveQuickFilter("all"); };
+  const hasActiveFilters = agentFilter !== "all" || channelFilter !== "all" || selectedTags.length > 0 || !!activeCustomInbox;
+  const clearFilters = () => { setAgentFilter("all"); setChannelFilter("all"); setSelectedTags([]); setActiveCustomInbox(null); setActiveQuickFilter("all"); };
   const toggleTag = (tag: string) => setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
 
   return (
@@ -338,6 +343,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
               <SelectContent>
                 <SelectItem value="all">كل الموظفين</SelectItem>
                 {allAgents.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="h-8 text-xs bg-card border-0"><SelectValue placeholder="القناة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل القنوات</SelectItem>
+                <SelectItem value="meta_api">رسمي (Meta API)</SelectItem>
+                <SelectItem value="evolution">غير رسمي (QR)</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -37,8 +37,103 @@ interface TemplateFormData {
 
 const emptyForm: TemplateFormData = { name: "", category: "utility", headerType: "NONE", header: "", headerUrl: "", body: "", footer: "", buttons: [] };
 
+// ── نماذج قوالب جاهزة للمتاجر ──
+interface TemplateSuggestion {
+  label: string;
+  description: string;
+  form: TemplateFormData;
+}
+
+const ecommerceTemplateSuggestions: TemplateSuggestion[] = [
+  {
+    label: "طلب جديد",
+    description: "إشعار العميل بتأكيد الطلب",
+    form: {
+      name: "order_confirmation",
+      category: "utility",
+      headerType: "TEXT",
+      header: "تأكيد الطلب ✅",
+      headerUrl: "",
+      body: "مرحباً {{1}}،\n\nتم استلام طلبك رقم #{{2}} بنجاح!\n\nالمبلغ الإجمالي: {{3}} ريال\n\nسنقوم بتحديثك فور شحن الطلب. شكراً لتسوقك معنا! 🛍️",
+      footer: "للاستفسار، تواصل معنا هنا",
+      buttons: [],
+    },
+  },
+  {
+    label: "تم الشحن",
+    description: "إبلاغ العميل بشحن الطلب",
+    form: {
+      name: "order_shipped",
+      category: "utility",
+      headerType: "TEXT",
+      header: "طلبك في الطريق 🚚",
+      headerUrl: "",
+      body: "مرحباً {{1}}،\n\nتم شحن طلبك رقم #{{2}}!\n\nيمكنك تتبع شحنتك عبر الرابط أدناه.\n\nنتمنى لك تجربة رائعة! ✨",
+      footer: "",
+      buttons: [{ type: "url", text: "تتبع الشحنة", value: "https://example.com/track/{{1}}" }],
+    },
+  },
+  {
+    label: "تم التوصيل",
+    description: "تأكيد وصول الطلب وطلب التقييم",
+    form: {
+      name: "order_delivered",
+      category: "utility",
+      headerType: "TEXT",
+      header: "وصل طلبك! 🎉",
+      headerUrl: "",
+      body: "مرحباً {{1}}،\n\nتم توصيل طلبك رقم #{{2}} بنجاح!\n\nنتمنى أن تكون راضياً عن المنتجات. رأيك يهمنا!\n\nشكراً لثقتك بنا 💚",
+      footer: "",
+      buttons: [],
+    },
+  },
+  {
+    label: "سلة متروكة",
+    description: "تذكير العميل بإتمام الشراء",
+    form: {
+      name: "abandoned_cart_reminder",
+      category: "marketing",
+      headerType: "TEXT",
+      header: "ما تنسى سلتك! 🛒",
+      headerUrl: "",
+      body: "مرحباً {{1}}،\n\nلاحظنا إنك ما أكملت طلبك بعد!\n\nعندك منتجات بقيمة {{2}} ريال في سلتك.\n\nأكمل طلبك الحين قبل نفاد الكمية ⏰",
+      footer: "",
+      buttons: [{ type: "url", text: "أكمل الطلب", value: "{{1}}" }],
+    },
+  },
+  {
+    label: "رسالة ترحيب",
+    description: "ترحيب بالعميل الجديد",
+    form: {
+      name: "welcome_customer",
+      category: "marketing",
+      headerType: "TEXT",
+      header: "أهلاً وسهلاً! 👋",
+      headerUrl: "",
+      body: "مرحباً {{1}}،\n\nحياك الله في متجرنا! 🎉\n\nنحن سعداء بانضمامك. تصفّح أحدث المنتجات واستمتع بتجربة تسوق مميزة.\n\nلأي استفسار، نحن هنا لخدمتك!",
+      footer: "",
+      buttons: [],
+    },
+  },
+  {
+    label: "تحديث حالة الطلب",
+    description: "إشعار عام بتغيّر حالة الطلب",
+    form: {
+      name: "order_status_update",
+      category: "utility",
+      headerType: "NONE",
+      header: "",
+      headerUrl: "",
+      body: "مرحباً {{1}}،\n\nتم تحديث حالة طلبك رقم #{{2}} إلى: {{3}}\n\nللمزيد من التفاصيل، لا تتردد بالتواصل معنا.",
+      footer: "متجرك الإلكتروني",
+      buttons: [],
+    },
+  },
+];
+
 const TemplatesPage = () => {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -383,6 +478,39 @@ const TemplatesPage = () => {
                 : "أنشئ قالب رسالة جديد يُرسل مباشرة إلى Meta للمراجعة"}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Template Suggestions - only in create mode */}
+          {!isEditing && (
+            <div className="mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs gap-2 border-dashed"
+                onClick={() => setShowSuggestions(!showSuggestions)}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                {showSuggestions ? "إخفاء النماذج الجاهزة" : "📋 نماذج جاهزة للمتاجر — اضغط للاختيار"}
+              </Button>
+              {showSuggestions && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {ecommerceTemplateSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.form.name}
+                      className="bg-secondary hover:bg-accent rounded-lg p-2.5 text-right transition-colors border border-transparent hover:border-primary/30"
+                      onClick={() => {
+                        setFormData(suggestion.form);
+                        setShowSuggestions(false);
+                      }}
+                    >
+                      <p className="text-xs font-medium">{suggestion.label}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{suggestion.description}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-4 mt-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

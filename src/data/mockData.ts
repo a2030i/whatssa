@@ -16,6 +16,8 @@ export interface Conversation {
   lastCustomerMessageAt?: string;
   conversationType?: "private" | "group" | "broadcast";
   channelType?: "meta_api" | "evolution";
+  channelId?: string;
+  channelName?: string;
 }
 
 export interface MessageTemplate {

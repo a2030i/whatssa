@@ -530,6 +530,7 @@ export type Database = {
           assigned_at: string | null
           assigned_team: string | null
           assigned_to: string | null
+          channel_id: string | null
           closed_at: string | null
           closed_by: string | null
           closure_reason_id: string | null
@@ -558,6 +559,7 @@ export type Database = {
           assigned_at?: string | null
           assigned_team?: string | null
           assigned_to?: string | null
+          channel_id?: string | null
           closed_at?: string | null
           closed_by?: string | null
           closure_reason_id?: string | null
@@ -586,6 +588,7 @@ export type Database = {
           assigned_at?: string | null
           assigned_team?: string | null
           assigned_to?: string | null
+          channel_id?: string | null
           closed_at?: string | null
           closed_by?: string | null
           closure_reason_id?: string | null
@@ -611,6 +614,20 @@ export type Database = {
           wa_conversation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "conversations_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_config_safe"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversations_closure_reason_id_fkey"
             columns: ["closure_reason_id"]
