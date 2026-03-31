@@ -285,7 +285,23 @@ const InboxPage = () => {
   const handleStatusChange = useCallback(async (convId: string, status: "active" | "waiting" | "closed") => {
     const conv = conversations.find(c => c.id === convId);
     const prevStatus = conv?.status;
-    await supabase.from("conversations").update({ status, ...(status === "closed" ? { closed_at: new Date().toISOString() } : {}) }).eq("id", convId);
+    const updateData: Record<string, unknown> = { 
+      status, 
+      updated_at: new Date().toISOString(),
+      ...(status === "closed" ? { closed_at: new Date().toISOString() } : { closed_at: null }),
+    };
+    
+    const { error: updateError } = await supabase
+      .from("conversations")
+      .update(updateData)
+      .eq("id", convId);
+    
+    if (updateError) {
+      console.error("Status update failed:", updateError);
+      toast.error("فشل تغيير الحالة: " + (updateError.message || "خطأ غير معروف"));
+      return;
+    }
+    
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, status } : conversation)));
 
     // Log status change as system message
