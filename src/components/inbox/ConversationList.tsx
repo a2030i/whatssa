@@ -192,11 +192,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
       {/* Header */}
       <div className="p-3 border-b border-border space-y-2 shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold">المحادثات</h1>
+          <h1 className="text-lg font-bold">
+            {activeInbox ? `${activeInbox.name}` : "المحادثات"}
+          </h1>
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => { setEditingInbox(null); setBuilderOpen(true); }}
+              className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground transition-colors"
+              title="محادثة جديدة / صندوق مخصص"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors" title="مسح الفلاتر">
-                <X className="w-4 h-4 text-destructive" />
+              <button onClick={clearFilters} className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors" title="إعادة ضبط">
+                <RotateCcw className="w-4 h-4 text-muted-foreground" />
               </button>
             )}
             <button
@@ -208,6 +217,41 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
             </button>
           </div>
         </div>
+
+        {/* Custom Inbox Chips */}
+        {customInboxes.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-1">
+            {customInboxes.map((inbox) => (
+              <div key={inbox.id} className="flex items-center gap-0.5 group">
+                <button
+                  onClick={() => {
+                    if (activeCustomInbox === inbox.id) {
+                      setActiveCustomInbox(null);
+                    } else {
+                      setActiveCustomInbox(inbox.id);
+                      setActiveQuickFilter("all");
+                    }
+                  }}
+                  className={cn(
+                    "text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap font-medium transition-colors flex items-center gap-1",
+                    activeCustomInbox === inbox.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-muted-foreground hover:bg-accent"
+                  )}
+                >
+                  <Inbox className="w-3 h-3" />
+                  {inbox.name}
+                </button>
+                <button
+                  onClick={() => { setEditingInbox(inbox); setBuilderOpen(true); }}
+                  className="hidden group-hover:flex p-0.5 rounded text-muted-foreground hover:text-primary"
+                >
+                  <Pencil className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="relative">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
