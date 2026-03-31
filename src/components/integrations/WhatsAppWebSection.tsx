@@ -34,6 +34,8 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [maxUnofficialPhones, setMaxUnofficialPhones] = useState<number>(1);
   const [unofficialCount, setUnofficialCount] = useState<number>(0);
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [labelText, setLabelText] = useState("");
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
