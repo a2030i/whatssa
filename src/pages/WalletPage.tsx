@@ -34,9 +34,16 @@ const WalletPage = () => {
   const redeemCoupon = async () => {
     if (!couponCode.trim()) return;
     setIsRedeeming(true);
-    const { data: coupon } = await supabase.from("coupons").select("*").eq("code", couponCode.toUpperCase()).eq("is_active", true).maybeSingle();
-    if (!coupon) { toast.error("كوبون غير صالح"); setIsRedeeming(false); return; }
-    if (coupon.max_uses > 0 && coupon.used_count >= coupon.max_uses) { toast.error("الكوبون منتهي الاستخدام"); setIsRedeeming(false); return; }
+
+    // Validate coupon via secure RPC (no direct table access)
+    const { data: result, error: rpcError } = await supabase.rpc("validate_coupon", { _code: couponCode.trim() });
+    if (rpcError || !result || !result.valid) {
+      toast.error(result?.error || "كوبون غير صالح");
+      setIsRedeeming(false);
+      return;
+    }
+
+    const coupon = result;
 
     const { data: existing } = await supabase.from("coupon_redemptions").select("id").eq("coupon_id", coupon.id).eq("org_id", orgId!).maybeSingle();
     if (existing) { toast.error("تم استخدام هذا الكوبون مسبقاً"); setIsRedeeming(false); return; }
@@ -50,11 +57,10 @@ const WalletPage = () => {
       await supabase.from("wallets").update({ balance: newBalance }).eq("id", wallet.id);
       await supabase.from("wallet_transactions").insert({
         wallet_id: wallet.id, org_id: orgId!, type: "credit", amount: discountAmount,
-        balance_after: newBalance, description: `كوبون خصم: ${coupon.code}`, reference_type: "coupon", reference_id: coupon.id,
+        balance_after: newBalance, description: `كوبون خصم: ${coupon.id}`, reference_type: "coupon", reference_id: coupon.id,
       });
     }
     await supabase.from("coupon_redemptions").insert({ coupon_id: coupon.id, org_id: orgId!, discount_amount: discountAmount });
-    await supabase.from("coupons").update({ used_count: coupon.used_count + 1 }).eq("id", coupon.id);
 
     toast.success(`تم تطبيق الكوبون! +${discountAmount.toFixed(2)} ر.س`);
     setCouponCode("");
