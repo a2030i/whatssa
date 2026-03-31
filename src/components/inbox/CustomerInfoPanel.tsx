@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Tag, Clock, Mail, Phone, StickyNote, MessageSquare, User, Users, Building2, ChevronDown, ChevronUp, Edit3, Plus, X, ExternalLink } from "lucide-react";
+import { Tag, Clock, Mail, Phone, StickyNote, MessageSquare, User, Users, Building2, ChevronDown, ChevronUp, Edit3, Plus, X, ExternalLink, Copy } from "lucide-react";
 import { Conversation } from "@/data/mockData";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
