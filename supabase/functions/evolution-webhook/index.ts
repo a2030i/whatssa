@@ -742,7 +742,7 @@ serve(async (req) => {
 
         // ── Chatbot flow processing ──
         if (messageType === "text" && content) {
-          const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, phone, content, "evolution", logToSystem);
+          const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, phone, content, "evolution", logToSystem, config.id);
           
           // ── Automation rules (only if chatbot didn't handle) ──
           if (!chatbotHandled) {
