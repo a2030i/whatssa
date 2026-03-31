@@ -41,17 +41,25 @@ const InboxPage = () => {
   }, [selectedId]);
 
   useEffect(() => {
+    if (!orgId) {
+      setTemplates([]);
+      return;
+    }
+
     const loadTemplates = async () => {
-      // Check if there's a Meta API config before calling templates
       const { data: metaConfig } = await supabase
         .from("whatsapp_config")
         .select("id")
+        .eq("org_id", orgId)
         .eq("channel_type", "meta_api")
         .eq("is_connected", true)
         .limit(1)
         .maybeSingle();
 
-      if (!metaConfig) return; // No Meta API config, skip templates
+      if (!metaConfig) {
+        setTemplates([]);
+        return;
+      }
 
       const { data, error } = await supabase.functions.invoke("whatsapp-templates", {
         body: { action: "list" },
@@ -63,16 +71,33 @@ const InboxPage = () => {
     };
 
     loadTemplates();
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
-    if (!orgId) return;
+    if (!orgId) {
+      setConversations([]);
+      setAllMessages({});
+      setSelectedId(null);
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    const currentOrgId = orgId;
+
+    setLoading(true);
+    setConversations([]);
+    setAllMessages({});
+    setSelectedId(null);
+
     const fetchConversations = async () => {
       const { data, error } = await supabase
         .from("conversations")
         .select("*")
-        .eq("org_id", orgId)
+        .eq("org_id", currentOrgId)
         .order("last_message_at", { ascending: false });
+
+      if (!active) return;
 
       if (error) {
         console.error("Error fetching conversations:", error);
@@ -97,8 +122,8 @@ const InboxPage = () => {
       }));
 
       setConversations(mapped);
-      if (!isMobile && mapped.length > 0 && !selectedIdRef.current) {
-        setSelectedId(mapped[0].id);
+      if (!isMobile && mapped.length > 0) {
+        setSelectedId((prev) => (prev && mapped.some((item) => item.id === prev) ? prev : mapped[0].id));
       }
       setLoading(false);
     };
@@ -106,16 +131,17 @@ const InboxPage = () => {
     fetchConversations();
 
     const channel = supabase
-      .channel("conversations-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {
+      .channel(`conversations-changes-${currentOrgId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `org_id=eq.${currentOrgId}` }, () => {
         fetchConversations();
       })
       .subscribe();
 
     return () => {
+      active = false;
       supabase.removeChannel(channel);
     };
-  }, [orgId]);
+  }, [orgId, isMobile]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -227,6 +253,7 @@ const InboxPage = () => {
     const { data: evoConfig } = await supabase
       .from("whatsapp_config")
       .select("id, channel_type")
+      .eq("org_id", orgId)
       .eq("channel_type", "evolution")
       .eq("is_connected", true)
       .limit(1)
