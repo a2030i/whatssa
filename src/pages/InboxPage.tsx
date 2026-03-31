@@ -115,7 +115,7 @@ const InboxPage = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
     if (!selectedId) return;
