@@ -284,36 +284,44 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
                         </Select>
                       </div>
 
-                      {/* Meta API: Template Config */}
+                      {/* Meta API: Template Select */}
                       {channelType === "meta_api" && (
-                        <div className="space-y-2">
-                          <div className="space-y-1">
-                            <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                              <FileText className="w-3 h-3" /> اسم القالب (Template Name)
-                            </Label>
-                            <Input
-                              value={cfg.template_name || ""}
-                              onChange={(e) => updateEventConfig(evt.key, { template_name: e.target.value })}
-                              placeholder="order_confirmation"
-                              className="text-xs h-8 font-mono"
-                              dir="ltr"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-[10px] text-muted-foreground">لغة القالب</Label>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <FileText className="w-3 h-3" /> القالب
+                          </Label>
+                          {loadingTemplates ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              جاري تحميل القوالب...
+                            </div>
+                          ) : templates.length === 0 ? (
+                            <p className="text-[10px] text-muted-foreground py-1">لا توجد قوالب معتمدة</p>
+                          ) : (
                             <Select
-                              value={cfg.template_language || "ar"}
-                              onValueChange={(v) => updateEventConfig(evt.key, { template_language: v })}
+                              value={cfg.template_name && cfg.template_language ? `${cfg.template_name}::${cfg.template_language}` : "none"}
+                              onValueChange={(v) => {
+                                if (v === "none") {
+                                  updateEventConfig(evt.key, { template_name: "", template_language: "" });
+                                } else {
+                                  const [name, lang] = v.split("::");
+                                  updateEventConfig(evt.key, { template_name: name, template_language: lang });
+                                }
+                              }}
                             >
                               <SelectTrigger className="h-8 text-xs">
-                                <SelectValue />
+                                <SelectValue placeholder="اختر القالب" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="ar" className="text-xs">العربية</SelectItem>
-                                <SelectItem value="en" className="text-xs">English</SelectItem>
+                                <SelectItem value="none" className="text-xs">بدون تحديد</SelectItem>
+                                {templates.map((t) => (
+                                  <SelectItem key={`${t.name}::${t.language}`} value={`${t.name}::${t.language}`} className="text-xs">
+                                    {t.name} ({t.language})
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
-                          </div>
+                          )}
                         </div>
                       )}
 
