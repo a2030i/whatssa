@@ -3,11 +3,12 @@ import {
   MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X,
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
-  Zap, Bell, CircleDot, Headphones, TrendingUp, Clock
+  Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,6 +20,7 @@ interface NavItem {
   badge?: string;
   ecommerceOnly?: boolean;
   metaApiOnly?: boolean;
+  lockedMessage?: string;
 }
 
 interface NavGroup {
