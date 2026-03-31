@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Key, Copy, Plus, Trash2, Shield, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Key, Copy, Plus, Trash2, Shield, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ interface ApiToken {
   id: string;
   name: string;
   token: string;
+  token_preview: string | null;
   permissions: string[];
   is_active: boolean;
   last_used_at: string | null;
@@ -38,9 +39,9 @@ const ApiTokensSection = () => {
   const [newName, setNewName] = useState("");
   const [newPerms, setNewPerms] = useState<string[]>(["messages", "customers", "orders", "conversations"]);
   const [creating, setCreating] = useState(false);
-  const [revealedTokens, setRevealedTokens] = useState<Set<string>>(new Set());
-  const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const [maxTokens, setMaxTokens] = useState<number>(2);
+  // Store the raw token just after creation — shown once only
+  const [justCreatedToken, setJustCreatedToken] = useState<{ id: string; raw: string } | null>(null);
 
   useEffect(() => {
     if (orgId) {
@@ -50,17 +51,9 @@ const ApiTokensSection = () => {
   }, [orgId]);
 
   const loadMaxTokens = async () => {
-    const { data: org } = await supabase
-      .from("organizations")
-      .select("plan_id")
-      .eq("id", orgId!)
-      .maybeSingle();
+    const { data: org } = await supabase.from("organizations").select("plan_id").eq("id", orgId!).maybeSingle();
     if (org?.plan_id) {
-      const { data: plan } = await supabase
-        .from("plans")
-        .select("max_api_tokens")
-        .eq("id", org.plan_id)
-        .maybeSingle();
+      const { data: plan } = await supabase.from("plans").select("max_api_tokens").eq("id", org.plan_id).maybeSingle();
       if (plan && (plan as any).max_api_tokens) setMaxTokens((plan as any).max_api_tokens);
     }
   };
@@ -69,7 +62,7 @@ const ApiTokensSection = () => {
     setLoading(true);
     const { data } = await supabase
       .from("api_tokens")
-      .select("*")
+      .select("id, name, token_preview, permissions, is_active, last_used_at, created_at, expires_at")
       .eq("org_id", orgId)
       .order("created_at", { ascending: false });
     setTokens((data as any) || []);
@@ -86,17 +79,22 @@ const ApiTokensSection = () => {
     const { data, error } = await supabase
       .from("api_tokens")
       .insert({ org_id: orgId, name: newName.trim(), permissions: newPerms, created_by: user?.id })
-      .select()
+      .select("id, token")
       .single();
     setCreating(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("تم إنشاء التوكن بنجاح");
+
+    const created = data as any;
+    // Immediately hash the token server-side
+    await supabase.rpc("hash_api_token" as any, { _token_id: created.id });
+
+    // Store raw token for one-time display
+    setJustCreatedToken({ id: created.id, raw: created.token });
+
+    toast.success("تم إنشاء التوكن — انسخه الآن! لن يظهر مرة أخرى.");
     setShowCreate(false);
     setNewName("");
     setNewPerms(["messages", "customers", "orders", "conversations"]);
-    const created = data as unknown as ApiToken;
-    setJustCreatedId(created.id);
-    setRevealedTokens(prev => new Set(prev).add(created.id));
     loadTokens();
   };
 
@@ -105,6 +103,7 @@ const ApiTokensSection = () => {
     const { error } = await supabase.from("api_tokens").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("تم حذف التوكن");
+    if (justCreatedToken?.id === id) setJustCreatedToken(null);
     loadTokens();
   };
 
@@ -118,8 +117,6 @@ const ApiTokensSection = () => {
     navigator.clipboard.writeText(token);
     toast.success("تم نسخ التوكن");
   };
-
-  const maskToken = (token: string) => token.slice(0, 8) + "••••••••••••••••" + token.slice(-4);
 
   const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-api`;
 
@@ -158,51 +155,66 @@ const ApiTokensSection = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {tokens.map((t) => (
-            <div key={t.id} className={cn("border rounded-lg p-4 space-y-3", justCreatedId === t.id && "ring-2 ring-primary/50", !t.is_active && "opacity-60")}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-sm">{t.name}</span>
-                  <Badge variant={t.is_active ? "default" : "secondary"} className="text-[10px]">
-                    {t.is_active ? "فعال" : "معطل"}
-                  </Badge>
+          {tokens.map((t) => {
+            const isJustCreated = justCreatedToken?.id === t.id;
+            return (
+              <div key={t.id} className={cn("border rounded-lg p-4 space-y-3", isJustCreated && "ring-2 ring-primary/50", !t.is_active && "opacity-60")}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-primary" />
+                    <span className="font-semibold text-sm">{t.name}</span>
+                    <Badge variant={t.is_active ? "default" : "secondary"} className="text-[10px]">
+                      {t.is_active ? "فعال" : "معطل"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={t.is_active} onCheckedChange={(v) => toggleActive(t.id, v)} />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteToken(t.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={t.is_active} onCheckedChange={(v) => toggleActive(t.id, v)} />
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteToken(t.id)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+
+                {/* Token display */}
+                {isJustCreated ? (
+                  <div className="space-y-2">
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <p className="text-xs text-primary font-medium">انسخ التوكن الآن — لن يظهر مرة أخرى بعد مغادرة هذه الصفحة!</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-secondary px-2 py-1 rounded text-xs font-mono flex-1 truncate" dir="ltr">
+                        {justCreatedToken.raw}
+                      </code>
+                      <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => copyToken(justCreatedToken.raw)}>
+                        <Copy className="w-3.5 h-3.5" /> نسخ
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <code className="bg-secondary px-2 py-1 rounded text-xs font-mono flex-1 truncate" dir="ltr">
+                      {t.token_preview || "••••••••••••••••"}
+                    </code>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-1">
+                  {t.permissions.map((p) => (
+                    <Badge key={p} variant="outline" className="text-[10px]">
+                      {allPermissions.find((ap) => ap.key === p)?.label || p}
+                    </Badge>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                  <span>أُنشئ: {new Date(t.created_at).toLocaleDateString("ar-SA")}</span>
+                  {t.last_used_at && <span>آخر استخدام: {new Date(t.last_used_at).toLocaleDateString("ar-SA")}</span>}
+                  {t.expires_at && <span>ينتهي: {new Date(t.expires_at).toLocaleDateString("ar-SA")}</span>}
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <code className="bg-secondary px-2 py-1 rounded text-xs font-mono flex-1 truncate" dir="ltr">
-                  {revealedTokens.has(t.id) ? t.token : maskToken(t.token)}
-                </code>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRevealedTokens(prev => { const n = new Set(prev); n.has(t.id) ? n.delete(t.id) : n.add(t.id); return n; })}>
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToken(t.token)}>
-                  <Copy className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap gap-1">
-                {t.permissions.map((p) => (
-                  <Badge key={p} variant="outline" className="text-[10px]">
-                    {allPermissions.find((ap) => ap.key === p)?.label || p}
-                  </Badge>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-                <span>أُنشئ: {new Date(t.created_at).toLocaleDateString("ar-SA")}</span>
-                {t.last_used_at && <span>آخر استخدام: {new Date(t.last_used_at).toLocaleDateString("ar-SA")}</span>}
-                {t.expires_at && <span>ينتهي: {new Date(t.expires_at).toLocaleDateString("ar-SA")}</span>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
