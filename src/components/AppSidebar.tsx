@@ -90,17 +90,13 @@ const AppSidebar = () => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState(false);
 
-  const navStructure = buildGroups(isEcommerce)
-    .map((item) => {
-      if (isGroup(item)) {
-        return {
-          ...item,
-          items: item.items.filter((i) => !i.metaApiOnly || hasMetaApi),
-        };
-      }
-      return !item.metaApiOnly || hasMetaApi ? item : null;
-    })
-    .filter(Boolean) as (NavItem | NavGroup)[];
+  const navStructure = buildGroups(isEcommerce, hasMetaApi);
+
+  const isLocked = (item: NavItem): boolean => {
+    if (item.metaApiOnly && !hasMetaApi) return true;
+    if (item.ecommerceOnly && !isEcommerce) return true;
+    return false;
+  };
 
   const isActive = (path: string) => location.pathname === path;
   const isGroupActive = (group: NavGroup) => group.items.some((i) => isActive(i.path));
