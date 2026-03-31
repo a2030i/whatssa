@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, FileText, Loader2, Plus, X } from "lucide-react";
+import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, FileText, Loader2, Plus, X, Save, Globe, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -37,6 +38,30 @@ interface NewConversationDialogProps {
 
 type Step = "contact" | "channel" | "message";
 
+const COUNTRY_CODES = [
+  { code: "966", flag: "🇸🇦", name: "السعودية", digits: 9 },
+  { code: "971", flag: "🇦🇪", name: "الإمارات", digits: 9 },
+  { code: "965", flag: "🇰🇼", name: "الكويت", digits: 8 },
+  { code: "973", flag: "🇧🇭", name: "البحرين", digits: 8 },
+  { code: "968", flag: "🇴🇲", name: "عُمان", digits: 8 },
+  { code: "974", flag: "🇶🇦", name: "قطر", digits: 8 },
+  { code: "20", flag: "🇪🇬", name: "مصر", digits: 10 },
+  { code: "962", flag: "🇯🇴", name: "الأردن", digits: 9 },
+  { code: "964", flag: "🇮🇶", name: "العراق", digits: 10 },
+  { code: "967", flag: "🇾🇪", name: "اليمن", digits: 9 },
+  { code: "218", flag: "🇱🇾", name: "ليبيا", digits: 9 },
+  { code: "212", flag: "🇲🇦", name: "المغرب", digits: 9 },
+  { code: "216", flag: "🇹🇳", name: "تونس", digits: 8 },
+  { code: "213", flag: "🇩🇿", name: "الجزائر", digits: 9 },
+  { code: "249", flag: "🇸🇩", name: "السودان", digits: 9 },
+  { code: "961", flag: "🇱🇧", name: "لبنان", digits: 8 },
+  { code: "963", flag: "🇸🇾", name: "سوريا", digits: 9 },
+  { code: "970", flag: "🇵🇸", name: "فلسطين", digits: 9 },
+  { code: "90", flag: "🇹🇷", name: "تركيا", digits: 10 },
+  { code: "44", flag: "🇬🇧", name: "بريطانيا", digits: 10 },
+  { code: "1", flag: "🇺🇸", name: "أمريكا", digits: 10 },
+];
+
 const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCreated }: NewConversationDialogProps) => {
   const { orgId } = useAuth();
   const [step, setStep] = useState<Step>("contact");
@@ -44,25 +69,38 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
-  const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("966");
+  const [localNumber, setLocalNumber] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [messageText, setMessageText] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null);
   const [templateVars, setTemplateVars] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [saveCustomer, setSaveCustomer] = useState(false);
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [isExistingCustomer, setIsExistingCustomer] = useState(false);
+
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
+  const fullPhone = `${countryCode}${localNumber.replace(/^0+/, "")}`;
+  const cleanDigits = localNumber.replace(/[^0-9]/g, "").replace(/^0+/, "");
+  const isValidNumber = cleanDigits.length === selectedCountry.digits;
 
   // Reset on open
   useEffect(() => {
     if (open) {
       setStep("contact");
       setSelectedChannel(null);
-      setPhone("");
+      setCountryCode("966");
+      setLocalNumber("");
       setCustomerName("");
       setMessageText("");
       setSelectedTemplate(null);
       setTemplateVars([]);
       setSearchQuery("");
+      setSaveCustomer(false);
+      setIsExistingCustomer(false);
+      setShowCountryPicker(false);
     }
   }, [open]);
 
@@ -81,36 +119,58 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     load();
   }, [orgId, open]);
 
-  // Search customers
+  // Search customers - triggered by searchQuery OR localNumber input
   useEffect(() => {
     if (!orgId || !open) return;
+    const query = searchQuery || localNumber;
+    if (!query.trim()) {
+      // Load recent customers
+      const load = async () => {
+        setLoadingCustomers(true);
+        const { data } = await supabase
+          .from("customers")
+          .select("id, name, phone")
+          .eq("org_id", orgId)
+          .order("updated_at", { ascending: false })
+          .limit(30);
+        setCustomers((data || []) as Customer[]);
+        setLoadingCustomers(false);
+      };
+      load();
+      return;
+    }
+
     const load = async () => {
       setLoadingCustomers(true);
-      let query = supabase
+      const { data } = await supabase
         .from("customers")
         .select("id, name, phone")
         .eq("org_id", orgId)
+        .or(`name.ilike.%${query}%,phone.ilike.%${query}%`)
         .order("updated_at", { ascending: false })
-        .limit(50);
-
-      if (searchQuery.trim()) {
-        query = query.or(`name.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`);
-      }
-
-      const { data } = await query;
+        .limit(30);
       setCustomers((data || []) as Customer[]);
       setLoadingCustomers(false);
     };
     const timer = setTimeout(load, 300);
     return () => clearTimeout(timer);
-  }, [orgId, open, searchQuery]);
+  }, [orgId, open, searchQuery, localNumber]);
 
   const isMeta = selectedChannel?.channel_type === "meta_api";
   const approvedTemplates = useMemo(() => templates.filter(t => t.status === "APPROVED"), [templates]);
 
   const selectCustomer = (c: Customer) => {
-    setPhone(c.phone);
+    // Parse phone - try to extract country code
+    const rawPhone = c.phone.replace(/[^0-9]/g, "");
+    const matched = COUNTRY_CODES.find(cc => rawPhone.startsWith(cc.code));
+    if (matched) {
+      setCountryCode(matched.code);
+      setLocalNumber(rawPhone.slice(matched.code.length));
+    } else {
+      setLocalNumber(rawPhone);
+    }
     setCustomerName(c.name || "");
+    setIsExistingCustomer(true);
     if (channels.length === 1) {
       setSelectedChannel(channels[0]);
       setStep("message");
@@ -119,9 +179,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     }
   };
 
-  const enterNewPhone = () => {
-    if (!phone.trim()) {
-      toast.error("أدخل رقم الهاتف");
+  const proceedWithNumber = () => {
+    if (!isValidNumber) {
+      toast.error(`الرقم يجب أن يكون ${selectedCountry.digits} أرقام بعد مفتاح الدولة`);
       return;
     }
     if (channels.length === 1) {
@@ -150,15 +210,26 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   };
 
   const handleSend = async () => {
-    if (!selectedChannel || !phone.trim()) return;
+    if (!selectedChannel || !isValidNumber) return;
 
     setSending(true);
     try {
-      // Normalize phone
-      const cleanPhone = phone.replace(/[^0-9+]/g, "");
+      const cleanPhone = fullPhone;
+
+      // Save customer if requested
+      if (saveCustomer && !isExistingCustomer && orgId) {
+        await supabase.from("customers").upsert(
+          {
+            org_id: orgId,
+            phone: cleanPhone,
+            name: customerName || null,
+            source: "manual",
+          },
+          { onConflict: "org_id,phone" }
+        );
+      }
 
       if (isMeta && selectedTemplate) {
-        // Send template via Meta API
         const { data, error } = await supabase.functions.invoke("whatsapp-send", {
           body: {
             to: cleanPhone,
@@ -171,7 +242,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         });
         if (error || data?.error) throw new Error(data?.error || "فشل إرسال القالب");
       } else if (!isMeta && messageText.trim()) {
-        // Send free text via Evolution
         const { data, error } = await supabase.functions.invoke("evolution-send", {
           body: {
             to: cleanPhone,
@@ -190,8 +260,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         return;
       }
 
-      // Find or wait for conversation to appear
-      // Check if conversation already exists
+      // Find or create conversation
       const { data: existingConv } = await supabase
         .from("conversations")
         .select("id")
@@ -205,7 +274,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       if (existingConv) {
         onConversationCreated(existingConv.id);
       } else {
-        // Create conversation manually
         const { data: newConv } = await supabase
           .from("conversations")
           .insert({
@@ -234,7 +302,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     }
   };
 
-  const canSend = isMeta ? !!selectedTemplate : messageText.trim().length > 0;
+  const canSend = isValidNumber && (isMeta ? !!selectedTemplate : messageText.trim().length > 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -247,7 +315,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             </div>
             محادثة جديدة
           </DialogTitle>
-          {/* Steps indicator */}
           <div className="flex items-center gap-2 mt-3">
             {(["contact", "channel", "message"] as Step[]).map((s, i) => {
               const labels = ["جهة الاتصال", "القناة", "الرسالة"];
@@ -275,24 +342,107 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         {/* Step: Contact */}
         {step === "contact" && (
           <div className="flex flex-col">
-            {/* New number input */}
+            {/* Phone input with country code */}
             <div className="p-4 pb-2 space-y-2">
-              <Label className="text-xs text-muted-foreground">أدخل رقم جديد أو اختر عميل</Label>
-              <div className="flex gap-2">
+              <Label className="text-xs text-muted-foreground">أدخل رقم الهاتف</Label>
+              <div className="flex gap-1.5" dir="ltr">
+                {/* Country code picker */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowCountryPicker(!showCountryPicker)}
+                    className="h-10 px-2.5 rounded-lg border border-input bg-background flex items-center gap-1 text-sm hover:bg-accent/50 transition-colors min-w-[90px]"
+                  >
+                    <span>{selectedCountry.flag}</span>
+                    <span className="text-xs font-medium">+{countryCode}</span>
+                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                  </button>
+
+                  {showCountryPicker && (
+                    <div className="absolute top-11 left-0 z-50 w-[220px] bg-popover border border-border rounded-xl shadow-lg overflow-hidden" dir="rtl">
+                      <ScrollArea className="h-[200px]">
+                        {COUNTRY_CODES.map((cc) => (
+                          <button
+                            key={cc.code}
+                            onClick={() => { setCountryCode(cc.code); setShowCountryPicker(false); }}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-3 py-2 text-right hover:bg-accent/50 transition-colors",
+                              cc.code === countryCode && "bg-primary/10"
+                            )}
+                          >
+                            <span>{cc.flag}</span>
+                            <span className="text-xs flex-1">{cc.name}</span>
+                            <span className="text-[10px] text-muted-foreground" dir="ltr">+{cc.code}</span>
+                          </button>
+                        ))}
+                      </ScrollArea>
+                    </div>
+                  )}
+                </div>
+
+                {/* Number input */}
                 <div className="relative flex-1">
-                  <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="966512345678+"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="pr-9 text-sm h-10 bg-background"
-                    dir="ltr"
+                    placeholder={`${"0".repeat(selectedCountry.digits)}`}
+                    value={localNumber}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, "");
+                      setLocalNumber(val);
+                      setIsExistingCustomer(false);
+                    }}
+                    className="text-sm h-10 bg-background font-mono tracking-wider"
+                    maxLength={selectedCountry.digits + 1}
                   />
                 </div>
-                <Button size="sm" className="h-10 px-4" onClick={enterNewPhone} disabled={!phone.trim()}>
+
+                {/* Next button */}
+                <Button
+                  size="sm"
+                  className="h-10 px-4"
+                  onClick={proceedWithNumber}
+                  disabled={!isValidNumber}
+                >
                   التالي
                 </Button>
               </div>
+
+              {/* Validation feedback */}
+              <div className="flex items-center justify-between">
+                <p className={cn(
+                  "text-[10px] transition-colors",
+                  localNumber.length > 0
+                    ? isValidNumber ? "text-emerald-500" : "text-destructive"
+                    : "text-muted-foreground"
+                )}>
+                  {localNumber.length > 0
+                    ? isValidNumber
+                      ? `✓ رقم صحيح: +${fullPhone}`
+                      : `${cleanDigits.length}/${selectedCountry.digits} أرقام`
+                    : `${selectedCountry.digits} أرقام بعد مفتاح الدولة`
+                  }
+                </p>
+
+                {/* Save customer checkbox */}
+                {!isExistingCustomer && localNumber.length > 0 && (
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={saveCustomer}
+                      onCheckedChange={(v) => setSaveCustomer(v === true)}
+                      className="w-3.5 h-3.5"
+                    />
+                    <span className="text-[10px] text-muted-foreground">حفظ كعميل</span>
+                  </label>
+                )}
+              </div>
+
+              {/* Customer name input (when saving) */}
+              {saveCustomer && !isExistingCustomer && (
+                <Input
+                  placeholder="اسم العميل (اختياري)"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="h-9 text-sm bg-background"
+                />
+              )}
             </div>
 
             {/* Divider */}
@@ -316,14 +466,14 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             </div>
 
             {/* Customer list */}
-            <ScrollArea className="h-[250px]">
+            <ScrollArea className="h-[200px]">
               <div className="px-2 pb-2">
                 {loadingCustomers ? (
-                  <div className="flex justify-center py-8">
+                  <div className="flex justify-center py-6">
                     <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : customers.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground text-xs">
+                  <div className="text-center py-6 text-muted-foreground text-xs">
                     لا يوجد عملاء
                   </div>
                 ) : (
@@ -353,7 +503,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           <div className="p-4 space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="w-4 h-4" />
-              <span dir="ltr">{phone}</span>
+              <span dir="ltr">+{fullPhone}</span>
               {customerName && <Badge variant="outline" className="text-[10px]">{customerName}</Badge>}
               <button onClick={() => setStep("contact")} className="mr-auto text-xs text-primary hover:underline">تغيير</button>
             </div>
@@ -408,7 +558,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             {/* Summary bar */}
             <div className="p-3 border-b border-border/30 flex items-center gap-2 text-xs text-muted-foreground bg-muted/30">
               <User className="w-3.5 h-3.5" />
-              <span>{customerName || phone}</span>
+              <span>{customerName || `+${fullPhone}`}</span>
               <span className="mx-1">•</span>
               {isMeta ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Wifi className="w-3.5 h-3.5 text-amber-500" />}
               <span>{selectedChannel.business_name || selectedChannel.display_phone || selectedChannel.evolution_instance_name}</span>
@@ -416,7 +566,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             </div>
 
             {isMeta ? (
-              /* Meta: Template picker */
               <div className="p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" />
@@ -489,7 +638,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                 )}
               </div>
             ) : (
-              /* Evolution: Free text */
               <div className="p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-primary" />
@@ -519,7 +667,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                {sending ? "جاري الإرسال..." : "إرسال"}
+                {sending ? "جاري الإرسال..." : saveCustomer ? "حفظ وإرسال" : "إرسال"}
               </Button>
             </div>
           </div>
