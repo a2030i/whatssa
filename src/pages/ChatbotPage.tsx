@@ -110,6 +110,7 @@ const ChatbotPage = () => {
         buttons: [],
       },
     ]);
+    setFormChannelIds([]);
     setQuickButtonsText("");
     setActiveTab("basics");
   };
