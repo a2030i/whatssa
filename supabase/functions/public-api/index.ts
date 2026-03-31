@@ -40,14 +40,36 @@ async function logToSystem(
 async function authenticateToken(apiKey: string) {
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  const { data: token, error } = await admin
+  // Hash the incoming token to compare against stored hashes
+  const encoder = new TextEncoder();
+  const data = encoder.encode(apiKey);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const tokenHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+  // Try hash-based lookup first, fallback to plain text for un-migrated tokens
+  let token = null;
+  const { data: hashMatch } = await admin
     .from("api_tokens")
     .select("id, org_id, permissions, is_active, expires_at")
-    .eq("token", apiKey)
+    .eq("token_hash", tokenHash)
     .eq("is_active", true)
     .maybeSingle();
 
-  if (error || !token) return null;
+  if (hashMatch) {
+    token = hashMatch;
+  } else {
+    // Fallback for tokens not yet hashed
+    const { data: plainMatch } = await admin
+      .from("api_tokens")
+      .select("id, org_id, permissions, is_active, expires_at")
+      .eq("token", apiKey)
+      .eq("is_active", true)
+      .maybeSingle();
+    token = plainMatch;
+  }
+
+  if (!token) return null;
 
   if (token.expires_at && new Date(token.expires_at) < new Date()) return null;
 

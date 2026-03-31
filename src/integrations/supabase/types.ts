@@ -202,6 +202,8 @@ export type Database = {
           org_id: string
           permissions: string[]
           token: string
+          token_hash: string | null
+          token_preview: string | null
         }
         Insert: {
           created_at?: string
@@ -214,6 +216,8 @@ export type Database = {
           org_id: string
           permissions?: string[]
           token?: string
+          token_hash?: string | null
+          token_preview?: string | null
         }
         Update: {
           created_at?: string
@@ -226,6 +230,8 @@ export type Database = {
           org_id?: string
           permissions?: string[]
           token?: string
+          token_hash?: string | null
+          token_preview?: string | null
         }
         Relationships: [
           {
@@ -2683,6 +2689,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      hash_api_token: { Args: { _token_id: string }; Returns: undefined }
       increment_unread: { Args: { conv_id: string }; Returns: undefined }
       validate_coupon: { Args: { _code: string }; Returns: Json }
     }
