@@ -73,6 +73,8 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [templates, setTemplates] = useState<MetaTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   useEffect(() => {
     if (open) {
