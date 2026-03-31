@@ -71,6 +71,7 @@ const IntegrationsPage = () => {
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editingLabelText, setEditingLabelText] = useState("");
   const [testSending, setTestSending] = useState(false);
+  const [showWhatsAppChoice, setShowWhatsAppChoice] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [twoStepPin, setTwoStepPin] = useState("");
   const [metaStatus, setMetaStatus] = useState<Record<string, {
