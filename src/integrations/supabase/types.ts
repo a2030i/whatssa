@@ -2621,6 +2621,9 @@ export type Database = {
       }
     }
     Functions: {
+      admin_get_hourly_messages: { Args: { _date?: string }; Returns: Json }
+      admin_get_system_stats: { Args: never; Returns: Json }
+      admin_get_top_orgs_usage: { Args: { _limit?: number }; Returns: Json }
       check_org_limit: {
         Args: { _check_type: string; _org_id: string }
         Returns: Json
