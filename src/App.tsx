@@ -30,6 +30,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import PaymentCallbackPage from "./pages/PaymentCallbackPage";
 import BillingPage from "./pages/BillingPage";
 import ScheduledMessagesPage from "./pages/ScheduledMessagesPage";
+import CustomPlanPage from "./pages/CustomPlanPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
