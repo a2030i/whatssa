@@ -352,6 +352,13 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
                 </div>
               </div>
 
+              {/* Profile Editor */}
+              {existingConfig?.id && (
+                <div className="flex justify-center">
+                  <WhatsAppProfileEditor configId={existingConfig.id} channelType="evolution" />
+                </div>
+              )}
+
               {/* Channel Routing */}
               {orgId && existingConfig?.id && (
                 <ChannelRoutingConfig
