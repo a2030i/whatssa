@@ -516,6 +516,13 @@ const CampaignsPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {campaign.recurring_type && (
+                    <Badge className="border-0 text-[9px] bg-primary/10 text-primary gap-0.5">
+                      <Repeat className="w-2.5 h-2.5" />
+                      {campaign.recurring_type === "daily" ? "يومي" : campaign.recurring_type === "weekly" ? "أسبوعي" : "شهري"}
+                      {campaign.recurring_count > 0 && <span>({campaign.recurring_count})</span>}
+                    </Badge>
+                  )}
                   <Badge className={cn("border-0 text-xs", status.className)}>
                     <status.icon className="w-3 h-3 ml-1" />
                     {status.label}
