@@ -74,13 +74,30 @@ const InboxPage = () => {
   }, [orgId]);
 
   useEffect(() => {
-    if (!orgId) return;
+    if (!orgId) {
+      setConversations([]);
+      setAllMessages({});
+      setSelectedId(null);
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    const currentOrgId = orgId;
+
+    setLoading(true);
+    setConversations([]);
+    setAllMessages({});
+    setSelectedId(null);
+
     const fetchConversations = async () => {
       const { data, error } = await supabase
         .from("conversations")
         .select("*")
-        .eq("org_id", orgId)
+        .eq("org_id", currentOrgId)
         .order("last_message_at", { ascending: false });
+
+      if (!active) return;
 
       if (error) {
         console.error("Error fetching conversations:", error);
@@ -105,8 +122,8 @@ const InboxPage = () => {
       }));
 
       setConversations(mapped);
-      if (!isMobile && mapped.length > 0 && !selectedIdRef.current) {
-        setSelectedId(mapped[0].id);
+      if (!isMobile && mapped.length > 0) {
+        setSelectedId((prev) => (prev && mapped.some((item) => item.id === prev) ? prev : mapped[0].id));
       }
       setLoading(false);
     };
@@ -114,16 +131,17 @@ const InboxPage = () => {
     fetchConversations();
 
     const channel = supabase
-      .channel("conversations-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {
+      .channel(`conversations-changes-${currentOrgId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `org_id=eq.${currentOrgId}` }, () => {
         fetchConversations();
       })
       .subscribe();
 
     return () => {
+      active = false;
       supabase.removeChannel(channel);
     };
-  }, [orgId]);
+  }, [orgId, isMobile]);
 
   useEffect(() => {
     if (!selectedId) return;
