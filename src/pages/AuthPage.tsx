@@ -151,7 +151,9 @@ const AuthPage = () => {
         <div className="w-full max-w-[420px] space-y-8 animate-fade-in">
           {/* Logo (mobile only) */}
           <div className="lg:hidden text-center">
-            <img src={respondlyLogo} alt="Respondly" className="h-20 mx-auto object-contain" />
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-primary/15 flex items-center justify-center border border-primary/20">
+              <MessageSquareText className="w-7 h-7 text-primary" />
+            </div>
           </div>
 
           {/* Header */}

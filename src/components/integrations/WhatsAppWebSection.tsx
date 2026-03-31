@@ -337,20 +337,15 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
         </Button>
       </div>
 
-      {/* Risk Warning */}
-      <div className="bg-warning/5 border border-warning/20 rounded-xl p-3.5">
-        <div className="flex gap-2.5">
-          <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-warning">تحذير — خطر حظر الرقم</p>
-            <ul className="text-[11px] text-muted-foreground space-y-0.5 leading-relaxed list-disc list-inside">
-              <li>هذه الطريقة <strong>غير رسمية</strong> وتخالف شروط خدمة Meta</li>
-              <li>قد يتم <strong>حظر رقمك نهائياً</strong> بدون إنذار مسبق</li>
-              <li>لا تدعم قوالب الرسائل أو الإرسال خارج نافذة 24 ساعة</li>
-            </ul>
-          </div>
+      {/* Compact Risk Warning - only visible when setup is open */}
+      {showSetup && (
+        <div className="flex items-center gap-2 bg-warning/5 border border-warning/20 rounded-lg px-3 py-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
+          <p className="text-[10px] text-warning/80 leading-snug">
+            طريقة <strong>غير رسمية</strong> — قد يتم حظر الرقم بدون إنذار. لا تدعم القوالب أو الإرسال خارج 24 ساعة.
+          </p>
         </div>
-      </div>
+      )}
 
       {showSetup && (
         <div className="bg-card rounded-xl shadow-card border border-border p-4 space-y-4 animate-fade-in">
