@@ -57,6 +57,12 @@ const dayLabels = [
   { value: 6, label: "سبت" },
 ];
 
+interface ChannelOption {
+  id: string;
+  label: string;
+  channelType: string;
+}
+
 const SettingsPage = () => {
   const { orgId, profile } = useAuth();
   const navigate = useNavigate();
@@ -69,18 +75,24 @@ const SettingsPage = () => {
   const [loadingAssign, setLoadingAssign] = useState(true);
   const [savingAssign, setSavingAssign] = useState(false);
 
-  // Out-of-hours settings
-  const [oohEnabled, setOohEnabled] = useState(false);
-  const [oohMessage, setOohMessage] = useState("شكراً لتواصلك معنا 🙏\nنحن حالياً خارج أوقات العمل وسنرد عليك في أقرب وقت ممكن خلال ساعات الدوام.");
-  const [oohWorkStart, setOohWorkStart] = useState("09:00");
-  const [oohWorkEnd, setOohWorkEnd] = useState("17:00");
-  const [oohWorkDays, setOohWorkDays] = useState<number[]>([0, 1, 2, 3, 4]);
+  // Channels for per-channel settings
+  const [channels, setChannels] = useState<ChannelOption[]>([]);
+  const [selectedOohChannel, setSelectedOohChannel] = useState<string>("global");
+  const [selectedSatChannel, setSelectedSatChannel] = useState<string>("global");
+
+  // Out-of-hours settings (per channel)
+  const [oohSettings, setOohSettings] = useState<Record<string, { enabled: boolean; message: string; work_start: string; work_end: string; work_days: number[] }>>({});
   const [savingOoh, setSavingOoh] = useState(false);
 
-  // Satisfaction survey settings
-  const [satEnabled, setSatEnabled] = useState(false);
-  const [satMessage, setSatMessage] = useState("شكراً لتواصلك معنا! 🌟\nنود معرفة رأيك في الخدمة:\n\n1. ممتاز ⭐⭐⭐⭐⭐\n2. جيد جداً ⭐⭐⭐⭐\n3. جيد ⭐⭐⭐\n4. مقبول ⭐⭐\n5. ضعيف ⭐");
+  // Satisfaction survey settings (per channel)
+  const [satSettings, setSatSettings] = useState<Record<string, { enabled: boolean; message: string }>>({});
   const [savingSat, setSavingSat] = useState(false);
+
+  const defaultOoh = { enabled: false, message: "شكراً لتواصلك معنا 🙏\nنحن حالياً خارج أوقات العمل وسنرد عليك في أقرب وقت ممكن خلال ساعات الدوام.", work_start: "09:00", work_end: "17:00", work_days: [0, 1, 2, 3, 4] };
+  const defaultSat = { enabled: false, message: "شكراً لتواصلك معنا! 🌟\nنود معرفة رأيك في الخدمة:\n\n1. ممتاز ⭐⭐⭐⭐⭐\n2. جيد جداً ⭐⭐⭐⭐\n3. جيد ⭐⭐⭐\n4. مقبول ⭐⭐\n5. ضعيف ⭐" };
+
+  const currentOoh = oohSettings[selectedOohChannel] || defaultOoh;
+  const currentSat = satSettings[selectedSatChannel] || defaultSat;
 
   // Saved replies
   const [savedReplies, setSavedReplies] = useState<Array<{ id: string; shortcut: string; title: string; content: string; category: string }>>([]);
