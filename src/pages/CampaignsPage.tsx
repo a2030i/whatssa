@@ -859,9 +859,44 @@ const CampaignsPage = () => {
               </div>
             </div>
 
+            {/* Recurring */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold flex items-center gap-1"><Repeat className="w-3 h-3" /> تكرار الحملة (اختياري)</Label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[
+                  { value: "", label: "مرة واحدة" },
+                  { value: "daily", label: "يومي" },
+                  { value: "weekly", label: "أسبوعي" },
+                  { value: "monthly", label: "شهري" },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setForm({ ...form, recurringType: opt.value })}
+                    className={cn(
+                      "text-[10px] py-1.5 px-2 rounded-lg border transition-all",
+                      form.recurringType === opt.value ? "border-primary bg-primary/5 text-primary font-medium" : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {form.recurringType && (
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] text-muted-foreground">ينتهي التكرار في (اختياري):</Label>
+                  <Input type="date" value={form.recurringEndAt} onChange={(e) => setForm({ ...form, recurringEndAt: e.target.value })} className="text-sm bg-secondary border-0" dir="ltr" />
+                  <p className="text-[10px] text-muted-foreground">
+                    {form.recurringType === "daily" && "سيتم إعادة إرسال الحملة يومياً لنفس الجمهور"}
+                    {form.recurringType === "weekly" && "سيتم إعادة إرسال الحملة كل أسبوع في نفس اليوم"}
+                    {form.recurringType === "monthly" && "سيتم إعادة إرسال الحملة كل شهر في نفس التاريخ"}
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Schedule */}
             <div className="space-y-1.5">
-              <Label className="text-xs">جدولة الإرسال (اختياري)</Label>
+              <Label className="text-xs">جدولة الإرسال {form.recurringType ? "(موعد أول إرسال)" : "(اختياري)"}</Label>
               <Input type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} className="text-sm bg-secondary border-0" dir="ltr" />
             </div>
 
