@@ -223,6 +223,13 @@ const SallaIntegrationSection = () => {
                 <p className="text-[11px] text-destructive bg-destructive/5 rounded p-2">{store.webhook_error}</p>
               )}
 
+              {/* Event Notifications Config */}
+              <StoreEventNotifications
+                storeId={store.id}
+                currentMetadata={(store as any).metadata || {}}
+                onSaved={fetchStores}
+              />
+
               {/* Events */}
               <div className="flex flex-wrap gap-1.5">
                 {store.events_enabled.map((evt) => {
