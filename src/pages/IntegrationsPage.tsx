@@ -559,6 +559,25 @@ const IntegrationsPage = () => {
     );
   };
 
+  const translateHealthIssue = (issue: { entity: string; error: string; solution: string }): { title: string; solution: string; severity: "critical" | "warning" } | null => {
+    const err = issue.error.toLowerCase();
+    // Skip SIP-related issues (not relevant for messaging)
+    if (err.includes("sip")) return null;
+    
+    if (err.includes("not linked") || err.includes("not registered") || err.includes("141000"))
+      return { title: "الرقم غير مسجّل في Cloud API", solution: "اضغط زر 'تسجيل' أدناه لتسجيل الرقم، أو انتظر إذا كانت المحاولات كثيرة.", severity: "critical" };
+    if (err.includes("payment method") || err.includes("141006"))
+      return { title: "مشكلة في طريقة الدفع", solution: "أضف بطاقة ائتمان في إعدادات حساب WABA من Meta Business Suite لتتمكن من إرسال الرسائل.", severity: "critical" };
+    if (err.includes("display name") || err.includes("not been approved"))
+      return { title: "اسم العرض قيد المراجعة", solution: "سيتم مراجعة الاسم تلقائياً من Meta. حد الرسائل محدود حتى الاعتماد.", severity: "warning" };
+    if (err.includes("rate limit") || err.includes("too many"))
+      return { title: "تجاوز حد المحاولات", solution: "انتظر ساعة إلى ساعتين ثم أعد المحاولة.", severity: "warning" };
+    if (err.includes("not verified") || err.includes("verification"))
+      return { title: "الحساب غير موثّق", solution: "وثّق نشاطك التجاري من Meta Business Suite.", severity: "critical" };
+    // Fallback: show original in Arabic wrapper
+    return { title: `[${issue.entity}] مشكلة`, solution: issue.error, severity: "warning" };
+  };
+
   const renderMetaStatus = (config: WhatsAppConfig, ms: any) => {
     const qualityMap: Record<string, { label: string; color: string }> = {
       GREEN: { label: "عالية", color: "text-success" }, YELLOW: { label: "متوسطة", color: "text-warning" }, RED: { label: "منخفضة", color: "text-destructive" },
