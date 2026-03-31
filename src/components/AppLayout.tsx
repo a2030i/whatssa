@@ -60,10 +60,10 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       )}
 
       {/* Top notification bar */}
-      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[240px] h-12 bg-card border-b border-border flex items-center justify-end px-4 z-30 transition-all`}>
+      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[240px] h-14 bg-card/80 backdrop-blur-lg border-b border-border/50 flex items-center justify-end px-4 z-30 transition-all`}>
         <NotificationBell />
       </div>
-      <main className={`md:mr-[240px] min-h-screen ${isImpersonating ? "pt-[88px]" : "pt-12"} ${isMobile && !hideBottomNav ? "pb-14" : ""} transition-all duration-300`}>
+      <main className={`md:mr-[240px] min-h-screen ${isImpersonating ? "pt-[92px]" : "pt-14"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
         {children}
       </main>
 
