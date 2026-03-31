@@ -11,7 +11,6 @@ Deno.serve(async (req) => {
   }
 
   const url = new URL(req.url);
-  // The store integration ID is passed as a path param: /salla-webhook/{integration_id}
   const pathParts = url.pathname.split("/").filter(Boolean);
   const integrationId = pathParts[pathParts.length - 1];
 
@@ -27,7 +26,6 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Verify integration exists and is active
   const { data: integration, error: intError } = await supabase
     .from("store_integrations")
     .select("*")
@@ -45,7 +43,7 @@ Deno.serve(async (req) => {
 
   const orgId = integration.org_id;
 
-  // Verify webhook signature if Salla sends one
+  // Verify webhook signature
   const sallaSignature = req.headers.get("x-salla-signature");
   if (sallaSignature && integration.webhook_secret) {
     const encoder = new TextEncoder();
@@ -64,7 +62,6 @@ Deno.serve(async (req) => {
 
     if (computed !== sallaSignature) {
       console.warn("Invalid Salla signature for integration:", integrationId);
-      // Log but don't reject — Salla signature format may vary
     }
   }
 
@@ -96,36 +93,32 @@ Deno.serve(async (req) => {
       case "order.updated":
         await handleOrder(supabase, orgId, integrationId, data, event);
         break;
-
       case "order.status.updated":
         await handleOrderStatus(supabase, orgId, data);
         break;
-
       case "customer.created":
       case "customer.updated":
         await handleCustomer(supabase, orgId, data, event);
         break;
-
       case "abandoned.cart":
         await handleAbandonedCart(supabase, orgId, integrationId, data);
         break;
-
       case "abandoned.cart.purchased":
         await handleCartPurchased(supabase, orgId, data);
         break;
-
       case "product.created":
       case "product.updated":
         await handleProduct(supabase, orgId, integrationId, data, event);
         break;
-
       case "product.deleted":
         await handleProductDeleted(supabase, orgId, data);
         break;
-
       default:
         console.log(`[salla-webhook] Unhandled event: ${event}`);
     }
+
+    // ──── Send event notification if configured ────
+    await sendEventNotification(supabase, integration, event, data);
 
     return new Response(JSON.stringify({ success: true, event }), {
       status: 200,
@@ -133,7 +126,6 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error(`[salla-webhook] Error processing ${event}:`, err);
-
     await supabase
       .from("store_integrations")
       .update({ webhook_error: `${event}: ${(err as Error).message}` })
@@ -146,6 +138,181 @@ Deno.serve(async (req) => {
   }
 });
 
+// ─────────────────────────────────────────────
+// Event Notification Sender
+// ─────────────────────────────────────────────
+async function sendEventNotification(supabase: any, integration: any, event: string, data: any) {
+  const metadata = integration.metadata || {};
+  const notifConfigs = metadata.event_notifications || {};
+
+  // Map order.status.updated to specific sub-events
+  let notifKey = event;
+  if (event === "order.status.updated") {
+    const statusSlug = data?.status?.slug || data?.status?.name || "";
+    const mapped = mapSallaOrderStatus(statusSlug);
+    if (mapped === "shipped") notifKey = "order.shipped";
+    else if (mapped === "delivered") notifKey = "order.delivered";
+    else if (mapped === "cancelled") notifKey = "order.cancelled";
+    else if (mapped === "refunded") notifKey = "order.refunded";
+    else return; // No notification for other statuses
+  }
+
+  const cfg = notifConfigs[notifKey];
+  if (!cfg?.enabled || !cfg?.channel_id) return;
+
+  // Get the WhatsApp config for the channel
+  const { data: waConfig } = await supabase
+    .from("whatsapp_config")
+    .select("*")
+    .eq("id", cfg.channel_id)
+    .eq("is_connected", true)
+    .maybeSingle();
+
+  if (!waConfig) {
+    console.log(`[salla-notif] Channel ${cfg.channel_id} not connected, skipping`);
+    return;
+  }
+
+  // Get recipient phone
+  const customer = data?.customer || {};
+  const phone = normalizePhone(customer.mobile || customer.phone || data?.customer_phone || "");
+  if (!phone) {
+    console.log(`[salla-notif] No phone for event ${notifKey}`);
+    return;
+  }
+
+  // Build variables
+  const vars = buildVariables(notifKey, data);
+  const channelType = waConfig.channel_type || "meta_api";
+
+  try {
+    if (channelType === "meta_api" && cfg.template_name) {
+      // Send via Meta template
+      await sendMetaTemplate(waConfig, phone, cfg.template_name, cfg.template_language || "ar", vars);
+      console.log(`[salla-notif] Meta template sent: ${cfg.template_name} → ${phone}`);
+    } else if (channelType === "evolution" && cfg.message_text) {
+      // Send via Evolution with variable replacement
+      const message = replaceVariables(cfg.message_text, vars);
+      await sendEvolutionMessage(waConfig, phone, message);
+      console.log(`[salla-notif] Evolution message sent → ${phone}`);
+    }
+  } catch (err) {
+    console.error(`[salla-notif] Failed to send ${notifKey}:`, err);
+  }
+}
+
+function buildVariables(event: string, data: any): Record<string, string> {
+  const customer = data?.customer || {};
+  const amounts = data?.amounts || data?.total || {};
+  const vars: Record<string, string> = {
+    customer_name: customer.first_name
+      ? `${customer.first_name} ${customer.last_name || ""}`.trim()
+      : customer.name || "",
+    order_number: data?.reference_id ? String(data.reference_id) : String(data?.id || ""),
+    total: String(amounts?.total?.amount || amounts?.amount || data?.total?.amount || data?.total || 0),
+    currency: amounts?.total?.currency || amounts?.currency || data?.currency || "SAR",
+    payment_method: data?.payment?.method || data?.payment?.slug || "",
+    checkout_url: data?.checkout_url || "",
+  };
+
+  // Build items summary
+  const items = data?.items || data?.cart?.items || [];
+  if (Array.isArray(items) && items.length > 0) {
+    vars.items_summary = items
+      .slice(0, 5)
+      .map((i: any) => `${i.name || i.product?.name || "منتج"} x${i.quantity || 1}`)
+      .join("، ");
+    if (items.length > 5) vars.items_summary += ` و ${items.length - 5} أخرى`;
+  } else {
+    vars.items_summary = "";
+  }
+
+  return vars;
+}
+
+function replaceVariables(text: string, vars: Record<string, string>): string {
+  let result = text;
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value || "");
+  }
+  return result;
+}
+
+async function sendMetaTemplate(
+  config: any,
+  phone: string,
+  templateName: string,
+  language: string,
+  vars: Record<string, string>
+) {
+  const components: any[] = [];
+  // Build body parameters from variables in order
+  const bodyParams = Object.values(vars).filter(Boolean).map((v) => ({
+    type: "text",
+    text: v,
+  }));
+  if (bodyParams.length > 0) {
+    components.push({ type: "body", parameters: bodyParams });
+  }
+
+  const payload = {
+    messaging_product: "whatsapp",
+    to: phone,
+    type: "template",
+    template: {
+      name: templateName,
+      language: { code: language },
+      ...(components.length > 0 ? { components } : {}),
+    },
+  };
+
+  const res = await fetch(
+    `https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const result = await res.json();
+  if (result.error) {
+    throw new Error(result.error.message);
+  }
+  return result;
+}
+
+async function sendEvolutionMessage(config: any, phone: string, message: string) {
+  const apiUrl = Deno.env.get("EVOLUTION_API_URL");
+  const apiKey = Deno.env.get("EVOLUTION_API_KEY");
+  const instanceName = config.evolution_instance_name;
+
+  if (!apiUrl || !apiKey || !instanceName) {
+    throw new Error("Evolution API not configured");
+  }
+
+  const baseUrl = apiUrl.replace(/\/$/, "");
+  const res = await fetch(`${baseUrl}/message/sendText/${instanceName}`, {
+    method: "POST",
+    headers: { apikey: apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      number: phone,
+      text: message,
+    }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.text();
+    throw new Error(`Evolution send failed: ${errData}`);
+  }
+}
+
+// ─────────────────────────────────────────────
+// Existing handlers (unchanged)
+// ─────────────────────────────────────────────
 async function handleOrder(supabase: any, orgId: string, integrationId: string, data: any, event: string) {
   const orderId = String(data.id);
   const customer = data.customer || {};
@@ -153,7 +320,6 @@ async function handleOrder(supabase: any, orgId: string, integrationId: string, 
   const shipping = data.shipping || {};
   const address = shipping.address || customer.address || {};
 
-  // Upsert customer first
   let customerId: string | null = null;
   const customerName = customer.first_name ? `${customer.first_name} ${customer.last_name || ""}`.trim() : null;
   if (customer.mobile || customer.phone) {
@@ -167,7 +333,6 @@ async function handleOrder(supabase: any, orgId: string, integrationId: string, 
 
     if (existing) {
       customerId = existing.id;
-      // Update customer info on every order
       await supabase.from("customers").update({
         name: customerName || undefined,
         email: customer.email || undefined,
@@ -215,7 +380,6 @@ async function handleOrder(supabase: any, orgId: string, integrationId: string, 
     updated_at: new Date().toISOString(),
   };
 
-  // Check if order exists
   const { data: existingOrder } = await supabase
     .from("orders")
     .select("id")
@@ -232,16 +396,13 @@ async function handleOrder(supabase: any, orgId: string, integrationId: string, 
     dbOrderId = newOrder?.id;
   }
 
-  // Sync order items
   if (dbOrderId && data.items && Array.isArray(data.items)) {
-    // Delete old items then re-insert
     await supabase.from("order_items").delete().eq("order_id", dbOrderId);
-
     const items = data.items.map((item: any) => ({
       order_id: dbOrderId,
       product_name: item.name || item.product?.name || "منتج",
       product_sku: item.sku || item.product?.sku || null,
-      product_id: null, // will be linked if product exists
+      product_id: null,
       quantity: item.quantity || 1,
       unit_price: item.price?.amount || item.price || 0,
       total_price: (item.price?.amount || item.price || 0) * (item.quantity || 1),
@@ -253,7 +414,6 @@ async function handleOrder(supabase: any, orgId: string, integrationId: string, 
     }));
 
     if (items.length > 0) {
-      // Try to link product_id from products table
       for (const item of items) {
         if (item.metadata.salla_product_id) {
           const { data: prod } = await supabase
@@ -275,20 +435,13 @@ async function handleOrder(supabase: any, orgId: string, integrationId: string, 
 async function handleOrderStatus(supabase: any, orgId: string, data: any) {
   const orderId = String(data.id);
   const newStatus = mapSallaOrderStatus(data.status?.slug || data.status?.name || "");
-
   const updateData: any = { status: newStatus, updated_at: new Date().toISOString() };
-
   if (newStatus === "shipped") updateData.shipped_at = new Date().toISOString();
   if (newStatus === "delivered") updateData.delivered_at = new Date().toISOString();
   if (newStatus === "cancelled") updateData.cancelled_at = new Date().toISOString();
   if (newStatus === "refunded") updateData.refunded_at = new Date().toISOString();
 
-  await supabase
-    .from("orders")
-    .update(updateData)
-    .eq("org_id", orgId)
-    .eq("external_id", orderId);
-
+  await supabase.from("orders").update(updateData).eq("org_id", orgId).eq("external_id", orderId);
   console.log(`[salla] Order status updated: ${orderId} → ${newStatus}`);
 }
 
@@ -341,7 +494,6 @@ async function handleAbandonedCart(supabase: any, orgId: string, integrationId: 
     abandoned_at: data.created_at || new Date().toISOString(),
   };
 
-  // Upsert by external_id
   const { data: existing } = await supabase
     .from("abandoned_carts")
     .select("id")
@@ -360,20 +512,17 @@ async function handleAbandonedCart(supabase: any, orgId: string, integrationId: 
 
 async function handleCartPurchased(supabase: any, orgId: string, data: any) {
   const cartId = String(data.id);
-
   await supabase
     .from("abandoned_carts")
     .update({ recovery_status: "recovered", recovered_at: new Date().toISOString() })
     .eq("org_id", orgId)
     .eq("external_id", cartId);
-
   console.log(`[salla] Cart purchased: ${cartId}`);
 }
 
 async function handleProduct(supabase: any, orgId: string, integrationId: string, data: any, event: string) {
   const productId = String(data.id);
   const price = data.price?.amount || data.price || 0;
-
   const productData: any = {
     org_id: orgId,
     external_id: productId,
@@ -406,13 +555,11 @@ async function handleProduct(supabase: any, orgId: string, integrationId: string
 
 async function handleProductDeleted(supabase: any, orgId: string, data: any) {
   const productId = String(data.id);
-
   await supabase
     .from("products")
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("org_id", orgId)
     .eq("external_id", productId);
-
   console.log(`[salla] Product deleted: ${productId}`);
 }
 

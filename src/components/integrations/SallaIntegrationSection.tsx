@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import StoreEventNotifications from "./StoreEventNotifications";
 
 const WEBHOOK_BASE = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/salla-webhook`;
 
@@ -221,6 +222,13 @@ const SallaIntegrationSection = () => {
               {store.webhook_error && (
                 <p className="text-[11px] text-destructive bg-destructive/5 rounded p-2">{store.webhook_error}</p>
               )}
+
+              {/* Event Notifications Config */}
+              <StoreEventNotifications
+                storeId={store.id}
+                currentMetadata={(store as any).metadata || {}}
+                onSaved={fetchStores}
+              />
 
               {/* Events */}
               <div className="flex flex-wrap gap-1.5">
