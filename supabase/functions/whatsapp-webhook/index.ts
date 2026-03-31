@@ -125,14 +125,6 @@ async function processChatbotFlow(
 
   // Filter flows by channel
   const filteredFlows = flows.filter((flow: any) => {
-    if (!flow.channel_ids || flow.channel_ids.length === 0) return true; // No restriction
-    return channelConfigId ? flow.channel_ids.includes(channelConfigId) : true;
-  });
-
-  if (!flows || flows.length === 0) return false;
-
-  // Filter flows by channel
-  const filteredFlows = flows.filter((flow: any) => {
     if (!flow.channel_ids || flow.channel_ids.length === 0) return true;
     return channelConfigId ? flow.channel_ids.includes(channelConfigId) : true;
   });
