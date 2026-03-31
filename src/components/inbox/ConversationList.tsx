@@ -346,6 +346,16 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="h-8 text-xs bg-card border-0"><SelectValue placeholder="القناة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل القنوات</SelectItem>
+                <SelectItem value="meta_api">رسمي (Meta API)</SelectItem>
+                <SelectItem value="evolution">غير رسمي (QR)</SelectItem>
+              </SelectContent>
+            </Select>
           {allTags.length > 0 && (
             <div>
               <div className="flex items-center gap-1.5 mb-1.5">
