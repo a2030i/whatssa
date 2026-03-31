@@ -18,14 +18,16 @@ const statusColors: Record<string, string> = {
 };
 const statusLabels: Record<string, string> = { active: "نشط", waiting: "بانتظار", closed: "مغلق" };
 
-const getWaitTime = (lastCustomerMessageAt?: string): { text: string; color: string } | null => {
+const get24hCountdown = (lastCustomerMessageAt?: string): { text: string; color: string } | null => {
   if (!lastCustomerMessageAt) return null;
-  const diff = Date.now() - new Date(lastCustomerMessageAt).getTime();
-  const hours = Math.floor(diff / 3600000);
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 5) return null;
-  const text = hours > 0 ? `${hours} س` : `${minutes} د`;
-  const color = hours >= 12 ? "bg-destructive/15 text-destructive" : hours >= 4 ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground";
+  const elapsed = Date.now() - new Date(lastCustomerMessageAt).getTime();
+  const windowMs = 24 * 3600000;
+  const remaining = windowMs - elapsed;
+  if (remaining <= 0) return { text: "انتهت", color: "bg-destructive/15 text-destructive" };
+  const remHours = Math.floor(remaining / 3600000);
+  const remMinutes = Math.floor((remaining % 3600000) / 60000);
+  const text = remHours > 0 ? `${remHours}:${String(remMinutes).padStart(2, "0")} س` : `${remMinutes} د`;
+  const color = remHours < 2 ? "bg-destructive/15 text-destructive" : remHours < 6 ? "bg-warning/15 text-warning" : "bg-success/15 text-success";
   return { text, color };
 };
 
