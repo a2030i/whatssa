@@ -278,7 +278,7 @@ const AppSidebar = () => {
     <>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto scrollbar-none pt-14 pb-2">
+      <nav className="flex-1 overflow-y-auto scrollbar-thin pt-6 pb-2">
         {/* Main Section */}
         <div className={cn("space-y-0.5", collapsed ? "px-2" : "px-3")}>
           {mainItems.map((item) => renderItem(item as NavItem))}
