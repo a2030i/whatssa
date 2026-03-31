@@ -1045,28 +1045,4 @@ const IntegrationsPage = () => {
   );
 };
 
-function ChannelCard({ icon: Icon, iconBg, name, description, status, statusLabel, statusColor, actions, children }: {
-  icon: any; iconBg: string; name: string; description: string;
-  status?: "connected" | "pending" | "disconnected";
-  statusLabel?: string; statusColor?: string;
-  actions?: React.ReactNode; children?: React.ReactNode;
-}) {
-  return (
-    <div className="bg-card rounded-xl border border-border p-4 flex flex-col items-center text-center gap-2 hover:shadow-md transition-shadow">
-      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", iconBg)}>
-        <Icon className="w-5 h-5" />
-      </div>
-      <div>
-        <h3 className="font-bold text-xs">{name}</h3>
-        {statusLabel && (
-          <p className={cn("text-[10px] mt-0.5 font-medium", statusColor || "text-muted-foreground")}>{statusLabel}</p>
-        )}
-      </div>
-      <p className="text-[10px] text-muted-foreground leading-relaxed">{description}</p>
-      {actions && <div className="flex items-center gap-2 flex-wrap justify-center mt-auto">{actions}</div>}
-      {children}
-    </div>
-  );
-}
-
 export default IntegrationsPage;
