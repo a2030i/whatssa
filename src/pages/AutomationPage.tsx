@@ -54,6 +54,7 @@ const AutomationPage = () => {
   const [formActionTag, setFormActionTag] = useState("");
   const [formActionTeamId, setFormActionTeamId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [formChannelIds, setFormChannelIds] = useState<string[]>([]);
 
   const table = supabase.from("automation_rules" as any);
 
