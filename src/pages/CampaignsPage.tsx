@@ -735,9 +735,12 @@ const CampaignsPage = () => {
                 <Textarea
                   value={form.messageText}
                   onChange={(e) => setForm({ ...form, messageText: e.target.value })}
-                  placeholder="اكتب نص الرسالة هنا... يمكنك استخدام {name} لاسم العميل"
+                  placeholder={"مرحباً {name}، عرض خاص لك! الخصم {discount}"}
                   className="text-sm bg-secondary border-0 min-h-[80px]"
                 />
+                <p className="text-[10px] text-muted-foreground">
+                  💡 استخدم <code className="bg-secondary px-1 rounded">{"{name}"}</code> لاسم العميل. يمكنك إضافة متغيرات مخصصة مثل <code className="bg-secondary px-1 rounded">{"{discount}"}</code> — عند رفع الإكسل أضف عمود بنفس الاسم
+                </p>
               </div>
             )}
 
