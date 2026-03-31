@@ -791,6 +791,8 @@ serve(async (req) => {
 
       // ── Handle status updates (delivered/read/failed) ──
       if (value.statuses && value.statuses.length > 0) {
+        const affectedCampaignIds = new Set<string>();
+
         for (const statusUpdate of value.statuses) {
           const newStatus = statusUpdate.status;
           const waMessageId = statusUpdate.id;
@@ -810,6 +812,33 @@ serve(async (req) => {
 
           await supabase.from("messages").update(updateData).eq("wa_message_id", waMessageId);
 
+          // ── Update campaign_recipients status ──
+          if (waMessageId && ["delivered", "read", "failed"].includes(newStatus)) {
+            const recipientUpdate: Record<string, unknown> = { status: newStatus };
+            const now = new Date().toISOString();
+            if (newStatus === "delivered") recipientUpdate.delivered_at = now;
+            else if (newStatus === "read") {
+              recipientUpdate.read_at = now;
+              // Also mark as delivered if not yet
+              recipientUpdate.delivered_at = now;
+            } else if (newStatus === "failed") {
+              recipientUpdate.failed_at = now;
+              recipientUpdate.error_code = statusUpdate.errors?.[0]?.code || null;
+              recipientUpdate.error_message = statusUpdate.errors?.[0]?.message || null;
+            }
+
+            const { data: updatedRecipient } = await supabase
+              .from("campaign_recipients")
+              .update(recipientUpdate)
+              .eq("wa_message_id", waMessageId)
+              .select("campaign_id")
+              .maybeSingle();
+
+            if (updatedRecipient?.campaign_id) {
+              affectedCampaignIds.add(updatedRecipient.campaign_id);
+            }
+          }
+
           if (newStatus === "failed") {
             await logToSystem(supabase, "error", `فشل تسليم رسالة واتساب`, {
               wa_message_id: waMessageId,
@@ -818,6 +847,29 @@ serve(async (req) => {
               error_title: statusUpdate.errors?.[0]?.title || null,
               error_message: statusUpdate.errors?.[0]?.message || null,
             }, orgId);
+          }
+        }
+
+        // ── Recalculate campaign aggregate counts ──
+        for (const campaignId of affectedCampaignIds) {
+          const { data: stats } = await supabase
+            .from("campaign_recipients")
+            .select("status")
+            .eq("campaign_id", campaignId);
+
+          if (stats) {
+            const sent = stats.filter((r: any) => ["sent", "delivered", "read"].includes(r.status)).length;
+            const delivered = stats.filter((r: any) => ["delivered", "read"].includes(r.status)).length;
+            const read = stats.filter((r: any) => r.status === "read").length;
+            const failed = stats.filter((r: any) => r.status === "failed").length;
+
+            await supabase.from("campaigns").update({
+              sent_count: sent,
+              delivered_count: delivered,
+              read_count: read,
+              failed_count: failed,
+              updated_at: new Date().toISOString(),
+            }).eq("id", campaignId);
           }
         }
       }
