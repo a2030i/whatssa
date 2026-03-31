@@ -1,26 +1,40 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Clock, CheckCircle2, AlertTriangle, Users, Download, Calendar, BarChart3, PieChart as PieChartIcon, Loader2 } from "lucide-react";
+import { MessageSquare, Clock, CheckCircle2, AlertTriangle, Users, Download, Calendar, BarChart3, PieChart as PieChartIcon, Loader2, TrendingUp, Send, Megaphone, Phone, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import KpiCard from "@/components/KpiCard";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, LineChart, Line } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+
+const COLORS = [
+  "hsl(142 64% 42%)", "hsl(217 91% 60%)", "hsl(280 67% 55%)",
+  "hsl(38 92% 50%)", "hsl(0 84% 60%)", "hsl(190 80% 42%)",
+];
 
 const AnalyticsPage = () => {
   const { orgId } = useAuth();
   const [period, setPeriod] = useState("week");
   const [loading, setLoading] = useState(true);
 
-  // Real data state
+  // Data
   const [totalConversations, setTotalConversations] = useState(0);
   const [closedConversations, setClosedConversations] = useState(0);
   const [escalatedConversations, setEscalatedConversations] = useState(0);
   const [avgFirstResponse, setAvgFirstResponse] = useState(0);
-  const [dailyData, setDailyData] = useState<{ day: string; count: number }[]>([]);
-  const [teamData, setTeamData] = useState<{ name: string; activeChats: number; resolved: number; avgResponse: string }[]>([]);
+  const [dailyData, setDailyData] = useState<{ day: string; count: number; closed: number }[]>([]);
+  const [hourlyData, setHourlyData] = useState<{ hour: string; count: number }[]>([]);
+  const [teamData, setTeamData] = useState<{ name: string; activeChats: number; resolved: number }[]>([]);
   const [satisfactionData, setSatisfactionData] = useState<{ rating: string; count: number; color: string }[]>([]);
+  const [channelData, setChannelData] = useState<{ name: string; count: number }[]>([]);
+  const [tagData, setTagData] = useState<{ tag: string; count: number }[]>([]);
+  const [campaignStats, setCampaignStats] = useState({ total: 0, sent: 0, delivered: 0, read: 0, failed: 0 });
+  const [messageStats, setMessageStats] = useState({ inbound: 0, outbound: 0 });
+  const [prevPeriodConversations, setPrevPeriodConversations] = useState(0);
 
   useEffect(() => {
     if (!orgId) return;
@@ -36,42 +50,46 @@ const AnalyticsPage = () => {
       case "quarter": start = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()); break;
       default: start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
     }
-    return { start: start.toISOString(), end: now.toISOString() };
+    return { start: start.toISOString(), end: now.toISOString(), startDate: start };
   };
 
   const fetchAnalytics = async () => {
     setLoading(true);
-    const { start, end } = getDateRange();
+    const { start, end, startDate } = getDateRange();
 
-    const [convRes, closedRes, escalatedRes, frtRes, dailyRes, teamRes, satRes] = await Promise.all([
-      // Total conversations in period
+    // Previous period for comparison
+    const periodMs = new Date(end).getTime() - new Date(start).getTime();
+    const prevStart = new Date(new Date(start).getTime() - periodMs).toISOString();
+
+    const [convRes, closedRes, escalatedRes, frtRes, dailyRes, teamRes, satRes, prevConvRes, msgsRes, campaignsRes] = await Promise.all([
       supabase.from("conversations").select("id", { count: "exact", head: true })
         .eq("org_id", orgId).gte("created_at", start).lte("created_at", end),
-      // Closed conversations
       supabase.from("conversations").select("id", { count: "exact", head: true })
         .eq("org_id", orgId).eq("status", "closed").gte("closed_at", start).lte("closed_at", end),
-      // Escalated / late conversations
       supabase.from("conversations").select("id", { count: "exact", head: true })
         .eq("org_id", orgId).eq("escalated", true).gte("created_at", start),
-      // Average first response time
       supabase.from("conversations").select("created_at, first_response_at")
         .eq("org_id", orgId).not("first_response_at", "is", null).gte("created_at", start).lte("created_at", end).limit(500),
-      // Daily conversations
-      supabase.from("conversations").select("created_at")
+      supabase.from("conversations").select("created_at, status, tags, conversation_type")
         .eq("org_id", orgId).gte("created_at", start).lte("created_at", end).limit(1000),
-      // Team: active chats per agent
       supabase.from("conversations").select("assigned_to, status, profiles!conversations_assigned_to_fkey(full_name)")
         .eq("org_id", orgId).not("assigned_to", "is", null).gte("created_at", start).limit(1000),
-      // Satisfaction ratings
       supabase.from("satisfaction_ratings").select("rating")
+        .eq("org_id", orgId).gte("created_at", start).lte("created_at", end),
+      supabase.from("conversations").select("id", { count: "exact", head: true })
+        .eq("org_id", orgId).gte("created_at", prevStart).lt("created_at", start),
+      supabase.from("messages").select("sender", { count: "exact" })
+        .gte("created_at", start).lte("created_at", end).limit(1000),
+      supabase.from("campaigns").select("id, sent_count, delivered_count, read_count, failed_count")
         .eq("org_id", orgId).gte("created_at", start).lte("created_at", end),
     ]);
 
     setTotalConversations(convRes.count ?? 0);
     setClosedConversations(closedRes.count ?? 0);
     setEscalatedConversations(escalatedRes.count ?? 0);
+    setPrevPeriodConversations(prevConvRes.count ?? 0);
 
-    // Calc avg FRT in minutes
+    // Avg FRT
     if (frtRes.data && frtRes.data.length > 0) {
       const diffs = frtRes.data.map(c => {
         const created = new Date(c.created_at!).getTime();
@@ -84,19 +102,56 @@ const AnalyticsPage = () => {
       setAvgFirstResponse(0);
     }
 
-    // Group daily
+    // Daily data with closed count
     if (dailyRes.data) {
-      const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-      const grouped: Record<string, number> = {};
+      if (period === "today") {
+        // Hourly breakdown
+        const hourMap: Record<string, number> = {};
+        dailyRes.data.forEach(c => {
+          const h = new Date(c.created_at!).getHours();
+          const key = `${h}:00`;
+          hourMap[key] = (hourMap[key] || 0) + 1;
+        });
+        setHourlyData(Array.from({ length: 24 }, (_, i) => ({ hour: `${i}:00`, count: hourMap[`${i}:00`] || 0 })));
+        setDailyData([]);
+      } else {
+        const dayMap: Record<string, { count: number; closed: number }> = {};
+        const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+        dailyRes.data.forEach(c => {
+          const d = new Date(c.created_at!);
+          const key = period === "month" || period === "quarter"
+            ? `${d.getMonth() + 1}/${d.getDate()}`
+            : dayNames[d.getDay()];
+          if (!dayMap[key]) dayMap[key] = { count: 0, closed: 0 };
+          dayMap[key].count++;
+          if (c.status === "closed") dayMap[key].closed++;
+        });
+        if (period === "week") {
+          setDailyData(dayNames.map(day => ({ day, count: dayMap[day]?.count || 0, closed: dayMap[day]?.closed || 0 })));
+        } else {
+          setDailyData(Object.entries(dayMap).map(([day, v]) => ({ day, ...v })));
+        }
+        setHourlyData([]);
+      }
+
+      // Channel breakdown
+      const channelMap: Record<string, number> = {};
       dailyRes.data.forEach(c => {
-        const d = new Date(c.created_at!);
-        const key = dayNames[d.getDay()];
-        grouped[key] = (grouped[key] || 0) + 1;
+        const type = c.conversation_type === "meta" ? "واتساب رسمي" : c.conversation_type === "evolution" ? "واتساب ويب" : "أخرى";
+        channelMap[type] = (channelMap[type] || 0) + 1;
       });
-      setDailyData(dayNames.map(day => ({ day, count: grouped[day] || 0 })));
+      setChannelData(Object.entries(channelMap).map(([name, count]) => ({ name, count })));
+
+      // Tag breakdown
+      const tagMap: Record<string, number> = {};
+      dailyRes.data.forEach(c => {
+        const tags = c.tags as string[] | null;
+        if (tags) tags.forEach(t => { tagMap[t] = (tagMap[t] || 0) + 1; });
+      });
+      setTagData(Object.entries(tagMap).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([tag, count]) => ({ tag, count })));
     }
 
-    // Team performance
+    // Team
     if (teamRes.data) {
       const agentMap: Record<string, { name: string; active: number; closed: number }> = {};
       teamRes.data.forEach((c: any) => {
@@ -107,10 +162,7 @@ const AnalyticsPage = () => {
         else agentMap[id].active++;
       });
       setTeamData(Object.values(agentMap).map(a => ({
-        name: a.name,
-        activeChats: a.active,
-        resolved: a.closed,
-        avgResponse: "-",
+        name: a.name, activeChats: a.active, resolved: a.closed,
       })));
     }
 
@@ -123,16 +175,43 @@ const AnalyticsPage = () => {
         else counts.bad++;
       });
       setSatisfactionData([
-        { rating: "راضي", count: counts.good, color: "hsl(142 64% 42%)" },
-        { rating: "محايد", count: counts.neutral, color: "hsl(38 92% 50%)" },
-        { rating: "غير راضي", count: counts.bad, color: "hsl(0 84% 60%)" },
+        { rating: "راضي", count: counts.good, color: COLORS[0] },
+        { rating: "محايد", count: counts.neutral, color: COLORS[3] },
+        { rating: "غير راضي", count: counts.bad, color: COLORS[4] },
       ]);
     } else {
       setSatisfactionData([]);
     }
 
+    // Messages stats
+    if (msgsRes.data) {
+      const inbound = msgsRes.data.filter((m: any) => m.sender === "customer").length;
+      const outbound = msgsRes.data.filter((m: any) => m.sender === "agent").length;
+      setMessageStats({ inbound, outbound });
+    }
+
+    // Campaign stats
+    if (campaignsRes.data) {
+      const totals = campaignsRes.data.reduce((acc, c) => ({
+        total: acc.total + 1,
+        sent: acc.sent + (c.sent_count || 0),
+        delivered: acc.delivered + (c.delivered_count || 0),
+        read: acc.read + (c.read_count || 0),
+        failed: acc.failed + (c.failed_count || 0),
+      }), { total: 0, sent: 0, delivered: 0, read: 0, failed: 0 });
+      setCampaignStats(totals);
+    }
+
     setLoading(false);
   };
+
+  const getChangePercent = () => {
+    if (prevPeriodConversations === 0) return null;
+    const change = ((totalConversations - prevPeriodConversations) / prevPeriodConversations) * 100;
+    return Math.round(change);
+  };
+
+  const changePercent = getChangePercent();
 
   if (loading) {
     return (
@@ -143,11 +222,11 @@ const AnalyticsPage = () => {
   }
 
   return (
-    <div className="p-3 md:p-6 space-y-6 max-w-[1200px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-5 max-w-[1200px] mx-auto" dir="rtl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">التحليلات والأداء</h1>
-          <p className="text-sm text-muted-foreground mt-1">نظرة شاملة على أداء الفريق وحجم العمل</p>
+          <p className="text-sm text-muted-foreground mt-0.5">نظرة شاملة على المحادثات والحملات وأداء الفريق</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={period} onValueChange={setPeriod}>
@@ -162,141 +241,315 @@ const AnalyticsPage = () => {
               <SelectItem value="quarter">هذا الربع</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" className="gap-1 text-xs">
-            <Download className="w-3.5 h-3.5" /> تصدير
-          </Button>
         </div>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard icon={MessageSquare} title="إجمالي المحادثات" value={totalConversations} colorIndex={1} />
-        <KpiCard icon={Clock} title="متوسط وقت أول رد" value={avgFirstResponse > 0 ? `${avgFirstResponse} د` : "—"} subtitle="الهدف: أقل من 2 دقيقة" colorIndex={2} />
-        <KpiCard icon={CheckCircle2} title="المحادثات المغلقة" value={closedConversations} colorIndex={3} />
-        <KpiCard icon={AlertTriangle} title="محادثات متأخرة" value={escalatedConversations} colorIndex={4} />
+        <Card className="relative overflow-hidden">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <MessageSquare className="w-4 h-4 text-primary" />
+              </div>
+              {changePercent !== null && (
+                <Badge variant="outline" className={cn("text-[10px] gap-0.5", changePercent >= 0 ? "text-primary" : "text-destructive")}>
+                  {changePercent >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                  {Math.abs(changePercent)}%
+                </Badge>
+              )}
+            </div>
+            <p className="text-2xl font-bold">{totalConversations}</p>
+            <p className="text-[11px] text-muted-foreground">إجمالي المحادثات</p>
+          </CardContent>
+        </Card>
+        <KpiCard icon={Clock} title="متوسط أول رد" value={avgFirstResponse > 0 ? `${avgFirstResponse} د` : "—"} subtitle="الهدف: أقل من 2 دقيقة" colorIndex={2} />
+        <KpiCard icon={CheckCircle2} title="مغلقة" value={closedConversations} colorIndex={3} />
+        <KpiCard icon={AlertTriangle} title="متأخرة / مصعّدة" value={escalatedConversations} colorIndex={4} />
+      </div>
+
+      {/* Messages & Campaign summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="p-3 text-center">
+            <p className="text-lg font-bold text-primary">{messageStats.inbound}</p>
+            <p className="text-[11px] text-muted-foreground">رسائل واردة</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <p className="text-lg font-bold text-info">{messageStats.outbound}</p>
+            <p className="text-[11px] text-muted-foreground">رسائل صادرة</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <p className="text-lg font-bold text-warning">{campaignStats.total}</p>
+            <p className="text-[11px] text-muted-foreground">حملات</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 text-center">
+            <p className="text-lg font-bold">{campaignStats.delivered}</p>
+            <p className="text-[11px] text-muted-foreground">تم توصيلها</p>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="bg-secondary w-full sm:w-auto overflow-x-auto">
+        <TabsList className="bg-secondary w-full sm:w-auto overflow-x-auto flex-wrap">
           <TabsTrigger value="overview" className="text-xs gap-1"><BarChart3 className="w-3 h-3" /> نظرة عامة</TabsTrigger>
-          <TabsTrigger value="team" className="text-xs gap-1"><Users className="w-3 h-3" /> أداء الفريق</TabsTrigger>
-          <TabsTrigger value="reports" className="text-xs gap-1"><PieChartIcon className="w-3 h-3" /> تقارير</TabsTrigger>
+          <TabsTrigger value="team" className="text-xs gap-1"><Users className="w-3 h-3" /> الفريق</TabsTrigger>
+          <TabsTrigger value="campaigns" className="text-xs gap-1"><Megaphone className="w-3 h-3" /> الحملات</TabsTrigger>
+          <TabsTrigger value="channels" className="text-xs gap-1"><Phone className="w-3 h-3" /> القنوات</TabsTrigger>
         </TabsList>
 
+        {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-card rounded-lg p-5 shadow-card">
-              <h3 className="font-semibold text-sm mb-4">المحادثات اليومية</h3>
-              {dailyData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={dailyData}>
-                    <defs>
-                      <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(142 64% 42%)" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="hsl(142 64% 42%)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" />
-                    <XAxis dataKey="day" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={11} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(220 13% 91%)", fontSize: 12 }} />
-                    <Area type="monotone" dataKey="count" stroke="hsl(142 64% 42%)" fill="url(#greenGrad)" strokeWidth={2} name="محادثات" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-10">لا توجد بيانات</p>
-              )}
-            </div>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">
+                  {period === "today" ? "المحادثات حسب الساعة" : "المحادثات اليومية"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(period === "today" ? hourlyData : dailyData).length > 0 ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart data={period === "today" ? hourlyData : dailyData}>
+                      <defs>
+                        <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(142 64% 42%)" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="hsl(142 64% 42%)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" />
+                      <XAxis dataKey={period === "today" ? "hour" : "day"} fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis fontSize={10} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(220 13% 91%)", fontSize: 12 }} />
+                      <Area type="monotone" dataKey="count" stroke="hsl(142 64% 42%)" fill="url(#greenGrad)" strokeWidth={2} name="محادثات" />
+                      {period !== "today" && (
+                        <Area type="monotone" dataKey="closed" stroke="hsl(217 91% 60%)" fill="transparent" strokeWidth={1.5} strokeDasharray="4 4" name="مغلقة" />
+                      )}
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-10">لا توجد بيانات</p>
+                )}
+              </CardContent>
+            </Card>
 
-            <div className="bg-card rounded-lg p-5 shadow-card">
-              <h3 className="font-semibold text-sm mb-4">رضا العملاء</h3>
-              {satisfactionData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={satisfactionData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={4} dataKey="count" nameKey="rating">
-                      {satisfactionData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">رضا العملاء</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {satisfactionData.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <PieChart>
+                        <Pie data={satisfactionData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={4} dataKey="count" nameKey="rating">
+                          {satisfactionData.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="flex justify-center gap-4 mt-1">
+                      {satisfactionData.map((c) => (
+                        <div key={c.rating} className="flex items-center gap-1.5 text-xs">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
+                          <span className="text-muted-foreground">{c.rating} ({c.count})</span>
+                        </div>
                       ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-10">لا توجد تقييمات</p>
-              )}
-              {satisfactionData.length > 0 && (
-                <div className="flex justify-center gap-4 mt-2">
-                  {satisfactionData.map((c) => (
-                    <div key={c.rating} className="flex items-center gap-1.5 text-xs">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
-                      <span className="text-muted-foreground">{c.rating} ({c.count})</span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="team" className="space-y-4">
-          <div className="bg-card rounded-lg shadow-card">
-            <div className="p-5 border-b border-border flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" />
-              <h3 className="font-semibold text-sm">أداء الفريق</h3>
-            </div>
-            {teamData.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-right p-4 text-xs font-semibold text-muted-foreground">الموظف</th>
-                      <th className="text-right p-4 text-xs font-semibold text-muted-foreground">محادثات نشطة</th>
-                      <th className="text-right p-4 text-xs font-semibold text-muted-foreground">تم حلها</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {teamData.map((agent, i) => (
-                      <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
-                        <td className="p-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                              {agent.name.charAt(0)}
-                            </div>
-                            <span className="font-medium">{agent.name}</span>
-                          </div>
-                        </td>
-                        <td className="p-4 font-semibold">{agent.activeChats}</td>
-                        <td className="p-4 font-semibold">{agent.resolved}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">لا توجد بيانات</p>
-            )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-10">لا توجد تقييمات</p>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {teamData.length > 0 && (
-            <div className="bg-card rounded-lg p-5 shadow-card">
-              <h3 className="font-semibold text-sm mb-4">مقارنة أداء الموظفين</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={teamData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" />
-                  <XAxis type="number" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis dataKey="name" type="category" fontSize={11} tickLine={false} axisLine={false} width={60} />
-                  <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="activeChats" fill="hsl(142 64% 42%)" radius={[0, 4, 4, 0]} name="نشطة" />
-                  <Bar dataKey="resolved" fill="hsl(217 91% 60%)" radius={[0, 4, 4, 0]} name="تم حلها" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+          {/* Tags breakdown */}
+          {tagData.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">أكثر الوسوم استخداماً</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={tagData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" />
+                    <XAxis type="number" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis dataKey="tag" type="category" fontSize={10} tickLine={false} axisLine={false} width={80} />
+                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                    <Bar dataKey="count" fill="hsl(142 64% 42%)" radius={[0, 4, 4, 0]} name="عدد" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
-        <TabsContent value="reports" className="space-y-4">
-          <div className="text-sm text-muted-foreground text-center py-10">
-            التقارير التفصيلية قيد التطوير — سيتم إضافة تصدير PDF و CSV قريباً
+        {/* Team Tab */}
+        <TabsContent value="team" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                أداء الفريق
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {teamData.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-right p-3 text-xs font-semibold text-muted-foreground">الموظف</th>
+                        <th className="text-right p-3 text-xs font-semibold text-muted-foreground">نشطة</th>
+                        <th className="text-right p-3 text-xs font-semibold text-muted-foreground">تم حلها</th>
+                        <th className="text-right p-3 text-xs font-semibold text-muted-foreground">الإجمالي</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {teamData.map((agent, i) => (
+                        <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                                {agent.name.charAt(0)}
+                              </div>
+                              <span className="font-medium text-sm">{agent.name}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 font-semibold text-primary">{agent.activeChats}</td>
+                          <td className="p-3 font-semibold">{agent.resolved}</td>
+                          <td className="p-3 text-muted-foreground">{agent.activeChats + agent.resolved}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-10">لا توجد بيانات</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {teamData.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">مقارنة أداء الموظفين</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={teamData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" />
+                    <XAxis type="number" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis dataKey="name" type="category" fontSize={10} tickLine={false} axisLine={false} width={60} />
+                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                    <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="activeChats" fill="hsl(142 64% 42%)" radius={[0, 4, 4, 0]} name="نشطة" />
+                    <Bar dataKey="resolved" fill="hsl(217 91% 60%)" radius={[0, 4, 4, 0]} name="تم حلها" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Campaigns Tab */}
+        <TabsContent value="campaigns" className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: "حملات", value: campaignStats.total, color: "text-foreground" },
+              { label: "أُرسلت", value: campaignStats.sent, color: "text-info" },
+              { label: "وصلت", value: campaignStats.delivered, color: "text-primary" },
+              { label: "قُرئت", value: campaignStats.read, color: "text-success" },
+              { label: "فشلت", value: campaignStats.failed, color: "text-destructive" },
+            ].map(s => (
+              <Card key={s.label}>
+                <CardContent className="p-3 text-center">
+                  <p className={cn("text-xl font-bold", s.color)}>{s.value}</p>
+                  <p className="text-[11px] text-muted-foreground">{s.label}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          {campaignStats.sent > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">نسب التوصيل والقراءة</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { label: "نسبة التوصيل", value: Math.round((campaignStats.delivered / campaignStats.sent) * 100), color: "bg-primary" },
+                    { label: "نسبة القراءة", value: Math.round((campaignStats.read / Math.max(campaignStats.delivered, 1)) * 100), color: "bg-info" },
+                    { label: "نسبة الفشل", value: Math.round((campaignStats.failed / campaignStats.sent) * 100), color: "bg-destructive" },
+                  ].map(bar => (
+                    <div key={bar.label}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">{bar.label}</span>
+                        <span className="font-semibold">{bar.value}%</span>
+                      </div>
+                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                        <div className={cn("h-full rounded-full transition-all", bar.color)} style={{ width: `${bar.value}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Channels Tab */}
+        <TabsContent value="channels" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">توزيع القنوات</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {channelData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={channelData} cx="50%" cy="50%" outerRadius={70} paddingAngle={3} dataKey="count" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                        {channelData.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-10">لا توجد بيانات</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">الرسائل الواردة vs الصادرة</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={[{ name: "الرسائل", inbound: messageStats.inbound, outbound: messageStats.outbound }]}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" />
+                    <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis fontSize={10} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                    <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="inbound" fill="hsl(142 64% 42%)" radius={[4, 4, 0, 0]} name="واردة" />
+                    <Bar dataKey="outbound" fill="hsl(217 91% 60%)" radius={[4, 4, 0, 0]} name="صادرة" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
