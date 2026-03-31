@@ -825,8 +825,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </div>
       )}
 
+      {/* Closed Conversation Banner */}
+      {conversation.status === "closed" && (
+        <div className="shrink-0 bg-muted border-b border-border px-4 py-3 flex items-center gap-2">
+          <XCircle className="w-4 h-4 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground font-medium flex-1">تم إغلاق هذه المحادثة</p>
+          <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => { onStatusChange(conversation.id, "active"); toast.success("تم إعادة فتح المحادثة"); }}>
+            <CheckCircle2 className="w-3 h-3" /> إعادة فتح
+          </Button>
+        </div>
+      )}
+
       {/* Note Mode Banner */}
-      {isNoteMode && (
+      {isNoteMode && conversation.status !== "closed" && (
         <div className="shrink-0 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center gap-2">
           <StickyNote className="w-4 h-4 text-amber-500 shrink-0" />
           <p className="text-xs text-amber-600 font-medium flex-1">وضع الملاحظات الداخلية - الرسالة لن تُرسل للعميل</p>
@@ -971,7 +982,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Input Area */}
-      {!isRecording && (
+      {!isRecording && conversation.status !== "closed" && (
         <div className={cn("shrink-0 border-t bg-card p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border")}>
           {/* Reply Preview Bar */}
           {replyTo && (
