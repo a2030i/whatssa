@@ -559,22 +559,20 @@ const IntegrationsPage = () => {
     );
   };
 
-  const translateHealthIssue = (issue: { entity: string; error: string; solution: string }): { title: string; solution: string; severity: "critical" | "warning" } | null => {
+  const translateHealthIssue = (issue: { entity: string; error: string; solution: string }): { title: string; solution: string; severity: "critical" | "warning"; link?: { url: string; label: string } } | null => {
     const err = issue.error.toLowerCase();
-    // Skip SIP-related issues (not relevant for messaging)
     if (err.includes("sip")) return null;
     
     if (err.includes("not linked") || err.includes("not registered") || err.includes("141000"))
       return { title: "الرقم غير مسجّل في Cloud API", solution: "اضغط زر 'تسجيل' أدناه لتسجيل الرقم، أو انتظر إذا كانت المحاولات كثيرة.", severity: "critical" };
     if (err.includes("payment method") || err.includes("141006"))
-      return { title: "مشكلة في طريقة الدفع", solution: "أضف بطاقة ائتمان في إعدادات حساب WABA من Meta Business Suite لتتمكن من إرسال الرسائل.", severity: "critical" };
+      return { title: "مشكلة في طريقة الدفع", solution: "أضف بطاقة ائتمان صالحة في إعدادات حساب واتساب بزنس لتتمكن من إرسال الرسائل.", severity: "critical", link: { url: "https://business.facebook.com/settings/payment-methods", label: "إضافة طريقة دفع ←" } };
     if (err.includes("display name") || err.includes("not been approved"))
-      return { title: "اسم العرض قيد المراجعة", solution: "سيتم مراجعة الاسم تلقائياً من Meta. حد الرسائل محدود حتى الاعتماد.", severity: "warning" };
+      return { title: "اسم العرض قيد المراجعة", solution: "سيتم مراجعة الاسم تلقائياً من Meta. حد الرسائل محدود حتى الاعتماد.", severity: "warning", link: { url: "https://business.facebook.com/settings/whatsapp-business-accounts", label: "متابعة حالة الاسم ←" } };
     if (err.includes("rate limit") || err.includes("too many"))
       return { title: "تجاوز حد المحاولات", solution: "انتظر ساعة إلى ساعتين ثم أعد المحاولة.", severity: "warning" };
     if (err.includes("not verified") || err.includes("verification"))
-      return { title: "الحساب غير موثّق", solution: "وثّق نشاطك التجاري من Meta Business Suite.", severity: "critical" };
-    // Fallback: show original in Arabic wrapper
+      return { title: "الحساب غير موثّق", solution: "وثّق نشاطك التجاري من إعدادات الأمان في Meta Business Suite.", severity: "critical", link: { url: "https://business.facebook.com/settings/security", label: "توثيق النشاط التجاري ←" } };
     return { title: `[${issue.entity}] مشكلة`, solution: issue.error, severity: "warning" };
   };
 
