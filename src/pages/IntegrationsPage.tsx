@@ -618,12 +618,23 @@ const IntegrationsPage = () => {
               const translated = translateHealthIssue(issue);
               if (!translated) return null;
               return (
-                <div key={i} className="bg-background/50 rounded-md p-2 space-y-0.5">
+                <div key={i} className="bg-background/50 rounded-md p-2 space-y-1">
                   <p className="text-[11px] font-medium text-foreground flex items-center gap-1">
                     <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", translated.severity === "critical" ? "bg-destructive" : "bg-warning")} />
                     {translated.title}
                   </p>
                   <p className="text-[10px] text-muted-foreground pr-3">{translated.solution}</p>
+                  {translated.link && (
+                    <a
+                      href={translated.link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline pr-3"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      {translated.link.label}
+                    </a>
+                  )}
                 </div>
               );
             })}
