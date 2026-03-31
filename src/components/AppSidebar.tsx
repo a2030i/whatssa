@@ -276,10 +276,6 @@ const AppSidebar = () => {
 
   const sidebarContent = (
     <>
-      {/* Logo */}
-      <div className={cn("border-b border-sidebar-border/50 flex items-center", collapsed ? "p-3 justify-center" : "p-4 gap-3")}>
-        <img src={respondlyLogo} alt="Respondly" className={cn(collapsed ? "h-8" : "h-10")} />
-      </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto scrollbar-none py-2">
