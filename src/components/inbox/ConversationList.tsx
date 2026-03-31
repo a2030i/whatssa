@@ -358,8 +358,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
       )}
 
       {/* Results count */}
-      {(hasActiveFilters || searchQuery) && (
-        <div className="px-4 py-1.5 bg-accent/50 text-[11px] text-accent-foreground shrink-0">{filtered.length} محادثة</div>
+      {(hasActiveFilters || searchQuery || activeCustomInbox) && (
+        <div className="px-4 py-1.5 bg-accent/50 text-[11px] text-accent-foreground shrink-0 flex items-center justify-between">
+          <span>
+            {activeInbox ? `${activeInbox.name} - (المحادثات المفتوحه )` : ""} {filtered.length}
+          </span>
+          {activeInbox && (
+            <button
+              onClick={() => deleteCustomInbox(activeInbox.id)}
+              className="p-1 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       )}
 
       {/* Conversation Items */}
