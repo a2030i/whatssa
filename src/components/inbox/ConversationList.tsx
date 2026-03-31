@@ -153,9 +153,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
     { id: "closed", label: "منتهية", icon: XCircle, count: counts.closed },
   ];
 
+  const activeInbox = customInboxes.find((i) => i.id === activeCustomInbox);
+
   const filtered = useMemo(() => {
     return conversations.filter((conv) => {
       if (searchQuery && !conv.customerName.includes(searchQuery) && !conv.lastMessage.includes(searchQuery) && !conv.customerPhone.includes(searchQuery)) return false;
+      
+      // If custom inbox is active, use its filters
+      if (activeInbox) {
+        return applyCustomFilters(conv, activeInbox);
+      }
+      
       switch (activeQuickFilter) {
         case "active": if (conv.status !== "active") return false; break;
         case "private": if (conv.conversationType && conv.conversationType !== "private") return false; break;
@@ -170,10 +178,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection }:
       if (selectedTags.length > 0 && !selectedTags.some((t) => conv.tags.includes(t))) return false;
       return true;
     });
-  }, [conversations, searchQuery, activeQuickFilter, agentFilter, selectedTags]);
+  }, [conversations, searchQuery, activeQuickFilter, agentFilter, selectedTags, activeInbox]);
 
-  const hasActiveFilters = agentFilter !== "all" || selectedTags.length > 0;
-  const clearFilters = () => { setAgentFilter("all"); setSelectedTags([]); };
+  const hasActiveFilters = agentFilter !== "all" || selectedTags.length > 0 || !!activeCustomInbox;
+  const clearFilters = () => { setAgentFilter("all"); setSelectedTags([]); setActiveCustomInbox(null); setActiveQuickFilter("all"); };
   const toggleTag = (tag: string) => setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
 
   return (
