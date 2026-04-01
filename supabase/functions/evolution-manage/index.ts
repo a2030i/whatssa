@@ -76,8 +76,24 @@ serve(async (req) => {
       return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
     }
 
-    const body = await req.json();
-    const { action, instance_name } = body;
+    const body = await req.json().catch(() => ({} as Record<string, unknown>));
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return json({ error: "بيانات الطلب غير صالحة" }, 400);
+    }
+
+    const payload = body as Record<string, any>;
+    const action = typeof payload.action === "string" ? payload.action : "";
+    const instance_name = typeof payload.instance_name === "string" ? payload.instance_name : undefined;
+    const asString = (value: unknown) => typeof value === "string" ? value.trim() : "";
+    const asStringArray = (value: unknown) =>
+      Array.isArray(value)
+        ? value
+            .filter((item): item is string => typeof item === "string")
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : [];
+    const asNumber = (value: unknown, fallback = 0) =>
+      typeof value === "number" && Number.isFinite(value) ? value : fallback;
     const instanceName = instance_name || `org_${orgId.replace(/-/g, "").slice(0, 12)}`;
 
     const evoHeaders = {
@@ -259,8 +275,8 @@ serve(async (req) => {
 
     // ── PAIRING CODE (Phone Number Linking) ──
     if (action === "pairing_code") {
-      const { phone_number } = body;
-      if (!phone_number) {
+      const phoneNumber = asString(payload.phone_number);
+      if (!phoneNumber) {
         return json({ error: "رقم الهاتف مطلوب" }, 400);
       }
 
@@ -279,22 +295,23 @@ serve(async (req) => {
         // Instance might not exist, continue
       }
 
-      // Request pairing code from Evolution API
-      const pairingRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
-        method: "GET",
+      const cleanPhone = phoneNumber.replace(/\D/g, "");
+      const connectUrl = `${EVOLUTION_URL}/instance/connect/${instanceName}`;
+
+      let codeRes = await fetch(`${connectUrl}?number=${encodeURIComponent(cleanPhone)}`, {
         headers: evoHeaders,
       });
+      let codeData = await codeRes.json().catch(() => ({}));
 
-      // Now request the pairing code
-      const codeRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
-        method: "POST",
-        headers: evoHeaders,
-        body: JSON.stringify({
-          number: phone_number.replace(/\D/g, ""),
-        }),
-      });
-
-      const codeData = await codeRes.json();
+      if (!codeRes.ok || !(codeData?.pairingCode || codeData?.code)) {
+        const fallbackRes = await fetch(connectUrl, {
+          method: "POST",
+          headers: evoHeaders,
+          body: JSON.stringify({ number: cleanPhone }),
+        });
+        codeRes = fallbackRes;
+        codeData = await fallbackRes.json().catch(() => ({}));
+      }
 
       if (!codeRes.ok) {
         await logToSystem(adminClient, "error", "فشل الحصول على كود الربط", {
@@ -312,7 +329,7 @@ serve(async (req) => {
         return json({ error: "السيرفر لا يدعم الربط بالكود — تأكد من تحديث Evolution API لإصدار v2+" }, 400);
       }
 
-      await logToSystem(adminClient, "info", `تم توليد كود ربط لـ ${phone_number}`, {
+      await logToSystem(adminClient, "info", `تم توليد كود ربط لـ ${phoneNumber}`, {
         instance: instanceName,
       }, orgId, userId);
 
@@ -325,7 +342,7 @@ serve(async (req) => {
 
     // ── SEND READ RECEIPT ──
     if (action === "read_messages") {
-      const { messages: messageKeys } = await req.json().catch(() => ({ messages: [] }));
+      const messageKeys = Array.isArray(payload.messages) ? payload.messages : [];
       if (!messageKeys || !Array.isArray(messageKeys) || messageKeys.length === 0) {
         return json({ success: true }); // Nothing to mark
       }
@@ -354,7 +371,7 @@ serve(async (req) => {
 
     // ── BLOCK CONTACT ──
     if (action === "block_contact") {
-      const { phone: blockPhone } = await req.json().catch(() => ({ phone: "" }));
+      const blockPhone = asString(payload.phone);
       if (!blockPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
       const blockRes = await fetch(`${EVOLUTION_URL}/chat/updateBlockStatus/${instanceName}`, {
         method: "PUT",
@@ -368,7 +385,7 @@ serve(async (req) => {
 
     // ── UNBLOCK CONTACT ──
     if (action === "unblock_contact") {
-      const { phone: unblockPhone } = await req.json().catch(() => ({ phone: "" }));
+      const unblockPhone = asString(payload.phone);
       if (!unblockPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
       const unblockRes = await fetch(`${EVOLUTION_URL}/chat/updateBlockStatus/${instanceName}`, {
         method: "PUT",
@@ -382,7 +399,8 @@ serve(async (req) => {
 
     // ── ARCHIVE CHAT ──
     if (action === "archive_chat") {
-      const { phone: archivePhone, archive = true } = await req.json().catch(() => ({ phone: "", archive: true }));
+      const archivePhone = asString(payload.phone);
+      const archive = typeof payload.archive === "boolean" ? payload.archive : true;
       if (!archivePhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
       const archiveRes = await fetch(`${EVOLUTION_URL}/chat/archiveChat/${instanceName}`, {
         method: "PUT",
@@ -397,7 +415,9 @@ serve(async (req) => {
 
     // ── SEND POLL ──
     if (action === "send_poll") {
-      const { phone: pollPhone, question, options } = await req.json().catch(() => ({ phone: "", question: "", options: [] }));
+      const pollPhone = asString(payload.phone);
+      const question = asString(payload.question);
+      const options = asStringArray(payload.options);
       if (!pollPhone || !question || !options?.length) return json({ error: "البيانات ناقصة" }, 400);
       const pollRes = await fetch(`${EVOLUTION_URL}/message/sendPoll/${instanceName}`, {
         method: "POST",
@@ -420,7 +440,8 @@ serve(async (req) => {
 
     // ── SEND STICKER ──
     if (action === "send_sticker") {
-      const { phone: stickerPhone, sticker_url } = await req.json().catch(() => ({ phone: "", sticker_url: "" }));
+      const stickerPhone = asString(payload.phone);
+      const sticker_url = asString(payload.sticker_url);
       if (!stickerPhone || !sticker_url) return json({ error: "البيانات ناقصة" }, 400);
       const stickerRes = await fetch(`${EVOLUTION_URL}/message/sendSticker/${instanceName}`, {
         method: "POST",
@@ -433,7 +454,7 @@ serve(async (req) => {
 
     // ── GROUP: GET INFO ──
     if (action === "group_info") {
-      const { group_jid } = await req.json().catch(() => ({ group_jid: "" }));
+      const group_jid = asString(payload.group_jid);
       if (!group_jid) return json({ error: "معرف المجموعة مطلوب" }, 400);
       const infoRes = await fetch(`${EVOLUTION_URL}/group/findGroupInfos/${instanceName}?groupJid=${group_jid}`, {
         headers: evoHeaders,
@@ -444,7 +465,8 @@ serve(async (req) => {
 
     // ── GROUP: ADD PARTICIPANTS ──
     if (action === "group_add") {
-      const { group_jid, participants } = await req.json().catch(() => ({ group_jid: "", participants: [] }));
+      const group_jid = asString(payload.group_jid);
+      const participants = asStringArray(payload.participants);
       if (!group_jid || !participants?.length) return json({ error: "البيانات ناقصة" }, 400);
       const addRes = await fetch(`${EVOLUTION_URL}/group/updateParticipant/${instanceName}?groupJid=${group_jid}`, {
         method: "PUT",
@@ -458,7 +480,8 @@ serve(async (req) => {
 
     // ── GROUP: REMOVE PARTICIPANTS ──
     if (action === "group_remove") {
-      const { group_jid, participants } = await req.json().catch(() => ({ group_jid: "", participants: [] }));
+      const group_jid = asString(payload.group_jid);
+      const participants = asStringArray(payload.participants);
       if (!group_jid || !participants?.length) return json({ error: "البيانات ناقصة" }, 400);
       const removeRes = await fetch(`${EVOLUTION_URL}/group/updateParticipant/${instanceName}?groupJid=${group_jid}`, {
         method: "PUT",
@@ -472,7 +495,9 @@ serve(async (req) => {
 
     // ── GROUP: UPDATE SETTINGS ──
     if (action === "group_settings") {
-      const { group_jid, subject, description } = await req.json().catch(() => ({ group_jid: "", subject: "", description: "" }));
+      const group_jid = asString(payload.group_jid);
+      const subject = asString(payload.subject);
+      const description = asString(payload.description);
       if (!group_jid) return json({ error: "معرف المجموعة مطلوب" }, 400);
       if (subject) {
         await fetch(`${EVOLUTION_URL}/group/updateGroupSubject/${instanceName}?groupJid=${group_jid}`, {
@@ -492,7 +517,8 @@ serve(async (req) => {
 
     // ── SET DISAPPEARING MESSAGES ──
     if (action === "set_disappearing") {
-      const { phone: disappearPhone, expiration = 0 } = await req.json().catch(() => ({ phone: "", expiration: 0 }));
+      const disappearPhone = asString(payload.phone);
+      const expiration = asNumber(payload.expiration, 0);
       if (!disappearPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
       const disappearRes = await fetch(`${EVOLUTION_URL}/chat/setDisappearingMessages/${instanceName}`, {
         method: "POST",
@@ -507,7 +533,7 @@ serve(async (req) => {
 
     // ── FETCH PROFILE PICTURE ──
     if (action === "profile_picture") {
-      const { phone: picPhone } = await req.json().catch(() => ({ phone: "" }));
+      const picPhone = asString(payload.phone);
       if (!picPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
       const picRes = await fetch(`${EVOLUTION_URL}/chat/fetchProfilePictureUrl/${instanceName}`, {
         method: "POST",
@@ -520,7 +546,7 @@ serve(async (req) => {
 
     // ── CHECK IF NUMBER EXISTS ON WHATSAPP ──
     if (action === "check_number") {
-      const { phone: checkPhone } = await req.json().catch(() => ({ phone: "" }));
+      const checkPhone = asString(payload.phone);
       if (!checkPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
       const checkRes = await fetch(`${EVOLUTION_URL}/chat/whatsappNumbers/${instanceName}`, {
         method: "POST",
@@ -533,7 +559,9 @@ serve(async (req) => {
 
     // ── SEND REACTION ──
     if (action === "send_reaction") {
-      const { phone: reactPhone, message_id, emoji } = await req.json().catch(() => ({ phone: "", message_id: "", emoji: "" }));
+      const reactPhone = asString(payload.phone);
+      const message_id = asString(payload.message_id);
+      const emoji = asString(payload.emoji);
       if (!reactPhone || !message_id) return json({ error: "البيانات ناقصة" }, 400);
       const reactRes = await fetch(`${EVOLUTION_URL}/message/sendReaction/${instanceName}`, {
         method: "POST",
@@ -551,7 +579,12 @@ serve(async (req) => {
 
     // ── POST STATUS/STORY ──
     if (action === "post_status") {
-      const { content: statusContent, media_url: statusMediaUrl, media_type: statusMediaType, background_color, font, caption: statusCaption } = await req.json().catch(() => ({} as any));
+      const statusContent = asString(payload.content);
+      const statusMediaUrl = asString(payload.media_url);
+      const statusMediaType = asString(payload.media_type);
+      const background_color = asString(payload.background_color);
+      const font = asNumber(payload.font, 1);
+      const statusCaption = asString(payload.caption);
       
       if (statusMediaUrl) {
         // Media status (image/video)
@@ -601,7 +634,9 @@ serve(async (req) => {
 
     // ── EDIT MESSAGE ──
     if (action === "edit_message") {
-      const { phone: editPhone, message_id: editMsgId, new_text } = await req.json().catch(() => ({} as any));
+      const editPhone = asString(payload.phone);
+      const editMsgId = asString(payload.message_id);
+      const new_text = asString(payload.new_text);
       if (!editPhone || !editMsgId || !new_text) return json({ error: "البيانات ناقصة" }, 400);
       const editRes = await fetch(`${EVOLUTION_URL}/message/editMessage/${instanceName}`, {
         method: "PUT",
@@ -626,7 +661,8 @@ serve(async (req) => {
 
     // ── DELETE MESSAGE ──
     if (action === "delete_message") {
-      const { phone: delPhone, message_id: delMsgId } = await req.json().catch(() => ({} as any));
+      const delPhone = asString(payload.phone);
+      const delMsgId = asString(payload.message_id);
       if (!delPhone || !delMsgId) return json({ error: "البيانات ناقصة" }, 400);
       const delRes = await fetch(`${EVOLUTION_URL}/message/deleteMessage/${instanceName}`, {
         method: "DELETE",
@@ -649,7 +685,9 @@ serve(async (req) => {
 
     // ── PIN MESSAGE ──
     if (action === "pin_message") {
-      const { phone: pinPhone, message_id: pinMsgId, duration = 604800 } = await req.json().catch(() => ({} as any));
+      const pinPhone = asString(payload.phone);
+      const pinMsgId = asString(payload.message_id);
+      const duration = asNumber(payload.duration, 604800);
       if (!pinPhone || !pinMsgId) return json({ error: "البيانات ناقصة" }, 400);
       const pinRes = await fetch(`${EVOLUTION_URL}/chat/pinMessage/${instanceName}`, {
         method: "PUT",
@@ -666,7 +704,8 @@ serve(async (req) => {
 
     // ── UNPIN MESSAGE ──
     if (action === "unpin_message") {
-      const { phone: unpinPhone, message_id: unpinMsgId } = await req.json().catch(() => ({} as any));
+      const unpinPhone = asString(payload.phone);
+      const unpinMsgId = asString(payload.message_id);
       if (!unpinPhone || !unpinMsgId) return json({ error: "البيانات ناقصة" }, 400);
       const unpinRes = await fetch(`${EVOLUTION_URL}/chat/unpinMessage/${instanceName}`, {
         method: "PUT",
@@ -680,7 +719,10 @@ serve(async (req) => {
 
     // ── SEND BROADCAST (List Message) ──
     if (action === "send_broadcast") {
-      const { phones, text: broadcastText, media_url: bcMediaUrl, media_type: bcMediaType } = await req.json().catch(() => ({} as any));
+      const phones = asStringArray(payload.phones);
+      const broadcastText = asString(payload.text);
+      const bcMediaUrl = asString(payload.media_url);
+      const bcMediaType = asString(payload.media_type);
       if (!phones || !Array.isArray(phones) || phones.length === 0) return json({ error: "قائمة الأرقام مطلوبة" }, 400);
       if (!broadcastText && !bcMediaUrl) return json({ error: "نص الرسالة أو الوسائط مطلوبة" }, 400);
 
