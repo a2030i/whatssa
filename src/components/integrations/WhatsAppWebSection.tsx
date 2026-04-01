@@ -265,10 +265,11 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
 
   const loadUnofficialLimits = async () => {
     if (!orgId) return;
-    const [countRes, orgRes] = await Promise.all([
-      supabase.from("whatsapp_config_safe").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("channel_type", "evolution"),
+    const [channelsRes, orgRes] = await Promise.all([
+      supabase.rpc("get_org_whatsapp_channels"),
       supabase.from("organizations").select("plans(max_unofficial_phones)").eq("id", orgId).maybeSingle(),
     ]);
+    const unofficialChannels = ((channelsRes.data || []) as any[]).filter((config) => config.org_id === orgId && config.channel_type === "evolution");
     setUnofficialCount(countRes.count || 0);
     const planData = orgRes?.data as any;
     if (planData?.plans?.max_unofficial_phones != null) setMaxUnofficialPhones(planData.plans.max_unofficial_phones);
