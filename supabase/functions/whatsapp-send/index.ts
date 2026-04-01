@@ -509,6 +509,16 @@ serve(async (req) => {
         if (Object.keys(msgMetadata).length > 0) {
           msgInsert.metadata = msgMetadata;
         }
+        // Add reply context to metadata
+        if (reply_to) {
+          const existing = (msgInsert.metadata as Record<string, any>) || {};
+          existing.quoted = {
+            message_id: reply_to.wa_message_id || reply_to.message_id,
+            sender_name: reply_to.sender_name || "العميل",
+            text: reply_to.text?.slice(0, 200) || "",
+          };
+          msgInsert.metadata = existing;
+        }
 
         await adminClient.from("messages").insert(msgInsert);
 

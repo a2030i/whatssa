@@ -830,6 +830,23 @@ serve(async (req) => {
             content = `[${incomingMessage.type}]`;
           }
 
+          // ── Reply context (quote) ──
+          if (incomingMessage.context?.id) {
+            const quotedWaId = incomingMessage.context.id;
+            const { data: quotedMsg } = await supabase
+              .from("messages")
+              .select("id, content, sender, metadata")
+              .eq("wa_message_id", quotedWaId)
+              .maybeSingle();
+            if (quotedMsg) {
+              messageMetadata.quoted = {
+                message_id: quotedWaId,
+                sender_name: quotedMsg.sender === "agent" ? "أنت" : (quotedMsg.metadata as any)?.sender_name || contactName,
+                text: quotedMsg.content?.slice(0, 200) || "",
+              };
+            }
+          }
+
           const msgInsert: Record<string, unknown> = {
             conversation_id: conversation.id,
             wa_message_id: incomingMessage.id,
