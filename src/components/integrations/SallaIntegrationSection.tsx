@@ -199,6 +199,12 @@ const EVENT_LABELS_AR: Record<string, string> = {
   "product.update": "تحديث منتج",
   "products/create": "منتج جديد",
   "products/update": "تحديث منتج",
+  "shipment.picked_up": "تم الالتقاط",
+  "shipment.shipping": "جاري الشحن",
+  "shipment.delivered": "تم التوصيل",
+  "shipment.delivery_failed": "فشل التوصيل",
+  "shipment.returned": "مرتجع",
+  "shipment.cancelled": "شحنة ملغية",
 };
 
 const SallaIntegrationSection = () => {
