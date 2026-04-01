@@ -299,7 +299,7 @@ const SallaIntegrationSection = () => {
   };
 
   const getWebhookUrl = (store: StoreIntegration) => {
-    const platformConfig = PLATFORMS.find(p => p.id === store.platform);
+    const platformConfig = ALL_PLATFORMS.find(p => p.id === store.platform);
     const base = platformConfig?.webhookBase || STORE_WEBHOOK_BASE;
     return `${base}/${store.id}`;
   };
