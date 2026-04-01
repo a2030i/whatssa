@@ -556,6 +556,16 @@ const IntegrationsPage = () => {
               <CheckCircle2 className="w-3 h-3" /> متصل
             </Badge>
           )}
+          {config.onboarding_type && config.onboarding_type !== "new" && (
+            <Badge className="bg-primary/10 text-primary border-0 text-[10px] gap-1 px-2 py-0.5">
+              <ArrowLeftRight className="w-2.5 h-2.5" /> {onboardingTypeLabel(config.onboarding_type)}
+            </Badge>
+          )}
+          {config.migration_status === "pending" && (
+            <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-1 px-2 py-0.5">
+              <Loader2 className="w-2.5 h-2.5 animate-spin" /> نقل جارٍ
+            </Badge>
+          )}
           {isFailed && (
             <Badge className="bg-destructive/10 text-destructive border-0 text-xs gap-1 px-3 py-1">
               <AlertTriangle className="w-3 h-3" /> فشل التسجيل
