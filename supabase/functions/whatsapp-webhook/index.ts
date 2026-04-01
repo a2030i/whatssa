@@ -812,7 +812,7 @@ serve(async (req) => {
             content = `[${incomingMessage.type}]`;
           }
 
-          const { error: msgError } = await supabase.from("messages").insert({
+          const msgInsert: Record<string, unknown> = {
             conversation_id: conversation.id,
             wa_message_id: incomingMessage.id,
             sender: "customer",
@@ -820,7 +820,12 @@ serve(async (req) => {
             content,
             media_url: mediaUrl,
             status: "delivered",
-          });
+          };
+          if (Object.keys(messageMetadata).length > 0) {
+            msgInsert.metadata = messageMetadata;
+          }
+
+          const { error: msgError } = await supabase.from("messages").insert(msgInsert);
 
           if (msgError) {
             await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
