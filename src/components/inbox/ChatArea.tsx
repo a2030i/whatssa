@@ -140,14 +140,19 @@ const ResolvedMedia = ({ url, type }: { url: string; type: string }) => {
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
-  const canReply = msg.type !== "note";
+  const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
     onSwipe: () => canReply && onReply(msg),
     direction: swipeDirection,
     threshold: 60,
   });
+
+  // Can edit agent text messages within 15 minutes
+  const canEdit = msg.sender === "agent" && msg.type === "text" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
+    (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
+  const canDelete = msg.sender === "agent" && msg.waMessageId && !msg.isDeleted;
 
   return (
     <div
@@ -159,151 +164,172 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
       data-message-id={msg.id}
       data-wa-message-id={msg.waMessageId || undefined}
     >
-      {/* Desktop click reply button */}
-      {canReply && (
-        <button
-          onClick={() => onReply(msg)}
-          className={cn(
-            "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 w-7 h-7 rounded-full bg-secondary shadow-md items-center justify-center hover:bg-accent hidden md:flex",
-            msg.sender === "agent" ? "-left-9" : "-right-9"
+      {/* Desktop action buttons */}
+      {!msg.isDeleted && (
+        <div className={cn(
+          "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:flex items-center gap-0.5",
+          msg.sender === "agent" ? "-left-20" : "-right-20"
+        )}>
+          {canReply && (
+            <button onClick={() => onReply(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="رد">
+              <Reply className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
           )}
-          title="رد"
-        >
-          <Reply className="w-3.5 h-3.5 text-muted-foreground" />
-        </button>
+          {canEdit && onEdit && (
+            <button onClick={() => onEdit(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="تعديل">
+              <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          )}
+          {canDelete && onDelete && (
+            <button onClick={() => onDelete(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-destructive/10" title="حذف">
+              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+            </button>
+          )}
+        </div>
       )}
       <div className={cn(
         "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
-        msg.type === "note"
-          ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
-          : msg.sender === "agent"
-            ? "bg-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] text-foreground rounded-bl-sm"
-            : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-md"
+        msg.isDeleted
+          ? "bg-muted/50 border border-border/30 text-muted-foreground italic"
+          : msg.type === "note"
+            ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
+            : msg.sender === "agent"
+              ? "bg-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] text-foreground rounded-bl-sm"
+              : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-md"
       )}>
-        {msg.senderName && msg.sender === "customer" && conversation.conversationType === "group" && (
-          <div className="text-[11px] font-bold mb-1" style={{ color: "#a8f0c8" }}>{msg.senderName}</div>
-        )}
-        {msg.quoted && msg.quoted.text && (
-          <div
-            onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
-            className={cn(
-              "rounded-lg px-3 py-2 mb-2 border-r-4 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity",
-              msg.sender === "customer"
-                ? "bg-white/15 border-white/50"
-                : "bg-secondary border-primary/40"
-          )}>
-            {msg.quoted.sender_name && (
-              <p className={cn(
-                "text-[11px] font-bold mb-0.5",
-                msg.sender === "customer" ? "text-white/90" : "text-primary"
-              )}>
-                {msg.quoted.sender_name}
-              </p>
+        {msg.isDeleted ? (
+          <div className="flex items-center gap-1.5 text-xs">
+            <XCircle className="w-3.5 h-3.5" />
+            <span>تم حذف هذه الرسالة</span>
+          </div>
+        ) : (
+          <>
+            {msg.senderName && msg.sender === "customer" && conversation.conversationType === "group" && (
+              <div className="text-[11px] font-bold mb-1" style={{ color: "#a8f0c8" }}>{msg.senderName}</div>
             )}
-            <p className={cn(
-              "line-clamp-2",
-              msg.sender === "customer" ? "text-white/70" : "text-muted-foreground"
-            )}>
-              {msg.quoted.text}
-            </p>
-          </div>
-        )}
-        {msg.type === "template" && (
-          <div className="flex items-center gap-1 mb-1 text-primary">
-            <FileText className="w-3 h-3" />
-            <span className="text-[10px] font-semibold">قالب</span>
-          </div>
-        )}
-        {msg.type === "note" && (
-          <div className="flex items-center gap-1 mb-1 text-amber-500">
-            <StickyNote className="w-3 h-3" />
-            <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
-          </div>
-        )}
-        {/* Location message */}
-        {msg.type === "location" && msg.location && (
-          <a
-            href={`https://www.google.com/maps?q=${msg.location.latitude},${msg.location.longitude}`}
-            target="_blank"
-            rel="noreferrer"
-            className="block mb-1 rounded-lg overflow-hidden border border-border/50 hover:opacity-90 transition-opacity"
-          >
-            <img
-              src={`https://maps.googleapis.com/maps/api/staticmap?center=${msg.location.latitude},${msg.location.longitude}&zoom=15&size=280x150&markers=color:red|${msg.location.latitude},${msg.location.longitude}&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8`}
-              alt="موقع"
-              className="w-[280px] h-[150px] object-cover"
-              onError={(e) => {
-                // Fallback to OSM if Google Maps fails
-                (e.target as HTMLImageElement).src = `https://staticmap.openstreetmap.de/staticmap.php?center=${msg.location!.latitude},${msg.location!.longitude}&zoom=15&size=280x150&markers=${msg.location!.latitude},${msg.location!.longitude},red-pushpin`;
-              }}
-            />
-            <div className="px-2.5 py-1.5 flex items-center gap-1.5">
-              <MapPin className="w-3 h-3 text-destructive shrink-0" />
-              <div>
-                {msg.location.name && <p className="text-[11px] font-semibold">{msg.location.name}</p>}
-                {msg.location.address && <p className="text-[10px] text-muted-foreground">{msg.location.address}</p>}
-                {!msg.location.name && !msg.location.address && <p className="text-[10px]">📍 عرض الموقع</p>}
-              </div>
-            </div>
-          </a>
-        )}
-        {/* Contacts message */}
-        {msg.type === "contacts" && msg.contacts && msg.contacts.length > 0 && (
-          <div className="space-y-1.5 mb-1">
-            {msg.contacts.map((c, i) => (
-              <div key={i} className="flex items-center gap-2 bg-background/30 rounded-lg px-2.5 py-1.5">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Contact className="w-4 h-4 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold truncate">{c.name}</p>
-                  {c.phone && <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{c.phone}</p>}
-                  {c.email && <p className="text-[10px] text-muted-foreground">{c.email}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {/* Sticker message */}
-        {msg.type === "sticker" && msg.mediaUrl && (
-          <div className="mb-1">
-            <ResolvedMedia url={msg.mediaUrl} type="image" />
-          </div>
-        )}
-        {/* Regular content rendering */}
-        {msg.type !== "location" && msg.type !== "contacts" && msg.type !== "sticker" && (() => {
-          const textMediaUrl = getStorageUrlFromText(msg.text);
-          const mediaUrl = msg.mediaUrl || textMediaUrl;
-          const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
-          return (
-            <>
-              {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} />}
-              {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
-                <p className="whitespace-pre-wrap">
-                  {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
-                    part.startsWith("@") ? (
-                      <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{part}</span>
-                    ) : (
-                      <span key={i}>{part}</span>
-                    )
-                  )}
+            {msg.quoted && msg.quoted.text && (
+              <div
+                onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
+                className={cn(
+                  "rounded-lg px-3 py-2 mb-2 border-r-4 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity",
+                  msg.sender === "customer"
+                    ? "bg-white/15 border-white/50"
+                    : "bg-secondary border-primary/40"
+              )}>
+                {msg.quoted.sender_name && (
+                  <p className={cn(
+                    "text-[11px] font-bold mb-0.5",
+                    msg.sender === "customer" ? "text-white/90" : "text-primary"
+                  )}>
+                    {msg.quoted.sender_name}
+                  </p>
+                )}
+                <p className={cn(
+                  "line-clamp-2",
+                  msg.sender === "customer" ? "text-white/70" : "text-muted-foreground"
+                )}>
+                  {msg.quoted.text}
                 </p>
-              )}
-            </>
-          );
-        })()}
-        {/* Reactions display */}
-        {msg.reactions && msg.reactions.length > 0 && (
-          <div className="flex flex-wrap gap-0.5 mt-1">
-            {msg.reactions.map((r, i) => (
-              <span key={i} className="text-sm bg-background/40 rounded-full px-1.5 py-0.5 border border-border/30">{r.emoji}</span>
-            ))}
-          </div>
+              </div>
+            )}
+            {msg.type === "template" && (
+              <div className="flex items-center gap-1 mb-1 text-primary">
+                <FileText className="w-3 h-3" />
+                <span className="text-[10px] font-semibold">قالب</span>
+              </div>
+            )}
+            {msg.type === "note" && (
+              <div className="flex items-center gap-1 mb-1 text-amber-500">
+                <StickyNote className="w-3 h-3" />
+                <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
+              </div>
+            )}
+            {/* Location message */}
+            {msg.type === "location" && msg.location && (
+              <a
+                href={`https://www.google.com/maps?q=${msg.location.latitude},${msg.location.longitude}`}
+                target="_blank"
+                rel="noreferrer"
+                className="block mb-1 rounded-lg overflow-hidden border border-border/50 hover:opacity-90 transition-opacity"
+              >
+                <img
+                  src={`https://maps.googleapis.com/maps/api/staticmap?center=${msg.location.latitude},${msg.location.longitude}&zoom=15&size=280x150&markers=color:red|${msg.location.latitude},${msg.location.longitude}&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8`}
+                  alt="موقع"
+                  className="w-[280px] h-[150px] object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://staticmap.openstreetmap.de/staticmap.php?center=${msg.location!.latitude},${msg.location!.longitude}&zoom=15&size=280x150&markers=${msg.location!.latitude},${msg.location!.longitude},red-pushpin`;
+                  }}
+                />
+                <div className="px-2.5 py-1.5 flex items-center gap-1.5">
+                  <MapPin className="w-3 h-3 text-destructive shrink-0" />
+                  <div>
+                    {msg.location.name && <p className="text-[11px] font-semibold">{msg.location.name}</p>}
+                    {msg.location.address && <p className="text-[10px] text-muted-foreground">{msg.location.address}</p>}
+                    {!msg.location.name && !msg.location.address && <p className="text-[10px]">📍 عرض الموقع</p>}
+                  </div>
+                </div>
+              </a>
+            )}
+            {/* Contacts message */}
+            {msg.type === "contacts" && msg.contacts && msg.contacts.length > 0 && (
+              <div className="space-y-1.5 mb-1">
+                {msg.contacts.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-background/30 rounded-lg px-2.5 py-1.5">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Contact className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold truncate">{c.name}</p>
+                      {c.phone && <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{c.phone}</p>}
+                      {c.email && <p className="text-[10px] text-muted-foreground">{c.email}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Sticker message */}
+            {msg.type === "sticker" && msg.mediaUrl && (
+              <div className="mb-1">
+                <ResolvedMedia url={msg.mediaUrl} type="image" />
+              </div>
+            )}
+            {/* Regular content rendering */}
+            {msg.type !== "location" && msg.type !== "contacts" && msg.type !== "sticker" && (() => {
+              const textMediaUrl = getStorageUrlFromText(msg.text);
+              const mediaUrl = msg.mediaUrl || textMediaUrl;
+              const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
+              return (
+                <>
+                  {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} />}
+                  {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
+                    <p className="whitespace-pre-wrap">
+                      {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
+                        part.startsWith("@") ? (
+                          <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{part}</span>
+                        ) : (
+                          <span key={i}>{part}</span>
+                        )
+                      )}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
+            {/* Reactions display */}
+            {msg.reactions && msg.reactions.length > 0 && (
+              <div className="flex flex-wrap gap-0.5 mt-1">
+                {msg.reactions.map((r, i) => (
+                  <span key={i} className="text-sm bg-background/40 rounded-full px-1.5 py-0.5 border border-border/30">{r.emoji}</span>
+                ))}
+              </div>
+            )}
+            <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-white/60")}>
+              <span className="text-[10px]">{msg.timestamp}</span>
+              {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
+              {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
+            </div>
+          </>
         )}
-        <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-white/60")}>
-          <span className="text-[10px]">{msg.timestamp}</span>
-          {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
-        </div>
       </div>
     </div>
   );
