@@ -100,6 +100,7 @@ const IntegrationsPage = () => {
     healthIssues?: { entity: string; error: string; solution: string }[];
     isLoading: boolean;
   }>>({});
+  const [unofficialConfigs, setUnofficialConfigs] = useState<WhatsAppConfig[]>([]);
 
   useEffect(() => {
     loadConfigs();
@@ -108,12 +109,14 @@ const IntegrationsPage = () => {
 
   const loadConfigs = async () => {
     if (!orgId) return;
-    const [configsRes, orgRes] = await Promise.all([
+    const [configsRes, unofficialRes, orgRes] = await Promise.all([
       supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).neq("channel_type", "evolution").order("created_at", { ascending: true }),
+      supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).eq("channel_type", "evolution").order("created_at", { ascending: true }),
       supabase.from("organizations").select("plans(max_phone_numbers)").eq("id", orgId).maybeSingle(),
     ]);
     const data = configsRes.data || [];
     setConfigs(data);
+    setUnofficialConfigs(unofficialRes.data || []);
     const planData = orgRes?.data as any;
     if (planData?.plans?.max_phone_numbers) setMaxPhones(planData.plans.max_phone_numbers);
     // Fetch Meta status for connected configs — sequentially with delay to avoid rate limits
@@ -760,16 +763,40 @@ const IntegrationsPage = () => {
 
   const renderAllChannelsView = (currentConfigs: WhatsAppConfig[]) => {
     const connectedOfficialConfigs = currentConfigs.filter(c => !(c as any).channel_type || (c as any).channel_type !== "evolution");
+    const connectedUnofficialConfigs = unofficialConfigs.filter(c => c.is_connected || c.evolution_instance_status === "connected" || !!c.display_phone || !!c.business_name || !!c.evolution_instance_name);
     const hasConnected = connectedOfficialConfigs.length > 0;
+    const hasConnectedUnofficial = connectedUnofficialConfigs.length > 0;
 
     return (
       <>
         {/* Connected Numbers */}
-        {hasConnected && (
+        {(hasConnected || hasConnectedUnofficial) && (
           <div className="space-y-3">
             <h2 className="text-base font-bold text-foreground">الأرقام المتصلة</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {connectedOfficialConfigs.map(renderConfigCard)}
+              {connectedUnofficialConfigs.map((config) => (
+                <div key={config.id} className="bg-card rounded-xl border border-border p-4 flex flex-col items-center text-center gap-2 hover:shadow-md transition-shadow">
+                  <div className="w-14 h-14 rounded-2xl bg-warning/10 flex items-center justify-center">
+                    <QrCode className="w-7 h-7 text-warning" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-sm">{config.channel_label || config.business_name || "واتساب ويب"}</h3>
+                    <p className="text-xs text-muted-foreground font-mono" dir="ltr">
+                      {config.display_phone || config.business_name || config.evolution_instance_name || "الرقم قيد المزامنة"}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    قناة غير رسمية عبر واتساب ويب
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap justify-center mt-auto">
+                    <Badge variant="outline" className="text-[10px] px-2 py-0 text-warning border-warning/30">غير رسمي</Badge>
+                    <Badge className="bg-success/10 text-success border-0 text-xs gap-1 px-3 py-1">
+                      <CheckCircle2 className="w-3 h-3" /> متصل
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -791,6 +818,11 @@ const IntegrationsPage = () => {
                 {hasConnected && (
                   <Badge className="bg-success/10 text-success border-0 text-[10px] gap-1 px-2 py-0.5">
                     <CheckCircle2 className="w-2.5 h-2.5" /> رسمي ({connectedOfficialConfigs.length})
+                  </Badge>
+                )}
+                {hasConnectedUnofficial && (
+                  <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-1 px-2 py-0.5">
+                    <QrCode className="w-2.5 h-2.5" /> واتساب ويب ({connectedUnofficialConfigs.length})
                   </Badge>
                 )}
                 <Button size="sm" className="text-[10px] h-8 gap-1 rounded-lg px-4 w-full" onClick={() => setShowWhatsAppChoice(true)}>
@@ -835,7 +867,7 @@ const IntegrationsPage = () => {
                     <p className="text-[11px] text-muted-foreground mt-0.5">ربط عبر مسح QR — بدون حساب بزنس رسمي</p>
                   </div>
                 </div>
-                <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} autoOpen />
+                <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} autoOpen onConfigChange={loadConfigs} />
               </div>
             </div>
           </DialogContent>
@@ -888,7 +920,7 @@ const IntegrationsPage = () => {
   if (configs.length === 0 && flowStep === "idle") {
     return (
       <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir="rtl">
-        {renderAllChannelsView([])}
+        {renderAllChannelsView(configs)}
       </div>
     );
   }
