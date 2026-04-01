@@ -90,13 +90,9 @@ async function processChatbotFlow(
     }
 
     // Send next message node
-    let msgText = nextNode.content || "";
-    if (nextNode.buttons && nextNode.buttons.length > 0) {
-      const buttonLabels = nextNode.buttons.map((b: any, i: number) => `${i + 1}. ${b.label}`).join("\n");
-      msgText += `\n\n${buttonLabels}`;
-    }
-
-    await sendBotMessage(client, orgId, conversationId, customerPhone, msgText, channel, log);
+    const msgText = nextNode.content || "";
+    const btns = (nextNode.buttons || []).filter((b: any) => b.label).map((b: any) => ({ id: b.id, label: b.label }));
+    await sendBotMessage(client, orgId, conversationId, customerPhone, msgText, channel, log, btns);
     
     // Update session to new node
     await client.from("chatbot_sessions").update({
