@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, FileText, Check, Clock, XCircle, Eye, Globe, RefreshCw, Loader2, Pencil, Trash2, AlertTriangle, Image, Video, Type, Link, Phone, X } from "lucide-react";
+import { Plus, Search, FileText, Check, Clock, XCircle, Eye, Globe, RefreshCw, Loader2, Pencil, Trash2, AlertTriangle, Image, Video, Type, Link, Phone, X, BarChart3, TrendingUp, Send as SendIcon, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
