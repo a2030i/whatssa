@@ -803,6 +803,16 @@ async function sendEventNotification(supabase: any, integration: any, evt: Norma
       const result = await res.json();
       if (result.error) throw new Error(result.error.message);
     } else if (channelType === "evolution" && cfg.message_text) {
+      // Check rate limit before sending via Evolution
+      const rateSettings = waConfig.rate_limit_settings;
+      if (rateSettings?.enabled) {
+        const { data: limitCheck } = await supabase.rpc("check_channel_rate_limit", { _channel_id: waConfig.id });
+        if (limitCheck && !limitCheck.allowed) {
+          console.warn(`[store-webhook] Rate limit hit for channel ${waConfig.id}: ${limitCheck.reason}`);
+          return; // Skip sending, don't block webhook processing
+        }
+      }
+
       let message = cfg.message_text;
       for (const [key, value] of Object.entries(vars)) {
         message = message.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value || "");
@@ -814,6 +824,13 @@ async function sendEventNotification(supabase: any, integration: any, evt: Norma
           method: "POST",
           headers: { apikey: apiKey, "Content-Type": "application/json" },
           body: JSON.stringify({ number: phone, text: message }),
+        });
+        // Log send for rate tracking
+        await supabase.from("channel_send_log").insert({
+          channel_id: waConfig.id,
+          org_id: integration.org_id,
+          message_type: "store_notification",
+          recipient_phone: phone,
         });
       }
     }

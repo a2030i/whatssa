@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import {
   AlertTriangle, CheckCircle2, Loader2, QrCode,
   Server, Trash2, Wifi, Settings, Smartphone, RefreshCw,
-  LogOut, Send, Pencil, Check, X
+  LogOut, Send, Pencil, Check, X, Shield, Clock, Gauge
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import ChannelRoutingConfig from "./ChannelRoutingConfig";
 import WhatsAppProfileEditor from "./WhatsAppProfileEditor";
 import { Input } from "@/components/ui/input";
@@ -19,6 +21,149 @@ interface Props {
 }
 
 type InstanceStatus = "idle" | "connecting" | "qr_pending" | "connected" | "disconnected";
+
+// ── Rate Limit Panel ──
+interface RateLimitPanelProps {
+  configId: string;
+  initialSettings: any;
+}
+
+const RateLimitPanel = ({ configId, initialSettings }: RateLimitPanelProps) => {
+  const defaults = {
+    enabled: true, min_delay_seconds: 8, max_delay_seconds: 15,
+    batch_size: 10, batch_pause_seconds: 30, daily_limit: 200, hourly_limit: 50,
+  };
+  const [settings, setSettings] = useState({ ...defaults, ...(initialSettings || {}) });
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    const cleaned = {
+      ...settings,
+      min_delay_seconds: Math.max(1, Math.min(settings.min_delay_seconds, settings.max_delay_seconds)),
+      max_delay_seconds: Math.max(settings.min_delay_seconds, settings.max_delay_seconds),
+    };
+    await supabase.from("whatsapp_config").update({ rate_limit_settings: cleaned }).eq("id", configId);
+    setSettings(cleaned);
+    setSaving(false);
+    toast.success("تم حفظ إعدادات الحماية");
+  };
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="w-full flex items-center justify-between bg-warning/5 border border-warning/20 rounded-lg px-3 py-2.5 hover:bg-warning/10 transition-colors group">
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-warning" />
+          <div className="text-right">
+            <p className="text-xs font-semibold text-foreground">حماية من الحظر</p>
+            <p className="text-[10px] text-muted-foreground">
+              {settings.enabled ? `فاصل ${settings.min_delay_seconds}-${settings.max_delay_seconds}ث · ${settings.hourly_limit}/ساعة · ${settings.daily_limit}/يوم` : "معطّلة"}
+            </p>
+          </div>
+        </div>
+        <Settings className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="bg-card border border-warning/20 rounded-xl p-4 space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-warning" />
+          <h4 className="text-xs font-bold">حماية من الحظر (Rate Limiting)</h4>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground">{settings.enabled ? "مفعّل" : "معطّل"}</span>
+          <Switch checked={settings.enabled} onCheckedChange={(v: boolean) => setSettings({ ...settings, enabled: v })} />
+        </div>
+      </div>
+
+      {settings.enabled && (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3 h-3 text-muted-foreground" />
+              <Label className="text-[11px]">فاصل بين الرسائل (ثانية)</Label>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>أقل: {settings.min_delay_seconds}ث</span>
+                  <span>أكثر: {settings.max_delay_seconds}ث</span>
+                </div>
+                <div className="flex gap-2">
+                  <Input type="number" min={1} max={60} value={settings.min_delay_seconds}
+                    onChange={(e) => setSettings({ ...settings, min_delay_seconds: Number(e.target.value) || 1 })}
+                    className="h-7 text-xs w-16 text-center" />
+                  <span className="text-muted-foreground self-center text-xs">—</span>
+                  <Input type="number" min={1} max={120} value={settings.max_delay_seconds}
+                    onChange={(e) => setSettings({ ...settings, max_delay_seconds: Number(e.target.value) || 1 })}
+                    className="h-7 text-xs w-16 text-center" />
+                </div>
+              </div>
+            </div>
+            <p className="text-[9px] text-muted-foreground">فاصل عشوائي بين الحد الأدنى والأقصى لتقليد السلوك البشري</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[11px]">حجم الدُفعة</Label>
+              <Input type="number" min={1} max={50} value={settings.batch_size}
+                onChange={(e) => setSettings({ ...settings, batch_size: Number(e.target.value) || 5 })}
+                className="h-7 text-xs" />
+              <p className="text-[9px] text-muted-foreground">رسائل قبل الاستراحة</p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px]">استراحة الدُفعة (ث)</Label>
+              <Input type="number" min={5} max={300} value={settings.batch_pause_seconds}
+                onChange={(e) => setSettings({ ...settings, batch_pause_seconds: Number(e.target.value) || 30 })}
+                className="h-7 text-xs" />
+              <p className="text-[9px] text-muted-foreground">توقف بعد كل دفعة</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Gauge className="w-3 h-3 text-muted-foreground" />
+                <Label className="text-[11px]">حد بالساعة</Label>
+              </div>
+              <Input type="number" min={1} max={500} value={settings.hourly_limit}
+                onChange={(e) => setSettings({ ...settings, hourly_limit: Number(e.target.value) || 50 })}
+                className="h-7 text-xs" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Gauge className="w-3 h-3 text-muted-foreground" />
+                <Label className="text-[11px]">حد يومي</Label>
+              </div>
+              <Input type="number" min={1} max={5000} value={settings.daily_limit}
+                onChange={(e) => setSettings({ ...settings, daily_limit: Number(e.target.value) || 200 })}
+                className="h-7 text-xs" />
+            </div>
+          </div>
+
+          <div className="bg-muted/50 rounded-lg p-2.5 text-[10px] text-muted-foreground space-y-1">
+            <p>🛡️ النظام يُوقف الحملة مؤقتاً عند الوصول للحد ويستأنفها تلقائياً</p>
+            <p>🎲 الفاصل العشوائي يحاكي الإرسال البشري ويقلل احتمالية الحظر</p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Button size="sm" className="flex-1 text-xs gap-1" onClick={save} disabled={saving}>
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          حفظ
+        </Button>
+        <Button size="sm" variant="ghost" className="text-xs" onClick={() => setOpen(false)}>
+          إغلاق
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
   const [showSetup, setShowSetup] = useState(false);
@@ -409,6 +554,11 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
                   defaultTeamId={existingConfig.default_team_id}
                   defaultAgentId={existingConfig.default_agent_id}
                 />
+              )}
+
+              {/* Rate Limit Settings */}
+              {existingConfig?.id && (
+                <RateLimitPanel configId={existingConfig.id} initialSettings={existingConfig.rate_limit_settings} />
               )}
 
               {/* Delete Instance */}
