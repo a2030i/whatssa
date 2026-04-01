@@ -89,16 +89,19 @@ const TeamPage = () => {
     return r?.role || "member";
   };
 
+  const [formSupervisor, setFormSupervisor] = useState(false);
+
   const openEditDialog = (profile: any) => {
     setEditingProfile(profile);
     setFormTeam(profile.team_id || "");
     setFormRole(getRole(profile.id));
+    setFormSupervisor(profile.is_supervisor || false);
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!editingProfile) return;
-    await supabase.from("profiles").update({ team_id: formTeam || null }).eq("id", editingProfile.id);
+    await supabase.from("profiles").update({ team_id: formTeam || null, is_supervisor: formSupervisor }).eq("id", editingProfile.id);
 
     const currentRole = getRole(editingProfile.id);
     if (currentRole !== formRole && (formRole === "member" || formRole === "supervisor" || formRole === "admin")) {
