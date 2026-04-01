@@ -190,7 +190,7 @@ const OrdersPage = () => {
                       <p className="font-medium text-xs">{order.customer_name || "-"}</p>
                       <p className="text-[10px] text-muted-foreground" dir="ltr">{order.customer_phone}</p>
                     </td>
-                    <td className="p-3 text-xs hidden md:table-cell">{order.customer_city || "-"}</td>
+                    <td className="p-3 text-xs hidden md:table-cell">{order.source === "salla" ? "سلة" : order.source === "zid" ? "زد" : order.source === "shopify" ? "Shopify" : order.source === "woocommerce" ? "WooCommerce" : order.source || "-"}</td>
                     <td className="p-3 font-bold text-xs">{Number(order.total).toFixed(2)} ر.س</td>
                     <td className="p-3"><Badge className={cn("text-[10px] border-0", sc.color)}>{sc.label}</Badge></td>
                     <td className="p-3 hidden sm:table-cell"><Badge className={cn("text-[10px] border-0", pc.color)}>{pc.label}</Badge></td>

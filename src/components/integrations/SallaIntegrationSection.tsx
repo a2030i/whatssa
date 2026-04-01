@@ -145,6 +145,39 @@ const PLATFORMS = [
   },
 ];
 
+// Fallback Arabic labels for event keys not defined in platform configs
+const EVENT_LABELS_AR: Record<string, string> = {
+  "order.created": "طلب جديد",
+  "order.create": "طلب جديد",
+  "order.updated": "تحديث طلب",
+  "order.update": "تحديث طلب",
+  "order.status.updated": "تحديث حالة طلب",
+  "order.status.update": "تغيير حالة طلب",
+  "order.shipped": "تم الشحن",
+  "order.delivered": "تم التوصيل",
+  "order.cancelled": "طلب ملغي",
+  "order.refunded": "تم الاسترجاع",
+  "orders/create": "طلب جديد",
+  "orders/updated": "تحديث طلب",
+  "orders/fulfilled": "تنفيذ طلب",
+  "orders/cancelled": "إلغاء طلب",
+  "customer.created": "عميل جديد",
+  "customer.create": "عميل جديد",
+  "customer.updated": "تحديث عميل",
+  "customers/create": "عميل جديد",
+  "abandoned.cart": "سلة متروكة",
+  "abandoned.cart.purchased": "شراء سلة متروكة",
+  "abandoned_cart.create": "سلة متروكة",
+  "cart.abandoned": "سلة متروكة",
+  "checkouts/create": "سلة متروكة",
+  "product.created": "منتج جديد",
+  "product.create": "منتج جديد",
+  "product.updated": "تحديث منتج",
+  "product.update": "تحديث منتج",
+  "products/create": "منتج جديد",
+  "products/update": "تحديث منتج",
+};
+
 const SallaIntegrationSection = () => {
   const { orgId, isEcommerce, refreshOrg } = useAuth();
   const [stores, setStores] = useState<StoreIntegration[]>([]);
