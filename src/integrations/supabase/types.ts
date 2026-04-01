@@ -2047,6 +2047,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_online: boolean | null
+          is_supervisor: boolean
           last_seen_at: string | null
           org_id: string | null
           phone: string | null
@@ -2066,6 +2067,7 @@ export type Database = {
           id: string
           is_active?: boolean
           is_online?: boolean | null
+          is_supervisor?: boolean
           last_seen_at?: string | null
           org_id?: string | null
           phone?: string | null
@@ -2085,6 +2087,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_online?: boolean | null
+          is_supervisor?: boolean
           last_seen_at?: string | null
           org_id?: string | null
           phone?: string | null
