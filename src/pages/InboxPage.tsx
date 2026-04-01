@@ -541,7 +541,9 @@ const InboxPage = () => {
   }, []);
 
   const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
-    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+    const conv = conversations.find(c => c.customerPhone === convPhone);
+    const func = getSendFunction(conv?.channelType);
+    const { data, error } = await supabase.functions.invoke(func, {
       body: { to: convPhone, type: "edit", edit_message_id: waMessageId, message: newText },
     });
     if (error || data?.error) {
