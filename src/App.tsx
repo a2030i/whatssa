@@ -36,6 +36,7 @@ import ScheduledMessagesPage from "./pages/ScheduledMessagesPage";
 import CustomPlanPage from "./pages/CustomPlanPage";
 import WhatsAppFlowsPage from "./pages/WhatsAppFlowsPage";
 import TrackingPage from "./pages/TrackingPage";
+import StoreAnalyticsPage from "./pages/StoreAnalyticsPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
