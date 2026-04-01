@@ -706,16 +706,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       const storagePath = `storage:chat-media/${path}`;
       const caption = inputText.trim();
 
-      // Check if using Evolution — send media via evolution-send with media_url
-      const { data: evoConfig } = await supabase
-        .from("whatsapp_config_safe")
-        .select("id")
-        .eq("channel_type", "evolution")
-        .eq("is_connected", true)
-        .limit(1)
-        .maybeSingle();
+      // Check if using Evolution based on conversation channel type
+      const isEvolution = conversation.channelType === "evolution";
 
-      if (evoConfig) {
+      if (isEvolution) {
         // Send via evolution-send with media support
         const { data, error } = await supabase.functions.invoke("evolution-send", {
           body: {
