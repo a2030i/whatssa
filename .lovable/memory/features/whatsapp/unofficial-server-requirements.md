@@ -23,5 +23,24 @@ Updated: now
 - **لا يوجد `STATUS_INSTANCE`** — يُستخدم `CONNECTION_UPDATE` بدلاً منه
 - عند إنشاء instances جديدة، يجب استخدام هذه الأسماء الصحيحة
 
+## صيغة تسجيل الـ Webhook (v2.3.7)
+- المسار: `POST /webhook/set/{instanceName}`
+- الصيغة الصحيحة: جسم مسطح (flat body) بدون تغليف `webhook: {}`
+```json
+{
+  "url": "...",
+  "enabled": true,
+  "webhookByEvents": false,
+  "webhookBase64": false,
+  "events": [...]
+}
+```
+- ملاحظة: الصيغة المغلفة `{ webhook: { ... } }` تُستخدم فقط في `instance/create`
+- عند `webhookByEvents: true`، يُلحق Evolution مسارات فرعية مثل `/messages-update` بعنوان الـ Webhook
+
+## تعليم الرسائل كمقروءة
+- المسار: `POST /chat/markMessageAsRead/{instanceName}` (POST وليس PUT)
+- جسم الطلب: `{ readMessages: [{ remoteJid, fromMe, id }] }`
+
 ## Instance الحالي
-- اسم الـ instance: `org_1c3b7fdd1c27`
+- اسم الـ instance: `org_0baa3015983c` (أحدث) و `org_1c3b7fdd1c27`
