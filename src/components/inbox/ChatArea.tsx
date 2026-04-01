@@ -1438,6 +1438,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </DialogContent>
       </Dialog>
 
+      {/* AI Summary Dialog */}
+      <Dialog open={showSummary} onOpenChange={setShowSummary}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Brain className="w-4 h-4 text-primary" /> ملخص المحادثة</DialogTitle></DialogHeader>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{aiSummary}</p>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Message Dialog */}
       <Dialog open={!!editingMsg} onOpenChange={() => setEditingMsg(null)}>
         <DialogContent className="max-w-sm" dir="rtl">
