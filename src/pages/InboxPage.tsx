@@ -144,7 +144,25 @@ const InboxPage = () => {
         };
       });
 
-      setConversations(mapped);
+      // Team-based visibility filtering
+      const isAdmin = userRole === "admin" || isSuperAdmin;
+      const filtered = isAdmin ? mapped : mapped.filter(conv => {
+        // No team assigned to user → show all (legacy behavior)
+        if (!teamId) return true;
+        // Conversation not assigned to any team → visible to all in org
+        if (!conv.assignedTeamId) return true;
+        // Conversation assigned to user's team
+        if (conv.assignedTeamId === teamId) {
+          // Supervisors see all team conversations
+          if (isSupervisor) return true;
+          // Members see only their own or unassigned
+          return !conv.assignedToId || conv.assignedToId === profile?.id;
+        }
+        // Conversation assigned to different team → not visible
+        return false;
+      });
+
+      setConversations(filtered);
       if (!isMobile && mapped.length > 0) {
         setSelectedId((prev) => (prev && mapped.some((item) => item.id === prev) ? prev : mapped[0].id));
       }
