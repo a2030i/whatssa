@@ -3239,6 +3239,47 @@ export type Database = {
           token: string
         }[]
       }
+      get_org_whatsapp_channels: {
+        Args: never
+        Returns: {
+          account_mode: string
+          business_account_id: string
+          business_name: string
+          channel_label: string
+          channel_type: string
+          code_verification_status: string
+          created_at: string
+          data_localization_region: string
+          default_agent_id: string
+          default_team_id: string
+          display_phone: string
+          evolution_instance_name: string
+          evolution_instance_status: string
+          health_status: Json
+          id: string
+          is_connected: boolean
+          messaging_limit_tier: string
+          meta_business_id: string
+          migrated_at: string
+          migration_error: string
+          migration_source: string
+          migration_status: string
+          name_status: string
+          onboarding_type: string
+          org_id: string
+          phone_number_id: string
+          previous_provider: string
+          quality_rating: string
+          rate_limit_settings: Json
+          registered_at: string
+          registration_error: string
+          registration_status: string
+          settings: Json
+          throughput_level: string
+          token_expires_at: string
+          updated_at: string
+        }[]
+      }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
