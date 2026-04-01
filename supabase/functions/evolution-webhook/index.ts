@@ -789,6 +789,7 @@ serve(async (req) => {
             last_message: content,
             last_message_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            channel_id: config.id, // Ensure channel_id is always set
           })
           .eq("id", conversation.id);
 
