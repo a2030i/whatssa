@@ -2096,6 +2096,60 @@ export type Database = {
           },
         ]
       }
+      shipment_events: {
+        Row: {
+          carrier: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          order_id: string
+          org_id: string
+          source: string
+          status_key: string
+          status_label: string
+          tracking_number: string | null
+        }
+        Insert: {
+          carrier?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          order_id: string
+          org_id: string
+          source?: string
+          status_key: string
+          status_label: string
+          tracking_number?: string | null
+        }
+        Update: {
+          carrier?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          order_id?: string
+          org_id?: string
+          source?: string
+          status_key?: string
+          status_label?: string
+          tracking_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_integrations: {
         Row: {
           created_at: string | null

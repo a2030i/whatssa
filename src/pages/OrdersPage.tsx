@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, Package, Truck, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, TrendingUp, DollarSign, BarChart3, ArrowUpCircle, ArrowDownCircle, Loader2, Store } from "lucide-react";
+import { ShoppingCart, Package, Truck, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, TrendingUp, DollarSign, BarChart3, ArrowUpCircle, ArrowDownCircle, Loader2, Store, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ const OrdersPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [shipmentEvents, setShipmentEvents] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, revenue: 0, avgOrder: 0, pendingCount: 0, todayOrders: 0, todayRevenue: 0 });
 
   useEffect(() => { if (orgId) loadOrders(); }, [orgId]);
@@ -68,6 +69,30 @@ const OrdersPage = () => {
   const openOrder = (order: any) => {
     setSelectedOrder(order);
     loadOrderItems(order.id);
+    loadShipmentEvents(order.id);
+  };
+
+  const loadShipmentEvents = async (orderId: string) => {
+    const { data } = await supabase
+      .from("shipment_events")
+      .select("*")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: false });
+    setShipmentEvents(data || []);
+  };
+
+  const SHIPMENT_ICONS: Record<string, any> = {
+    created: Package, new: Package, pending: Clock, fulfilled: CheckCircle2,
+    ready_for_pickup: Package, picked_up: Truck, shipping: Truck,
+    delivered: CheckCircle2, delivery_failed: XCircle, returned: ArrowLeft,
+    cancelled: XCircle, creation_failed: XCircle,
+  };
+
+  const SHIPMENT_COLORS: Record<string, string> = {
+    created: "text-primary", new: "text-primary", pending: "text-warning",
+    picked_up: "text-info", shipping: "text-info", delivered: "text-success",
+    delivery_failed: "text-destructive", returned: "text-warning",
+    cancelled: "text-destructive", creation_failed: "text-destructive",
   };
 
 
@@ -280,6 +305,51 @@ const OrdersPage = () => {
                 {Number(selectedOrder.tax_amount) > 0 && <div className="flex justify-between text-xs"><span>الضريبة</span><span>{Number(selectedOrder.tax_amount).toFixed(2)} ر.س</span></div>}
                 <div className="flex justify-between text-sm font-bold border-t border-border pt-1.5"><span>الإجمالي</span><span>{Number(selectedOrder.total).toFixed(2)} ر.س</span></div>
               </div>
+
+              {/* Shipment Timeline */}
+              {shipmentEvents.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-info" />
+                    مراحل الشحن
+                    {(selectedOrder as any).shipment_tracking_number && (
+                      <span className="text-[10px] font-mono text-muted-foreground mr-auto" dir="ltr">
+                        #{(selectedOrder as any).shipment_tracking_number}
+                      </span>
+                    )}
+                  </p>
+                  <div className="space-y-0">
+                    {shipmentEvents.map((event, idx) => {
+                      const Icon = SHIPMENT_ICONS[event.status_key] || Package;
+                      const color = SHIPMENT_COLORS[event.status_key] || "text-muted-foreground";
+                      const isFirst = idx === 0;
+                      return (
+                        <div key={event.id} className="flex gap-2.5 relative">
+                          {idx < shipmentEvents.length - 1 && (
+                            <div className="absolute right-[11px] top-7 bottom-0 w-px bg-border" />
+                          )}
+                          <div className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10",
+                            isFirst ? "bg-primary/10" : "bg-secondary"
+                          )}>
+                            <Icon className={cn("w-3 h-3", isFirst ? color : "text-muted-foreground")} />
+                          </div>
+                          <div className="pb-4 flex-1">
+                            <p className={cn("text-xs", isFirst ? "font-medium text-foreground" : "text-muted-foreground")}>
+                              {event.status_label}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {new Date(event.created_at).toLocaleDateString("ar-SA", {
+                                month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
