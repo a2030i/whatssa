@@ -187,8 +187,6 @@ const OrdersPage = () => {
     }
   };
 
-  const createShipmentForExisting = async (orderId: string) => {
-
 
 
   const printLamhaLabel = async (orderId: string) => {
