@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, Package, Truck, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, TrendingUp, DollarSign, BarChart3, ArrowUpCircle, ArrowDownCircle, Loader2 } from "lucide-react";
+import { ShoppingCart, Package, Truck, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, TrendingUp, DollarSign, BarChart3, ArrowUpCircle, ArrowDownCircle, Loader2, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
+
 
 const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
   pending: { label: "قيد الانتظار", icon: Clock, color: "bg-warning/10 text-warning" },
@@ -70,17 +70,6 @@ const OrdersPage = () => {
     loadOrderItems(order.id);
   };
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
-    const updates: any = { status, updated_at: new Date().toISOString() };
-    if (status === "shipped") updates.shipped_at = new Date().toISOString();
-    if (status === "delivered") updates.delivered_at = new Date().toISOString();
-    if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
-    
-    await supabase.from("orders").update(updates).eq("id", orderId);
-    toast.success(`تم تحديث حالة الطلب`);
-    loadOrders();
-    if (selectedOrder?.id === orderId) setSelectedOrder({ ...selectedOrder, ...updates });
-  };
 
 
 
@@ -171,7 +160,7 @@ const OrdersPage = () => {
               <tr className="border-b border-border bg-secondary/30">
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground">رقم الطلب</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground">العميل</th>
-                <th className="text-right p-3 text-xs font-medium text-muted-foreground hidden md:table-cell">المدينة</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground hidden md:table-cell">المنصة</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground">المبلغ</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground">الحالة</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">الدفع</th>
@@ -190,7 +179,7 @@ const OrdersPage = () => {
                       <p className="font-medium text-xs">{order.customer_name || "-"}</p>
                       <p className="text-[10px] text-muted-foreground" dir="ltr">{order.customer_phone}</p>
                     </td>
-                    <td className="p-3 text-xs hidden md:table-cell">{order.customer_city || "-"}</td>
+                    <td className="p-3 text-xs hidden md:table-cell">{order.source === "salla" ? "سلة" : order.source === "zid" ? "زد" : order.source === "shopify" ? "Shopify" : order.source === "woocommerce" ? "WooCommerce" : order.source || "-"}</td>
                     <td className="p-3 font-bold text-xs">{Number(order.total).toFixed(2)} ر.س</td>
                     <td className="p-3"><Badge className={cn("text-[10px] border-0", sc.color)}>{sc.label}</Badge></td>
                     <td className="p-3 hidden sm:table-cell"><Badge className={cn("text-[10px] border-0", pc.color)}>{pc.label}</Badge></td>
@@ -221,18 +210,27 @@ const OrdersPage = () => {
           </DialogHeader>
           {selectedOrder && (
             <div className="space-y-4">
-              {/* Status Actions */}
-              <div className="flex flex-wrap gap-2">
-                {["confirmed", "processing", "shipped", "delivered", "cancelled"].map((s) => {
-                  const sc = statusConfig[s];
-                  return (
-                    <Button key={s} size="sm" variant={selectedOrder.status === s ? "default" : "outline"} className="text-[10px] h-7 gap-1"
-                      onClick={() => updateOrderStatus(selectedOrder.id, s)} disabled={selectedOrder.status === s}>
-                      <sc.icon className="w-3 h-3" /> {sc.label}
-                    </Button>
-                  );
-                })}
+              {/* Status (read-only from platform) */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge className={cn("text-xs border-0 gap-1", (statusConfig[selectedOrder.status] || statusConfig.pending).color)}>
+                    {(() => { const Ic = (statusConfig[selectedOrder.status] || statusConfig.pending).icon; return <Ic className="w-3.5 h-3.5" />; })()}
+                    {(statusConfig[selectedOrder.status] || statusConfig.pending).label}
+                  </Badge>
+                  {selectedOrder.payment_status && (
+                    <Badge className={cn("text-[10px] border-0", (paymentConfig[selectedOrder.payment_status] || paymentConfig.unpaid).color)}>
+                      {(paymentConfig[selectedOrder.payment_status] || paymentConfig.unpaid).label}
+                    </Badge>
+                  )}
+                </div>
+                {selectedOrder.source && (
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-secondary/50 rounded-lg px-2 py-1">
+                    <Store className="w-3 h-3" />
+                    {selectedOrder.source === "salla" ? "سلة" : selectedOrder.source === "zid" ? "زد" : selectedOrder.source === "shopify" ? "Shopify" : selectedOrder.source === "woocommerce" ? "WooCommerce" : selectedOrder.source}
+                  </div>
+                )}
               </div>
+              <p className="text-[10px] text-muted-foreground">الحالات تتحدث تلقائياً من المنصة</p>
 
               {/* Customer Info */}
               <div className="bg-secondary/50 rounded-lg p-3 space-y-1.5">
