@@ -172,13 +172,9 @@ async function processChatbotFlow(
 
   // Send first node
   const firstNode = nodes[0];
-  let msgText = firstNode.content || "";
-  if (firstNode.buttons && firstNode.buttons.length > 0) {
-    const buttonLabels = firstNode.buttons.map((b: any, i: number) => `${i + 1}. ${b.label}`).join("\n");
-    msgText += `\n\n${buttonLabels}`;
-  }
-
-  await sendBotMessage(client, orgId, conversationId, customerPhone, msgText, channel, log);
+  const msgText = firstNode.content || "";
+  const btns = (firstNode.buttons || []).filter((b: any) => b.label).map((b: any) => ({ id: b.id, label: b.label }));
+  await sendBotMessage(client, orgId, conversationId, customerPhone, msgText, channel, log, btns);
 
   // Create session
   if (firstNode.buttons && firstNode.buttons.length > 0) {
