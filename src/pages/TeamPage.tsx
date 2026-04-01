@@ -84,9 +84,16 @@ const TeamPage = () => {
     setConvCounts(counts);
   };
 
-  const getRole = (userId: string) => {
+  const getStoredRole = (userId: string) => {
     const r = roles.find((x) => x.user_id === userId);
-    return r?.role || "member";
+    return r?.role || null;
+  };
+
+  const getDisplayRole = (profile: any) => {
+    const storedRole = getStoredRole(profile.id);
+    if (storedRole === "admin" || storedRole === "super_admin") return "admin";
+    if (profile.is_supervisor) return "supervisor";
+    return "member";
   };
 
   const [formSupervisor, setFormSupervisor] = useState(false);
@@ -94,7 +101,7 @@ const TeamPage = () => {
   const openEditDialog = (profile: any) => {
     setEditingProfile(profile);
     setFormTeam(profile.team_id || "");
-    setFormRole(getRole(profile.id));
+    setFormRole(getStoredRole(profile.id) === "admin" ? "admin" : "member");
     setFormSupervisor(profile.is_supervisor || false);
     setDialogOpen(true);
   };
@@ -103,9 +110,17 @@ const TeamPage = () => {
     if (!editingProfile) return;
     await supabase.from("profiles").update({ team_id: formTeam || null, is_supervisor: formSupervisor }).eq("id", editingProfile.id);
 
-    const currentRole = getRole(editingProfile.id);
-    if (currentRole !== formRole && (formRole === "member" || formRole === "supervisor" || formRole === "admin")) {
-      await supabase.from("user_roles").update({ role: formRole as any }).eq("user_id", editingProfile.id);
+    const currentRole = getStoredRole(editingProfile.id);
+    if (currentRole !== formRole) {
+      if (formRole === "admin") {
+        if (currentRole) {
+          await supabase.from("user_roles").update({ role: "admin" as any }).eq("user_id", editingProfile.id);
+        } else {
+          await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "admin" as any });
+        }
+      } else if (currentRole === "admin") {
+        await supabase.from("user_roles").delete().eq("user_id", editingProfile.id).eq("role", "admin");
+      }
     }
     toast.success("تم تحديث بيانات العضو");
     setDialogOpen(false);
@@ -306,7 +321,7 @@ const TeamPage = () => {
         </div>
         <div className="divide-y divide-border">
           {profiles.map((profile) => {
-            const role = getRole(profile.id);
+            const role = getDisplayRole(profile);
             const team = teams.find((t) => t.id === profile.team_id);
             const rc = roleConfig[role] || roleConfig.member;
             const activeConvs = convCounts[profile.full_name] || 0;
@@ -604,7 +619,6 @@ const TeamPage = () => {
                 <SelectTrigger className="bg-secondary border-0"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">مدير</SelectItem>
-                  <SelectItem value="supervisor">مشرف</SelectItem>
                   <SelectItem value="member">موظف</SelectItem>
                 </SelectContent>
               </Select>
