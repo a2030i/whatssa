@@ -543,7 +543,7 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
       {/* Events */}
       <div className="flex flex-wrap gap-1.5">
         {store.events_enabled.map((evt) => {
-          const label = platform.events.find(e => e.key === evt)?.label || evt;
+          const label = platform.events.find(e => e.key === evt)?.label || EVENT_LABELS_AR[evt] || evt;
           return (
             <span key={evt} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
               {label}
