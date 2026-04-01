@@ -408,7 +408,7 @@ const SallaIntegrationSection = () => {
       )}
 
       {/* ─── Shipping Companies Section (Hidden - Lamha disabled) ─── */}
-      {false && <div className="border-t border-border pt-4 mt-6 space-y-4">
+      {<div className="border-t border-border pt-4 mt-6 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Truck className="w-5 h-5 text-primary" />
