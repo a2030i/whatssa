@@ -252,6 +252,37 @@ const OrdersPage = () => {
         ))}
       </div>
 
+              {/* Lamha Actions */}
+              {lamhaIntegration && (
+                <div className="flex gap-2">
+                  {!selectedOrder.shipment_carrier && (
+                    <Button
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs"
+                      disabled={sendingToLamha === selectedOrder.id}
+                      onClick={() => sendToLamha(selectedOrder.id)}
+                    >
+                      {sendingToLamha === selectedOrder.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5" />
+                      )}
+                      إرسال إلى لمحة
+                    </Button>
+                  )}
+                  {selectedOrder.shipment_carrier === "lamha" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs"
+                      onClick={() => printLamhaLabel(selectedOrder.id)}
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      طباعة البوليصة
+                    </Button>
+                  )}
+                </div>
+              )}
 
       {/* Filters */}
       <div className="flex flex-col gap-3">
