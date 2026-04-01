@@ -59,6 +59,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     section: "المتجر",
     items: [
       { label: "الطلبات", icon: ShoppingCart, path: "/orders", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً من صفحة الربط والتكامل لعرض الطلبات" },
+      { label: "المستودعات", icon: Warehouse, path: "/warehouses", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً من صفحة الربط والتكامل" },
       { label: "السلات المتروكة", icon: ShoppingBag, path: "/abandoned-carts", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً من صفحة الربط والتكامل لاسترداد السلات المتروكة" },
       { label: "تقارير المتجر", icon: TrendingUp, path: "/store-analytics", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً من صفحة الربط والتكامل لعرض التقارير" },
     ],
