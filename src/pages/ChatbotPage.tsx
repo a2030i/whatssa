@@ -605,6 +605,17 @@ const ChatbotPage = () => {
                     )}
                   </div>
 
+                  {/* Step name */}
+                  <div>
+                    <Label className="text-xs font-medium">اسم الخطوة (للتنظيم)</Label>
+                    <Input
+                      value={node.name || ""}
+                      onChange={e => updateNode(node.id, { name: e.target.value })}
+                      placeholder={`مثال: القائمة الرئيسية، الفروع، الأسعار...`}
+                      className="h-8 text-xs mt-1"
+                    />
+                  </div>
+
                   {node.type === "message" ? (
                     <>
                       {/* Message text */}
