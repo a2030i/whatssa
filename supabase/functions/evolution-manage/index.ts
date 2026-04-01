@@ -27,24 +27,24 @@ const EVOLUTION_WEBHOOK_EVENTS = [
   "SEND_MESSAGE",
 ];
 
+// v2.3.7: webhook/set expects flat body with url, enabled, events
 const buildWebhookPayload = (webhookUrl: string) => ({
+  url: webhookUrl,
+  enabled: true,
+  webhookByEvents: false,
+  webhookBase64: false,
+  events: EVOLUTION_WEBHOOK_EVENTS,
+});
+
+// v1.x fallback: wrapped in "webhook" property (used by instance/create)
+const buildWebhookPayloadWrapped = (webhookUrl: string) => ({
   webhook: {
     enabled: true,
     url: webhookUrl,
-    byEvents: true,
-    webhookByEvents: true,
-    base64: false,
+    webhookByEvents: false,
     webhookBase64: false,
     events: EVOLUTION_WEBHOOK_EVENTS,
   },
-});
-
-const buildWebhookPayloadFallback = (webhookUrl: string) => ({
-  enabled: true,
-  url: webhookUrl,
-  webhookByEvents: true,
-  webhookBase64: false,
-  events: EVOLUTION_WEBHOOK_EVENTS,
 });
 
 const mapEvolutionMessageStatus = (status: unknown): "sent" | "delivered" | "read" | null => {
