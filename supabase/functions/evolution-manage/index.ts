@@ -16,6 +16,51 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const EVOLUTION_WEBHOOK_EVENTS = [
+  "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
+  "MESSAGES_EDITED",
+  "MESSAGES_DELETE",
+  "CONNECTION_UPDATE",
+  "QRCODE_UPDATED",
+  "PRESENCE_UPDATE",
+  "SEND_MESSAGE",
+];
+
+const mapEvolutionMessageStatus = (status: unknown): "sent" | "delivered" | "read" | null => {
+  const statusMap: Record<string, "sent" | "delivered" | "read"> = {
+    SERVER_ACK: "sent",
+    DELIVERY_ACK: "delivered",
+    READ: "read",
+    PLAYED: "read",
+    "2": "sent",
+    "3": "delivered",
+    "4": "read",
+    "5": "read",
+  };
+
+  return statusMap[String(status)] || null;
+};
+
+const pickBestEvolutionStatus = (payload: any): "sent" | "delivered" | "read" | null => {
+  const priority: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
+  const candidates = [
+    payload?.status,
+    payload?.messageStatus,
+    payload?.update?.status,
+    payload?.data?.status,
+    ...(Array.isArray(payload?.MessageUpdate) ? payload.MessageUpdate.map((item: any) => item?.status) : []),
+    ...(Array.isArray(payload?.messageUpdate) ? payload.messageUpdate.map((item: any) => item?.status) : []),
+  ]
+    .map(mapEvolutionMessageStatus)
+    .filter(Boolean) as Array<"sent" | "delivered" | "read">;
+
+  return candidates.reduce<"sent" | "delivered" | "read" | null>((best, current) => {
+    if (!best) return current;
+    return (priority[current] || 0) > (priority[best] || 0) ? current : best;
+  }, null);
+};
+
 async function logToSystem(
   client: ReturnType<typeof createClient>,
   level: string,
@@ -120,7 +165,7 @@ serve(async (req) => {
             url: webhookUrl,
             byEvents: true,
             webhookBase64: false,
-            events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE", "QRCODE_UPDATED"],
+            events: EVOLUTION_WEBHOOK_EVENTS,
           },
         }),
       });
@@ -209,6 +254,8 @@ serve(async (req) => {
 
     // ── CHECK STATUS ──
     if (action === "status") {
+      await setWebhook(EVOLUTION_URL, evoHeaders, instanceName, webhookUrl, adminClient, orgId);
+
       const res = await fetch(`${EVOLUTION_URL}/instance/connectionState/${instanceName}`, {
         headers: evoHeaders,
       });
@@ -235,6 +282,70 @@ serve(async (req) => {
         status: state,
         instance_name: instanceName,
       });
+    }
+
+    // ── SYNC MESSAGE STATUS UPDATES ──
+    if (action === "sync_message_statuses") {
+      const phone = asString(payload.phone);
+      const messages = Array.isArray(payload.messages) ? payload.messages : [];
+
+      if (!phone || messages.length === 0) {
+        return json({ success: true, updated: 0 });
+      }
+
+      const remoteJid = phone.includes("@") ? phone : `${phone.replace(/\D/g, "")}@s.whatsapp.net`;
+      const priority: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
+      let updated = 0;
+
+      for (const item of messages) {
+        const messageId = asString(item?.message_id || item?.id || item?.wa_message_id);
+        if (!messageId) continue;
+
+        try {
+          const statusRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${instanceName}`, {
+            method: "POST",
+            headers: evoHeaders,
+            body: JSON.stringify({
+              where: {
+                id: messageId,
+                remoteJid,
+                fromMe: true,
+              },
+              limit: 1,
+            }),
+          });
+
+          const statusData = await statusRes.json().catch(() => ({}));
+          if (!statusRes.ok) continue;
+
+          const statusPayload = Array.isArray(statusData)
+            ? statusData[0]
+            : Array.isArray(statusData?.data)
+              ? statusData.data[0]
+              : statusData?.data || statusData;
+
+          const mappedStatus = pickBestEvolutionStatus(statusPayload);
+          if (!mappedStatus) continue;
+
+          const { data: existingMsg } = await adminClient
+            .from("messages")
+            .select("id, status")
+            .eq("wa_message_id", messageId)
+            .limit(1)
+            .maybeSingle();
+
+          if (!existingMsg) continue;
+
+          if ((priority[mappedStatus] || 0) > (priority[existingMsg.status || ""] || 0)) {
+            await adminClient.from("messages").update({ status: mappedStatus }).eq("id", existingMsg.id);
+            updated += 1;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      return json({ success: true, updated });
     }
 
     // ── DELETE INSTANCE ──
@@ -789,17 +900,6 @@ async function setWebhook(
   orgId: string,
 ) {
   try {
-    const webhookEvents = [
-      "MESSAGES_UPSERT",
-      "MESSAGES_UPDATE",
-      "MESSAGES_EDITED",
-      "MESSAGES_DELETE",
-      "CONNECTION_UPDATE",
-      "QRCODE_UPDATED",
-      "PRESENCE_UPDATE",
-      "SEND_MESSAGE",
-    ];
-
     let res = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
       method: "POST",
       headers,
@@ -808,7 +908,7 @@ async function setWebhook(
           url: webhookUrl,
           byEvents: true,
           webhookBase64: false,
-          events: webhookEvents,
+          events: EVOLUTION_WEBHOOK_EVENTS,
         },
       }),
     });
@@ -823,7 +923,7 @@ async function setWebhook(
           url: webhookUrl,
           webhook_by_events: true,
           webhook_base64: false,
-          events: webhookEvents,
+          events: EVOLUTION_WEBHOOK_EVENTS,
         }),
       });
       data = await res.json().catch(() => ({}));
