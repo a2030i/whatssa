@@ -1004,10 +1004,11 @@ async function setWebhook(
     let data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      // Fallback: try wrapped format for older versions
       res = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
         method: "POST",
         headers,
-        body: JSON.stringify(buildWebhookPayloadFallback(webhookUrl)),
+        body: JSON.stringify(buildWebhookPayloadWrapped(webhookUrl)),
       });
       data = await res.json().catch(() => ({}));
     }
