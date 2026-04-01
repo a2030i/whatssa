@@ -177,18 +177,54 @@ const OrdersPage = () => {
 
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="بحث بالاسم أو الرقم..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 bg-card border-0 shadow-card text-sm" />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="بحث بالاسم أو الرقم..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 bg-card border-0 shadow-card text-sm" />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-36 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="الحالة" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الحالات</SelectItem>
+              {Object.entries(statusConfig).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+            <SelectTrigger className="w-full sm:w-36 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="الدفع" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل حالات الدفع</SelectItem>
+              {Object.entries(paymentConfig).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {sources.length > 1 && (
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="w-full sm:w-36 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="المنصة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل المنصات</SelectItem>
+                {sources.map(s => <SelectItem key={s} value={s}>{s === "salla" ? "سلة" : s === "zid" ? "زد" : s === "shopify" ? "Shopify" : s === "woocommerce" ? "WooCommerce" : s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="w-full sm:w-32 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="الفترة" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الفترات</SelectItem>
+              <SelectItem value="today">اليوم</SelectItem>
+              <SelectItem value="week">آخر 7 أيام</SelectItem>
+              <SelectItem value="month">آخر 30 يوم</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-40 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="الحالة" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل الحالات</SelectItem>
-            {Object.entries(statusConfig).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {/* Active filters count */}
+        {(statusFilter !== "all" || paymentFilter !== "all" || sourceFilter !== "all" || dateFilter !== "all") && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">{filteredOrders.length} نتيجة</span>
+            <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => { setStatusFilter("all"); setPaymentFilter("all"); setSourceFilter("all"); setDateFilter("all"); }}>
+              مسح الفلاتر
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Orders Table */}
