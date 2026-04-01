@@ -135,6 +135,45 @@ const OrdersPage = () => {
     cancelled: "text-destructive", creation_failed: "text-destructive",
   };
 
+  const sendToLamha = async (orderId: string) => {
+    if (!orgId || !lamhaIntegration) return;
+    setSendingToLamha(orderId);
+    try {
+      const { data, error } = await supabase.functions.invoke("lamha-create-shipment", {
+        body: { order_id: orderId, org_id: orgId, create_shipment: true },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`تم إرسال الطلب إلى لمحة بنجاح${data.tracking_number ? ` - رقم التتبع: ${data.tracking_number}` : ""}`);
+      loadOrders();
+      if (selectedOrder?.id === orderId) {
+        loadShipmentEvents(orderId);
+      }
+    } catch (err: any) {
+      toast.error("فشل إرسال الطلب إلى لمحة: " + (err.message || "خطأ غير معروف"));
+    } finally {
+      setSendingToLamha(null);
+    }
+  };
+
+  const printLamhaLabel = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("lamha-label", {
+        body: { order_id: orderId, org_id: orgId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.pdf_base64) {
+        const byteChars = atob(data.pdf_base64);
+        const byteNumbers = new Array(byteChars.length).fill(0).map((_, i) => byteChars.charCodeAt(i));
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+      }
+    } catch (err: any) {
+      toast.error("فشل تحميل البوليصة: " + (err.message || "خطأ غير معروف"));
+    }
+  };
 
 
 
