@@ -765,9 +765,34 @@ async function sendEventNotification(supabase: any, integration: any, evt: Norma
   const notifConfigs = metadata.event_notifications || {};
 
   // Map normalized events to notification keys
-  const notifKey = evt.event.replace("status_updated", "status.updated");
-  const cfg = notifConfigs[notifKey];
-  if (!cfg?.enabled || !cfg?.channel_id) return;
+  // For status_updated events, derive key from order status (shipped, delivered, cancelled, refunded)
+  let notifKey = evt.event;
+  if (evt.event === "order.status_updated" && evt.order) {
+    const statusMap: Record<string, string> = {
+      shipped: "order.shipped",
+      delivered: "order.delivered",
+      cancelled: "order.cancelled",
+      refunded: "order.refunded",
+    };
+    notifKey = statusMap[evt.order.status] || evt.event;
+  }
+
+  // Try multiple keys for matching
+  const keysToTry = [notifKey, evt.event];
+
+  // Also check for unpaid order notification
+  if (evt.event === "order.created" && evt.order?.payment_status === "unpaid") {
+    keysToTry.unshift("order.created_unpaid");
+  }
+
+  let cfg: any = null;
+  for (const key of keysToTry) {
+    if (notifConfigs[key]?.enabled && notifConfigs[key]?.channel_id) {
+      cfg = notifConfigs[key];
+      break;
+    }
+  }
+  if (!cfg) return;
 
   const { data: waConfig } = await supabase
     .from("whatsapp_config")
@@ -781,12 +806,16 @@ async function sendEventNotification(supabase: any, integration: any, evt: Norma
   const phone = evt.order?.customer_phone || evt.customer?.phone || evt.cart?.customer_phone || "";
   if (!phone) return;
 
+  const itemsSummary = evt.order?.items?.map(i => `${i.product_name} x${i.quantity}`).join("، ") || "";
   const vars: Record<string, string> = {
     customer_name: evt.order?.customer_name || evt.customer?.name || evt.cart?.customer_name || "",
     order_number: evt.order?.order_number || "",
     total: String(evt.order?.total || evt.cart?.total || 0),
     currency: evt.order?.currency || evt.cart?.currency || "SAR",
     checkout_url: evt.cart?.checkout_url || "",
+    payment_method: evt.order?.payment_method || "",
+    items_summary: itemsSummary,
+    status: evt.order?.status || "",
   };
 
   const channelType = waConfig.channel_type || "meta_api";
