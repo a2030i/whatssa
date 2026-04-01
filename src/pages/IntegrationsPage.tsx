@@ -1173,6 +1173,60 @@ const IntegrationsPage = () => {
     );
   }
 
+  // ============ MIGRATION PREREQUISITES ============
+  if (flowStep === "migration_prereqs" && migrationPrereqs) {
+    return (
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+        <div className="bg-card rounded-2xl shadow-card border border-warning/30 overflow-hidden">
+          <div className="bg-warning/5 p-6 border-b border-warning/20">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-warning" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-foreground">متطلبات ناقصة للنقل</h2>
+                <p className="text-sm text-muted-foreground">يجب حل المشاكل التالية قبل اكتمال نقل الرقم</p>
+              </div>
+            </div>
+            {connectedPhone && (
+              <p className="text-sm font-mono text-primary mt-3" dir="ltr">{connectedPhone}</p>
+            )}
+          </div>
+          <div className="p-5 space-y-3">
+            {migrationPrereqs.issues.map((issue, i) => {
+              const info = migrationIssueLabel(issue);
+              return (
+                <div key={i} className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-1">
+                  <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />
+                    {info.title}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground pr-3">{info.desc}</p>
+                  {info.link && (
+                    <a href={info.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline pr-3">
+                      <ExternalLink className="w-3 h-3" /> حل المشكلة ←
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                💡 تم حفظ بيانات الرقم. بعد حل المشاكل أعلاه، يمكنك إعادة محاولة التسجيل من بطاقة الرقم.
+              </p>
+            </div>
+            <div className="pt-2 space-y-2">
+              <Button onClick={resetFlow} className="w-full gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                تم — الذهاب لإدارة الأرقام
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ============ SUCCESS ============
   if (flowStep === "success") {
     return (
