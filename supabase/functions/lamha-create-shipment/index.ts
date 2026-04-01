@@ -91,9 +91,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Determine shipper: warehouse overrides integration config
+    // Determine shipper: selected warehouse -> default warehouse -> integration config
     let shipperConfig: any = metadata.shipper || {};
-    
+    let shipperSource = "integration";
+
     if (warehouse_id) {
       const { data: warehouse } = await supabase
         .from("warehouses")
@@ -101,8 +102,8 @@ Deno.serve(async (req) => {
         .eq("id", warehouse_id)
         .eq("org_id", org_id)
         .eq("is_active", true)
-        .single();
-      
+        .maybeSingle();
+
       if (warehouse) {
         shipperConfig = {
           name: warehouse.name,
@@ -114,6 +115,35 @@ Deno.serve(async (req) => {
           country: warehouse.country || "SA",
           national_address: warehouse.national_address || "",
         };
+        shipperSource = "selected_warehouse";
+      } else {
+        console.warn(`[lamha] warehouse not found or inactive`, { warehouse_id, org_id });
+      }
+    }
+
+    if ((!shipperConfig.phone || !shipperConfig.city || !shipperConfig.address_line1) && shipperSource === "integration") {
+      const { data: defaultWarehouse } = await supabase
+        .from("warehouses")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("is_active", true)
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (defaultWarehouse) {
+        shipperConfig = {
+          name: defaultWarehouse.name,
+          phone: defaultWarehouse.phone,
+          city: defaultWarehouse.city,
+          address_line1: defaultWarehouse.address_line1,
+          address_line2: defaultWarehouse.address_line2 || "",
+          district: defaultWarehouse.district || "",
+          country: defaultWarehouse.country || "SA",
+          national_address: defaultWarehouse.national_address || "",
+        };
+        shipperSource = warehouse_id ? "fallback_default_warehouse" : "default_warehouse";
       }
     }
 
@@ -125,7 +155,9 @@ Deno.serve(async (req) => {
           phone: !shipperConfig.phone,
           city: !shipperConfig.city,
           address_line1: !shipperConfig.address_line1,
-        }
+        },
+        shipper_source: shipperSource,
+        warehouse_id: warehouse_id || null,
       }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -209,6 +241,7 @@ Deno.serve(async (req) => {
     console.log(`[lamha] Creating order+shipment for ${order_id}`, {
       reference_id: orderPayload.reference_id,
       carrier_id: orderPayload.carrier_id,
+      shipper_source: shipperSource,
       shipper_phone: orderPayload.shipper.phone,
       shipper_city: orderPayload.shipper.City,
     });
