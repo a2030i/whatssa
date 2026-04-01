@@ -76,7 +76,8 @@ serve(async (req) => {
       return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
     }
 
-    const { action, instance_name } = await req.json();
+    const body = await req.json();
+    const { action, instance_name } = body;
     const instanceName = instance_name || `org_${orgId.replace(/-/g, "").slice(0, 12)}`;
 
     const evoHeaders = {
