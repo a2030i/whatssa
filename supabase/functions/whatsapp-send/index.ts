@@ -164,8 +164,44 @@ serve(async (req) => {
       to,
     };
 
+    // ── Reaction message ──
+    if (type === "reaction" && reaction_message_id) {
+      messagePayload = {
+        ...messagePayload,
+        type: "reaction",
+        reaction: {
+          message_id: reaction_message_id,
+          emoji: reaction_emoji || "",
+        },
+      };
+    }
+    // ── Location message ──
+    else if (type === "location" && location) {
+      messagePayload = {
+        ...messagePayload,
+        type: "location",
+        location: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          name: location.name || undefined,
+          address: location.address || undefined,
+        },
+      };
+    }
+    // ── Contacts message ──
+    else if (type === "contacts" && contacts && Array.isArray(contacts)) {
+      messagePayload = {
+        ...messagePayload,
+        type: "contacts",
+        contacts: contacts.map((c: any) => ({
+          name: { formatted_name: c.name || "", first_name: c.name || "" },
+          phones: c.phone ? [{ phone: c.phone, type: "CELL" }] : [],
+          emails: c.email ? [{ email: c.email, type: "WORK" }] : [],
+        })),
+      };
+    }
     // ── Template message ──
-    if (type === "template") {
+    else if (type === "template") {
       if (!template_name || typeof template_name !== "string") {
         return json({ error: "اسم القالب مطلوب" }, 400);
       }
@@ -198,7 +234,6 @@ serve(async (req) => {
       }
       // If it's a direct URL, pass as link
       else if (media_url && media_url.startsWith("http")) {
-        // Meta supports sending by link for images/documents
         const mediaObj: Record<string, unknown> = { link: media_url };
         if (caption) mediaObj.caption = caption;
         messagePayload = { ...messagePayload, type: mType, [mType]: mediaObj };
