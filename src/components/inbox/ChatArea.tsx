@@ -175,6 +175,28 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
               <Reply className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
+          {msg.waMessageId && conversation.channelType === "evolution" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="تفاعل">
+                  <Smile className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" side="top">
+                <div className="flex gap-1">
+                  {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
+                    <button key={emoji} className="text-lg hover:scale-125 transition-transform" onClick={async () => {
+                      try {
+                        await supabase.functions.invoke("evolution-manage", {
+                          body: { action: "send_reaction", phone: conversation.customerPhone, message_id: msg.waMessageId, emoji },
+                        });
+                      } catch {}
+                    }}>{emoji}</button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
           {canEdit && onEdit && (
             <button onClick={() => onEdit(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="تعديل">
               <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
@@ -287,14 +309,23 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
                 ))}
               </div>
             )}
-            {/* Sticker message */}
-            {msg.type === "sticker" && msg.mediaUrl && (
-              <div className="mb-1">
-                <ResolvedMedia url={msg.mediaUrl} type="image" />
+            {/* Poll message */}
+            {msg.type === "poll" && msg.poll && (
+              <div className="mb-1 space-y-1.5">
+                <p className="text-xs font-bold flex items-center gap-1">📊 {msg.poll.question}</p>
+                {msg.poll.options.map((opt) => {
+                  const votes = msg.poll.votes?.[opt.id]?.length || 0;
+                  return (
+                    <div key={opt.id} className="flex items-center gap-2 bg-background/30 rounded-lg px-2.5 py-1.5">
+                      <span className="text-xs flex-1">{opt.title}</span>
+                      {votes > 0 && <Badge variant="secondary" className="text-[9px] px-1.5">{votes}</Badge>}
+                    </div>
+                  );
+                })}
               </div>
             )}
             {/* Regular content rendering */}
-            {msg.type !== "location" && msg.type !== "contacts" && msg.type !== "sticker" && (() => {
+            {msg.type !== "location" && msg.type !== "contacts" && msg.type !== "sticker" && msg.type !== "poll" && (() => {
               const textMediaUrl = getStorageUrlFromText(msg.text);
               const mediaUrl = msg.mediaUrl || textMediaUrl;
               const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
@@ -861,6 +892,31 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <DropdownMenuItem onClick={() => setShowTransfer(true)}>
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
+                {conversation.channelType === "evolution" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        await supabase.functions.invoke("evolution-manage", {
+                          body: { action: "block_contact", phone: conversation.customerPhone },
+                        });
+                        toast.success("تم حظر جهة الاتصال");
+                      } catch { toast.error("فشل الحظر"); }
+                    }}>
+                      <XCircle className="w-4 h-4 ml-2 text-destructive" /> حظر الرقم
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        await supabase.functions.invoke("evolution-manage", {
+                          body: { action: "archive_chat", phone: conversation.customerPhone },
+                        });
+                        toast.success("تم أرشفة المحادثة");
+                      } catch { toast.error("فشل الأرشفة"); }
+                    }}>
+                      <FileText className="w-4 h-4 ml-2 text-muted-foreground" /> أرشفة في واتساب
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
