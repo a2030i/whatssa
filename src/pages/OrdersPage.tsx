@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, Package, Truck, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, TrendingUp, DollarSign, BarChart3, ArrowUpCircle, ArrowDownCircle, Loader2, Store } from "lucide-react";
+import { ShoppingCart, Package, Truck, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, TrendingUp, DollarSign, BarChart3, ArrowUpCircle, ArrowDownCircle, Loader2, Store, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
