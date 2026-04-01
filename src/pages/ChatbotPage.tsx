@@ -368,7 +368,7 @@ const ChatbotPage = () => {
                     {idx + 1}
                   </span>
                   <span className="text-xs font-medium flex-1 truncate">
-                    {node.type === "action" ? `⚡ ${ACTION_LABELS[node.action_type || ""]}` : (node.content?.slice(0, 25) || "رسالة فارغة")}{node.content && node.content.length > 25 ? "…" : ""}
+                    {node.name?.trim() ? `${node.name}` : (node.type === "action" ? `⚡ ${ACTION_LABELS[node.action_type || ""]}` : (node.content?.slice(0, 25) || "رسالة فارغة"))}{!node.name?.trim() && node.content && node.content.length > 25 ? "…" : ""}
                   </span>
                 </div>
                 {linkedFrom.length > 0 && (
