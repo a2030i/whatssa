@@ -286,6 +286,10 @@ const SallaIntegrationSection = () => {
       setNewStoreName("");
       setNewStoreUrl("");
       setNewApiToken("");
+      setShipperPhone("");
+      setShipperCity("");
+      setShipperAddress("");
+      setShipperName("");
       fetchStores();
     }
     setSaving(false);
