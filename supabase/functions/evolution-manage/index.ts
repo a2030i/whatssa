@@ -27,6 +27,26 @@ const EVOLUTION_WEBHOOK_EVENTS = [
   "SEND_MESSAGE",
 ];
 
+const buildWebhookPayload = (webhookUrl: string) => ({
+  webhook: {
+    enabled: true,
+    url: webhookUrl,
+    byEvents: true,
+    webhookByEvents: true,
+    base64: false,
+    webhookBase64: false,
+    events: EVOLUTION_WEBHOOK_EVENTS,
+  },
+});
+
+const buildWebhookPayloadFallback = (webhookUrl: string) => ({
+  enabled: true,
+  url: webhookUrl,
+  webhookByEvents: true,
+  webhookBase64: false,
+  events: EVOLUTION_WEBHOOK_EVENTS,
+});
+
 const mapEvolutionMessageStatus = (status: unknown): "sent" | "delivered" | "read" | null => {
   const statusMap: Record<string, "sent" | "delivered" | "read"> = {
     SERVER_ACK: "sent",
@@ -59,6 +79,30 @@ const pickBestEvolutionStatus = (payload: any): "sent" | "delivered" | "read" | 
     if (!best) return current;
     return (priority[current] || 0) > (priority[best] || 0) ? current : best;
   }, null);
+};
+
+const unwrapStatusResponseItems = (payload: any): any[] => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.response)) return payload.response;
+  if (Array.isArray(payload?.messages)) return payload.messages;
+  if (payload?.data) return [payload.data];
+  if (payload?.response) return [payload.response];
+  return payload ? [payload] : [];
+};
+
+const pickStatusResponseItem = (payload: any, messageId: string) => {
+  const items = unwrapStatusResponseItems(payload);
+  return items.find((item) => {
+    const itemId = typeof item?.id === "string"
+      ? item.id
+      : typeof item?.key?.id === "string"
+        ? item.key.id
+        : typeof item?.messageId === "string"
+          ? item.messageId
+          : "";
+    return itemId === messageId;
+  }) || items[0] || null;
 };
 
 async function logToSystem(
@@ -162,12 +206,7 @@ serve(async (req) => {
           instanceName,
           integration: "WHATSAPP-BAILEYS",
           qrcode: true,
-          webhook: {
-            url: webhookUrl,
-            byEvents: true,
-            webhookBase64: false,
-            events: EVOLUTION_WEBHOOK_EVENTS,
-          },
+          ...buildWebhookPayload(webhookUrl),
         }),
       });
 
@@ -316,27 +355,48 @@ serve(async (req) => {
         if (!messageId) continue;
 
         try {
-          const statusRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${targetInstanceName}`, {
-            method: "POST",
-            headers: evoHeaders,
-            body: JSON.stringify({
+          let statusPayload: any = null;
+          const statusQueries = [
+            {
+              where: {
+                _id: remoteJid,
+                id: messageId,
+                remoteJid,
+                fromMe: true,
+              },
+              limit: 1,
+            },
+            {
               where: {
                 id: messageId,
                 remoteJid,
                 fromMe: true,
               },
               limit: 1,
-            }),
-          });
+            },
+            {
+              where: {
+                id: messageId,
+              },
+              limit: 20,
+            },
+          ];
 
-          const statusData = await statusRes.json().catch(() => ({}));
-          if (!statusRes.ok) continue;
+          for (const queryBody of statusQueries) {
+            const statusRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${targetInstanceName}`, {
+              method: "POST",
+              headers: evoHeaders,
+              body: JSON.stringify(queryBody),
+            });
 
-          const statusPayload = Array.isArray(statusData)
-            ? statusData[0]
-            : Array.isArray(statusData?.data)
-              ? statusData.data[0]
-              : statusData?.data || statusData;
+            const statusData = await statusRes.json().catch(() => ({}));
+            if (!statusRes.ok) continue;
+
+            statusPayload = pickStatusResponseItem(statusData, messageId);
+            if (statusPayload) break;
+          }
+
+          if (!statusPayload) continue;
 
           const mappedStatus = pickBestEvolutionStatus(statusPayload);
           if (!mappedStatus) continue;
@@ -917,14 +977,7 @@ async function setWebhook(
     let res = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        webhook: {
-          url: webhookUrl,
-          byEvents: true,
-          webhookBase64: false,
-          events: EVOLUTION_WEBHOOK_EVENTS,
-        },
-      }),
+      body: JSON.stringify(buildWebhookPayload(webhookUrl)),
     });
 
     let data = await res.json().catch(() => ({}));
@@ -933,12 +986,7 @@ async function setWebhook(
       res = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          url: webhookUrl,
-          webhook_by_events: true,
-          webhook_base64: false,
-          events: EVOLUTION_WEBHOOK_EVENTS,
-        }),
+        body: JSON.stringify(buildWebhookPayloadFallback(webhookUrl)),
       });
       data = await res.json().catch(() => ({}));
     }
