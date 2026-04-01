@@ -131,6 +131,11 @@ serve(async (req) => {
       location,
       // Contact fields
       contacts,
+      // Reply context
+      reply_to,
+      // Edit/Delete
+      edit_message_id,
+      delete_message_id,
     } = body;
 
     if (!to || typeof to !== "string") {
