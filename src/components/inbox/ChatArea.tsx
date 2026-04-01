@@ -1233,7 +1233,80 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <FileText className="w-4 h-4" />
               </button>
             )}
+            {/* AI Suggest Replies */}
+            {!isNoteMode && !windowExpired && (
+              <button
+                onClick={async () => {
+                  setAiLoading(true);
+                  setAiSuggestions([]);
+                  try {
+                    const { data, error } = await supabase.functions.invoke("ai-features", {
+                      body: {
+                        action: "suggest_replies",
+                        conversation_messages: messages.slice(-5).map(m => ({ sender: m.sender, content: m.text })),
+                        customer_name: conversation.customerName,
+                      },
+                    });
+                    if (data?.suggestions?.length > 0) {
+                      setAiSuggestions(data.suggestions);
+                    } else if (data?.error === "ai_not_configured") {
+                      toast.error("لم يتم إعداد مزود AI — اذهب للإعدادات");
+                    }
+                  } catch { toast.error("فشل جلب الاقتراحات"); }
+                  setAiLoading(false);
+                }}
+                disabled={aiLoading}
+                className={cn("p-1.5 rounded-lg transition-colors shrink-0", aiLoading ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+                title="اقتراحات AI"
+              >
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              </button>
+            )}
+            {/* AI Summarize */}
+            <button
+              onClick={async () => {
+                setAiLoading(true);
+                try {
+                  const { data } = await supabase.functions.invoke("ai-features", {
+                    body: { action: "summarize", conversation_id: conversation.id },
+                  });
+                  if (data?.summary) {
+                    setAiSummary(data.summary);
+                    setShowSummary(true);
+                  } else if (data?.error === "ai_not_configured") {
+                    toast.error("لم يتم إعداد مزود AI — فعّل ميزة التلخيص من الإعدادات");
+                  }
+                } catch { toast.error("فشل التلخيص"); }
+                setAiLoading(false);
+              }}
+              disabled={aiLoading}
+              className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+              title="تلخيص المحادثة (AI)"
+            >
+              <Brain className="w-4 h-4" />
+            </button>
           </div>
+
+          {/* AI Suggestions Row */}
+          {aiSuggestions.length > 0 && (
+            <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
+              <span className="flex items-center gap-1 text-[10px] text-primary font-medium shrink-0 px-1">
+                <Sparkles className="w-3 h-3" /> AI:
+              </span>
+              {aiSuggestions.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setInputText(s); setAiSuggestions([]); inputRef.current?.focus(); }}
+                  className="shrink-0 text-[11px] px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors max-w-[200px] truncate"
+                >
+                  {s}
+                </button>
+              ))}
+              <button onClick={() => setAiSuggestions([])} className="shrink-0 p-1 rounded-full hover:bg-muted">
+                <X className="w-3 h-3 text-muted-foreground" />
+              </button>
+            </div>
+          )}
 
           {/* File Preview */}
           {imagePreview && (
