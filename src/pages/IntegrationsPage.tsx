@@ -321,7 +321,7 @@ const IntegrationsPage = () => {
     if (lower.includes("#10") || lower.includes("permission"))
       return "لا توجد صلاحيات كافية. تأكد من منح جميع الأذونات المطلوبة أثناء تسجيل الدخول.";
     if (lower.includes("rate limit") || lower.includes("too many"))
-      return "تم إرسال طلبات كثيرة. انتظر بضع دقائق ثم أعد المحاولة.";
+      return "تم إرسال طلبات تسجيل كثيرة لهذا الرقم. ميتا تفرض فترة انتظار إجبارية (تصل إلى 24 ساعة) قبل السماح بمحاولة جديدة. يرجى المحاولة لاحقاً.";
     if (lower.includes("token") || lower.includes("expired") || lower.includes("session"))
       return "انتهت صلاحية الجلسة. أعد ربط الرقم من جديد.";
     if (lower.includes("phone number") && lower.includes("not found"))
