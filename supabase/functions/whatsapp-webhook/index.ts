@@ -847,11 +847,23 @@ serve(async (req) => {
 
           if (msgError) {
             await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
-              error: msgError.message,
-              wa_message_id: incomingMessage.id,
-              conversation_id: conversation.id,
+              error: msgError.message, wa_message_id: incomingMessage.id, conversation_id: conversation.id,
             }, orgId);
           }
+
+          // ── Mark as read (send read receipt to Meta) ──
+          try {
+            const { data: metaCfg } = await supabase
+              .from("whatsapp_config").select("phone_number_id, access_token")
+              .eq("org_id", orgId).eq("is_connected", true).eq("channel_type", "meta_api").limit(1).maybeSingle();
+            if (metaCfg) {
+              await fetch(`https://graph.facebook.com/v21.0/${metaCfg.phone_number_id}/messages`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${metaCfg.access_token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: incomingMessage.id }),
+              });
+            }
+          } catch { /* non-critical */ }
 
           // ── Out-of-hours check (per-channel first, then org fallback) ──
           if (incomingMessage.type === "text") {
