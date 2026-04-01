@@ -799,15 +799,33 @@ serve(async (req) => {
               }
             }
           } else if (incomingMessage.type === "interactive") {
-            // Handle interactive message responses (button replies, list replies)
+            // Handle interactive message responses (button replies, list replies, product inquiries)
             const interReply = incomingMessage.interactive;
             if (interReply?.type === "button_reply") {
               content = interReply.button_reply?.title || "[رد زر]";
             } else if (interReply?.type === "list_reply") {
               content = interReply.list_reply?.title || "[رد قائمة]";
+            } else if (interReply?.type === "product_list_reply") {
+              content = `🛒 ${interReply.product_list_reply?.product_retailer_id || "[طلب منتجات]"}`;
+            } else if (interReply?.type === "nfm_reply") {
+              // WhatsApp Flow response
+              content = "[استجابة نموذج]";
+              messageMetadata.flow_response = interReply.nfm_reply?.response_json || null;
             } else {
               content = `[${incomingMessage.type}]`;
             }
+          } else if (incomingMessage.type === "order") {
+            // Product catalog order
+            const order = incomingMessage.order;
+            const items = (order?.product_items || []).map((item: any) => ({
+              product_retailer_id: item.product_retailer_id,
+              quantity: item.quantity,
+              item_price: item.item_price,
+              currency: item.currency,
+            }));
+            content = `🛒 طلب جديد (${items.length} منتج)`;
+            messageType = "order";
+            messageMetadata.order = { catalog_id: order?.catalog_id, items, text: order?.text || "" };
           } else {
             content = `[${incomingMessage.type}]`;
           }
@@ -829,11 +847,23 @@ serve(async (req) => {
 
           if (msgError) {
             await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
-              error: msgError.message,
-              wa_message_id: incomingMessage.id,
-              conversation_id: conversation.id,
+              error: msgError.message, wa_message_id: incomingMessage.id, conversation_id: conversation.id,
             }, orgId);
           }
+
+          // ── Mark as read (send read receipt to Meta) ──
+          try {
+            const { data: metaCfg } = await supabase
+              .from("whatsapp_config").select("phone_number_id, access_token")
+              .eq("org_id", orgId).eq("is_connected", true).eq("channel_type", "meta_api").limit(1).maybeSingle();
+            if (metaCfg) {
+              await fetch(`https://graph.facebook.com/v21.0/${metaCfg.phone_number_id}/messages`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${metaCfg.access_token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: incomingMessage.id }),
+              });
+            }
+          } catch { /* non-critical */ }
 
           // ── Out-of-hours check (per-channel first, then org fallback) ──
           if (incomingMessage.type === "text") {

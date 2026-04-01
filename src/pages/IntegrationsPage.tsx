@@ -9,6 +9,7 @@ import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import SallaIntegrationSection from "@/components/integrations/SallaIntegrationSection";
 import ChannelRoutingConfig from "@/components/integrations/ChannelRoutingConfig";
 import WhatsAppProfileEditor from "@/components/integrations/WhatsAppProfileEditor";
+import { CatalogSection, QRCodeSection } from "@/components/integrations/CatalogQRSection";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -636,6 +637,14 @@ const IntegrationsPage = () => {
             {isConnected && (
               <div className="flex justify-center">
                 <WhatsAppProfileEditor configId={config.id} channelType="meta_api" />
+              </div>
+            )}
+
+            {/* Catalog & QR */}
+            {isConnected && (
+              <div className="space-y-4 pt-2 border-t border-border">
+                <CatalogSection />
+                <QRCodeSection />
               </div>
             )}
 

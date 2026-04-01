@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, FileText, Check, Clock, XCircle, Eye, Globe, RefreshCw, Loader2, Pencil, Trash2, AlertTriangle, Image, Video, Type, Link, Phone, X } from "lucide-react";
+import { Plus, Search, FileText, Check, Clock, XCircle, Eye, Globe, RefreshCw, Loader2, Pencil, Trash2, AlertTriangle, Image, Video, Type, Link, Phone, X, BarChart3, TrendingUp, Send as SendIcon, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -130,6 +131,82 @@ const ecommerceTemplateSuggestions: TemplateSuggestion[] = [
     },
   },
 ];
+
+const TemplateAnalytics = () => {
+  const [analytics, setAnalytics] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase.functions.invoke("whatsapp-catalog", {
+        body: { action: "template_analytics" },
+      });
+      if (!error && data?.analytics) setAnalytics(data.analytics);
+      setIsLoading(false);
+    })();
+  }, []);
+
+  if (isLoading) return (
+    <div className="bg-card rounded-xl border border-border p-8 text-center">
+      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">جاري جلب تحليلات القوالب من Meta...</p>
+    </div>
+  );
+
+  if (analytics.length === 0) return (
+    <div className="bg-card rounded-xl border border-border p-8 text-center">
+      <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+      <h3 className="font-semibold text-sm">لا توجد بيانات تحليلية</h3>
+      <p className="text-xs text-muted-foreground mt-1">ابدأ بإرسال رسائل عبر القوالب لتظهر الإحصائيات هنا</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {analytics.map((templateData: any, idx: number) => {
+        const points = templateData.data_points || [];
+        const totals = points.reduce((acc: any, dp: any) => {
+          acc.sent += dp.sent || 0;
+          acc.delivered += dp.delivered || 0;
+          acc.read += dp.read || 0;
+          acc.clicked += dp.clicked || 0;
+          return acc;
+        }, { sent: 0, delivered: 0, read: 0, clicked: 0 });
+        const deliveryRate = totals.sent > 0 ? Math.round((totals.delivered / totals.sent) * 100) : 0;
+        const readRate = totals.delivered > 0 ? Math.round((totals.read / totals.delivered) * 100) : 0;
+        const clickRate = totals.read > 0 ? Math.round((totals.clicked / totals.read) * 100) : 0;
+
+        return (
+          <div key={idx} className="bg-card rounded-xl border border-border p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm" dir="ltr">{templateData.template_id || `قالب ${idx + 1}`}</h3>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
+                <p className="text-lg font-bold text-foreground">{totals.sent.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><SendIcon className="w-3 h-3" /> مرسل</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
+                <p className="text-lg font-bold text-success">{deliveryRate}%</p>
+                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><Check className="w-3 h-3" /> تسليم</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
+                <p className="text-lg font-bold text-primary">{readRate}%</p>
+                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><BookOpen className="w-3 h-3" /> قراءة</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 text-center">
+                <p className="text-lg font-bold text-warning">{clickRate > 0 ? `${clickRate}%` : "-"}</p>
+                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><TrendingUp className="w-3 h-3" /> نقرات</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 const TemplatesPage = () => {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
@@ -338,6 +415,17 @@ const TemplatesPage = () => {
         </div>
       </div>
 
+      <Tabs defaultValue="templates" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="templates" className="gap-1.5"><FileText className="w-3.5 h-3.5" /> القوالب</TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-1.5"><BarChart3 className="w-3.5 h-3.5" /> التحليلات</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="analytics">
+          <TemplateAnalytics />
+        </TabsContent>
+
+        <TabsContent value="templates" className="space-y-6">
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -466,6 +554,8 @@ const TemplatesPage = () => {
           <p className="text-sm">لا توجد قوالب مطابقة</p>
         </div>
       )}
+      </TabsContent>
+      </Tabs>
 
       {/* Create / Edit Dialog */}
       <Dialog open={showFormDialog} onOpenChange={(open) => { if (!open) { setShowFormDialog(false); setEditingTemplate(null); setFormData(emptyForm); } }}>
