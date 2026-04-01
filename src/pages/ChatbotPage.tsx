@@ -135,10 +135,21 @@ const ChatbotPage = () => {
     setChannels((data || []) as unknown as Channel[]);
   }, [orgId]);
 
+  const fetchTeamsAndMembers = useCallback(async () => {
+    if (!orgId) return;
+    const [teamsRes, membersRes] = await Promise.all([
+      supabase.from("teams").select("id, name").eq("org_id", orgId).order("name"),
+      supabase.from("profiles").select("id, full_name, team_id").eq("org_id", orgId).eq("is_active", true).order("full_name"),
+    ]);
+    setTeams((teamsRes.data || []) as Team[]);
+    setMembers((membersRes.data || []) as TeamMember[]);
+  }, [orgId]);
+
   useEffect(() => {
     fetchFlows();
     fetchChannels();
-  }, [fetchFlows, fetchChannels]);
+    fetchTeamsAndMembers();
+  }, [fetchFlows, fetchChannels, fetchTeamsAndMembers]);
 
   // ─── Form Helpers ───
   const resetForm = () => {
