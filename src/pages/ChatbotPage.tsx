@@ -822,8 +822,16 @@ const ChatbotPage = () => {
                       {/* Buttons list */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-xs text-muted-foreground">
-                            الأزرار ({node.buttons.length}/{MAX_BUTTONS})
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs text-muted-foreground">
+                              الأزرار ({node.buttons.length}/{MAX_BUTTONS})
+                            </Label>
+                            {selectedChannelType === "meta_api" && node.buttons.length > 0 && (
+                              <Badge variant="outline" className="text-[9px]">
+                                {node.buttons.length <= 3 ? "أزرار تفاعلية" : "قائمة تفاعلية"}
+                              </Badge>
+                            )}
+                          </div>
                           </Label>
                           {node.buttons.length < MAX_BUTTONS && (
                             <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => addButton(node.id)}>
