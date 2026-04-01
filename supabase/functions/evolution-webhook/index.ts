@@ -426,11 +426,42 @@ serve(async (req) => {
 
         let messageType = "text";
         let mediaUrl = null;
+        let extraMetadata: Record<string, any> = {};
 
         if (messageContent.imageMessage) messageType = "image";
         else if (messageContent.videoMessage) messageType = "video";
         else if (messageContent.audioMessage) messageType = "audio";
         else if (messageContent.documentMessage) messageType = "document";
+        else if (messageContent.stickerMessage) messageType = "sticker";
+        else if (messageContent.locationMessage) {
+          messageType = "location";
+          extraMetadata.location = {
+            latitude: messageContent.locationMessage.degreesLatitude,
+            longitude: messageContent.locationMessage.degreesLongitude,
+            name: messageContent.locationMessage.name || null,
+            address: messageContent.locationMessage.address || null,
+          };
+        } else if (messageContent.contactMessage || messageContent.contactsArrayMessage) {
+          messageType = "contacts";
+          const contactArr = messageContent.contactsArrayMessage?.contacts || [messageContent.contactMessage];
+          extraMetadata.contacts = contactArr.map((c: any) => ({
+            name: c?.displayName || c?.vcard?.match(/FN:(.*)/)?.[1] || "",
+            phone: c?.vcard?.match(/TEL.*:([\d+]+)/)?.[1] || "",
+          }));
+        } else if (messageContent.pollCreationMessage || messageContent.pollCreationMessageV3) {
+          messageType = "poll";
+          const pollMsg = messageContent.pollCreationMessage || messageContent.pollCreationMessageV3;
+          extraMetadata.poll = {
+            question: pollMsg.name || "",
+            options: (pollMsg.options || []).map((o: any, i: number) => ({
+              id: `opt_${i}`,
+              title: o.optionName || o,
+            })),
+          };
+        } else if (messageContent.pollUpdateMessage) {
+          // Poll vote update — skip for now, handled separately
+          continue;
+        }
 
         if (!text && messageType === "text") continue;
 
