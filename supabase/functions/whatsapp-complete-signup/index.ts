@@ -17,38 +17,93 @@ function log(step: string, detail: unknown) {
   console.log(`[whatsapp-complete-signup] [${step}]`, JSON.stringify(detail));
 }
 
-/** Check if the phone number is already registered by requesting its status */
-async function checkPhoneStatus(phoneId: string, accessToken: string): Promise<{ registered: boolean; status?: string; error?: string }> {
-  try {
-    const res = await fetch(
-      `https://graph.facebook.com/v21.0/${phoneId}?fields=id,display_phone_number,verified_name,code_verification_status,account_mode,status,health_status`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    const data = await res.json();
-    log("check_phone_status", { status: res.status, data });
+// ── Helpers ──
 
-    if (!res.ok) {
-      return { registered: false, error: data?.error?.message };
+async function fetchPhoneDetails(phoneId: string, accessToken: string) {
+  const fields = "id,display_phone_number,verified_name,quality_rating,code_verification_status,account_mode,status,health_status,name_status,messaging_limit_tier,throughput,platform_type";
+  const res = await fetch(
+    `https://graph.facebook.com/v21.0/${phoneId}?fields=${fields}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const data = await res.json();
+  log("fetch_phone_details", { status: res.status, data });
+  return { ok: res.ok, data };
+}
+
+async function fetchWabaDetails(wabaId: string, accessToken: string) {
+  const fields = "id,name,currency,timezone_id,message_template_namespace,business_verification_status,account_review_status,on_behalf_of_business_info";
+  const res = await fetch(
+    `https://graph.facebook.com/v21.0/${wabaId}?fields=${fields}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const data = await res.json();
+  log("fetch_waba_details", { status: res.status, data });
+  return { ok: res.ok, data };
+}
+
+/** Determine onboarding type based on phone status and platform_type */
+function detectOnboardingType(phoneData: any): {
+  onboarding_type: "new" | "existing" | "migrated";
+  migration_source: string | null;
+  migration_status: string;
+} {
+  const status = phoneData.status || "UNKNOWN";
+  const platformType = phoneData.platform_type || "";
+  
+  // If phone is already CONNECTED on Cloud API — it's an existing number being re-linked
+  if (status === "CONNECTED") {
+    // Check if it was migrated from on-premise or another provider
+    if (platformType === "ON_PREMISE") {
+      return {
+        onboarding_type: "migrated",
+        migration_source: "on_premise_api",
+        migration_status: "completed",
+      };
     }
-
-    // Use the actual 'status' field from Meta — CONNECTED means registered, PENDING means not
-    const phoneStatus = data.status || "UNKNOWN";
-    const isRegistered = phoneStatus === "CONNECTED";
-    
-    // Also check health_status for PHONE_NUMBER entity — if can_send_message is BLOCKED with error 141000, not registered
-    if (!isRegistered && data.health_status?.entities) {
-      const phoneEntity = data.health_status.entities.find((e: any) => e.entity_type === "PHONE_NUMBER");
-      if (phoneEntity?.errors?.some((e: any) => e.error_code === 141000)) {
-        log("check_phone_status_not_registered", { phoneId, reason: "error_141000" });
-        return { registered: false, status: phoneStatus };
-      }
-    }
-
-    return { registered: isRegistered, status: phoneStatus };
-  } catch (err: any) {
-    log("check_phone_status_error", { error: err.message });
-    return { registered: false, error: err.message };
+    return {
+      onboarding_type: "existing",
+      migration_source: null,
+      migration_status: "none",
+    };
   }
+  
+  // PENDING status could mean: new signup, or migration in progress
+  if (status === "PENDING" || status === "OFFLINE") {
+    // If platform_type exists and is not CLOUD_API, it's a migration
+    if (platformType && platformType !== "CLOUD_API" && platformType !== "NOT_APPLICABLE") {
+      return {
+        onboarding_type: "migrated",
+        migration_source: platformType === "ON_PREMISE" ? "on_premise_api" : "business_app",
+        migration_status: "pending",
+      };
+    }
+    return {
+      onboarding_type: "new",
+      migration_source: null,
+      migration_status: "none",
+    };
+  }
+  
+  // Default: new number
+  return {
+    onboarding_type: "new",
+    migration_source: null,
+    migration_status: "none",
+  };
+}
+
+/** Extract health issues into a structured format */
+function extractHealthStatus(phoneData: any): any[] {
+  const entities = phoneData.health_status?.entities || [];
+  return entities.map((e: any) => ({
+    entity_type: e.entity_type,
+    can_send_message: e.can_send_message,
+    errors: (e.errors || []).map((err: any) => ({
+      error_code: err.error_code,
+      error_description: err.error_description,
+      possible_solution: err.possible_solution,
+    })),
+  }));
 }
 
 async function registerPhone(phoneId: string, accessToken: string, retries = 2, pin = "123456"): Promise<{ success: boolean; data?: any; error?: string; details?: string }> {
@@ -76,7 +131,6 @@ async function registerPhone(phoneId: string, accessToken: string, retries = 2, 
       const errMsg = data?.error?.message || JSON.stringify(data);
       const errDetails = data?.error?.error_data?.details || "";
 
-      // Non-retryable errors
       if (res.status === 400 || res.status === 403) {
         return { success: false, error: errMsg, details: errDetails };
       }
@@ -97,6 +151,34 @@ async function registerPhone(phoneId: string, accessToken: string, retries = 2, 
   return { success: false, error: "Max retries exceeded" };
 }
 
+/** Check migration prerequisites */
+function checkMigrationPrereqs(phoneData: any, wabaData: any): { ready: boolean; issues: string[] } {
+  const issues: string[] = [];
+  
+  // Check business verification
+  if (wabaData?.business_verification_status && wabaData.business_verification_status !== "verified") {
+    issues.push("business_not_verified");
+  }
+  
+  // Check account review
+  if (wabaData?.account_review_status && wabaData.account_review_status !== "APPROVED") {
+    issues.push("account_not_approved");
+  }
+  
+  // Check for health errors blocking send
+  const healthEntities = phoneData?.health_status?.entities || [];
+  for (const entity of healthEntities) {
+    if (entity.can_send_message === "BLOCKED") {
+      for (const err of (entity.errors || [])) {
+        if (err.error_code === 141006) issues.push("payment_method_missing");
+        if (err.error_code === 141000) issues.push("phone_not_registered");
+      }
+    }
+  }
+  
+  return { ready: issues.length === 0, issues };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -114,6 +196,8 @@ serve(async (req) => {
       org_id,
       auto_register = true,
       pin: userPin,
+      migration_source: userMigrationSource,
+      previous_provider: userPreviousProvider,
     } = body;
 
     const appId = "1239578701681497";
@@ -129,7 +213,6 @@ serve(async (req) => {
     log("step1_token", { hasCode: !!code, hasDirect: !!directToken, hasConfigId: !!configId });
     let accessToken = directToken;
 
-    // If config_id provided (retry scenario), fetch token from DB
     if (!accessToken && configId) {
       const { data: configData } = await supabase
         .from("whatsapp_config")
@@ -166,6 +249,7 @@ serve(async (req) => {
     log("step2_resolve", { sessionWabaId, sessionPhoneId });
     let wabaIds: string[] = sessionWabaId ? [sessionWabaId] : [];
     let resolvedPhones: any[] = [];
+    let appScopedUserId: string | null = null;
 
     if (wabaIds.length === 0) {
       const debugRes = await fetch(
@@ -175,13 +259,14 @@ serve(async (req) => {
       const granularScopes = debugData.data?.granular_scopes || [];
       const waScope = granularScopes.find((s: any) => s.scope === "whatsapp_business_management");
       wabaIds = waScope?.target_ids || [];
-      log("step2_discovered_wabas", { wabaIds });
+      appScopedUserId = debugData.data?.user_id || null;
+      log("step2_discovered_wabas", { wabaIds, appScopedUserId });
     }
 
     const results = [];
     for (const wabaId of wabaIds) {
       const phonesRes = await fetch(
-        `https://graph.facebook.com/v21.0/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status`,
+        `https://graph.facebook.com/v21.0/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,status,account_mode,platform_type,name_status,messaging_limit_tier,throughput`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const phonesData = await phonesRes.json();
@@ -196,9 +281,12 @@ serve(async (req) => {
       ? resolvedPhones.find((p: any) => p.id === sessionPhoneId)
       : null;
 
-    // ── Step 3: Save config ──
+    // ── Step 3: Save config with full metadata ──
     let savedConfig = null;
     let registrationResult: { success: boolean; error?: string; skipped?: boolean; details?: string } = { success: false, error: "Not attempted" };
+    let onboardingInfo: any = null;
+    let migrationPrereqs: any = null;
+    let wabaDetails: any = null;
 
     if (selectedPhone && org_id) {
       const wabaId = selectedPhone.waba_id;
@@ -208,19 +296,44 @@ serve(async (req) => {
 
       log("step3_save", { orgId: org_id, phoneId, wabaId });
 
+      // Fetch detailed phone and WABA info
+      const [phoneDetails, wabaDetailsRes] = await Promise.all([
+        fetchPhoneDetails(phoneId, accessToken),
+        fetchWabaDetails(wabaId, accessToken),
+      ]);
+
+      const phoneData = phoneDetails.ok ? phoneDetails.data : selectedPhone;
+      wabaDetails = wabaDetailsRes.ok ? wabaDetailsRes.data : null;
+
+      // Detect onboarding type
+      onboardingInfo = detectOnboardingType(phoneData);
+      
+      // Override with user-provided migration info if present
+      if (userMigrationSource) {
+        onboardingInfo.onboarding_type = "migrated";
+        onboardingInfo.migration_source = userMigrationSource;
+        if (onboardingInfo.migration_status === "none") {
+          onboardingInfo.migration_status = "pending";
+        }
+      }
+
+      // Check migration prerequisites
+      migrationPrereqs = checkMigrationPrereqs(phoneData, wabaDetails);
+      log("step3_onboarding", { onboardingInfo, migrationPrereqs });
+
       const { data: existingConfig } = await supabase
         .from("whatsapp_config")
         .select("id, webhook_verify_token")
         .eq("org_id", org_id)
         .maybeSingle();
 
-      // ── Step 3.5: Check if phone is already registered ──
-      const phoneStatus = await checkPhoneStatus(phoneId, accessToken);
-      log("step3_phone_check", phoneStatus);
+      const alreadyRegistered = phoneData.status === "CONNECTED";
+      const healthStatus = extractHealthStatus(phoneData);
 
-      const alreadyRegistered = phoneStatus.registered;
+      // Get business ID from WABA info
+      const metaBusinessId = wabaDetails?.on_behalf_of_business_info?.id || null;
 
-      const configPayload = {
+      const configPayload: Record<string, any> = {
         phone_number_id: phoneId,
         business_account_id: wabaId,
         access_token: accessToken,
@@ -231,7 +344,22 @@ serve(async (req) => {
         registration_error: null,
         channel_type: "meta_api",
         last_register_attempt_at: new Date().toISOString(),
+        // New metadata fields
+        onboarding_type: onboardingInfo.onboarding_type,
+        migration_source: onboardingInfo.migration_source,
+        migration_status: onboardingInfo.migration_status,
+        previous_provider: userPreviousProvider || null,
+        meta_business_id: metaBusinessId,
+        quality_rating: phoneData.quality_rating || null,
+        messaging_limit_tier: phoneData.messaging_limit_tier || null,
+        account_mode: phoneData.account_mode || null,
+        code_verification_status: phoneData.code_verification_status || null,
+        name_status: phoneData.name_status || null,
+        health_status: healthStatus,
+        app_scoped_user_id: appScopedUserId,
+        throughput_level: phoneData.throughput?.level || null,
         ...(alreadyRegistered ? { registered_at: new Date().toISOString() } : {}),
+        ...(onboardingInfo.onboarding_type === "migrated" && alreadyRegistered ? { migrated_at: new Date().toISOString(), migration_status: "completed" } : {}),
       };
 
       if (existingConfig) {
@@ -249,25 +377,30 @@ serve(async (req) => {
       if (auto_register && !alreadyRegistered) {
         registrationResult = await registerPhone(phoneId, accessToken, 3, userPin || "123456");
 
-        const configId = savedConfig?.id || existingConfig?.id;
+        const cId = savedConfig?.id || existingConfig?.id;
 
         if (registrationResult.success) {
           log("step4_register_success", { phoneId });
-          await supabase.from("whatsapp_config").update({
+          const updatePayload: Record<string, any> = {
             is_connected: true,
             registration_status: "connected",
             registration_error: null,
             registered_at: new Date().toISOString(),
-          }).eq("id", configId);
+          };
+          if (onboardingInfo.onboarding_type === "migrated") {
+            updatePayload.migration_status = "completed";
+            updatePayload.migrated_at = new Date().toISOString();
+          }
+          await supabase.from("whatsapp_config").update(updatePayload).eq("id", cId);
         } else {
-          // Store the detailed error for better user messaging
           const detailedError = registrationResult.details || registrationResult.error || "Unknown error";
           log("step4_register_failed", { phoneId, error: detailedError });
           await supabase.from("whatsapp_config").update({
             is_connected: false,
             registration_status: "failed",
             registration_error: detailedError,
-          }).eq("id", configId);
+            ...(onboardingInfo.onboarding_type === "migrated" ? { migration_status: "failed", migration_error: detailedError } : {}),
+          }).eq("id", cId);
         }
       } else if (alreadyRegistered) {
         log("step4_skipped", { phoneId, reason: "already_registered" });
@@ -302,6 +435,14 @@ serve(async (req) => {
         saved_config: savedConfig,
         auto_registered: !!(selectedPhone && org_id && auto_register),
         registration: registrationResult,
+        onboarding: onboardingInfo,
+        migration_prereqs: migrationPrereqs,
+        waba_details: wabaDetails ? {
+          name: wabaDetails.name,
+          business_verification_status: wabaDetails.business_verification_status,
+          account_review_status: wabaDetails.account_review_status,
+          currency: wabaDetails.currency,
+        } : null,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
