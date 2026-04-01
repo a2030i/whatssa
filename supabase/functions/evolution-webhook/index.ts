@@ -295,6 +295,16 @@ async function fetchEvolutionContactName(instanceName: string, phone: string): P
   }
 }
 
+// orgName is injected at runtime so the static blocked list stays pure
+let _dynamicBlockedNames: Set<string> = new Set();
+
+function setDynamicBlockedNames(orgName?: string | null) {
+  _dynamicBlockedNames = new Set();
+  if (orgName) {
+    _dynamicBlockedNames.add(orgName.trim().toLowerCase());
+  }
+}
+
 function chooseBestContactName(...values: Array<string | null | undefined>): string | null {
   const blocked = new Set([
     "whatsapp",
@@ -311,6 +321,7 @@ function chooseBestContactName(...values: Array<string | null | undefined>): str
     if (!normalized) continue;
     const plain = normalized.toLowerCase().replace(/\s+/g, " ");
     if (blocked.has(plain)) continue;
+    if (_dynamicBlockedNames.has(plain)) continue;
     if (/organization$/i.test(normalized)) continue;
     return normalized;
   }
@@ -449,8 +460,10 @@ serve(async (req) => {
       const messageList = Array.isArray(messages) ? messages : [messages];
 
       // Load org settings once
-      const { data: orgData } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+      const { data: orgData } = await supabase.from("organizations").select("settings, name").eq("id", orgId).single();
       const orgSettings = (orgData?.settings as Record<string, any>) || {};
+      // Block org name from being used as customer name
+      setDynamicBlockedNames(orgData?.name);
 
       for (const msg of messageList) {
         const key = msg.key || {};
