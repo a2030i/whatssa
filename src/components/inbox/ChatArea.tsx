@@ -342,7 +342,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showTemplates, setShowTemplates] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null);
   const [templateVars, setTemplateVars] = useState<string[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [customerTyping, setCustomerTyping] = useState(false);
   const [isNoteMode, setIsNoteMode] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
@@ -400,8 +400,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         }
       });
 
+    // Listen for customer typing broadcasts from Evolution webhook
+    const customerTypingChannel = supabase.channel(`customer-typing:${conversation.id}`);
+    customerTypingChannel
+      .on("broadcast", { event: "typing" }, (payload) => {
+        setCustomerTyping(true);
+        setTimeout(() => setCustomerTyping(false), 4000);
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(customerTypingChannel);
     };
   }, [conversation.id, user?.id, profile?.full_name]);
 
@@ -497,8 +507,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     setInputText("");
     setReplyTo(null);
     broadcastTyping(false);
-    setIsTyping(true);
-    setTimeout(() => setIsTyping(false), 2000);
   };
 
   const handleReply = (msg: Message) => {
@@ -596,8 +604,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     onSendMessage(conversation.id, text);
     setShowQuickReplies(false);
-    setIsTyping(true);
-    setTimeout(() => setIsTyping(false), 2000);
   };
 
   const handleEmoji = (emoji: string) => setInputText((prev) => prev + emoji);
@@ -971,10 +977,25 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             )}
           </div>
         ))}
+        {/* Customer typing indicator */}
+        {customerTyping && (
+          <div className="flex justify-start">
+            <div className="bg-card border border-border rounded-xl rounded-bl-sm px-4 py-2.5 text-sm">
+              <div className="flex gap-1 items-center">
+                <span className="text-xs text-muted-foreground">يكتب</span>
+                <span className="flex gap-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "300ms" }} />
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Other agents typing indicator */}
         {otherTypingAgents.length > 0 && (
-          <div className="flex justify-center">
-            <div className="bg-primary/10 text-primary text-[11px] px-3 py-1.5 rounded-full flex items-center gap-1.5">
+          <div className="flex justify-end">
+            <div className="bg-primary/10 text-primary text-[11px] px-3 py-1.5 rounded-xl rounded-br-sm flex items-center gap-1.5">
               <span className="font-medium">{otherTypingAgents.join("، ")}</span>
               <span>يكتب الآن</span>
               <span className="flex gap-0.5">
@@ -982,20 +1003,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "150ms" }} />
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: "300ms" }} />
               </span>
-            </div>
-          </div>
-        )}
-        {isTyping && (
-          <div className="flex justify-end">
-            <div className="gradient-whatsapp text-whatsapp-foreground rounded-xl rounded-br-sm px-4 py-2.5 text-sm">
-              <div className="flex gap-1 items-center">
-                <span className="text-xs opacity-70">يكتب</span>
-                <span className="flex gap-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-whatsapp-foreground/50 animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-whatsapp-foreground/50 animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-whatsapp-foreground/50 animate-bounce" style={{ animationDelay: "300ms" }} />
-                </span>
-              </div>
             </div>
           </div>
         )}
