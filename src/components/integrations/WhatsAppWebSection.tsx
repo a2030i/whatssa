@@ -231,6 +231,8 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
   };
 
   const createInstance = async () => {
+    const guessedName = `org_${(orgId || "").replace(/-/g, "").slice(0, 12)}`;
+
     if (unofficialCount >= maxUnofficialPhones && !isSuperAdmin) {
       toast.error(`وصلت للحد الأقصى (${maxUnofficialPhones} رقم غير رسمي). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
       return;
@@ -242,17 +244,28 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
       });
 
       if (error || !data?.success) {
+        const errorMessage = data?.error || error?.message || "فشل إنشاء الجلسة";
+
         // If instance already exists on server, show reconnect options
-        if (data?.error?.toLowerCase?.()?.includes?.("already")) {
+        if (errorMessage.toLowerCase().includes("already")) {
           toast.info("جلسة موجودة مسبقاً — يمكنك إعادة الاتصال أو حذفها");
           setInstanceStatus("disconnected");
-          // Try to get instance name from server
-          const guessName = `org_${(orgId || "").replace(/-/g, "").slice(0, 12)}`;
-          setInstanceName(guessName);
+          setInstanceName(guessedName);
+          await fetchQR(guessedName, { allowRecreate: false, silent: true });
           setIsCreating(false);
           return;
         }
-        toast.error(data?.error || "فشل إنشاء الجلسة");
+
+        if (!error && guessedName) {
+          const recovered = await fetchQR(guessedName, { allowRecreate: false, silent: true });
+          if (recovered) {
+            setInstanceName(guessedName);
+            setIsCreating(false);
+            return;
+          }
+        }
+
+        toast.error(errorMessage.includes("Unauthorized") ? "انتهت الجلسة، أعد تسجيل الدخول" : errorMessage);
         setIsCreating(false);
         return;
       }
@@ -265,8 +278,8 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
         setInstanceStatus("qr_pending");
         startPolling(data.instance_name);
       } else {
-        // No QR yet, fetch it
-        await fetchQR(data.instance_name);
+        setInstanceStatus("connecting");
+        await fetchQR(data.instance_name, { allowRecreate: false, silent: true });
       }
     } catch {
       toast.error("خطأ في الاتصال بالسيرفر");
@@ -274,9 +287,12 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     setIsCreating(false);
   };
 
-  const fetchQR = async (name?: string) => {
+   const fetchQR = async (name?: string, options?: { allowRecreate?: boolean; silent?: boolean }) => {
     const iName = name || instanceName;
-    if (!iName) return;
+     if (!iName) return false;
+
+     const allowRecreate = options?.allowRecreate ?? true;
+     const silent = options?.silent ?? false;
 
     setInstanceStatus("connecting");
     
@@ -285,12 +301,20 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
         body: { action: "connect", instance_name: iName },
       });
 
-      // If instance doesn't exist on server (deleted/expired), recreate it
-      if (!data?.qr_code && !data?.status) {
+        if (error || data?.error) {
+          if (!silent) {
+            toast.error(data?.error || error?.message || "تعذر جلب رمز QR");
+          }
+          return false;
+        }
+
+       // If instance doesn't exist on server (deleted/expired), recreate it
+       if (!data?.qr_code && !data?.status) {
+         if (!allowRecreate) return false;
         console.log("Instance not found, recreating...");
         toast.info("جاري إعادة إنشاء الجلسة...");
         await createInstance();
-        return;
+         return false;
       }
 
       if (data?.qr_code) {
@@ -298,21 +322,31 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
         setQrCode(qrSrc);
         setInstanceStatus("qr_pending");
         startPolling(iName);
-        return;
+         return true;
       } else if (data?.status === "open") {
         setInstanceStatus("connected");
         setQrCode(null);
         toast.success("✅ الرقم متصل بالفعل");
         loadExistingConfig();
-        return;
+         return true;
+       } else if (data?.status) {
+         setInstanceStatus("connecting");
+         startPolling(iName);
+         return true;
       }
     } catch {
-      // continue
+       if (!silent) {
+         toast.error("خطأ في الاتصال بالسيرفر");
+       }
+       return false;
     }
 
-    // If we get here, try creating fresh
-    toast.info("جاري إعادة إنشاء الجلسة...");
-    await createInstance();
+     // If we get here, try creating fresh
+     if (allowRecreate) {
+       toast.info("جاري إعادة إنشاء الجلسة...");
+       await createInstance();
+     }
+     return false;
   };
 
   const requestPairingCode = async () => {
