@@ -227,14 +227,14 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
   const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
     if (!orgId) { setIsLoadingConfig(false); return; }
-    const fetchConfig = () => supabase
-      .from("whatsapp_config_safe")
-      .select("*")
-      .eq("org_id", orgId)
-      .eq("channel_type", "evolution")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const fetchConfig = async () => {
+      const { data } = await supabase.rpc("get_org_whatsapp_channels");
+      return {
+        data: ((data || []) as any[])
+          .filter((config) => config.org_id === orgId && config.channel_type === "evolution")
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null,
+      };
+    };
 
     let { data } = await fetchConfig();
 
