@@ -879,7 +879,9 @@ export type Database = {
         Row: {
           assigned_at: string | null
           assigned_team: string | null
+          assigned_team_id: string | null
           assigned_to: string | null
+          assigned_to_id: string | null
           channel_id: string | null
           closed_at: string | null
           closed_by: string | null
@@ -908,7 +910,9 @@ export type Database = {
         Insert: {
           assigned_at?: string | null
           assigned_team?: string | null
+          assigned_team_id?: string | null
           assigned_to?: string | null
+          assigned_to_id?: string | null
           channel_id?: string | null
           closed_at?: string | null
           closed_by?: string | null
@@ -937,7 +941,9 @@ export type Database = {
         Update: {
           assigned_at?: string | null
           assigned_team?: string | null
+          assigned_team_id?: string | null
           assigned_to?: string | null
+          assigned_to_id?: string | null
           channel_id?: string | null
           closed_at?: string | null
           closed_by?: string | null
@@ -964,6 +970,20 @@ export type Database = {
           wa_conversation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "conversations_assigned_team_id_fkey"
+            columns: ["assigned_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_assigned_to_id_fkey"
+            columns: ["assigned_to_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversations_channel_id_fkey"
             columns: ["channel_id"]
@@ -2047,6 +2067,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_online: boolean | null
+          is_supervisor: boolean
           last_seen_at: string | null
           org_id: string | null
           phone: string | null
@@ -2066,6 +2087,7 @@ export type Database = {
           id: string
           is_active?: boolean
           is_online?: boolean | null
+          is_supervisor?: boolean
           last_seen_at?: string | null
           org_id?: string | null
           phone?: string | null
@@ -2085,6 +2107,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_online?: boolean | null
+          is_supervisor?: boolean
           last_seen_at?: string | null
           org_id?: string | null
           phone?: string | null

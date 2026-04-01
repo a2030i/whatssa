@@ -27,7 +27,7 @@ const formatTimestamp = (isoStr: string | null): string => {
 };
 
 const InboxPage = () => {
-  const { orgId, profile } = useAuth();
+  const { orgId, profile, userRole, teamId, isSupervisor, isSuperAdmin } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [allMessages, setAllMessages] = useState<Record<string, Message[]>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -129,6 +129,9 @@ const InboxPage = () => {
           timestamp: formatTimestamp(conversation.last_message_at),
           unread: conversation.unread_count || 0,
           assignedTo: conversation.assigned_to || "غير معيّن",
+          assignedToId: conversation.assigned_to_id || undefined,
+          assignedTeam: conversation.assigned_team || undefined,
+          assignedTeamId: conversation.assigned_team_id || undefined,
           status: (conversation.status as "active" | "waiting" | "closed") || "active",
           tags: conversation.tags || [],
           notes: conversation.notes || "",
@@ -141,7 +144,25 @@ const InboxPage = () => {
         };
       });
 
-      setConversations(mapped);
+      // Team-based visibility filtering
+      const isAdmin = userRole === "admin" || isSuperAdmin;
+      const filtered = isAdmin ? mapped : mapped.filter(conv => {
+        // No team assigned to user → show all (legacy behavior)
+        if (!teamId) return true;
+        // Conversation not assigned to any team → visible to all in org
+        if (!conv.assignedTeamId) return true;
+        // Conversation assigned to user's team
+        if (conv.assignedTeamId === teamId) {
+          // Supervisors see all team conversations
+          if (isSupervisor) return true;
+          // Members see only their own or unassigned
+          return !conv.assignedToId || conv.assignedToId === profile?.id;
+        }
+        // Conversation assigned to different team → not visible
+        return false;
+      });
+
+      setConversations(filtered);
       if (!isMobile && mapped.length > 0) {
         setSelectedId((prev) => (prev && mapped.some((item) => item.id === prev) ? prev : mapped[0].id));
       }
@@ -161,7 +182,7 @@ const InboxPage = () => {
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [orgId, isMobile]);
+  }, [orgId, isMobile, userRole, teamId, isSupervisor, isSuperAdmin, profile?.id]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -476,6 +497,41 @@ const InboxPage = () => {
     });
   }, [conversations, profile]);
 
+  const handleAssignAgent = useCallback(async (convId: string, agentId: string | null, agentName: string) => {
+    const actorName = profile?.full_name || "النظام";
+    await supabase.from("conversations").update({
+      assigned_to: agentName === "غير معيّن" ? null : agentName,
+      assigned_to_id: agentId,
+      assigned_at: agentId ? new Date().toISOString() : null,
+    }).eq("id", convId);
+    setConversations(prev => prev.map(c => c.id === convId ? { ...c, assignedTo: agentName, assignedToId: agentId || undefined } : c));
+    
+    await supabase.from("messages").insert({
+      conversation_id: convId,
+      content: agentId ? `تم تثبيت الموظف "${agentName}" كمسؤول عن المحادثة بواسطة ${actorName}` : `تم إلغاء تعيين الموظف بواسطة ${actorName}`,
+      sender: "system",
+      message_type: "text",
+    });
+    toast.success(agentId ? `تم تعيين ${agentName} كمسؤول` : "تم إلغاء تعيين الموظف");
+  }, [profile]);
+
+  const handleAssignTeam = useCallback(async (convId: string, teamId: string | null, teamName: string) => {
+    const actorName = profile?.full_name || "النظام";
+    await supabase.from("conversations").update({
+      assigned_team: teamId ? teamName : null,
+      assigned_team_id: teamId,
+    }).eq("id", convId);
+    setConversations(prev => prev.map(c => c.id === convId ? { ...c, assignedTeam: teamId ? teamName : undefined, assignedTeamId: teamId || undefined } : c));
+    
+    await supabase.from("messages").insert({
+      conversation_id: convId,
+      content: teamId ? `تم تعيين الفريق "${teamName}" كمسؤول عن المحادثة بواسطة ${actorName}` : `تم إلغاء تعيين الفريق بواسطة ${actorName}`,
+      sender: "system",
+      message_type: "text",
+    });
+    toast.success(teamId ? `تم تعيين فريق ${teamName}` : "تم إلغاء تعيين الفريق");
+  }, [profile]);
+
   const handleUpdateNotes = useCallback(async (convId: string, notes: string) => {
     await supabase.from("conversations").update({ notes }).eq("id", convId);
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, notes } : conversation)));
@@ -609,7 +665,7 @@ const InboxPage = () => {
         )
       )}
 
-      {selected && !isMobile && <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} />}
+      {selected && !isMobile && <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} onAssignAgent={handleAssignAgent} onAssignTeam={handleAssignTeam} />}
 
       <NewConversationDialog
         open={newConvOpen}

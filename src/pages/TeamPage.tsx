@@ -89,16 +89,19 @@ const TeamPage = () => {
     return r?.role || "member";
   };
 
+  const [formSupervisor, setFormSupervisor] = useState(false);
+
   const openEditDialog = (profile: any) => {
     setEditingProfile(profile);
     setFormTeam(profile.team_id || "");
     setFormRole(getRole(profile.id));
+    setFormSupervisor(profile.is_supervisor || false);
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!editingProfile) return;
-    await supabase.from("profiles").update({ team_id: formTeam || null }).eq("id", editingProfile.id);
+    await supabase.from("profiles").update({ team_id: formTeam || null, is_supervisor: formSupervisor }).eq("id", editingProfile.id);
 
     const currentRole = getRole(editingProfile.id);
     if (currentRole !== formRole && (formRole === "member" || formRole === "supervisor" || formRole === "admin")) {
@@ -320,6 +323,7 @@ const TeamPage = () => {
                     <p className="font-medium text-sm">{profile.full_name || "بدون اسم"}</p>
                     <div className="flex items-center gap-2 flex-wrap">
                       {team && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{team.name}</span>}
+                      {profile.is_supervisor && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">مشرف</span>}
                       {profile.work_start && (
                         <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                           <Clock className="w-2.5 h-2.5" />
@@ -616,6 +620,14 @@ const TeamPage = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            {/* Supervisor Toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-xs">مشرف فريق</Label>
+                <p className="text-[10px] text-muted-foreground">يرى جميع محادثات فريقه</p>
+              </div>
+              <Switch checked={formSupervisor} onCheckedChange={setFormSupervisor} />
             </div>
           </div>
           <DialogFooter className="gap-2">

@@ -8,6 +8,8 @@ interface AuthContextType {
   profile: any;
   userRole: string | null;
   orgId: string | null;
+  teamId: string | null;
+  isSupervisor: boolean;
   isLoading: boolean;
   isSuperAdmin: boolean;
   isEcommerce: boolean;
@@ -26,6 +28,8 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   userRole: null,
   orgId: null,
+  teamId: null,
+  isSupervisor: false,
   isLoading: true,
   isSuperAdmin: false,
   isEcommerce: false,
@@ -175,6 +179,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profile,
         userRole,
         orgId: effectiveOrgId,
+        teamId: profile?.team_id || null,
+        isSupervisor: profile?.is_supervisor || false,
         isLoading,
         isSuperAdmin,
         isEcommerce,
