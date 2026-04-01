@@ -442,6 +442,20 @@ const SallaIntegrationSection = () => {
                 dir="ltr"
               />
             </div>
+            {(getPlatformConfig(selectedPlatform) as any)?.usesApiToken && (
+              <div>
+                <Label className="text-xs">توكن API لمحة</Label>
+                <Input
+                  value={newApiToken}
+                  onChange={(e) => setNewApiToken(e.target.value)}
+                  placeholder="أدخل التوكن من لوحة تحكم لمحة"
+                  className="mt-1 text-sm font-mono"
+                  dir="ltr"
+                  type="password"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">تجده في لوحة تحكم لمحة → الإعدادات → API</p>
+              </div>
+            )}
             <div className="bg-secondary/50 rounded-lg p-3 text-xs text-muted-foreground space-y-1.5">
               <p className="font-medium text-foreground">خطوات الربط:</p>
               <ol className="list-decimal mr-4 space-y-1">
