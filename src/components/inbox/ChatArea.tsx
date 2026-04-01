@@ -168,11 +168,30 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
       {!msg.isDeleted && (
         <div className={cn(
           "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:flex items-center gap-0.5",
-          msg.sender === "agent" ? "-left-20" : "-right-20"
+          msg.sender === "agent" ? "-left-24" : "-right-24"
         )}>
           {canReply && (
             <button onClick={() => onReply(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="رد">
               <Reply className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          )}
+          {msg.sender === "customer" && msg.type === "text" && (
+            <button
+              onClick={async () => {
+                try {
+                  const { data } = await supabase.functions.invoke("ai-features", {
+                    body: { action: "translate", text: msg.text, target_language: "العربية" },
+                  });
+                  if (data?.error === "ai_not_configured") {
+                    toast.error("لم يتم إعداد مزود AI");
+                  } else if (data?.translation) {
+                    toast.success(data.translation, { duration: 8000 });
+                  }
+                } catch { toast.error("فشل الترجمة"); }
+              }}
+              className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="ترجمة"
+            >
+              <Languages className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
           {msg.waMessageId && conversation.channelType === "evolution" && (
