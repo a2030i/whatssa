@@ -129,6 +129,7 @@ serve(async (req) => {
     const payload = body as Record<string, any>;
     const action = typeof payload.action === "string" ? payload.action : "";
     const instance_name = typeof payload.instance_name === "string" ? payload.instance_name : undefined;
+    const channel_id = typeof payload.channel_id === "string" ? payload.channel_id : undefined;
     const asString = (value: unknown) => typeof value === "string" ? value.trim() : "";
     const asStringArray = (value: unknown) =>
       Array.isArray(value)
@@ -288,8 +289,21 @@ serve(async (req) => {
     if (action === "sync_message_statuses") {
       const phone = asString(payload.phone);
       const messages = Array.isArray(payload.messages) ? payload.messages : [];
+      let targetInstanceName = instance_name;
 
-      if (!phone || messages.length === 0) {
+      if (!targetInstanceName && channel_id) {
+        const { data: channelConfig } = await adminClient
+          .from("whatsapp_config")
+          .select("evolution_instance_name")
+          .eq("id", channel_id)
+          .eq("org_id", orgId)
+          .eq("channel_type", "evolution")
+          .maybeSingle();
+
+        targetInstanceName = channelConfig?.evolution_instance_name || undefined;
+      }
+
+      if (!phone || messages.length === 0 || !targetInstanceName) {
         return json({ success: true, updated: 0 });
       }
 
@@ -302,7 +316,7 @@ serve(async (req) => {
         if (!messageId) continue;
 
         try {
-          const statusRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${instanceName}`, {
+          const statusRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${targetInstanceName}`, {
             method: "POST",
             headers: evoHeaders,
             body: JSON.stringify({
