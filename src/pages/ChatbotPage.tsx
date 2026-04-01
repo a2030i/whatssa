@@ -50,6 +50,17 @@ interface Channel {
   business_name: string | null;
 }
 
+interface Team {
+  id: string;
+  name: string;
+}
+
+interface TeamMember {
+  id: string;
+  full_name: string | null;
+  team_id: string | null;
+}
+
 const generateId = () => crypto.randomUUID().slice(0, 8);
 const MAX_BUTTONS = 20;
 
@@ -72,6 +83,8 @@ const ChatbotPage = () => {
 
   const [flows, setFlows] = useState<ChatbotFlow[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"list" | "edit">("list");
   const [editingFlow, setEditingFlow] = useState<ChatbotFlow | null>(null);
@@ -122,10 +135,21 @@ const ChatbotPage = () => {
     setChannels((data || []) as unknown as Channel[]);
   }, [orgId]);
 
+  const fetchTeamsAndMembers = useCallback(async () => {
+    if (!orgId) return;
+    const [teamsRes, membersRes] = await Promise.all([
+      supabase.from("teams").select("id, name").eq("org_id", orgId).order("name"),
+      supabase.from("profiles").select("id, full_name, team_id").eq("org_id", orgId).eq("is_active", true).order("full_name"),
+    ]);
+    setTeams((teamsRes.data || []) as Team[]);
+    setMembers((membersRes.data || []) as TeamMember[]);
+  }, [orgId]);
+
   useEffect(() => {
     fetchFlows();
     fetchChannels();
-  }, [fetchFlows, fetchChannels]);
+    fetchTeamsAndMembers();
+  }, [fetchFlows, fetchChannels, fetchTeamsAndMembers]);
 
   // ─── Form Helpers ───
   const resetForm = () => {
@@ -381,17 +405,25 @@ const ChatbotPage = () => {
                     {node.buttons.map(btn => {
                       const targetIdx = nodes.findIndex(n => n.id === btn.next_node_id);
                       const linked = targetIdx >= 0;
+                      const nid = btn.next_node_id || "";
+                      const actionLabel = nid === "action:transfer_agent" ? "👤 تحويل لموظف"
+                        : nid === "action:close" ? "🔒 إغلاق"
+                        : nid.startsWith("team:") ? `👥 ${teams.find(t => t.id === nid.replace("team:", ""))?.name || "فريق"}`
+                        : nid.startsWith("agent:") ? `👤 ${members.find(m => m.id === nid.replace("agent:", ""))?.full_name || "موظف"}`
+                        : nid.startsWith("flow:") ? `↗ ${flows.find(f => f.id === nid.replace("flow:", ""))?.name || "تدفق"}`
+                        : null;
+                      const isAction = !!actionLabel;
                       return (
                         <span
                           key={btn.id}
                           className={cn(
                             "text-[10px] rounded-full px-2 py-0.5 border",
-                            linked 
+                            linked || isAction
                               ? "bg-primary/10 border-primary/30 text-primary" 
                               : "bg-muted border-border text-muted-foreground"
                           )}
                         >
-                          {btn.label || "—"} {linked ? `→ خطوة ${targetIdx + 1}${nodes[targetIdx]?.name?.trim() ? ` (${nodes[targetIdx].name})` : ""}` : btn.next_node_id?.startsWith("flow:") ? `↗ تدفق آخر` : "(⏹)"}
+                          {btn.label || "—"} {linked ? `→ خطوة ${targetIdx + 1}${nodes[targetIdx]?.name?.trim() ? ` (${nodes[targetIdx].name})` : ""}` : isAction ? actionLabel : "(⏹)"}
                         </span>
                       );
                     })}
@@ -663,19 +695,64 @@ const ChatbotPage = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="none">⏹ بدون (يتوقف)</SelectItem>
-                                  {nodes.filter(n => n.id !== node.id).map((n) => {
-                                    const stepNum = nodes.indexOf(n) + 1;
-                                    const label = n.name?.trim() 
-                                      ? n.name 
-                                      : n.type === "action" 
-                                        ? (ACTION_LABELS[n.action_type || ""] || "إجراء")
-                                        : (n.content?.slice(0, 15) || "رسالة فارغة");
-                                    return (
-                                      <SelectItem key={n.id} value={n.id}>
-                                        خطوة {stepNum}: {label}{!n.name?.trim() && n.content && n.content.length > 15 ? "…" : ""}
-                                      </SelectItem>
-                                    );
-                                  })}
+                                  
+                                  {/* Actions */}
+                                  <div className="px-2 py-1.5 text-[10px] text-muted-foreground font-semibold border-t mt-1 pt-1.5">
+                                    ⚡ إجراءات
+                                  </div>
+                                  <SelectItem value="action:transfer_agent">👤 تحويل لأي موظف متاح</SelectItem>
+                                  <SelectItem value="action:close">🔒 إغلاق المحادثة</SelectItem>
+                                  
+                                  {/* Teams */}
+                                  {teams.length > 0 && (
+                                    <>
+                                      <div className="px-2 py-1.5 text-[10px] text-muted-foreground font-semibold border-t mt-1 pt-1.5">
+                                        👥 تحويل لفريق
+                                      </div>
+                                      {teams.map(t => (
+                                        <SelectItem key={`team:${t.id}`} value={`team:${t.id}`}>
+                                          👥 {t.name}
+                                        </SelectItem>
+                                      ))}
+                                    </>
+                                  )}
+
+                                  {/* Individual agents */}
+                                  {members.length > 0 && (
+                                    <>
+                                      <div className="px-2 py-1.5 text-[10px] text-muted-foreground font-semibold border-t mt-1 pt-1.5">
+                                        👤 تحويل لموظف محدد
+                                      </div>
+                                      {members.map(m => (
+                                        <SelectItem key={`agent:${m.id}`} value={`agent:${m.id}`}>
+                                          👤 {m.full_name || "بدون اسم"}
+                                        </SelectItem>
+                                      ))}
+                                    </>
+                                  )}
+
+                                  {/* Steps in this flow */}
+                                  {nodes.filter(n => n.id !== node.id).length > 0 && (
+                                    <>
+                                      <div className="px-2 py-1.5 text-[10px] text-muted-foreground font-semibold border-t mt-1 pt-1.5">
+                                        📋 خطوات التدفق
+                                      </div>
+                                      {nodes.filter(n => n.id !== node.id).map((n) => {
+                                        const stepNum = nodes.indexOf(n) + 1;
+                                        const label = n.name?.trim() 
+                                          ? n.name 
+                                          : n.type === "action" 
+                                            ? (ACTION_LABELS[n.action_type || ""] || "إجراء")
+                                            : (n.content?.slice(0, 15) || "رسالة فارغة");
+                                        return (
+                                          <SelectItem key={n.id} value={n.id}>
+                                            خطوة {stepNum}: {label}{!n.name?.trim() && n.content && n.content.length > 15 ? "…" : ""}
+                                          </SelectItem>
+                                        );
+                                      })}
+                                    </>
+                                  )}
+
                                   {/* Cross-flow linking */}
                                   {flows.filter(f => f.id !== editingFlow?.id).length > 0 && (
                                     <>
