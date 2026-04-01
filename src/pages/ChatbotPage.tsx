@@ -215,6 +215,11 @@ const ChatbotPage = () => {
       toast({ title: "أدخل اسم التدفق", variant: "destructive" });
       return;
     }
+    if (channelIds.length === 0 && channels.length > 0) {
+      toast({ title: "اختر قناة واحدة على الأقل", variant: "destructive" });
+      setActiveTab("basics");
+      return;
+    }
     if (!orgId) return;
 
     const kws = keywords.split(/[,،\n]/).map(k => k.trim()).filter(Boolean);
