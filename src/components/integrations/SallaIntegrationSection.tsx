@@ -15,6 +15,7 @@ import StoreEventNotifications from "./StoreEventNotifications";
 
 const SALLA_WEBHOOK_BASE = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/salla-webhook`;
 const STORE_WEBHOOK_BASE = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/store-webhook`;
+const LAMHA_WEBHOOK_BASE = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/lamha-webhook`;
 
 interface StoreIntegration {
   id: string;
@@ -124,6 +125,28 @@ const PLATFORMS = [
     ],
   },
   {
+    id: "lamha",
+    name: "لمحة (Lamha)",
+    icon: "🚚",
+    color: "bg-orange-500/10 text-orange-600",
+    webhookBase: LAMHA_WEBHOOK_BASE,
+    description: "منصة إدارة الشحن — تتبع حالة الشحنات وإشعارات تلقائية للعملاء",
+    instructions: [
+      "أضف ربط لمحة هنا واحفظ",
+      "انسخ رابط الـ Webhook",
+      "في لوحة تحكم لمحة، عند إنشاء طلب عبر API، أضف الرابط في حقل callback_url",
+      "سيتم تحديث حالة الشحن تلقائياً في النظام + إرسال إشعار واتساب للعميل",
+    ],
+    events: [
+      { key: "shipment.picked_up", label: "تم الالتقاط" },
+      { key: "shipment.shipping", label: "جاري الشحن" },
+      { key: "shipment.delivered", label: "تم التوصيل" },
+      { key: "shipment.delivery_failed", label: "فشل التوصيل" },
+      { key: "shipment.returned", label: "مرتجع" },
+      { key: "shipment.cancelled", label: "شحنة ملغية" },
+    ],
+  },
+  {
     id: "generic",
     name: "ربط مخصص (Generic)",
     icon: "⚙️",
@@ -176,6 +199,12 @@ const EVENT_LABELS_AR: Record<string, string> = {
   "product.update": "تحديث منتج",
   "products/create": "منتج جديد",
   "products/update": "تحديث منتج",
+  "shipment.picked_up": "تم الالتقاط",
+  "shipment.shipping": "جاري الشحن",
+  "shipment.delivered": "تم التوصيل",
+  "shipment.delivery_failed": "فشل التوصيل",
+  "shipment.returned": "مرتجع",
+  "shipment.cancelled": "شحنة ملغية",
 };
 
 const SallaIntegrationSection = () => {

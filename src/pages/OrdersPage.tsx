@@ -163,6 +163,7 @@ const OrdersPage = () => {
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground hidden md:table-cell">المنصة</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground">المبلغ</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground">الحالة</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground hidden md:table-cell">الشحن</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">الدفع</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">التاريخ</th>
                 <th className="p-3"></th>
@@ -179,9 +180,16 @@ const OrdersPage = () => {
                       <p className="font-medium text-xs">{order.customer_name || "-"}</p>
                       <p className="text-[10px] text-muted-foreground" dir="ltr">{order.customer_phone}</p>
                     </td>
-                    <td className="p-3 text-xs hidden md:table-cell">{order.source === "salla" ? "سلة" : order.source === "zid" ? "زد" : order.source === "shopify" ? "Shopify" : order.source === "woocommerce" ? "WooCommerce" : order.source || "-"}</td>
+                    <td className="p-3 text-xs hidden md:table-cell">{order.source === "salla" ? "سلة" : order.source === "zid" ? "زد" : order.source === "shopify" ? "Shopify" : order.source === "woocommerce" ? "WooCommerce" : order.source === "lamha" ? "لمحة" : order.source || "-"}</td>
                     <td className="p-3 font-bold text-xs">{Number(order.total).toFixed(2)} ر.س</td>
                     <td className="p-3"><Badge className={cn("text-[10px] border-0", sc.color)}>{sc.label}</Badge></td>
+                    <td className="p-3 hidden md:table-cell">
+                      {(order as any).shipment_status ? (
+                        <Badge className="text-[10px] border-0 bg-blue-500/10 text-blue-600">
+                          {{"new":"جديد","pending":"معلق","fulfilled":"تم التنفيذ","ready_for_pickup":"جاهز للالتقاط","reverse_shipment":"شحنة عكسية","cancelled":"ملغي","picked_up":"تم الالتقاط","shipping":"جاري الشحن","delivered":"تم التوصيل","delivery_failed":"فشل التوصيل","returned":"مرتجع"}[(order as any).shipment_status] || (order as any).shipment_status}
+                        </Badge>
+                      ) : <span className="text-muted-foreground text-[10px]">-</span>}
+                    </td>
                     <td className="p-3 hidden sm:table-cell"><Badge className={cn("text-[10px] border-0", pc.color)}>{pc.label}</Badge></td>
                     <td className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{new Date(order.created_at).toLocaleDateString("ar-SA")}</td>
                     <td className="p-3"><Eye className="w-4 h-4 text-muted-foreground" /></td>
@@ -189,7 +197,7 @@ const OrdersPage = () => {
                 );
               })}
               {filteredOrders.length === 0 && (
-                <tr><td colSpan={8} className="p-12 text-center text-muted-foreground text-sm">
+                <tr><td colSpan={9} className="p-12 text-center text-muted-foreground text-sm">
                   <ShoppingCart className="w-10 h-10 mx-auto mb-3 opacity-20" />
                   لا توجد طلبات
                 </td></tr>
@@ -226,7 +234,7 @@ const OrdersPage = () => {
                 {selectedOrder.source && (
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-secondary/50 rounded-lg px-2 py-1">
                     <Store className="w-3 h-3" />
-                    {selectedOrder.source === "salla" ? "سلة" : selectedOrder.source === "zid" ? "زد" : selectedOrder.source === "shopify" ? "Shopify" : selectedOrder.source === "woocommerce" ? "WooCommerce" : selectedOrder.source}
+                    {selectedOrder.source === "salla" ? "سلة" : selectedOrder.source === "zid" ? "زد" : selectedOrder.source === "shopify" ? "Shopify" : selectedOrder.source === "woocommerce" ? "WooCommerce" : selectedOrder.source === "lamha" ? "لمحة" : selectedOrder.source}
                   </div>
                 )}
               </div>
