@@ -415,6 +415,17 @@ const TemplatesPage = () => {
         </div>
       </div>
 
+      <Tabs defaultValue="templates" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="templates" className="gap-1.5"><FileText className="w-3.5 h-3.5" /> القوالب</TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-1.5"><BarChart3 className="w-3.5 h-3.5" /> التحليلات</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="analytics">
+          <TemplateAnalytics />
+        </TabsContent>
+
+        <TabsContent value="templates" className="space-y-6">
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
