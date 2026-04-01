@@ -13,6 +13,11 @@ import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from 
 
 const TYPING_TIMEOUT = 3000;
 
+const getSendFunction = (channelType?: string): string => {
+  if (channelType === "meta_api") return "whatsapp-send";
+  return "evolution-send"; // Default to evolution for evolution or unknown channels
+};
+
 const formatTimestamp = (isoStr: string | null): string => {
   if (!isoStr) return "";
   const date = new Date(isoStr);
@@ -365,10 +370,7 @@ const InboxPage = () => {
       return;
     }
 
-    // Determine channel with fallback for legacy conversations that have no channel_id yet
-    const hasOnlyEvolutionChannel = !conversation.channelType && !templates.length;
-    const isEvolution = conversation.channelType === "evolution" || hasOnlyEvolutionChannel;
-    const sendFunction = isEvolution ? "evolution-send" : "whatsapp-send";
+    const sendFunction = getSendFunction(conversation.channelType);
 
     const { data, error } = await supabase.functions.invoke(sendFunction, {
       body: {
@@ -380,13 +382,6 @@ const InboxPage = () => {
     });
 
     if (error || data?.error) {
-      // If evolution failed, try meta as fallback
-      if (isEvolution && templates.length > 0) {
-        const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke("whatsapp-send", {
-          body: { to: conversation.customerPhone, message: text, conversation_id: convId },
-        });
-        if (!fallbackError && !fallbackData?.error) return;
-      }
       toast.error(data?.error || "فشل إرسال الرسالة");
     }
   }, [conversations, templates]);
@@ -460,11 +455,12 @@ const InboxPage = () => {
           }
 
           if (satEnabled && satMessage) {
-            await supabase.functions.invoke("whatsapp-send", {
+            const satFunc = getSendFunction(conv.channelType);
+            await supabase.functions.invoke(satFunc, {
               body: {
-                phone: conv.customerPhone,
+                to: conv.customerPhone,
                 message: satMessage,
-                org_id: orgId,
+                conversation_id: convId,
               },
             });
             await supabase.from("conversations").update({ satisfaction_status: "pending" }).eq("id", convId);
@@ -543,7 +539,9 @@ const InboxPage = () => {
   }, []);
 
   const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
-    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+    const conv = conversations.find(c => c.customerPhone === convPhone);
+    const func = getSendFunction(conv?.channelType);
+    const { data, error } = await supabase.functions.invoke(func, {
       body: { to: convPhone, type: "edit", edit_message_id: waMessageId, message: newText },
     });
     if (error || data?.error) {
@@ -551,10 +549,12 @@ const InboxPage = () => {
     } else {
       toast.success("تم تعديل الرسالة");
     }
-  }, []);
+  }, [conversations]);
 
   const handleDeleteMessage = useCallback(async (msgId: string, waMessageId: string, convPhone: string) => {
-    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+    const conv = conversations.find(c => c.customerPhone === convPhone);
+    const func = getSendFunction(conv?.channelType);
+    const { data, error } = await supabase.functions.invoke(func, {
       body: { to: convPhone, delete_message_id: waMessageId },
     });
     if (error || data?.error) {
@@ -562,7 +562,7 @@ const InboxPage = () => {
     } else {
       toast.success("تم حذف الرسالة");
     }
-  }, []);
+  }, [conversations]);
 
   const handleSendTemplate = useCallback(async (convId: string, template: WhatsAppTemplate, variables: string[]) => {
     const conversation = conversations.find((item) => item.id === convId);
