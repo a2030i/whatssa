@@ -364,8 +364,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     }
     setIsRequestingCode(false);
   };
-
-
+  const startPolling = (name: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     let attempts = 0;
     pollRef.current = setInterval(async () => {
