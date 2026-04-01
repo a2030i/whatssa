@@ -263,6 +263,7 @@ const SallaIntegrationSection = () => {
       setShowAdd(false);
       setNewStoreName("");
       setNewStoreUrl("");
+      setNewApiToken("");
       fetchStores();
     }
     setSaving(false);
