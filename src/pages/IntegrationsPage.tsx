@@ -9,6 +9,7 @@ import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import SallaIntegrationSection from "@/components/integrations/SallaIntegrationSection";
 import ChannelRoutingConfig from "@/components/integrations/ChannelRoutingConfig";
 import WhatsAppProfileEditor from "@/components/integrations/WhatsAppProfileEditor";
+import { CatalogSection, QRCodeSection } from "@/components/integrations/CatalogQRSection";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
