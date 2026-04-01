@@ -79,15 +79,14 @@ const OrdersPage = () => {
     
     const today = new Date().toISOString().slice(0, 10);
     const todayOrders = list.filter(o => o.created_at?.slice(0, 10) === today);
-    // Only count revenue for paid or COD orders (exclude unpaid, cancelled, refunded)
     const paidOrders = list.filter(o => 
       o.status !== "cancelled" && o.status !== "refunded" && 
-      (o.payment_status === "paid" || o.payment_method === "cod" || o.payment_method === "الدفع عند الاستلام")
+      (resolvePaymentStatus(o) === "paid" || o.payment_method === "cod" || o.payment_method === "الدفع عند الاستلام")
     );
     const revenue = paidOrders.reduce((s, o) => s + Number(o.total || 0), 0);
     const todayPaid = todayOrders.filter(o => 
       o.status !== "cancelled" && 
-      (o.payment_status === "paid" || o.payment_method === "cod" || o.payment_method === "الدفع عند الاستلام")
+      (resolvePaymentStatus(o) === "paid" || o.payment_method === "cod" || o.payment_method === "الدفع عند الاستلام")
     );
     const todayRevenue = todayPaid.reduce((s, o) => s + Number(o.total || 0), 0);
     
