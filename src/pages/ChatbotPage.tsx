@@ -133,7 +133,7 @@ const ChatbotPage = () => {
     setTriggerType("keyword");
     setKeywords("");
     setWelcome("");
-    setNodes([{ id: generateId(), type: "message", content: "", buttons: [] }]);
+    setNodes([{ id: generateId(), name: "", type: "message", content: "", buttons: [] }]);
     setChannelIds([]);
     setQuickTexts({});
     setActiveTab("basics");
