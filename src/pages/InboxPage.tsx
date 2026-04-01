@@ -562,7 +562,7 @@ const InboxPage = () => {
     } else {
       toast.success("تم حذف الرسالة");
     }
-  }, []);
+  }, [conversations]);
 
   const handleSendTemplate = useCallback(async (convId: string, template: WhatsAppTemplate, variables: string[]) => {
     const conversation = conversations.find((item) => item.id === convId);
