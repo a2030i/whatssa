@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +15,8 @@ import InternalNotes from "./InternalNotes";
 interface CustomerInfoPanelProps {
   conversation: Conversation;
   onUpdateNotes: (convId: string, notes: string) => void;
+  onAssignAgent?: (convId: string, agentId: string | null, agentName: string) => void;
+  onAssignTeam?: (convId: string, teamId: string | null, teamName: string) => void;
 }
 
 const CustomerInfoPanel = ({ conversation, onUpdateNotes }: CustomerInfoPanelProps) => {

@@ -8,6 +8,9 @@ export interface Conversation {
   timestamp: string;
   unread: number;
   assignedTo: string;
+  assignedToId?: string;
+  assignedTeam?: string;
+  assignedTeamId?: string;
   status: "active" | "waiting" | "closed";
   tags: string[];
   email?: string;
