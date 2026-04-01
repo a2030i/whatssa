@@ -286,18 +286,9 @@ const InboxPage = () => {
       return;
     }
 
-    // Determine channel: check if org has an evolution config that's connected
-    // Try evolution-send first if evolution config exists, fall back to whatsapp-send
-    const { data: evoConfig } = await supabase
-      .from("whatsapp_config_safe")
-      .select("id, channel_type")
-      .eq("org_id", orgId)
-      .eq("channel_type", "evolution")
-      .eq("is_connected", true)
-      .limit(1)
-      .maybeSingle();
-
-    const sendFunction = evoConfig ? "evolution-send" : "whatsapp-send";
+    // Determine channel based on the conversation's channel type
+    const isEvolution = conversation.channelType === "evolution";
+    const sendFunction = isEvolution ? "evolution-send" : "whatsapp-send";
 
     const { data, error } = await supabase.functions.invoke(sendFunction, {
       body: {
