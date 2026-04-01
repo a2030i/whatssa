@@ -647,7 +647,7 @@ const InboxPage = () => {
         )
       )}
 
-      {selected && !isMobile && <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} />}
+      {selected && !isMobile && <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} onAssignAgent={handleAssignAgent} onAssignTeam={handleAssignTeam} />}
 
       <NewConversationDialog
         open={newConvOpen}
