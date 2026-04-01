@@ -156,9 +156,9 @@ const OrdersPage = () => {
     cancelled: "text-destructive", creation_failed: "text-destructive",
   };
 
-  const sendToLamha = async (orderId: string, action: string = "create-order-shipment") => {
+  const sendToLamha = async (orderId: string) => {
     if (!orgId || !lamhaIntegration) return;
-    if (action !== "create-order" && !selectedCarrierId) {
+    if (!selectedCarrierId) {
       toast.error("يرجى اختيار شركة الشحن أولاً");
       return;
     }
@@ -168,16 +168,13 @@ const OrdersPage = () => {
         body: {
           order_id: orderId,
           org_id: orgId,
-          action,
-          carrier_id: action !== "create-order" ? selectedCarrierId : undefined,
+          carrier_id: selectedCarrierId,
         },
       });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) throw new Error(data.details?.msg || data.error);
       
-      const msg = action === "create-order" 
-        ? "تم إنشاء الطلب في لمحة بنجاح (بدون شحنة)" 
-        : `تم إرسال الطلب إلى لمحة بنجاح${data.tracking_number ? ` - رقم التتبع: ${data.tracking_number}` : ""}`;
+      const msg = `تم إرسال الطلب إلى لمحة بنجاح${data.tracking_number ? ` - رقم التتبع: ${data.tracking_number}` : ""}`;
       toast.success(msg);
       loadOrders();
       if (selectedOrder?.id === orderId) {
