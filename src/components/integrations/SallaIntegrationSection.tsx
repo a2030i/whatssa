@@ -33,7 +33,7 @@ interface StoreIntegration {
   metadata?: any;
 }
 
-const PLATFORMS = [
+const STORE_PLATFORMS = [
   {
     id: "salla",
     name: "سلة (Salla)",
@@ -127,26 +127,6 @@ const PLATFORMS = [
     ],
   },
   {
-    id: "lamha",
-    name: "لمحة (Lamha)",
-    icon: "🚚",
-    color: "bg-orange-500/10 text-orange-600",
-    webhookBase: LAMHA_WEBHOOK_BASE,
-    description: "منصة إدارة الشحن — إنشاء شحنات تلقائياً + تتبع الحالة + إشعارات واتساب",
-    instructions: [
-      "أضف ربط لمحة هنا واحفظ",
-      "أدخل توكن API الخاص بحسابك في لمحة",
-      "سيتم إنشاء الشحنات تلقائياً لما يوصلنا طلب من المتجر",
-      "حالة الشحن تتحدث دورياً من API لمحة + إرسال إشعار واتساب للعميل",
-    ],
-    events: [
-      { key: "auto_create_shipment", label: "إنشاء شحنة تلقائي" },
-      { key: "auto_sync_status", label: "تحديث حالة تلقائي" },
-      { key: "notify_customer", label: "إشعار العميل" },
-    ],
-    usesApiToken: true,
-  },
-  {
     id: "generic",
     name: "ربط مخصص (Generic)",
     icon: "⚙️",
@@ -168,6 +148,31 @@ const PLATFORMS = [
   },
 ];
 
+const SHIPPING_PLATFORMS = [
+  {
+    id: "lamha",
+    name: "لمحة (Lamha)",
+    icon: "🚚",
+    color: "bg-orange-500/10 text-orange-600",
+    webhookBase: LAMHA_WEBHOOK_BASE,
+    description: "منصة إدارة الشحن — إنشاء شحنات تلقائياً + تتبع الحالة + إشعارات واتساب",
+    instructions: [
+      "أضف شركة الشحن هنا واحفظ",
+      "أدخل توكن API الخاص بحسابك في لمحة",
+      "سيتم إنشاء الشحنات تلقائياً لما يوصلنا طلب من المتجر",
+      "حالة الشحن تتحدث دورياً من API لمحة + إرسال إشعار واتساب للعميل",
+    ],
+    events: [
+      { key: "auto_create_shipment", label: "إنشاء شحنة تلقائي" },
+      { key: "auto_sync_status", label: "تحديث حالة تلقائي" },
+      { key: "notify_customer", label: "إشعار العميل" },
+    ],
+    usesApiToken: true,
+  },
+];
+
+// Combined for lookups
+const ALL_PLATFORMS = [...STORE_PLATFORMS, ...SHIPPING_PLATFORMS];
 // Fallback Arabic labels for event keys not defined in platform configs
 const EVENT_LABELS_AR: Record<string, string> = {
   "order.created": "طلب جديد",
