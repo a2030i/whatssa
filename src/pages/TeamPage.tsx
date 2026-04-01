@@ -620,6 +620,14 @@ const TeamPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            {/* Supervisor Toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-xs">مشرف فريق</Label>
+                <p className="text-[10px] text-muted-foreground">يرى جميع محادثات فريقه</p>
+              </div>
+              <Switch checked={formSupervisor} onCheckedChange={setFormSupervisor} />
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>إلغاء</Button>
