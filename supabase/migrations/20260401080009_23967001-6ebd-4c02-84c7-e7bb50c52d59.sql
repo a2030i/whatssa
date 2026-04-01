@@ -1,0 +1,1 @@
+UPDATE conversations c SET channel_id = w.id FROM whatsapp_config w WHERE w.org_id = c.org_id AND w.channel_type = 'evolution' AND w.is_connected = true AND c.channel_id IS NULL;

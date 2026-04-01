@@ -410,7 +410,7 @@ serve(async (req) => {
         // ── Handle outgoing messages sent from phone ──
         if (isFromMe) {
           // Find existing conversation to sync the outgoing message
-          const { data: existingConv } = await supabase
+          let { data: existingConv } = await supabase
             .from("conversations")
             .select("id")
             .eq("customer_phone", phone)
@@ -419,6 +419,47 @@ serve(async (req) => {
             .neq("status", "closed")
             .limit(1)
             .maybeSingle();
+
+          // If no conversation exists, create one for the new contact
+          if (!existingConv) {
+            let outConvName = msg.pushName || phone;
+            if (conversationType === "group") {
+              outConvName = `قروب ${phone}`;
+              if (EVOLUTION_API_URL && EVOLUTION_API_KEY) {
+                try {
+                  const groupRes = await fetch(
+                    `${EVOLUTION_API_URL}/group/findGroupInfos/${instanceName}?groupJid=${remoteJid}`,
+                    { headers: { apikey: EVOLUTION_API_KEY } }
+                  );
+                  if (groupRes.ok) {
+                    const groupData = await groupRes.json();
+                    const subject = groupData?.subject || groupData?.data?.subject || groupData?.[0]?.subject;
+                    if (subject) outConvName = subject;
+                  }
+                } catch {}
+              }
+            }
+
+            const { data: newOutConv } = await supabase
+              .from("conversations")
+              .insert({
+                customer_phone: phone,
+                customer_name: outConvName,
+                org_id: orgId,
+                status: "active",
+                conversation_type: conversationType,
+                last_message: text || `[${messageType}]`,
+                last_message_at: new Date().toISOString(),
+                channel_id: config.id,
+              })
+              .select("id")
+              .single();
+
+            existingConv = newOutConv;
+            await logToSystem(supabase, "info", `محادثة جديدة أُنشئت من رسالة صادرة (Evolution) إلى ${phone}`, {
+              conversation_id: newOutConv?.id,
+            }, orgId);
+          }
 
           if (existingConv) {
             // Check duplicate by wa_message_id
@@ -432,7 +473,7 @@ serve(async (req) => {
               if (existingMsg) continue;
             }
 
-            // Upload media for outgoing messages (images, videos, audio, documents)
+            // Upload media for outgoing messages
             let outgoingMediaUrl: string | null = null;
             if (messageType !== "text") {
               outgoingMediaUrl = await uploadMediaFromEvolution({
@@ -459,6 +500,9 @@ serve(async (req) => {
               last_message: text || `[${messageType}]`,
               last_message_at: new Date().toISOString(),
             }).eq("id", existingConv.id);
+
+            // Also update channel_id if missing
+            await supabase.from("conversations").update({ channel_id: config.id }).eq("id", existingConv.id).is("channel_id", null);
 
             await logToSystem(supabase, "info", `رسالة صادرة من الجوال (Evolution) إلى ${phone}`, {
               type: messageType, has_media: !!outgoingMediaUrl, wa_message_id: key.id,
@@ -570,6 +614,7 @@ serve(async (req) => {
               conversation_type: conversationType,
               last_message: text || `[${messageType}]`,
               last_message_at: new Date().toISOString(),
+              channel_id: config.id,
             };
             // Apply channel routing
             if (config.default_agent_id) {
@@ -744,6 +789,7 @@ serve(async (req) => {
             last_message: content,
             last_message_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            channel_id: config.id, // Ensure channel_id is always set
           })
           .eq("id", conversation.id);
 
