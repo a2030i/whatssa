@@ -189,10 +189,11 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
   const [isRequestingCode, setIsRequestingCode] = useState(false);
 
   useEffect(() => {
+    if (!orgId) return;
     loadExistingConfig();
     loadUnofficialLimits();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, []);
+  }, [orgId]);
 
   const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
