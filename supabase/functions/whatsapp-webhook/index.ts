@@ -799,15 +799,33 @@ serve(async (req) => {
               }
             }
           } else if (incomingMessage.type === "interactive") {
-            // Handle interactive message responses (button replies, list replies)
+            // Handle interactive message responses (button replies, list replies, product inquiries)
             const interReply = incomingMessage.interactive;
             if (interReply?.type === "button_reply") {
               content = interReply.button_reply?.title || "[رد زر]";
             } else if (interReply?.type === "list_reply") {
               content = interReply.list_reply?.title || "[رد قائمة]";
+            } else if (interReply?.type === "product_list_reply") {
+              content = `🛒 ${interReply.product_list_reply?.product_retailer_id || "[طلب منتجات]"}`;
+            } else if (interReply?.type === "nfm_reply") {
+              // WhatsApp Flow response
+              content = "[استجابة نموذج]";
+              messageMetadata.flow_response = interReply.nfm_reply?.response_json || null;
             } else {
               content = `[${incomingMessage.type}]`;
             }
+          } else if (incomingMessage.type === "order") {
+            // Product catalog order
+            const order = incomingMessage.order;
+            const items = (order?.product_items || []).map((item: any) => ({
+              product_retailer_id: item.product_retailer_id,
+              quantity: item.quantity,
+              item_price: item.item_price,
+              currency: item.currency,
+            }));
+            content = `🛒 طلب جديد (${items.length} منتج)`;
+            messageType = "order";
+            messageMetadata.order = { catalog_id: order?.catalog_id, items, text: order?.text || "" };
           } else {
             content = `[${incomingMessage.type}]`;
           }
