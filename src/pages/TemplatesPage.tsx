@@ -554,6 +554,8 @@ const TemplatesPage = () => {
           <p className="text-sm">لا توجد قوالب مطابقة</p>
         </div>
       )}
+      </TabsContent>
+      </Tabs>
 
       {/* Create / Edit Dialog */}
       <Dialog open={showFormDialog} onOpenChange={(open) => { if (!open) { setShowFormDialog(false); setEditingTemplate(null); setFormData(emptyForm); } }}>
