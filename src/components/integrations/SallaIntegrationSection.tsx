@@ -314,7 +314,7 @@ const SallaIntegrationSection = () => {
     toast.success("تم نسخ الـ Secret");
   };
 
-  const getPlatformConfig = (platformId: string) => PLATFORMS.find(p => p.id === platformId);
+  const getPlatformConfig = (platformId: string) => ALL_PLATFORMS.find(p => p.id === platformId);
 
   const getTimeSince = (date: string | null) => {
     if (!date) return "لم يستلم أي حدث";
