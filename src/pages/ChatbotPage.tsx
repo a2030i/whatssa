@@ -151,7 +151,7 @@ const ChatbotPage = () => {
     setTriggerType(flow.trigger_type);
     setKeywords(flow.trigger_keywords.join("، "));
     setWelcome(flow.welcome_message || "");
-    setNodes(flow.nodes.length > 0 ? flow.nodes : [{ id: generateId(), type: "message", content: "", buttons: [] }]);
+    setNodes(flow.nodes.length > 0 ? flow.nodes : [{ id: generateId(), name: "", type: "message", content: "", buttons: [] }]);
     setChannelIds(flow.channel_ids || []);
     setQuickTexts({});
     setActiveTab("basics");
