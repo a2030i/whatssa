@@ -380,7 +380,27 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const event = body.event;
+
+    // Detect event from body.event OR from URL path (webhookByEvents appends /messages-update etc.)
+    let event = body.event || "";
+    if (!event) {
+      const url = new URL(req.url);
+      const pathSegments = url.pathname.split("/").filter(Boolean);
+      // Last segment might be the event slug like "messages-update", "messages-upsert", etc.
+      const lastSegment = pathSegments[pathSegments.length - 1] || "";
+      const pathEventMap: Record<string, string> = {
+        "messages-upsert": "MESSAGES_UPSERT",
+        "messages-update": "MESSAGES_UPDATE",
+        "messages-delete": "MESSAGES_DELETE",
+        "messages-edited": "MESSAGES_EDITED",
+        "connection-update": "CONNECTION_UPDATE",
+        "qrcode-updated": "QRCODE_UPDATED",
+        "presence-update": "PRESENCE_UPDATE",
+        "send-message": "SEND_MESSAGE",
+      };
+      event = pathEventMap[lastSegment] || "";
+    }
+
     const instanceName = body.instance || body.instanceName || "";
 
     // Find the config for this instance

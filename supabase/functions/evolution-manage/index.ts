@@ -382,18 +382,27 @@ serve(async (req) => {
             },
           ];
 
-          for (const queryBody of statusQueries) {
-            const statusRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${targetInstanceName}`, {
-              method: "POST",
-              headers: evoHeaders,
-              body: JSON.stringify(queryBody),
-            });
+          // Try multiple endpoints: findStatusMessage (v2.3.x) and findMessages (fallback)
+          const statusEndpoints = [
+            `${EVOLUTION_URL}/chat/findStatusMessage/${targetInstanceName}`,
+            `${EVOLUTION_URL}/chat/findMessages/${targetInstanceName}`,
+          ];
 
-            const statusData = await statusRes.json().catch(() => ({}));
-            if (!statusRes.ok) continue;
-
-            statusPayload = pickStatusResponseItem(statusData, messageId);
+          for (const endpoint of statusEndpoints) {
             if (statusPayload) break;
+            for (const queryBody of statusQueries) {
+              const statusRes = await fetch(endpoint, {
+                method: "POST",
+                headers: evoHeaders,
+                body: JSON.stringify(queryBody),
+              });
+
+              const statusData = await statusRes.json().catch(() => ({}));
+              if (!statusRes.ok) continue;
+
+              statusPayload = pickStatusResponseItem(statusData, messageId);
+              if (statusPayload) break;
+            }
           }
 
           if (!statusPayload) continue;
