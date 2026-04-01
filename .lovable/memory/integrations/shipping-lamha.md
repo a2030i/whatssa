@@ -17,10 +17,10 @@ type: feature
 - Used in UI for carrier selection before shipment creation
 
 ### lamha-create-shipment
-- Supports 3 actions via `action` parameter:
-  - `create-order`: Creates order in Lamha only (create_shippment=false, no carrier needed)
-  - `create-order-shipment`: Creates order + shipment together (requires carrier_id)
-  - `create-shipment`: Creates shipment for existing Lamha order via `POST /create-shipment` (requires carrier_id)
+- Single flow: always creates order + shipment together via `POST /create-order` with `create_shippment=true`
+- Requires `carrier_id` (string) — user must select carrier from dropdown
+- Requires shipper config in `store_integrations.metadata.shipper` (phone, city, address_line1)
+- Validates shipper config early and returns clear Arabic error if missing
 - Sets `callback_url` for auto status updates
 - Maps payment_method to Lamha format (cod/paid)
 - Stores lamha_order_id in shipment_events metadata
@@ -42,10 +42,21 @@ type: feature
 ### lamha-sync-status
 - Polling fallback via `GET /show-order/{order_id}`
 
+## Shipper Config
+Stored in `store_integrations.metadata.shipper`:
+- name: اسم المرسل
+- phone: رقم الجوال (required)
+- city: المدينة (required)
+- address_line1: العنوان (required)
+- country: البلد (default: SA)
+
+Configured in UI: إعدادات → التكاملات → لمحة (add dialog)
+
 ## API Flow
-1. User selects carrier from dropdown (fetched via lamha-carriers)
-2. Option A: Send order + shipment together → `create-order-shipment` with carrier_id
-3. Option B: Create order only → `create-order` (no carrier), then later `create-shipment` with carrier
+1. User configures Lamha integration with API token + shipper details
+2. User selects carrier from dropdown (fetched via lamha-carriers)
+3. Clicks "إرسال إلى لمحة" → creates order + shipment in one call
+4. Lamha sends status updates via callback_url webhook
 
 ## Status Mapping (Lamha → System)
 | Lamha Status | status_id | System shipment_status | Order status |

@@ -223,6 +223,10 @@ const SallaIntegrationSection = () => {
   const [saving, setSaving] = useState(false);
   const [showApiDocs, setShowApiDocs] = useState(false);
   const [newApiToken, setNewApiToken] = useState("");
+  const [shipperPhone, setShipperPhone] = useState("");
+  const [shipperCity, setShipperCity] = useState("");
+  const [shipperAddress, setShipperAddress] = useState("");
+  const [shipperName, setShipperName] = useState("");
 
   useEffect(() => {
     if (orgId) fetchStores();
@@ -252,9 +256,20 @@ const SallaIntegrationSection = () => {
       store_name: newStoreName.trim(),
       store_url: newStoreUrl.trim() || null,
     };
-    // Save API token in metadata for Lamha
-    if ((platformConfig as any)?.usesApiToken && newApiToken.trim()) {
-      insertData.metadata = { api_token: newApiToken.trim() };
+    // Save API token + shipper config in metadata for Lamha
+    if ((platformConfig as any)?.usesApiToken) {
+      const meta: any = {};
+      if (newApiToken.trim()) meta.api_token = newApiToken.trim();
+      if (shipperPhone.trim() || shipperCity.trim() || shipperAddress.trim()) {
+        meta.shipper = {
+          name: shipperName.trim() || newStoreName.trim(),
+          phone: shipperPhone.trim(),
+          city: shipperCity.trim(),
+          address_line1: shipperAddress.trim(),
+          country: "SA",
+        };
+      }
+      if (Object.keys(meta).length > 0) insertData.metadata = meta;
     }
     const { error } = await supabase.from("store_integrations").insert(insertData);
 
@@ -271,6 +286,10 @@ const SallaIntegrationSection = () => {
       setNewStoreName("");
       setNewStoreUrl("");
       setNewApiToken("");
+      setShipperPhone("");
+      setShipperCity("");
+      setShipperAddress("");
+      setShipperName("");
       fetchStores();
     }
     setSaving(false);
@@ -521,17 +540,38 @@ const SallaIntegrationSection = () => {
               </div>
             )}
             {(getPlatformConfig(selectedPlatform) as any)?.usesApiToken && (
-              <div>
-                <Label className="text-xs">توكن API لمحة</Label>
-                <Input
-                  value={newApiToken}
-                  onChange={(e) => setNewApiToken(e.target.value)}
-                  placeholder="أدخل التوكن من لوحة تحكم لمحة"
-                  className="mt-1 text-sm font-mono"
-                  dir="ltr"
-                  type="password"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">تجده في لوحة تحكم لمحة → الإعدادات → API</p>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">توكن API لمحة</Label>
+                  <Input
+                    value={newApiToken}
+                    onChange={(e) => setNewApiToken(e.target.value)}
+                    placeholder="أدخل التوكن من لوحة تحكم لمحة"
+                    className="mt-1 text-sm font-mono"
+                    dir="ltr"
+                    type="password"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">تجده في لوحة تحكم لمحة → الإعدادات → API</p>
+                </div>
+                <div className="border border-border rounded-lg p-3 bg-secondary/20 space-y-3">
+                  <p className="text-xs font-semibold text-foreground">بيانات المرسل (مطلوبة لإنشاء الشحنات)</p>
+                  <div>
+                    <Label className="text-xs">اسم المرسل</Label>
+                    <Input value={shipperName} onChange={e => setShipperName(e.target.value)} placeholder="مثال: متجر الأناقة" className="mt-1 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">رقم جوال المرسل</Label>
+                    <Input value={shipperPhone} onChange={e => setShipperPhone(e.target.value)} placeholder="05XXXXXXXX" className="mt-1 text-sm" dir="ltr" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">المدينة</Label>
+                    <Input value={shipperCity} onChange={e => setShipperCity(e.target.value)} placeholder="مثال: الرياض" className="mt-1 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">العنوان</Label>
+                    <Input value={shipperAddress} onChange={e => setShipperAddress(e.target.value)} placeholder="مثال: حي النرجس، شارع الأمير محمد" className="mt-1 text-sm" />
+                  </div>
+                </div>
               </div>
             )}
             <div className="bg-secondary/50 rounded-lg p-3 text-xs text-muted-foreground space-y-1.5">

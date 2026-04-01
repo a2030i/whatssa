@@ -156,9 +156,9 @@ const OrdersPage = () => {
     cancelled: "text-destructive", creation_failed: "text-destructive",
   };
 
-  const sendToLamha = async (orderId: string, action: string = "create-order-shipment") => {
+  const sendToLamha = async (orderId: string) => {
     if (!orgId || !lamhaIntegration) return;
-    if (action !== "create-order" && !selectedCarrierId) {
+    if (!selectedCarrierId) {
       toast.error("يرجى اختيار شركة الشحن أولاً");
       return;
     }
@@ -168,16 +168,13 @@ const OrdersPage = () => {
         body: {
           order_id: orderId,
           org_id: orgId,
-          action,
-          carrier_id: action !== "create-order" ? selectedCarrierId : undefined,
+          carrier_id: selectedCarrierId,
         },
       });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) throw new Error(data.details?.msg || data.error);
       
-      const msg = action === "create-order" 
-        ? "تم إنشاء الطلب في لمحة بنجاح (بدون شحنة)" 
-        : `تم إرسال الطلب إلى لمحة بنجاح${data.tracking_number ? ` - رقم التتبع: ${data.tracking_number}` : ""}`;
+      const msg = `تم إرسال الطلب إلى لمحة بنجاح${data.tracking_number ? ` - رقم التتبع: ${data.tracking_number}` : ""}`;
       toast.success(msg);
       loadOrders();
       if (selectedOrder?.id === orderId) {
@@ -190,27 +187,7 @@ const OrdersPage = () => {
     }
   };
 
-  const createShipmentForExisting = async (orderId: string) => {
-    if (!orgId || !selectedCarrierId) {
-      toast.error("يرجى اختيار شركة الشحن أولاً");
-      return;
-    }
-    setSendingToLamha(orderId);
-    try {
-      const { data, error } = await supabase.functions.invoke("lamha-create-shipment", {
-        body: { order_id: orderId, org_id: orgId, action: "create-shipment", carrier_id: selectedCarrierId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success("تم إنشاء الشحنة بنجاح");
-      loadOrders();
-      if (selectedOrder?.id === orderId) loadShipmentEvents(orderId);
-    } catch (err: any) {
-      toast.error("فشل إنشاء الشحنة: " + (err.message || "خطأ غير معروف"));
-    } finally {
-      setSendingToLamha(null);
-    }
-  };
+
 
   const printLamhaLabel = async (orderId: string) => {
     try {
@@ -525,63 +502,22 @@ const OrdersPage = () => {
                           ))}
                         </SelectContent>
                       </Select>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="flex-1 gap-1.5 text-xs"
-                          disabled={sendingToLamha === selectedOrder.id || !selectedCarrierId}
-                          onClick={() => sendToLamha(selectedOrder.id, "create-order-shipment")}
-                        >
-                          {sendingToLamha === selectedOrder.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Send className="w-3.5 h-3.5" />
-                          )}
-                          إرسال مع شحنة
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 text-xs"
-                          disabled={sendingToLamha === selectedOrder.id}
-                          onClick={() => sendToLamha(selectedOrder.id, "create-order")}
-                        >
-                          طلب فقط
-                        </Button>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Order exists in Lamha but no shipment yet */}
-                  {selectedOrder.shipment_carrier === "lamha" && !selectedOrder.shipment_status && (
-                    <>
-                      <Select value={selectedCarrierId} onValueChange={setSelectedCarrierId}>
-                        <SelectTrigger className="text-xs bg-card border-border/50">
-                          <SelectValue placeholder="اختر شركة الشحن لإنشاء الشحنة" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {lamhaCarriers.map((c) => (
-                            <SelectItem key={c.carrier_id} value={String(c.carrier_id)}>
-                              {c.name} {c.has_cod ? "• COD" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                       <Button
                         size="sm"
                         className="w-full gap-1.5 text-xs"
                         disabled={sendingToLamha === selectedOrder.id || !selectedCarrierId}
-                        onClick={() => createShipmentForExisting(selectedOrder.id)}
+                        onClick={() => sendToLamha(selectedOrder.id)}
                       >
                         {sendingToLamha === selectedOrder.id ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
                           <Send className="w-3.5 h-3.5" />
                         )}
-                        إنشاء شحنة
+                        إرسال إلى لمحة
                       </Button>
                     </>
                   )}
+
 
                   {/* Label button when shipment exists */}
                   {selectedOrder.shipment_carrier === "lamha" && selectedOrder.shipment_status && (
