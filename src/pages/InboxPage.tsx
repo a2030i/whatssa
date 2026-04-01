@@ -286,8 +286,9 @@ const InboxPage = () => {
       return;
     }
 
-    // Determine channel based on the conversation's channel type
-    const isEvolution = conversation.channelType === "evolution";
+    // Determine channel with fallback for legacy conversations that have no channel_id yet
+    const hasOnlyEvolutionChannel = !conversation.channelType && !templates.length;
+    const isEvolution = conversation.channelType === "evolution" || hasOnlyEvolutionChannel;
     const sendFunction = isEvolution ? "evolution-send" : "whatsapp-send";
 
     const { data, error } = await supabase.functions.invoke(sendFunction, {
