@@ -883,6 +883,153 @@ const IntegrationsPage = () => {
       </div>
     );
   }
+  // ============ CHOOSE ONBOARDING TYPE ============
+  if (flowStep === "choose_type") {
+    return (
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
+          <div className="p-6 border-b border-border">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              كيف تريد ربط رقمك؟
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">اختر نوع العملية بناءً على حالة رقمك الحالية</p>
+          </div>
+          <div className="p-5 space-y-3">
+            {([
+              {
+                mode: "new" as OnboardingMode,
+                icon: Plus,
+                title: "رقم جديد",
+                desc: "ربط رقم لأول مرة — لم يُستخدم مع WhatsApp Business API من قبل",
+                color: "text-primary",
+                bgColor: "bg-primary/10",
+                borderColor: "border-primary",
+              },
+              {
+                mode: "migrate_app" as OnboardingMode,
+                icon: Smartphone,
+                title: "نقل من تطبيق واتساب أعمال",
+                desc: "نقل رقم مُستخدم حالياً على تطبيق WhatsApp Business العادي إلى Cloud API",
+                color: "text-warning",
+                bgColor: "bg-warning/10",
+                borderColor: "border-warning",
+              },
+              {
+                mode: "migrate_provider" as OnboardingMode,
+                icon: ArrowLeftRight,
+                title: "نقل من مزوّد آخر",
+                desc: "نقل رقم مربوط حالياً بمزوّد Cloud API آخر (مثل 360dialog, Twilio, MessageBird)",
+                color: "text-accent-foreground",
+                bgColor: "bg-accent/50",
+                borderColor: "border-accent",
+              },
+            ]).map((opt) => (
+              <button
+                key={opt.mode}
+                onClick={() => setOnboardingMode(opt.mode)}
+                className={cn(
+                  "w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-right",
+                  onboardingMode === opt.mode
+                    ? `${opt.borderColor} bg-muted/50`
+                    : "border-border hover:border-muted-foreground/30"
+                )}
+              >
+                <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0", opt.bgColor)}>
+                  <opt.icon className={cn("w-5 h-5", opt.color)} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-foreground">{opt.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{opt.desc}</p>
+                </div>
+                {onboardingMode === opt.mode && (
+                  <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                )}
+              </button>
+            ))}
+
+            <div className="pt-3 space-y-2">
+              <Button onClick={proceedFromTypeChoice} className="w-full gap-2 py-5 text-sm font-bold rounded-xl">
+                <ArrowRight className="w-4 h-4" />
+                متابعة
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetFlow}>← رجوع</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============ MIGRATION INFO ============
+  if (flowStep === "migration_info") {
+    return (
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
+          <div className="p-6 border-b border-border">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5 text-primary" />
+              {onboardingMode === "migrate_app" ? "نقل من تطبيق واتساب أعمال" : "نقل من مزوّد آخر"}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {onboardingMode === "migrate_app"
+                ? "تأكد من المتطلبات التالية قبل البدء بنقل رقمك"
+                : "أدخل معلومات المزوّد الحالي لتسهيل عملية النقل"}
+            </p>
+          </div>
+          <div className="p-5 space-y-4">
+            {onboardingMode === "migrate_app" && (
+              <div className="space-y-3">
+                <div className="bg-warning/5 border border-warning/20 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-warning flex items-center gap-1.5 mb-2">
+                    <AlertTriangle className="w-3.5 h-3.5" /> متطلبات مهمة قبل النقل
+                  </p>
+                  <ul className="text-[11px] text-muted-foreground space-y-1.5 pr-4">
+                    <li>• <strong>فصل الرقم</strong> من تطبيق واتساب أعمال على هاتفك (حذف الحساب من التطبيق)</li>
+                    <li>• <strong>الانتظار دقيقتين</strong> على الأقل بعد فصل الرقم قبل بدء الربط</li>
+                    <li>• <strong>ملاحظة:</strong> سجل المحادثات السابقة لن يُنقل — فقط الرقم</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {onboardingMode === "migrate_provider" && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">اسم المزوّد الحالي (اختياري)</Label>
+                  <Input
+                    value={previousProvider}
+                    onChange={(e) => setPreviousProvider(e.target.value)}
+                    placeholder="مثال: 360dialog, Twilio, MessageBird..."
+                    className="bg-secondary border-0 text-xs"
+                  />
+                </div>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-primary flex items-center gap-1.5 mb-2">
+                    <ShieldCheck className="w-3.5 h-3.5" /> خطوات النقل
+                  </p>
+                  <ol className="text-[11px] text-muted-foreground space-y-1.5 pr-4">
+                    <li>1. أوقف الخدمة لدى المزوّد الحالي (لا تحذف الرقم)</li>
+                    <li>2. اطلب من المزوّد الحالي تحرير الرقم (Release) من حسابه</li>
+                    <li>3. انتظر حتى يتم التحرير (قد يستغرق 24-48 ساعة)</li>
+                    <li>4. ابدأ عملية الربط عبر Respondly بمجرد تحرير الرقم</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 space-y-2">
+              <Button onClick={proceedToMetaLogin} disabled={!sdkLoaded} className="w-full gap-2 py-5 text-sm font-bold rounded-xl">
+                {!sdkLoaded ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                بدء عملية النقل
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setFlowStep("choose_type")}>← رجوع</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ============ CHECKLIST BEFORE ADDING NEW NUMBER ============
   if (flowStep === "checklist") {
