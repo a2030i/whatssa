@@ -137,6 +137,7 @@ const InboxPage = () => {
           channelType,
           channelId: conversation.channel_id || undefined,
           channelName: channelConfig ? (channelConfig.display_phone || channelConfig.business_name || channelConfig.evolution_instance_name || "") : undefined,
+          profilePic: conversation.customer_profile_pic || undefined,
         };
       });
 

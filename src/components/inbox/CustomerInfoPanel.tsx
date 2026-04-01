@@ -109,7 +109,10 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes }: CustomerInfoPanelPro
         <TabsContent value="info" className="flex-1 flex flex-col overflow-hidden mt-0">
       <div className="p-4 border-b border-border text-center">
         <div className="relative inline-block">
-          <div className="w-16 h-16 rounded-full gradient-whatsapp flex items-center justify-center text-xl font-bold text-whatsapp-foreground mx-auto mb-2">
+          {conversation.profilePic ? (
+            <img src={conversation.profilePic} alt={conversation.customerName} className="w-16 h-16 rounded-full object-cover mx-auto mb-2" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+          ) : null}
+          <div className={`w-16 h-16 rounded-full gradient-whatsapp flex items-center justify-center text-xl font-bold text-whatsapp-foreground mx-auto mb-2 ${conversation.profilePic ? "hidden" : ""}`}>
             {conversation.customerName.charAt(0)}
           </div>
           {conversation.lastSeen === "متصل الآن" && (

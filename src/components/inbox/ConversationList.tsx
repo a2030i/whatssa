@@ -369,8 +369,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                 <div className="flex items-start gap-3">
                   {/* Avatar */}
                   <div className="relative shrink-0">
+                    {conv.profilePic ? (
+                      <img
+                        src={conv.profilePic}
+                        alt={conv.customerName}
+                        className="w-11 h-11 rounded-2xl object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                        }}
+                      />
+                    ) : null}
                     <div className={cn(
                       "w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-bold transition-all",
+                      conv.profilePic ? "hidden" : "",
                       isSelected
                         ? "bg-gradient-to-br from-primary/30 to-primary/10 text-primary"
                         : "bg-secondary text-muted-foreground"

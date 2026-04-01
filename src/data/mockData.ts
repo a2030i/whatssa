@@ -18,6 +18,7 @@ export interface Conversation {
   channelType?: "meta_api" | "evolution";
   channelId?: string;
   channelName?: string;
+  profilePic?: string;
 }
 
 export interface MessageTemplate {
