@@ -452,6 +452,15 @@ const ChatbotPage = () => {
           {/* ── Tab: Steps & Buttons ── */}
           <TabsContent value="steps" className="space-y-4 mt-4">
             {/* Explanation */}
+            {nodes.length <= 1 && (
+              <Card className="bg-warning/10 border-warning/30">
+                <CardContent className="p-3">
+                  <p className="text-xs text-warning-foreground leading-relaxed">
+                    ⚠️ <strong>لربط الأزرار بخطوات:</strong> أضف أكثر من خطوة واحدة أولاً باستخدام زر "خطوة جديدة"، ثم اربط كل زر بالخطوة المناسبة من القائمة المنسدلة.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             <Card className="bg-accent/30 border-accent/50">
               <CardContent className="p-3">
                 <p className="text-xs text-muted-foreground leading-relaxed">
