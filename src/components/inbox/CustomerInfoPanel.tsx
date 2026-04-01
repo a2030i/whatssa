@@ -166,18 +166,62 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         )}
 
         {/* Assignment */}
-        <SectionHeader title="إجراءات المحادثة" icon={User} sectionKey="assignment" />
+        <SectionHeader title="تعيين المحادثة" icon={User} sectionKey="assignment" />
         {sections.assignment && (
-          <div className="space-y-2 pb-3 border-b border-border">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">الموظف المسؤول</span>
-              <div className="flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="w-3 h-3 text-primary" />
-                </div>
-                <span className="text-xs font-medium">{conversation.assignedTo}</span>
-              </div>
+          <div className="space-y-3 pb-3 border-b border-border">
+            {/* Team Assignment */}
+            <div className="space-y-1">
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <Users className="w-3 h-3" /> الفريق المسؤول
+              </span>
+              <Select
+                value={conversation.assignedTeamId || "__none__"}
+                onValueChange={(val) => {
+                  const teamId = val === "__none__" ? null : val;
+                  const teamName = teams.find(t => t.id === teamId)?.name || "غير معيّن";
+                  onAssignTeam?.(conversation.id, teamId, teamName);
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="اختر الفريق" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">بدون فريق</SelectItem>
+                  {teams.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* Agent Assignment */}
+            <div className="space-y-1">
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <User className="w-3 h-3" /> الموظف المسؤول
+              </span>
+              <Select
+                value={conversation.assignedToId || "__none__"}
+                onValueChange={(val) => {
+                  const agentId = val === "__none__" ? null : val;
+                  const agentName = agents.find(a => a.id === agentId)?.full_name || "غير معيّن";
+                  onAssignAgent?.(conversation.id, agentId, agentName);
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="اختر الموظف" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">غير معيّن</SelectItem>
+                  {agents.map(a => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.full_name || "بدون اسم"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Status */}
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-muted-foreground">الحالة</span>
               <Badge variant="outline" className="text-[10px]">
