@@ -427,6 +427,11 @@ const AutomationPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Automation Execution Logs */}
+      <div className="bg-card rounded-lg shadow-card p-5 mt-6">
+        <AutomationLogsPanel />
+      </div>
     </div>
   );
 };
