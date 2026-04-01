@@ -329,6 +329,45 @@ function chooseBestContactName(...values: Array<string | null | undefined>): str
   return null;
 }
 
+const mapEvolutionStatus = (status: unknown): "sent" | "delivered" | "read" | null => {
+  const statusMap: Record<string, "sent" | "delivered" | "read"> = {
+    SERVER_ACK: "sent",
+    DELIVERY_ACK: "delivered",
+    READ: "read",
+    PLAYED: "read",
+    DELETED: null as never,
+    REVOKED: null as never,
+    "2": "sent",
+    "3": "delivered",
+    "4": "read",
+    "5": "read",
+  };
+
+  return statusMap[String(status)] || null;
+};
+
+const pickBestUpdatedStatus = (payload: any): "sent" | "delivered" | "read" | null => {
+  const priority: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
+  const candidates = [
+    payload?.status,
+    payload?.update?.status,
+    payload?.messageStatus,
+    payload?.ack,
+    payload?.messageAck,
+    payload?.receipt,
+    payload?.update?.ack,
+    ...(Array.isArray(payload?.MessageUpdate) ? payload.MessageUpdate.map((item: any) => item?.status) : []),
+    ...(Array.isArray(payload?.messageUpdate) ? payload.messageUpdate.map((item: any) => item?.status) : []),
+  ]
+    .map(mapEvolutionStatus)
+    .filter(Boolean) as Array<"sent" | "delivered" | "read">;
+
+  return candidates.reduce<"sent" | "delivered" | "read" | null>((best, current) => {
+    if (!best) return current;
+    return (priority[current] || 0) > (priority[best] || 0) ? current : best;
+  }, null);
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -1086,9 +1125,8 @@ serve(async (req) => {
     if (event === "MESSAGES_UPDATE" || event === "messages.update") {
       const updates = Array.isArray(body.data) ? body.data : [body.data];
       for (const upd of updates) {
-        const key = upd?.key || upd?.keyId ? { id: upd.keyId } : null;
-        const waMessageId = key?.id || upd?.key?.id || upd?.id;
-        const newStatus = upd?.update?.status || upd?.status;
+        const waMessageId = upd?.key?.id || upd?.keyId || upd?.id || upd?.messageId;
+        const newStatus = pickBestUpdatedStatus(upd);
 
         // ── Message edited by remote user ──
         if (upd?.update?.editedMessage || upd?.update?.message?.editedMessage) {
@@ -1125,20 +1163,6 @@ serve(async (req) => {
 
         if (!waMessageId || !newStatus) continue;
 
-        // Evolution uses numeric statuses: 2=sent, 3=delivered, 4=read, 5=played
-        const statusMap: Record<string, string> = {
-          "DELIVERY_ACK": "delivered",
-          "READ": "read",
-          "PLAYED": "read",
-          "2": "sent",
-          "3": "delivered",
-          "4": "read",
-          "5": "read",
-          "SERVER_ACK": "sent",
-        };
-        const mappedStatus = statusMap[String(newStatus)] || null;
-        if (!mappedStatus) continue;
-
         const { data: existingMsg } = await supabase
           .from("messages")
           .select("id, status")
@@ -1149,8 +1173,8 @@ serve(async (req) => {
         if (existingMsg) {
           // Only upgrade status (sent→delivered→read), never downgrade
           const priority: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
-          if ((priority[mappedStatus] || 0) > (priority[existingMsg.status || ""] || 0)) {
-            await supabase.from("messages").update({ status: mappedStatus }).eq("id", existingMsg.id);
+          if ((priority[newStatus] || 0) > (priority[existingMsg.status || ""] || 0)) {
+            await supabase.from("messages").update({ status: newStatus }).eq("id", existingMsg.id);
           }
         }
       }
