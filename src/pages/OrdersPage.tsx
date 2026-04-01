@@ -70,17 +70,6 @@ const OrdersPage = () => {
     loadOrderItems(order.id);
   };
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
-    const updates: any = { status, updated_at: new Date().toISOString() };
-    if (status === "shipped") updates.shipped_at = new Date().toISOString();
-    if (status === "delivered") updates.delivered_at = new Date().toISOString();
-    if (status === "cancelled") updates.cancelled_at = new Date().toISOString();
-    
-    await supabase.from("orders").update(updates).eq("id", orderId);
-    toast.success(`تم تحديث حالة الطلب`);
-    loadOrders();
-    if (selectedOrder?.id === orderId) setSelectedOrder({ ...selectedOrder, ...updates });
-  };
 
 
 
