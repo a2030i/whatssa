@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2 } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -168,11 +168,30 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
       {!msg.isDeleted && (
         <div className={cn(
           "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:flex items-center gap-0.5",
-          msg.sender === "agent" ? "-left-20" : "-right-20"
+          msg.sender === "agent" ? "-left-24" : "-right-24"
         )}>
           {canReply && (
             <button onClick={() => onReply(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="رد">
               <Reply className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          )}
+          {msg.sender === "customer" && msg.type === "text" && (
+            <button
+              onClick={async () => {
+                try {
+                  const { data } = await supabase.functions.invoke("ai-features", {
+                    body: { action: "translate", text: msg.text, target_language: "العربية" },
+                  });
+                  if (data?.error === "ai_not_configured") {
+                    toast.error("لم يتم إعداد مزود AI");
+                  } else if (data?.translation) {
+                    toast.success(data.translation, { duration: 8000 });
+                  }
+                } catch { toast.error("فشل الترجمة"); }
+              }}
+              className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="ترجمة"
+            >
+              <Languages className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
           {msg.waMessageId && conversation.channelType === "evolution" && (
@@ -395,6 +414,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; full_name: string }>>([]);
   const [otherTypingAgents, setOtherTypingAgents] = useState<string[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [translatingMsgId, setTranslatingMsgId] = useState<string | null>(null);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1227,7 +1252,80 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <FileText className="w-4 h-4" />
               </button>
             )}
+            {/* AI Suggest Replies */}
+            {!isNoteMode && !windowExpired && (
+              <button
+                onClick={async () => {
+                  setAiLoading(true);
+                  setAiSuggestions([]);
+                  try {
+                    const { data, error } = await supabase.functions.invoke("ai-features", {
+                      body: {
+                        action: "suggest_replies",
+                        conversation_messages: messages.slice(-5).map(m => ({ sender: m.sender, content: m.text })),
+                        customer_name: conversation.customerName,
+                      },
+                    });
+                    if (data?.suggestions?.length > 0) {
+                      setAiSuggestions(data.suggestions);
+                    } else if (data?.error === "ai_not_configured") {
+                      toast.error("لم يتم إعداد مزود AI — اذهب للإعدادات");
+                    }
+                  } catch { toast.error("فشل جلب الاقتراحات"); }
+                  setAiLoading(false);
+                }}
+                disabled={aiLoading}
+                className={cn("p-1.5 rounded-lg transition-colors shrink-0", aiLoading ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+                title="اقتراحات AI"
+              >
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              </button>
+            )}
+            {/* AI Summarize */}
+            <button
+              onClick={async () => {
+                setAiLoading(true);
+                try {
+                  const { data } = await supabase.functions.invoke("ai-features", {
+                    body: { action: "summarize", conversation_id: conversation.id },
+                  });
+                  if (data?.summary) {
+                    setAiSummary(data.summary);
+                    setShowSummary(true);
+                  } else if (data?.error === "ai_not_configured") {
+                    toast.error("لم يتم إعداد مزود AI — فعّل ميزة التلخيص من الإعدادات");
+                  }
+                } catch { toast.error("فشل التلخيص"); }
+                setAiLoading(false);
+              }}
+              disabled={aiLoading}
+              className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+              title="تلخيص المحادثة (AI)"
+            >
+              <Brain className="w-4 h-4" />
+            </button>
           </div>
+
+          {/* AI Suggestions Row */}
+          {aiSuggestions.length > 0 && (
+            <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
+              <span className="flex items-center gap-1 text-[10px] text-primary font-medium shrink-0 px-1">
+                <Sparkles className="w-3 h-3" /> AI:
+              </span>
+              {aiSuggestions.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setInputText(s); setAiSuggestions([]); inputRef.current?.focus(); }}
+                  className="shrink-0 text-[11px] px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors max-w-[200px] truncate"
+                >
+                  {s}
+                </button>
+              ))}
+              <button onClick={() => setAiSuggestions([])} className="shrink-0 p-1 rounded-full hover:bg-muted">
+                <X className="w-3 h-3 text-muted-foreground" />
+              </button>
+            </div>
+          )}
 
           {/* File Preview */}
           {imagePreview && (
@@ -1356,6 +1454,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Summary Dialog */}
+      <Dialog open={showSummary} onOpenChange={setShowSummary}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Brain className="w-4 h-4 text-primary" /> ملخص المحادثة</DialogTitle></DialogHeader>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{aiSummary}</p>
         </DialogContent>
       </Dialog>
 
