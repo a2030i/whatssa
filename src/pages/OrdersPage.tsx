@@ -520,36 +520,6 @@ const OrdersPage = () => {
                     </>
                   )}
 
-                  {/* Order exists in Lamha but no shipment yet */}
-                  {selectedOrder.shipment_carrier === "lamha" && !selectedOrder.shipment_status && (
-                    <>
-                      <Select value={selectedCarrierId} onValueChange={setSelectedCarrierId}>
-                        <SelectTrigger className="text-xs bg-card border-border/50">
-                          <SelectValue placeholder="اختر شركة الشحن لإنشاء الشحنة" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {lamhaCarriers.map((c) => (
-                            <SelectItem key={c.carrier_id} value={String(c.carrier_id)}>
-                              {c.name} {c.has_cod ? "• COD" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        size="sm"
-                        className="w-full gap-1.5 text-xs"
-                        disabled={sendingToLamha === selectedOrder.id || !selectedCarrierId}
-                        onClick={() => createShipmentForExisting(selectedOrder.id)}
-                      >
-                        {sendingToLamha === selectedOrder.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Send className="w-3.5 h-3.5" />
-                        )}
-                        إنشاء شحنة
-                      </Button>
-                    </>
-                  )}
 
                   {/* Label button when shipment exists */}
                   {selectedOrder.shipment_carrier === "lamha" && selectedOrder.shipment_status && (
