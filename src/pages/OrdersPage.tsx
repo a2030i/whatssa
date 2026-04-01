@@ -234,7 +234,7 @@ const OrdersPage = () => {
                 {selectedOrder.source && (
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-secondary/50 rounded-lg px-2 py-1">
                     <Store className="w-3 h-3" />
-                    {selectedOrder.source === "salla" ? "سلة" : selectedOrder.source === "zid" ? "زد" : selectedOrder.source === "shopify" ? "Shopify" : selectedOrder.source === "woocommerce" ? "WooCommerce" : selectedOrder.source}
+                    {selectedOrder.source === "salla" ? "سلة" : selectedOrder.source === "zid" ? "زد" : selectedOrder.source === "shopify" ? "Shopify" : selectedOrder.source === "woocommerce" ? "WooCommerce" : selectedOrder.source === "lamha" ? "لمحة" : selectedOrder.source}
                   </div>
                 )}
               </div>
