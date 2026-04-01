@@ -538,16 +538,22 @@ const ChatbotPage = () => {
                                 value={btn.next_node_id || "none"}
                                 onValueChange={val => updateButton(node.id, btn.id, { next_node_id: val === "none" ? "" : val })}
                               >
-                                <SelectTrigger className="w-28 h-8 text-[11px]">
+                                <SelectTrigger className={cn("w-32 h-8 text-[11px]", nodes.length <= 1 && "opacity-50")}>
                                   <SelectValue placeholder="بدون" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="none">بدون</SelectItem>
-                                  {nodes.filter(n => n.id !== node.id).map(n => (
-                                    <SelectItem key={n.id} value={n.id}>
-                                      خطوة {nodes.indexOf(n) + 1}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="none">⏹ بدون (يتوقف)</SelectItem>
+                                  {nodes.filter(n => n.id !== node.id).map((n, ni) => {
+                                    const stepNum = nodes.indexOf(n) + 1;
+                                    const preview = n.type === "action" 
+                                      ? (ACTION_LABELS[n.action_type || ""] || "إجراء")
+                                      : (n.content?.slice(0, 15) || "رسالة فارغة");
+                                    return (
+                                      <SelectItem key={n.id} value={n.id}>
+                                        خطوة {stepNum}: {preview}{n.content && n.content.length > 15 ? "…" : ""}
+                                      </SelectItem>
+                                    );
+                                  })}
                                 </SelectContent>
                               </Select>
                               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeButton(node.id, btn.id)}>
