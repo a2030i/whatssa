@@ -539,13 +539,25 @@ serve(async (req) => {
       }
 
       try {
-        const readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
-          method: "PUT",
+        // Try POST first (v2.3.7+), then PUT as fallback
+        let readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
+          method: "POST",
           headers: evoHeaders,
           body: JSON.stringify({
             readMessages: messageKeys,
           }),
         });
+
+        // Fallback to PUT if POST returns 404/405
+        if (readRes.status === 404 || readRes.status === 405) {
+          readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
+            method: "PUT",
+            headers: evoHeaders,
+            body: JSON.stringify({
+              readMessages: messageKeys,
+            }),
+          });
+        }
 
         if (!readRes.ok) {
           // Silent fail — not critical
