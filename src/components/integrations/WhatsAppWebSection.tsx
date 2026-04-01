@@ -19,6 +19,7 @@ interface Props {
   orgId: string | null;
   isSuperAdmin: boolean;
   autoOpen?: boolean;
+  onConfigChange?: () => void;
 }
 
 type InstanceStatus = "idle" | "connecting" | "qr_pending" | "connected" | "disconnected";
@@ -166,7 +167,7 @@ const RateLimitPanel = ({ configId, initialSettings }: RateLimitPanelProps) => {
   );
 };
 
-const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) => {
+const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigChange }: Props) => {
   const [showSetup, setShowSetup] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -204,19 +205,24 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
     if (!autoOpen) return;
     if (existingConfig?.is_connected && existingConfig?.evolution_instance_status === "connected") {
       setInstanceStatus("connected");
+      setQrCode(null);
+      setPairingCode(null);
       return;
     }
-
-    if (instanceStatus !== "idle") return;
 
     if (existingConfig?.evolution_instance_name) {
       setInstanceName(existingConfig.evolution_instance_name);
-      void fetchQR(existingConfig.evolution_instance_name, { allowRecreate: false, silent: true });
+      setInstanceStatus("disconnected");
+      setQrCode(null);
+      setPairingCode(null);
+      if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
 
-    void createInstance();
-  }, [autoOpen, existingConfig?.evolution_instance_name, existingConfig?.evolution_instance_status, existingConfig?.is_connected, instanceStatus]);
+    setInstanceStatus("idle");
+    setQrCode(null);
+    setPairingCode(null);
+  }, [autoOpen, existingConfig?.evolution_instance_name, existingConfig?.evolution_instance_status, existingConfig?.is_connected]);
 
   const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
@@ -361,7 +367,8 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
         setQrCode(null);
         toast.success("✅ الرقم متصل بالفعل");
         loadExistingConfig();
-         return true;
+        onConfigChange?.();
+        return true;
        } else if (data?.status) {
          setInstanceStatus("connecting");
          startPolling(iName);
@@ -420,6 +427,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
         setInstanceStatus("connected");
         toast.success("✅ الرقم متصل بالفعل");
         loadExistingConfig();
+        onConfigChange?.();
         setIsRequestingCode(false);
         return;
       }
@@ -457,6 +465,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
             if (pollRef.current) clearInterval(pollRef.current);
             toast.success("✅ تم ربط الرقم بنجاح!");
             loadExistingConfig();
+            onConfigChange?.();
             return;
           }
           if (data?.qr_code) {
@@ -475,6 +484,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
           if (pollRef.current) clearInterval(pollRef.current);
           toast.success("✅ تم ربط الرقم بنجاح!");
           loadExistingConfig();
+          onConfigChange?.();
         }
       }
     }, 5000); // every 5 seconds (alternating = QR refresh every 10s)
@@ -496,6 +506,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
     }
     setIsCheckingStatus(false);
     loadExistingConfig();
+    onConfigChange?.();
   };
 
   const logout = async () => {
@@ -508,6 +519,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
       setQrCode(null);
       toast.success("تم فصل الرقم");
       loadExistingConfig();
+      onConfigChange?.();
     }
   };
 
@@ -523,6 +535,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
       setInstanceName("");
       setExistingConfig(null);
       toast.success("تم حذف الجلسة");
+      onConfigChange?.();
     }
     setIsDeleting(false);
   };
@@ -561,7 +574,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
                     onChange={(e) => setLabelText(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        supabase.from("whatsapp_config").update({ channel_label: labelText.trim() || null }).eq("id", existingConfig?.id).then(() => { setEditingLabel(false); toast.success("تم تحديث الاسم"); loadExistingConfig(); });
+                        supabase.from("whatsapp_config").update({ channel_label: labelText.trim() || null }).eq("id", existingConfig?.id).then(() => { setEditingLabel(false); toast.success("تم تحديث الاسم"); loadExistingConfig(); onConfigChange?.(); });
                       }
                       if (e.key === "Escape") setEditingLabel(false);
                     }}
@@ -569,7 +582,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
                     placeholder="اسم القناة..."
                     autoFocus
                   />
-                  <button onClick={() => { supabase.from("whatsapp_config").update({ channel_label: labelText.trim() || null }).eq("id", existingConfig?.id).then(() => { setEditingLabel(false); toast.success("تم تحديث الاسم"); loadExistingConfig(); }); }} className="text-success"><Check className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => { supabase.from("whatsapp_config").update({ channel_label: labelText.trim() || null }).eq("id", existingConfig?.id).then(() => { setEditingLabel(false); toast.success("تم تحديث الاسم"); loadExistingConfig(); onConfigChange?.(); }); }} className="text-success"><Check className="w-3.5 h-3.5" /></button>
                   <button onClick={() => setEditingLabel(false)} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
                 </div>
               ) : (
@@ -796,7 +809,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
                   disabled={isCreating}
                 >
                   {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-                  {instanceName ? "إعادة الربط — عرض QR" : autoOpen ? "جاري بدء الربط..." : "إنشاء جلسة جديدة"}
+                  {instanceName ? "توليد QR للربط" : "إنشاء جلسة وتوليد QR"}
                 </Button>
               ) : (
                 <div className="space-y-2">
