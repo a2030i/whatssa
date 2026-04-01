@@ -664,12 +664,30 @@ const ChatbotPage = () => {
                 </CardContent>
               </Card>
             )}
+            {/* Channel-specific info banner */}
+            {channelIds.length > 0 && (
+              <Card className={cn(
+                selectedChannelType === "meta_api" ? "bg-primary/5 border-primary/20" : "bg-secondary/50 border-border/40"
+              )}>
+                <CardContent className="p-2.5">
+                  <p className="text-[11px] font-medium">
+                    {selectedChannelType === "meta_api" 
+                      ? `✅ رسمي — ${MAX_BUTTONS} أزرار كحد أقصى (1-3: أزرار تفاعلية، 4-10: قائمة)`
+                      : selectedChannelType === "evolution"
+                      ? `📱 ويب — حتى ${MAX_BUTTONS} زر (ترسل كنص مرقّم)`
+                      : `⚠️ مختلط — حتى ${MAX_BUTTONS} أزرار (تفاعلية للرسمي، نص للويب)`
+                    }
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="bg-accent/30 border-accent/50">
               <CardContent className="p-3">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   <strong className="text-foreground">كل خطوة = رسالة يرسلها البوت + أزرار للعميل.</strong>
                   <br />
-                  الزر ممكن يوصل لخطوة ثانية (مثل: زر "الفروع" → خطوة تعرض قائمة الفروع)، أو "بدون" = البوت يتوقف بعده.
+                  الزر ممكن يوصل لخطوة ثانية، تدفق آخر، تحويل لفريق/موظف، أو "بدون" = البوت يتوقف.
                 </p>
               </CardContent>
             </Card>
