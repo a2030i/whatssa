@@ -550,52 +550,84 @@ const ChatbotPage = () => {
                   <p className="text-[11px] text-muted-foreground mt-1">تُرسل قبل أول خطوة — مثل رسالة افتتاحية</p>
                 </div>
 
-                {/* Channel Selection - always visible */}
+                {/* Channel Selection - MANDATORY */}
                 <div className="border-t pt-4">
                   <Label className="text-sm font-medium flex items-center gap-1.5">
                     <Globe className="w-4 h-4" />
-                    على أي قناة يشتغل البوت؟
+                    على أي قناة يشتغل البوت؟ *
                   </Label>
-                  <p className="text-[11px] text-muted-foreground mt-1 mb-3">
-                    {channels.length === 0
-                      ? "لا توجد قنوات مربوطة — اربط رقم واتساب أولاً من صفحة التكامل"
-                      : "اختر القنوات المحددة، أو اتركها فارغة ليعمل على الكل"
-                    }
-                  </p>
-                  {channels.length > 0 && (
-                    <div className="grid gap-2">
-                      {channels.map(ch => {
-                        const selected = channelIds.includes(ch.id);
-                        const isMeta = ch.channel_type === "meta_api";
-                        return (
-                          <label
-                            key={ch.id}
-                            className={cn(
-                              "flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all",
-                              selected ? "border-primary/40 bg-primary/5" : "border-border/40 hover:border-border"
+                  {channels.length === 0 ? (
+                    <Card className="mt-2 bg-destructive/10 border-destructive/30">
+                      <CardContent className="p-3">
+                        <p className="text-xs text-destructive">لا توجد قنوات مربوطة — اربط رقم واتساب أولاً من صفحة التكامل</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      <p className="text-[11px] text-muted-foreground mt-1 mb-3">
+                        اختر قناة واحدة على الأقل — نوع القناة يحدد شكل الأزرار وحدودها
+                      </p>
+                      <div className="grid gap-2">
+                        {channels.map(ch => {
+                          const selected = channelIds.includes(ch.id);
+                          const isMeta = ch.channel_type === "meta_api";
+                          return (
+                            <label
+                              key={ch.id}
+                              className={cn(
+                                "flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all",
+                                selected ? "border-primary/40 bg-primary/5" : "border-border/40 hover:border-border"
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={() => toggleChannel(ch.id)}
+                                className="accent-primary w-4 h-4"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {ch.business_name || ch.display_phone_number || ch.evolution_instance_name || "قناة"}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {ch.display_phone_number || ch.evolution_instance_name}
+                                </p>
+                              </div>
+                              <Badge variant={isMeta ? "default" : "secondary"} className="text-[10px] shrink-0">
+                                {isMeta ? "رسمي" : "ويب"}
+                              </Badge>
+                            </label>
+                          );
+                        })}
+                      </div>
+
+                      {/* Channel type info */}
+                      {channelIds.length > 0 && (
+                        <Card className={cn("mt-3", selectedChannelType === "meta_api" ? "bg-primary/5 border-primary/20" : selectedChannelType === "mixed" ? "bg-warning/10 border-warning/30" : "bg-secondary/50")}>
+                          <CardContent className="p-3">
+                            {selectedChannelType === "meta_api" && (
+                              <div className="text-xs space-y-1">
+                                <p className="font-semibold text-primary">✅ واتساب رسمي — أزرار تفاعلية مدعومة</p>
+                                <p className="text-muted-foreground">• 1-3 أزرار → أزرار Reply تفاعلية</p>
+                                <p className="text-muted-foreground">• 4-10 أزرار → قائمة تفاعلية (List)</p>
+                              </div>
                             )}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selected}
-                              onChange={() => toggleChannel(ch.id)}
-                              className="accent-primary w-4 h-4"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {ch.business_name || ch.display_phone_number || ch.evolution_instance_name || "قناة"}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground">
-                                {ch.display_phone_number || ch.evolution_instance_name}
-                              </p>
-                            </div>
-                            <Badge variant="outline" className="text-[10px] shrink-0">
-                              {isMeta ? "واتساب رسمي" : "واتساب ويب"}
-                            </Badge>
-                          </label>
-                        );
-                      })}
-                    </div>
+                            {selectedChannelType === "evolution" && (
+                              <div className="text-xs space-y-1">
+                                <p className="font-semibold">📱 واتساب ويب — نص مرقّم</p>
+                                <p className="text-muted-foreground">الأزرار تُرسل كنص مرقّم (1، 2، 3...) والعميل يكتب رقم الخيار</p>
+                              </div>
+                            )}
+                            {selectedChannelType === "mixed" && (
+                              <div className="text-xs space-y-1">
+                                <p className="font-semibold text-warning-foreground">⚠️ قنوات مختلطة</p>
+                                <p className="text-muted-foreground">سيتم إرسال أزرار تفاعلية للرسمي ونص مرقّم للويب — الحد الأقصى 10 أزرار</p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+                    </>
                   )}
                 </div>
               </CardContent>
