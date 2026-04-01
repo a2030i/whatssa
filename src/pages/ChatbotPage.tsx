@@ -832,7 +832,6 @@ const ChatbotPage = () => {
                               </Badge>
                             )}
                           </div>
-                          </Label>
                           {node.buttons.length < MAX_BUTTONS && (
                             <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => addButton(node.id)}>
                               <Plus className="w-3 h-3" /> زر جديد
