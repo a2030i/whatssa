@@ -69,6 +69,30 @@ const OrdersPage = () => {
   const openOrder = (order: any) => {
     setSelectedOrder(order);
     loadOrderItems(order.id);
+    loadShipmentEvents(order.id);
+  };
+
+  const loadShipmentEvents = async (orderId: string) => {
+    const { data } = await supabase
+      .from("shipment_events")
+      .select("*")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: false });
+    setShipmentEvents(data || []);
+  };
+
+  const SHIPMENT_ICONS: Record<string, any> = {
+    created: Package, new: Package, pending: Clock, fulfilled: CheckCircle2,
+    ready_for_pickup: Package, picked_up: Truck, shipping: Truck,
+    delivered: CheckCircle2, delivery_failed: XCircle, returned: ArrowLeft,
+    cancelled: XCircle, creation_failed: XCircle,
+  };
+
+  const SHIPMENT_COLORS: Record<string, string> = {
+    created: "text-primary", new: "text-primary", pending: "text-warning",
+    picked_up: "text-info", shipping: "text-info", delivered: "text-success",
+    delivery_failed: "text-destructive", returned: "text-warning",
+    cancelled: "text-destructive", creation_failed: "text-destructive",
   };
 
 
