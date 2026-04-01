@@ -33,6 +33,9 @@ const OrdersPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [shipmentEvents, setShipmentEvents] = useState<any[]>([]);
@@ -117,8 +120,19 @@ const OrdersPage = () => {
   const filteredOrders = orders.filter(o => {
     if (searchQuery && !o.customer_name?.includes(searchQuery) && !o.customer_phone?.includes(searchQuery) && !o.order_number?.includes(searchQuery)) return false;
     if (statusFilter !== "all" && o.status !== statusFilter) return false;
+    if (paymentFilter !== "all" && o.payment_status !== paymentFilter) return false;
+    if (sourceFilter !== "all" && o.source !== sourceFilter) return false;
+    if (dateFilter !== "all") {
+      const d = new Date(o.created_at);
+      const now = new Date();
+      if (dateFilter === "today" && d.toDateString() !== now.toDateString()) return false;
+      if (dateFilter === "week") { const week = new Date(now.getTime() - 7 * 86400000); if (d < week) return false; }
+      if (dateFilter === "month") { const month = new Date(now.getTime() - 30 * 86400000); if (d < month) return false; }
+    }
     return true;
   });
+
+  const sources = [...new Set(orders.map(o => o.source).filter(Boolean))];
 
   const kpiCards = [
     { label: "إجمالي الطلبات", value: stats.total, icon: ShoppingCart, color: "text-primary" },
@@ -163,18 +177,54 @@ const OrdersPage = () => {
 
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="بحث بالاسم أو الرقم..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 bg-card border-0 shadow-card text-sm" />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="بحث بالاسم أو الرقم..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 bg-card border-0 shadow-card text-sm" />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-36 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="الحالة" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الحالات</SelectItem>
+              {Object.entries(statusConfig).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+            <SelectTrigger className="w-full sm:w-36 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="الدفع" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل حالات الدفع</SelectItem>
+              {Object.entries(paymentConfig).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {sources.length > 1 && (
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="w-full sm:w-36 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="المنصة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل المنصات</SelectItem>
+                {sources.map(s => <SelectItem key={s} value={s}>{s === "salla" ? "سلة" : s === "zid" ? "زد" : s === "shopify" ? "Shopify" : s === "woocommerce" ? "WooCommerce" : s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="w-full sm:w-32 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="الفترة" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الفترات</SelectItem>
+              <SelectItem value="today">اليوم</SelectItem>
+              <SelectItem value="week">آخر 7 أيام</SelectItem>
+              <SelectItem value="month">آخر 30 يوم</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-40 bg-card border-0 shadow-card text-xs"><SelectValue placeholder="الحالة" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل الحالات</SelectItem>
-            {Object.entries(statusConfig).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {/* Active filters count */}
+        {(statusFilter !== "all" || paymentFilter !== "all" || sourceFilter !== "all" || dateFilter !== "all") && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">{filteredOrders.length} نتيجة</span>
+            <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => { setStatusFilter("all"); setPaymentFilter("all"); setSourceFilter("all"); setDateFilter("all"); }}>
+              مسح الفلاتر
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Orders Table */}
@@ -264,6 +314,15 @@ const OrdersPage = () => {
                 )}
               </div>
               <p className="text-[10px] text-muted-foreground">الحالات تتحدث تلقائياً من المنصة</p>
+
+              {/* Payment Method */}
+              {selectedOrder.payment_method && (
+                <div className="flex items-center gap-2 text-xs bg-secondary/30 rounded-lg px-3 py-2">
+                  <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">طريقة الدفع:</span>
+                  <span className="font-medium">{selectedOrder.payment_method}</span>
+                </div>
+              )}
 
               {/* Customer Info */}
               <div className="bg-secondary/50 rounded-lg p-3 space-y-1.5">
