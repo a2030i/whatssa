@@ -231,9 +231,9 @@ const InboxPage = () => {
           ...prev,
           [selectedId]: (prev[selectedId] || []).map((m) =>
             m.id === updated.id
-              ? { ...m, status: updated.status as any }
+              ? { ...m, status: updated.status as any, reactions: updated.metadata?.reactions || m.reactions }
               : m.waMessageId && m.waMessageId === updated.wa_message_id
-                ? { ...m, status: updated.status as any }
+                ? { ...m, status: updated.status as any, reactions: updated.metadata?.reactions || m.reactions }
                 : m
           ),
         }));
