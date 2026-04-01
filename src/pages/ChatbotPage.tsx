@@ -23,6 +23,7 @@ interface ChatbotButton {
 
 interface ChatbotNode {
   id: string;
+  name?: string;
   type: "message" | "action";
   content: string;
   buttons: ChatbotButton[];
