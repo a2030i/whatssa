@@ -73,7 +73,10 @@ export const useDashboardData = (): DashboardData => {
   });
 
   useEffect(() => {
-    if (!orgId) return;
+    if (!orgId) {
+      setData(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
     const load = async () => {
       const today = getDateRange(0).split("T")[0] + "T00:00:00Z";
       const days7 = getDateRange(7);
