@@ -1133,39 +1133,68 @@ const IntegrationsPage = () => {
 
   // ============ PICK PHONE NUMBER ============
   if (flowStep === "pick_phone") {
+    const isMigration = onboardingMode !== "new";
     return (
       <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
         <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
           <div className="p-6 border-b border-border">
-            <h2 className="text-lg font-bold text-foreground">اختر رقمك</h2>
-            <p className="text-sm text-muted-foreground mt-1">تم العثور على {phoneNumbers.length} رقم — اختر الرقم الذي تريد ربطه</p>
+            <div className="flex items-center gap-2">
+              {isMigration && <ArrowLeftRight className="w-5 h-5 text-primary" />}
+              <h2 className="text-lg font-bold text-foreground">
+                {isMigration ? "اختر الرقم للنقل" : "اختر رقمك"}
+              </h2>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              تم العثور على {phoneNumbers.length} رقم — اختر الرقم الذي تريد {isMigration ? "نقله" : "ربطه"}
+            </p>
           </div>
           <div className="p-4 space-y-2">
-            {phoneNumbers.map((phone) => (
-              <button
-                key={phone.id}
-                onClick={() => selectPhone(phone)}
-                disabled={isLoading}
-                className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-right"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Phone className="w-5 h-5 text-primary" />
+            {phoneNumbers.map((phone) => {
+              const phoneStatus = (phone as any).status;
+              const isAlreadyConnected = phoneStatus === "CONNECTED";
+              const statusLabel = isAlreadyConnected ? "متصل" : phoneStatus === "PENDING" ? "معلّق" : null;
+              return (
+                <button
+                  key={phone.id}
+                  onClick={() => selectPhone(phone)}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-right"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Phone className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm" dir="ltr">{phone.display_phone_number}</p>
+                      <p className="text-xs text-muted-foreground">{phone.verified_name}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {statusLabel && (
+                          <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0",
+                            isAlreadyConnected ? "text-success border-success/30" : "text-warning border-warning/30"
+                          )}>
+                            {statusLabel}
+                          </Badge>
+                        )}
+                        {(phone as any).account_mode && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
+                            {(phone as any).account_mode}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-sm" dir="ltr">{phone.display_phone_number}</p>
-                    <p className="text-xs text-muted-foreground">{phone.verified_name}</p>
+                  <div className="flex flex-col items-end gap-1">
+                    {phone.quality_rating && (
+                      <Badge variant="outline" className={cn("text-[10px]",
+                        phone.quality_rating === "GREEN" ? "text-success border-success/30" : "text-warning border-warning/30"
+                      )}>
+                        {phone.quality_rating === "GREEN" ? "جودة عالية" : "متوسطة"}
+                      </Badge>
+                    )}
                   </div>
-                </div>
-                {phone.quality_rating && (
-                  <Badge variant="outline" className={cn("text-[10px]",
-                    phone.quality_rating === "GREEN" ? "text-success border-success/30" : "text-warning border-warning/30"
-                  )}>
-                    {phone.quality_rating === "GREEN" ? "جودة عالية" : "متوسطة"}
-                  </Badge>
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
             <Button variant="ghost" size="sm" className="text-xs mt-2" onClick={resetFlow}>← رجوع</Button>
           </div>
         </div>
