@@ -223,6 +223,10 @@ const InboxPage = () => {
           reactions: message.metadata?.reactions || undefined,
           location: message.metadata?.location || undefined,
           contacts: message.metadata?.contacts || undefined,
+          editedAt: message.metadata?.edited_at || undefined,
+          isDeleted: message.metadata?.is_deleted || false,
+          poll: message.metadata?.poll || undefined,
+          createdAt: message.created_at || undefined,
         };
         setAllMessages((prev) => ({
           ...prev,
