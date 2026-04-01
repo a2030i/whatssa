@@ -46,10 +46,21 @@ interface WhatsAppConfig {
   registration_error: string | null;
   registered_at: string | null;
   channel_type?: string;
+  onboarding_type?: string;
+  migration_source?: string;
+  migration_status?: string;
+  migration_error?: string;
+  migrated_at?: string;
+  previous_provider?: string;
+  quality_rating?: string;
+  messaging_limit_tier?: string;
+  meta_business_id?: string;
   [key: string]: any;
 }
 
-type FlowStep = "idle" | "checklist" | "connecting" | "pick_phone" | "success" | "error";
+type OnboardingMode = "new" | "migrate_app" | "migrate_provider";
+
+type FlowStep = "idle" | "choose_type" | "checklist" | "migration_info" | "connecting" | "pick_phone" | "migration_prereqs" | "success" | "error";
 
 const IntegrationsPage = () => {
   const { orgId, isSuperAdmin } = useAuth();
