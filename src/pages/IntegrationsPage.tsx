@@ -815,12 +815,12 @@ const IntegrationsPage = () => {
                 <p className="text-[10px] text-muted-foreground mt-0.5">رسمي أو عبر واتساب ويب</p>
               </div>
               <div className="flex flex-col items-center gap-1.5 mt-auto w-full">
-                {hasConnected && (
+                {connectedOfficialConfigs.length > 0 && (
                   <Badge className="bg-success/10 text-success border-0 text-[10px] gap-1 px-2 py-0.5">
                     <CheckCircle2 className="w-2.5 h-2.5" /> رسمي ({connectedOfficialConfigs.length})
                   </Badge>
                 )}
-                {hasConnectedUnofficial && (
+                {connectedUnofficialConfigs.length > 0 && (
                   <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-1 px-2 py-0.5">
                     <QrCode className="w-2.5 h-2.5" /> واتساب ويب ({connectedUnofficialConfigs.length})
                   </Badge>
