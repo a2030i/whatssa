@@ -1388,6 +1388,9 @@ export type Database = {
           payment_method: string | null
           payment_status: string | null
           refunded_at: string | null
+          shipment_carrier: string | null
+          shipment_status: string | null
+          shipment_tracking_number: string | null
           shipped_at: string | null
           shipping_amount: number | null
           source: string | null
@@ -1419,6 +1422,9 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           refunded_at?: string | null
+          shipment_carrier?: string | null
+          shipment_status?: string | null
+          shipment_tracking_number?: string | null
           shipped_at?: string | null
           shipping_amount?: number | null
           source?: string | null
@@ -1450,6 +1456,9 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           refunded_at?: string | null
+          shipment_carrier?: string | null
+          shipment_status?: string | null
+          shipment_tracking_number?: string | null
           shipped_at?: string | null
           shipping_amount?: number | null
           source?: string | null
