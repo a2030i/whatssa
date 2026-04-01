@@ -324,7 +324,8 @@ const OrdersPage = () => {
             <tbody>
               {filteredOrders.map((order) => {
                 const sc = statusConfig[order.status] || statusConfig.pending;
-                const pc = paymentConfig[order.payment_status] || paymentConfig.unpaid;
+                const resolvedPS = resolvePaymentStatus(order);
+                const pc = paymentConfig[resolvedPS] || paymentConfig.unpaid;
                 return (
                   <tr key={order.id} className="border-b border-border hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => openOrder(order)}>
                     <td className="p-3 font-mono text-xs">{order.order_number || order.id.slice(0, 8)}</td>
