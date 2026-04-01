@@ -938,6 +938,34 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           </div>
           <div className="flex items-center gap-1">
             {/* 24h Window Timer - Meta API only */}
+            {/* Mobile quick actions */}
+            {conversation.status !== "closed" && (
+              <div className="flex md:hidden items-center gap-0.5">
+                <button
+                  onClick={() => setShowTransfer(true)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-secondary/80 transition-colors"
+                  title="تحويل"
+                >
+                  <UserPlus className="w-4 h-4 text-primary" />
+                </button>
+                <button
+                  onClick={() => setShowClosureReason(true)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-destructive/10 transition-colors"
+                  title="إغلاق"
+                >
+                  <XCircle className="w-4 h-4 text-destructive" />
+                </button>
+              </div>
+            )}
+            {conversation.status === "closed" && (
+              <button
+                onClick={() => { onStatusChange(conversation.id, "active"); toast.success("تم إعادة فتح المحادثة"); }}
+                className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-success/10 transition-colors"
+                title="إعادة فتح"
+              >
+                <CheckCircle2 className="w-4 h-4 text-success" />
+              </button>
+            )}
             {isMetaChannel && (windowExpired ? (
               <div className="hidden sm:flex items-center gap-1 text-warning bg-warning/10 px-2 py-1 rounded-lg ml-2">
                 <Clock className="w-3 h-3" />
