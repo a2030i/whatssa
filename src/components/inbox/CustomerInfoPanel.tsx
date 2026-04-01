@@ -41,6 +41,19 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     loadCustomer();
   }, [conversation.id]);
 
+  useEffect(() => {
+    if (!orgId) return;
+    const loadAgentsAndTeams = async () => {
+      const [agentsRes, teamsRes] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, team_id").eq("org_id", orgId).eq("is_active", true),
+        supabase.from("teams").select("id, name").eq("org_id", orgId),
+      ]);
+      setAgents(agentsRes.data || []);
+      setTeams(teamsRes.data || []);
+    };
+    loadAgentsAndTeams();
+  }, [orgId]);
+
   const loadCustomer = async () => {
     if (!orgId) return;
     const { data } = await supabase
