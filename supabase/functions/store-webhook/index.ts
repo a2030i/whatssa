@@ -800,12 +800,16 @@ async function sendEventNotification(supabase: any, integration: any, evt: Norma
   const phone = evt.order?.customer_phone || evt.customer?.phone || evt.cart?.customer_phone || "";
   if (!phone) return;
 
+  const itemsSummary = evt.order?.items?.map(i => `${i.product_name} x${i.quantity}`).join("، ") || "";
   const vars: Record<string, string> = {
     customer_name: evt.order?.customer_name || evt.customer?.name || evt.cart?.customer_name || "",
     order_number: evt.order?.order_number || "",
     total: String(evt.order?.total || evt.cart?.total || 0),
     currency: evt.order?.currency || evt.cart?.currency || "SAR",
     checkout_url: evt.cart?.checkout_url || "",
+    payment_method: evt.order?.payment_method || "",
+    items_summary: itemsSummary,
+    status: evt.order?.status || "",
   };
 
   const channelType = waConfig.channel_type || "meta_api";
