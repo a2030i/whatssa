@@ -571,7 +571,8 @@ const InboxPage = () => {
       return;
     }
 
-    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+    const sendFunc = getSendFunction(conversation.channelType);
+    const { data, error } = await supabase.functions.invoke(sendFunc, {
       body: {
         to: conversation.customerPhone,
         type: "template",
