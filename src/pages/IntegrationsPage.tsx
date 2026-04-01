@@ -762,15 +762,15 @@ const IntegrationsPage = () => {
   };
 
   const renderAllChannelsView = (currentConfigs: WhatsAppConfig[]) => {
-    const connectedOfficialConfigs = currentConfigs.filter(c => !(c as any).channel_type || (c as any).channel_type !== "evolution");
+    const connectedOfficialConfigs = currentConfigs.filter(c => (!(c as any).channel_type || (c as any).channel_type !== "evolution") && c.is_connected);
     const connectedUnofficialConfigs = unofficialConfigs.filter(c => c.is_connected || c.evolution_instance_status === "connected" || c.evolution_instance_status === "connecting" || !!c.display_phone);
-    const hasConnected = connectedOfficialConfigs.length > 0;
-    const hasConnectedUnofficial = connectedUnofficialConfigs.length > 0;
+    const allConnected = [...connectedOfficialConfigs, ...connectedUnofficialConfigs];
+    const hasAnyConnected = allConnected.length > 0;
 
     return (
       <>
         {/* Connected Numbers */}
-        {(hasConnected || hasConnectedUnofficial) && (
+        {hasAnyConnected && (
           <div className="space-y-3">
             <h2 className="text-base font-bold text-foreground">الأرقام المتصلة</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -815,12 +815,12 @@ const IntegrationsPage = () => {
                 <p className="text-[10px] text-muted-foreground mt-0.5">رسمي أو عبر واتساب ويب</p>
               </div>
               <div className="flex flex-col items-center gap-1.5 mt-auto w-full">
-                {hasConnected && (
+                {connectedOfficialConfigs.length > 0 && (
                   <Badge className="bg-success/10 text-success border-0 text-[10px] gap-1 px-2 py-0.5">
                     <CheckCircle2 className="w-2.5 h-2.5" /> رسمي ({connectedOfficialConfigs.length})
                   </Badge>
                 )}
-                {hasConnectedUnofficial && (
+                {connectedUnofficialConfigs.length > 0 && (
                   <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-1 px-2 py-0.5">
                     <QrCode className="w-2.5 h-2.5" /> واتساب ويب ({connectedUnofficialConfigs.length})
                   </Badge>
