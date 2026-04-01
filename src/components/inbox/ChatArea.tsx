@@ -395,6 +395,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; full_name: string }>>([]);
   const [otherTypingAgents, setOtherTypingAgents] = useState<string[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [translatingMsgId, setTranslatingMsgId] = useState<string | null>(null);
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
