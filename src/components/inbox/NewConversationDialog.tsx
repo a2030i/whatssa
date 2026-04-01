@@ -216,6 +216,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     setSending(true);
     try {
       const cleanPhone = fullPhone;
+      const messagePreview = isMeta ? `📋 ${selectedTemplate?.name}` : messageText.trim();
 
       // Save customer if requested
       if (saveCustomer && !isExistingCustomer && orgId) {
@@ -230,6 +231,39 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         );
       }
 
+      // Find or create conversation first so the sent message is saved and appears immediately in chat
+      const { data: existingConv } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("customer_phone", cleanPhone)
+        .eq("channel_id", selectedChannel.id)
+        .neq("status", "closed")
+        .limit(1)
+        .maybeSingle();
+
+      let conversationId = existingConv?.id;
+
+      if (!conversationId) {
+        const { data: newConv, error: newConvError } = await supabase
+          .from("conversations")
+          .insert({
+            org_id: orgId!,
+            customer_phone: cleanPhone,
+            customer_name: customerName || cleanPhone,
+            channel_id: selectedChannel.id,
+            status: "active",
+          })
+          .select("id")
+          .single();
+
+        if (newConvError || !newConv) {
+          throw new Error(newConvError?.message || "تعذر إنشاء المحادثة");
+        }
+
+        conversationId = newConv.id;
+      }
+
       if (isMeta && selectedTemplate) {
         const { data, error } = await supabase.functions.invoke("whatsapp-send", {
           body: {
@@ -238,6 +272,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             template_name: selectedTemplate.name,
             template_language: selectedTemplate.language,
             template_components: buildTemplateComponents(selectedTemplate, templateVars),
+            conversation_id: conversationId,
             channel_id: selectedChannel.id,
           },
         });
@@ -247,6 +282,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           body: {
             to: cleanPhone,
             message: messageText,
+            conversation_id: conversationId,
             channel_id: selectedChannel.id,
           },
         });
@@ -261,38 +297,18 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         return;
       }
 
-      // Find or create conversation
-      const { data: existingConv } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("org_id", orgId)
-        .eq("customer_phone", cleanPhone)
-        .eq("channel_id", selectedChannel.id)
-        .neq("status", "closed")
-        .limit(1)
-        .maybeSingle();
-
-      if (existingConv) {
-        onConversationCreated(existingConv.id);
-      } else {
-        const { data: newConv } = await supabase
+      if (!existingConv && messagePreview) {
+        await supabase
           .from("conversations")
-          .insert({
-            org_id: orgId!,
-            customer_phone: cleanPhone,
-            customer_name: customerName || cleanPhone,
-            channel_id: selectedChannel.id,
-            status: "active",
-            last_message: isMeta ? `📋 ${selectedTemplate?.name}` : messageText,
+          .update({
+            last_message: messagePreview,
             last_message_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           })
-          .select("id")
-          .single();
-
-        if (newConv) {
-          onConversationCreated(newConv.id);
-        }
+          .eq("id", conversationId);
       }
+
+      onConversationCreated(conversationId);
 
       toast.success("تم إرسال الرسالة بنجاح");
       onOpenChange(false);
