@@ -218,7 +218,58 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
             <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
           </div>
         )}
-        {(() => {
+        {/* Location message */}
+        {msg.type === "location" && msg.location && (
+          <a
+            href={`https://www.google.com/maps?q=${msg.location.latitude},${msg.location.longitude}`}
+            target="_blank"
+            rel="noreferrer"
+            className="block mb-1 rounded-lg overflow-hidden border border-border/50 hover:opacity-90 transition-opacity"
+          >
+            <img
+              src={`https://maps.googleapis.com/maps/api/staticmap?center=${msg.location.latitude},${msg.location.longitude}&zoom=15&size=280x150&markers=color:red|${msg.location.latitude},${msg.location.longitude}&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8`}
+              alt="موقع"
+              className="w-[280px] h-[150px] object-cover"
+              onError={(e) => {
+                // Fallback to OSM if Google Maps fails
+                (e.target as HTMLImageElement).src = `https://staticmap.openstreetmap.de/staticmap.php?center=${msg.location!.latitude},${msg.location!.longitude}&zoom=15&size=280x150&markers=${msg.location!.latitude},${msg.location!.longitude},red-pushpin`;
+              }}
+            />
+            <div className="px-2.5 py-1.5 flex items-center gap-1.5">
+              <MapPin className="w-3 h-3 text-destructive shrink-0" />
+              <div>
+                {msg.location.name && <p className="text-[11px] font-semibold">{msg.location.name}</p>}
+                {msg.location.address && <p className="text-[10px] text-muted-foreground">{msg.location.address}</p>}
+                {!msg.location.name && !msg.location.address && <p className="text-[10px]">📍 عرض الموقع</p>}
+              </div>
+            </div>
+          </a>
+        )}
+        {/* Contacts message */}
+        {msg.type === "contacts" && msg.contacts && msg.contacts.length > 0 && (
+          <div className="space-y-1.5 mb-1">
+            {msg.contacts.map((c, i) => (
+              <div key={i} className="flex items-center gap-2 bg-background/30 rounded-lg px-2.5 py-1.5">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Contact className="w-4 h-4 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold truncate">{c.name}</p>
+                  {c.phone && <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{c.phone}</p>}
+                  {c.email && <p className="text-[10px] text-muted-foreground">{c.email}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Sticker message */}
+        {msg.type === "sticker" && msg.mediaUrl && (
+          <div className="mb-1">
+            <ResolvedMedia url={msg.mediaUrl} type="image" />
+          </div>
+        )}
+        {/* Regular content rendering */}
+        {msg.type !== "location" && msg.type !== "contacts" && msg.type !== "sticker" && (() => {
           const textMediaUrl = getStorageUrlFromText(msg.text);
           const mediaUrl = msg.mediaUrl || textMediaUrl;
           const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
@@ -239,6 +290,14 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply }: { msg: Message; 
             </>
           );
         })()}
+        {/* Reactions display */}
+        {msg.reactions && msg.reactions.length > 0 && (
+          <div className="flex flex-wrap gap-0.5 mt-1">
+            {msg.reactions.map((r, i) => (
+              <span key={i} className="text-sm bg-background/40 rounded-full px-1.5 py-0.5 border border-border/30">{r.emoji}</span>
+            ))}
+          </div>
+        )}
         <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-white/60")}>
           <span className="text-[10px]">{msg.timestamp}</span>
           {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
