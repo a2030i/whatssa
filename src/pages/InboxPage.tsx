@@ -193,6 +193,10 @@ const InboxPage = () => {
         reactions: (message.metadata as any)?.reactions || undefined,
         location: (message.metadata as any)?.location || undefined,
         contacts: (message.metadata as any)?.contacts || undefined,
+        editedAt: (message.metadata as any)?.edited_at || undefined,
+        isDeleted: (message.metadata as any)?.is_deleted || false,
+        poll: (message.metadata as any)?.poll || undefined,
+        createdAt: message.created_at || undefined,
       }));
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
