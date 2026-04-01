@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageCircle, Tag, Users } from "lucide-react";
+import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageCircle, Tag, Users, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
