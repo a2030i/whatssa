@@ -324,8 +324,17 @@ const IntegrationsPage = () => {
         wabaId: wabaId || businessAccountId,
       });
       if (result) {
-        setConnectedPhone(phone.display_phone_number);
-        setFlowStep("success");
+        // If migration, check prereqs before showing success
+        if (result.migration_prereqs && !result.migration_prereqs.ready) {
+          setMigrationPrereqs(result.migration_prereqs);
+          setWabaInfo(result.waba_details);
+          setConnectedPhone(phone.display_phone_number);
+          setFlowStep("migration_prereqs");
+        } else {
+          setConnectedPhone(phone.display_phone_number);
+          setWabaInfo(result.waba_details);
+          setFlowStep("success");
+        }
       }
     } catch {
       handleError("فشل في إكمال الربط");
