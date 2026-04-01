@@ -216,6 +216,9 @@ const InboxPage = () => {
           senderName: message.metadata?.sender_name || undefined,
           quoted: message.metadata?.quoted || undefined,
           waMessageId: message.wa_message_id || undefined,
+          reactions: message.metadata?.reactions || undefined,
+          location: message.metadata?.location || undefined,
+          contacts: message.metadata?.contacts || undefined,
         };
         setAllMessages((prev) => ({
           ...prev,
