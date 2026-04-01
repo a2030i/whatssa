@@ -258,6 +258,34 @@ const InboxPage = () => {
     };
   }, [selectedId]);
 
+  // Send read receipts to Evolution when opening a conversation with unread messages
+  useEffect(() => {
+    if (!selectedId || !orgId) return;
+    const conv = conversations.find(c => c.id === selectedId);
+    if (!conv || conv.unread === 0) return;
+    // Only for evolution channels (or unknown channels which are likely evolution)
+    if (conv.channelType === "meta_api") return;
+
+    const msgs = allMessages[selectedId];
+    if (!msgs || msgs.length === 0) return;
+
+    // Collect unread customer message keys
+    const unreadKeys = msgs
+      .filter(m => m.sender === "customer" && m.waMessageId)
+      .slice(-20) // last 20 messages max
+      .map(m => ({
+        remoteJid: conv.customerPhone.includes("@") ? conv.customerPhone : `${conv.customerPhone}@s.whatsapp.net`,
+        fromMe: false,
+        id: m.waMessageId!,
+      }));
+
+    if (unreadKeys.length > 0) {
+      supabase.functions.invoke("evolution-manage", {
+        body: { action: "read_messages", messages: unreadKeys },
+      }).catch(() => {}); // fire and forget
+    }
+  }, [selectedId, allMessages, conversations, orgId]);
+
   const selected = conversations.find((conversation) => conversation.id === selectedId) || null;
   const currentMessages = selectedId ? allMessages[selectedId] || [] : [];
 
