@@ -47,6 +47,7 @@ interface ChannelOption {
 
 const STORE_EVENTS = [
   { key: "order.created", label: "طلب جديد", icon: "🛒", description: "عند إنشاء طلب جديد في المتجر" },
+  { key: "order.created_unpaid", label: "طلب جديد (غير مدفوع)", icon: "💳", description: "تذكير بالسداد للطلبات غير المدفوعة" },
   { key: "order.shipped", label: "تم الشحن", icon: "📦", description: "عند شحن الطلب" },
   { key: "order.delivered", label: "تم التوصيل", icon: "✅", description: "عند توصيل الطلب للعميل" },
   { key: "order.cancelled", label: "طلب ملغي", icon: "❌", description: "عند إلغاء الطلب" },
@@ -57,7 +58,8 @@ const STORE_EVENTS = [
 
 const VARIABLE_HINTS: Record<string, string[]> = {
   "order.created": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{currency}}", "{{payment_method}}", "{{items_summary}}"],
-  "order.shipped": ["{{customer_name}}", "{{order_number}}", "{{total}}"],
+  "order.created_unpaid": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{currency}}"],
+  "order.shipped": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{status}}"],
   "order.delivered": ["{{customer_name}}", "{{order_number}}"],
   "order.cancelled": ["{{customer_name}}", "{{order_number}}", "{{total}}"],
   "order.refunded": ["{{customer_name}}", "{{order_number}}", "{{total}}"],
