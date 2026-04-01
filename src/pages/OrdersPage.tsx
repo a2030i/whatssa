@@ -27,6 +27,21 @@ const paymentConfig: Record<string, { label: string; color: string }> = {
   partially_refunded: { label: "مسترجع جزئياً", color: "bg-warning/10 text-warning" },
 };
 
+// Detect actual payment status based on payment_method and payment_status
+const PAID_METHODS = ["apple pay", "applepay", "mada", "visa", "mastercard", "credit card", "credit_card", "card", "stc pay", "stcpay", "tamara", "tabby", "bank transfer", "bank_transfer", "تحويل بنكي", "بطاقة ائتمان", "مدى", "آبل باي"];
+
+function resolvePaymentStatus(order: any): string {
+  if (order.payment_status === "paid" || order.payment_status === "refunded" || order.payment_status === "partially_refunded") {
+    return order.payment_status;
+  }
+  // If payment_method is a known online/card method, it's paid
+  if (order.payment_method) {
+    const method = order.payment_method.toLowerCase().trim();
+    if (PAID_METHODS.some(m => method.includes(m))) return "paid";
+  }
+  return order.payment_status || "unpaid";
+}
+
 const OrdersPage = () => {
   const { orgId } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
@@ -40,6 +55,8 @@ const OrdersPage = () => {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [shipmentEvents, setShipmentEvents] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, revenue: 0, avgOrder: 0, pendingCount: 0, todayOrders: 0, todayRevenue: 0 });
+  const [sendingToLamha, setSendingToLamha] = useState<string | null>(null);
+  const [lamhaIntegration, setLamhaIntegration] = useState<any>(null);
 
   useEffect(() => { if (orgId) loadOrders(); }, [orgId]);
 
