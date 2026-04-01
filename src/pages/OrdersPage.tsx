@@ -188,26 +188,8 @@ const OrdersPage = () => {
   };
 
   const createShipmentForExisting = async (orderId: string) => {
-    if (!orgId || !selectedCarrierId) {
-      toast.error("يرجى اختيار شركة الشحن أولاً");
-      return;
-    }
-    setSendingToLamha(orderId);
-    try {
-      const { data, error } = await supabase.functions.invoke("lamha-create-shipment", {
-        body: { order_id: orderId, org_id: orgId, action: "create-shipment", carrier_id: selectedCarrierId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success("تم إنشاء الشحنة بنجاح");
-      loadOrders();
-      if (selectedOrder?.id === orderId) loadShipmentEvents(orderId);
-    } catch (err: any) {
-      toast.error("فشل إنشاء الشحنة: " + (err.message || "خطأ غير معروف"));
-    } finally {
-      setSendingToLamha(null);
-    }
-  };
+
+
 
   const printLamhaLabel = async (orderId: string) => {
     try {
