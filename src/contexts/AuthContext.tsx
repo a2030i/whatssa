@@ -28,6 +28,8 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   userRole: null,
   orgId: null,
+  teamId: null,
+  isSupervisor: false,
   isLoading: true,
   isSuperAdmin: false,
   isEcommerce: false,
