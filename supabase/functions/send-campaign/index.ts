@@ -5,6 +5,44 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ── Rate Limit Helpers ──
+interface RateLimitSettings {
+  enabled: boolean;
+  min_delay_seconds: number;
+  max_delay_seconds: number;
+  batch_size: number;
+  batch_pause_seconds: number;
+  daily_limit: number;
+  hourly_limit: number;
+}
+
+const DEFAULT_RATE_LIMIT: RateLimitSettings = {
+  enabled: true,
+  min_delay_seconds: 8,
+  max_delay_seconds: 15,
+  batch_size: 10,
+  batch_pause_seconds: 30,
+  daily_limit: 200,
+  hourly_limit: 50,
+};
+
+function parseRateLimitSettings(raw: any): RateLimitSettings {
+  if (!raw || typeof raw !== "object") return DEFAULT_RATE_LIMIT;
+  return {
+    enabled: raw.enabled !== false,
+    min_delay_seconds: Math.max(1, Number(raw.min_delay_seconds) || DEFAULT_RATE_LIMIT.min_delay_seconds),
+    max_delay_seconds: Math.max(1, Number(raw.max_delay_seconds) || DEFAULT_RATE_LIMIT.max_delay_seconds),
+    batch_size: Math.max(1, Number(raw.batch_size) || DEFAULT_RATE_LIMIT.batch_size),
+    batch_pause_seconds: Math.max(5, Number(raw.batch_pause_seconds) || DEFAULT_RATE_LIMIT.batch_pause_seconds),
+    daily_limit: Math.max(1, Number(raw.daily_limit) || DEFAULT_RATE_LIMIT.daily_limit),
+    hourly_limit: Math.max(1, Number(raw.hourly_limit) || DEFAULT_RATE_LIMIT.hourly_limit),
+  };
+}
+
+function randomDelay(min: number, max: number): number {
+  return (Math.floor(Math.random() * (max - min + 1)) + min) * 1000;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -65,6 +103,29 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── Rate limit check for Evolution channels ──
+    const rateSettings = isEvolution ? parseRateLimitSettings(config.rate_limit_settings) : null;
+
+    if (isEvolution && rateSettings?.enabled) {
+      const { data: limitCheck } = await supabase.rpc("check_channel_rate_limit", { _channel_id: config.id });
+      if (limitCheck && !limitCheck.allowed) {
+        const reason = limitCheck.reason === "hourly_limit_reached"
+          ? `تم الوصول للحد الأقصى بالساعة (${limitCheck.hourly_count}/${limitCheck.hourly_limit})`
+          : `تم الوصول للحد الأقصى اليومي (${limitCheck.daily_count}/${limitCheck.daily_limit})`;
+
+        await supabase.from("campaigns").update({
+          status: "paused",
+          notes: `⏸️ إيقاف مؤقت: ${reason}. سيُستأنف الإرسال تلقائياً عند انتهاء الفترة.`,
+          updated_at: new Date().toISOString(),
+        }).eq("id", campaign_id);
+
+        return new Response(JSON.stringify({ error: reason, paused: true }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Get recipients
     const { data: recipients } = await supabase
       .from("campaign_recipients")
@@ -82,9 +143,20 @@ Deno.serve(async (req) => {
 
     let sentCount = 0;
     let failedCount = 0;
-    const delayMs = isEvolution ? ((templateVars[0]?.delay_seconds || 10) * 1000) : 100;
+    let batchCounter = 0;
+    let rateLimitPaused = false;
 
     for (const recipient of recipients) {
+      // ── Per-message rate limit check for Evolution ──
+      if (isEvolution && rateSettings?.enabled) {
+        const { data: midCheck } = await supabase.rpc("check_channel_rate_limit", { _channel_id: config.id });
+        if (midCheck && !midCheck.allowed) {
+          rateLimitPaused = true;
+          console.log(`[send-campaign] Rate limit hit mid-campaign: ${midCheck.reason}`);
+          break;
+        }
+      }
+
       try {
         let waMessageId: string | null = null;
 
@@ -103,6 +175,14 @@ Deno.serve(async (req) => {
           if (!res.ok) throw new Error(`Evolution error: ${res.status}`);
           const result = await res.json();
           waMessageId = result?.key?.id || null;
+
+          // Log send for rate tracking
+          await supabase.from("channel_send_log").insert({
+            channel_id: config.id,
+            org_id: campaign.org_id,
+            message_type: "campaign",
+            recipient_phone: recipient.phone,
+          });
         } else {
           // Meta API - Template message
           const payload: any = {
@@ -116,9 +196,7 @@ Deno.serve(async (req) => {
             },
           };
 
-          // Build components from template_variables if present
           if (templateVars.length > 0 && !templateVars[0]?.channel_type) {
-            // Template variables are parameter mappings
             const bodyParams = templateVars
               .filter((v: any) => v.type === "body" || !v.type)
               .map((v: any) => {
@@ -160,6 +238,7 @@ Deno.serve(async (req) => {
         }).eq("id", recipient.id);
 
         sentCount++;
+        batchCounter++;
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
         await supabase.from("campaign_recipients").update({
@@ -168,24 +247,40 @@ Deno.serve(async (req) => {
           error_message: errMsg,
         }).eq("id", recipient.id);
         failedCount++;
+        batchCounter++;
       }
 
-      // Delay between messages
-      if (delayMs > 0) {
-        await new Promise((r) => setTimeout(r, delayMs));
+      // ── Smart delay logic ──
+      if (isEvolution && rateSettings?.enabled) {
+        // Batch pause: after N messages, take a longer break
+        if (batchCounter >= rateSettings.batch_size) {
+          batchCounter = 0;
+          const pauseMs = rateSettings.batch_pause_seconds * 1000;
+          console.log(`[send-campaign] Batch pause: ${rateSettings.batch_pause_seconds}s after ${rateSettings.batch_size} messages`);
+          await new Promise((r) => setTimeout(r, pauseMs));
+        } else {
+          // Randomized delay between messages
+          const delayMs = randomDelay(rateSettings.min_delay_seconds, rateSettings.max_delay_seconds);
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
+      } else if (isEvolution) {
+        // Fallback: fixed 10s delay
+        await new Promise((r) => setTimeout(r, 10000));
+      } else {
+        // Meta API: minimal delay
+        await new Promise((r) => setTimeout(r, 100));
       }
     }
 
-    // Check if all recipients processed
+    // ── Update campaign status ──
     const { count: pendingCount } = await supabase
       .from("campaign_recipients")
       .select("id", { count: "exact", head: true })
       .eq("campaign_id", campaign_id)
       .eq("status", "pending");
 
-    const isComplete = (pendingCount || 0) === 0;
+    const isComplete = (pendingCount || 0) === 0 && !rateLimitPaused;
 
-    // Update campaign aggregate counts
     const { data: allRecipients } = await supabase
       .from("campaign_recipients")
       .select("status")
@@ -197,18 +292,27 @@ Deno.serve(async (req) => {
       const read = allRecipients.filter((r: any) => r.status === "read").length;
       const failed = allRecipients.filter((r: any) => r.status === "failed").length;
 
+      const newStatus = rateLimitPaused ? "paused" : isComplete ? "sent" : "sending";
+
       await supabase.from("campaigns").update({
         sent_count: sent,
         delivered_count: delivered,
         read_count: read,
         failed_count: failed,
-        status: isComplete ? "sent" : "sending",
+        status: newStatus,
+        notes: rateLimitPaused ? "⏸️ إيقاف مؤقت بسبب حدود الإرسال (حماية من الحظر). سيُستأنف تلقائياً." : null,
         completed_at: isComplete ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       }).eq("id", campaign_id);
     }
 
-    return new Response(JSON.stringify({ ok: true, sent: sentCount, failed: failedCount, complete: isComplete }), {
+    return new Response(JSON.stringify({
+      ok: true,
+      sent: sentCount,
+      failed: failedCount,
+      complete: isComplete,
+      paused: rateLimitPaused,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
