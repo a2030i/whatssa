@@ -217,13 +217,21 @@ const IntegrationsPage = () => {
       toast.error(`وصلت للحد الأقصى (${maxPhones} رقم). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
       return;
     }
-    // Show checklist first if there are already connected numbers
-    if (configs.length > 0) {
-      setFlowStep("checklist");
-      return;
-    }
-    proceedToMetaLogin();
+    // Always show type chooser first
+    setFlowStep("choose_type");
+    setOnboardingMode("new");
+    setPreviousProvider("");
+    setMigrationPrereqs(null);
+    setWabaInfo(null);
   }, [configs, maxPhones, isSuperAdmin]);
+
+  const proceedFromTypeChoice = useCallback(() => {
+    if (onboardingMode === "new") {
+      setFlowStep("checklist");
+    } else {
+      setFlowStep("migration_info");
+    }
+  }, [onboardingMode]);
 
   const proceedToMetaLogin = useCallback(() => {
     const FB = (window as any).FB;
