@@ -315,6 +315,15 @@ const OrdersPage = () => {
               </div>
               <p className="text-[10px] text-muted-foreground">الحالات تتحدث تلقائياً من المنصة</p>
 
+              {/* Payment Method */}
+              {selectedOrder.payment_method && (
+                <div className="flex items-center gap-2 text-xs bg-secondary/30 rounded-lg px-3 py-2">
+                  <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">طريقة الدفع:</span>
+                  <span className="font-medium">{selectedOrder.payment_method}</span>
+                </div>
+              )}
+
               {/* Customer Info */}
               <div className="bg-secondary/50 rounded-lg p-3 space-y-1.5">
                 <p className="text-xs font-semibold">بيانات العميل</p>
