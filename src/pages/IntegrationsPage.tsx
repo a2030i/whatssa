@@ -112,23 +112,25 @@ const IntegrationsPage = () => {
 
   const loadConfigs = async () => {
     if (!orgId) return;
-    const [configsRes, unofficialRes, orgRes] = await Promise.all([
-      supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).neq("channel_type", "evolution").order("created_at", { ascending: true }),
-      supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).eq("channel_type", "evolution").order("created_at", { ascending: true }),
+    const [allConfigsRes, orgRes] = await Promise.all([
+      supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).order("created_at", { ascending: true }),
       supabase.from("organizations").select("plans(max_phone_numbers)").eq("id", orgId).maybeSingle(),
     ]);
-    const data = configsRes.data || [];
-    setConfigs(data);
-    setUnofficialConfigs(unofficialRes.data || []);
+
+    const allConfigs = (allConfigsRes.data || []) as WhatsAppConfig[];
+    const officialConfigs = allConfigs.filter((config) => config.channel_type !== "evolution");
+    const unofficial = allConfigs.filter((config) => config.channel_type === "evolution");
+
+    setConfigs(officialConfigs);
+    setUnofficialConfigs(unofficial);
+
     const planData = orgRes?.data as any;
     if (planData?.plans?.max_phone_numbers) setMaxPhones(planData.plans.max_phone_numbers);
-    // Fetch Meta status for connected configs — sequentially with delay to avoid rate limits
-    if (data) {
-      const connected = data.filter(c => c.is_connected && c.phone_number_id);
-      for (let i = 0; i < connected.length; i++) {
-        if (i > 0) await new Promise(r => setTimeout(r, 2000));
-        fetchMetaStatus(connected[i]);
-      }
+
+    const connected = officialConfigs.filter((config) => config.is_connected && config.phone_number_id);
+    for (let i = 0; i < connected.length; i++) {
+      if (i > 0) await new Promise(r => setTimeout(r, 2000));
+      fetchMetaStatus(connected[i]);
     }
   };
 

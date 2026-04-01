@@ -254,6 +254,11 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
       } else if (data.evolution_instance_name) {
         setInstanceStatus("disconnected");
       }
+      onConfigChange?.();
+    } else {
+      setExistingConfig(null);
+      setInstanceName("");
+      setInstanceStatus("idle");
     }
     setIsLoadingConfig(false);
   };
