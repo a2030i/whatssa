@@ -484,6 +484,26 @@ const IntegrationsPage = () => {
     setConnectedPhone("");
     setTestPhone("");
     setShowManual(false);
+    setOnboardingMode("new");
+    setPreviousProvider("");
+    setMigrationPrereqs(null);
+    setWabaInfo(null);
+  };
+
+  const onboardingTypeLabel = (type?: string) => {
+    if (type === "migrated") return "منقول";
+    if (type === "existing") return "موجود";
+    return "جديد";
+  };
+
+  const migrationIssueLabel = (issue: string) => {
+    const map: Record<string, { title: string; desc: string; link?: string }> = {
+      business_not_verified: { title: "النشاط التجاري غير موثّق", desc: "وثّق نشاطك من إعدادات الأمان في Meta Business Suite", link: "https://business.facebook.com/settings/security" },
+      account_not_approved: { title: "حساب WABA غير معتمد", desc: "يجب اعتماد حسابك من ميتا قبل نقل الرقم", link: "https://business.facebook.com/settings/whatsapp-business-accounts" },
+      payment_method_missing: { title: "طريقة الدفع مفقودة", desc: "أضف بطاقة ائتمان في إعدادات الدفع", link: "https://business.facebook.com/billing_hub/payment_methods" },
+      phone_not_registered: { title: "الرقم غير مسجّل", desc: "سيتم تسجيل الرقم تلقائياً بعد النقل" },
+    };
+    return map[issue] || { title: issue, desc: "" };
   };
 
   const renderConfigCard = (config: WhatsAppConfig) => {
