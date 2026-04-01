@@ -832,7 +832,7 @@ serve(async (req) => {
             "[مرفق]";
         }
 
-        const metadata: Record<string, unknown> = {};
+        const metadata: Record<string, unknown> = { ...extraMetadata };
         if (senderName) metadata.sender_name = senderName;
         if (conversationType === "group") metadata.participant = participant;
         if (quotedStanzaId && quotedMessage) {
