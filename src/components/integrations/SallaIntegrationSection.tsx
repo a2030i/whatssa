@@ -125,6 +125,28 @@ const PLATFORMS = [
     ],
   },
   {
+    id: "lamha",
+    name: "لمحة (Lamha)",
+    icon: "🚚",
+    color: "bg-orange-500/10 text-orange-600",
+    webhookBase: LAMHA_WEBHOOK_BASE,
+    description: "منصة إدارة الشحن — تتبع حالة الشحنات وإشعارات تلقائية للعملاء",
+    instructions: [
+      "أضف ربط لمحة هنا واحفظ",
+      "انسخ رابط الـ Webhook",
+      "في لوحة تحكم لمحة، عند إنشاء طلب عبر API، أضف الرابط في حقل callback_url",
+      "سيتم تحديث حالة الشحن تلقائياً في النظام + إرسال إشعار واتساب للعميل",
+    ],
+    events: [
+      { key: "shipment.picked_up", label: "تم الالتقاط" },
+      { key: "shipment.shipping", label: "جاري الشحن" },
+      { key: "shipment.delivered", label: "تم التوصيل" },
+      { key: "shipment.delivery_failed", label: "فشل التوصيل" },
+      { key: "shipment.returned", label: "مرتجع" },
+      { key: "shipment.cancelled", label: "شحنة ملغية" },
+    ],
+  },
+  {
     id: "generic",
     name: "ربط مخصص (Generic)",
     icon: "⚙️",
