@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, Package, Truck, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, TrendingUp, DollarSign, BarChart3, ArrowUpCircle, ArrowDownCircle, Loader2, Store, ArrowLeft } from "lucide-react";
+import { ShoppingCart, Package, Truck, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, TrendingUp, DollarSign, BarChart3, ArrowUpCircle, ArrowDownCircle, Loader2, Store, ArrowLeft, Send, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 
 const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
@@ -27,6 +28,21 @@ const paymentConfig: Record<string, { label: string; color: string }> = {
   partially_refunded: { label: "مسترجع جزئياً", color: "bg-warning/10 text-warning" },
 };
 
+// Detect actual payment status based on payment_method and payment_status
+const PAID_METHODS = ["apple pay", "applepay", "mada", "visa", "mastercard", "credit card", "credit_card", "card", "stc pay", "stcpay", "tamara", "tabby", "bank transfer", "bank_transfer", "تحويل بنكي", "بطاقة ائتمان", "مدى", "آبل باي"];
+
+function resolvePaymentStatus(order: any): string {
+  if (order.payment_status === "paid" || order.payment_status === "refunded" || order.payment_status === "partially_refunded") {
+    return order.payment_status;
+  }
+  // If payment_method is a known online/card method, it's paid
+  if (order.payment_method) {
+    const method = order.payment_method.toLowerCase().trim();
+    if (PAID_METHODS.some(m => method.includes(m))) return "paid";
+  }
+  return order.payment_status || "unpaid";
+}
+
 const OrdersPage = () => {
   const { orgId } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
@@ -40,8 +56,22 @@ const OrdersPage = () => {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [shipmentEvents, setShipmentEvents] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, revenue: 0, avgOrder: 0, pendingCount: 0, todayOrders: 0, todayRevenue: 0 });
+  const [sendingToLamha, setSendingToLamha] = useState<string | null>(null);
+  const [lamhaIntegration, setLamhaIntegration] = useState<any>(null);
 
-  useEffect(() => { if (orgId) loadOrders(); }, [orgId]);
+  useEffect(() => { if (orgId) { loadOrders(); loadLamhaIntegration(); } }, [orgId]);
+
+  const loadLamhaIntegration = async () => {
+    const { data } = await supabase
+      .from("store_integrations")
+      .select("*")
+      .eq("org_id", orgId!)
+      .eq("platform", "lamha")
+      .eq("is_active", true)
+      .maybeSingle();
+    setLamhaIntegration(data);
+  };
+
 
   const loadOrders = async () => {
     const { data } = await supabase.from("orders").select("*").eq("org_id", orgId!).order("created_at", { ascending: false });
@@ -50,15 +80,14 @@ const OrdersPage = () => {
     
     const today = new Date().toISOString().slice(0, 10);
     const todayOrders = list.filter(o => o.created_at?.slice(0, 10) === today);
-    // Only count revenue for paid or COD orders (exclude unpaid, cancelled, refunded)
     const paidOrders = list.filter(o => 
       o.status !== "cancelled" && o.status !== "refunded" && 
-      (o.payment_status === "paid" || o.payment_method === "cod" || o.payment_method === "الدفع عند الاستلام")
+      (resolvePaymentStatus(o) === "paid" || o.payment_method === "cod" || o.payment_method === "الدفع عند الاستلام")
     );
     const revenue = paidOrders.reduce((s, o) => s + Number(o.total || 0), 0);
     const todayPaid = todayOrders.filter(o => 
       o.status !== "cancelled" && 
-      (o.payment_status === "paid" || o.payment_method === "cod" || o.payment_method === "الدفع عند الاستلام")
+      (resolvePaymentStatus(o) === "paid" || o.payment_method === "cod" || o.payment_method === "الدفع عند الاستلام")
     );
     const todayRevenue = todayPaid.reduce((s, o) => s + Number(o.total || 0), 0);
     
@@ -107,6 +136,45 @@ const OrdersPage = () => {
     cancelled: "text-destructive", creation_failed: "text-destructive",
   };
 
+  const sendToLamha = async (orderId: string) => {
+    if (!orgId || !lamhaIntegration) return;
+    setSendingToLamha(orderId);
+    try {
+      const { data, error } = await supabase.functions.invoke("lamha-create-shipment", {
+        body: { order_id: orderId, org_id: orgId, create_shipment: true },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`تم إرسال الطلب إلى لمحة بنجاح${data.tracking_number ? ` - رقم التتبع: ${data.tracking_number}` : ""}`);
+      loadOrders();
+      if (selectedOrder?.id === orderId) {
+        loadShipmentEvents(orderId);
+      }
+    } catch (err: any) {
+      toast.error("فشل إرسال الطلب إلى لمحة: " + (err.message || "خطأ غير معروف"));
+    } finally {
+      setSendingToLamha(null);
+    }
+  };
+
+  const printLamhaLabel = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("lamha-label", {
+        body: { order_id: orderId, org_id: orgId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.pdf_base64) {
+        const byteChars = atob(data.pdf_base64);
+        const byteNumbers = new Array(byteChars.length).fill(0).map((_, i) => byteChars.charCodeAt(i));
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+      }
+    } catch (err: any) {
+      toast.error("فشل تحميل البوليصة: " + (err.message || "خطأ غير معروف"));
+    }
+  };
 
 
 
@@ -129,7 +197,7 @@ const OrdersPage = () => {
   const filteredOrders = orders.filter(o => {
     if (searchQuery && !o.customer_name?.includes(searchQuery) && !o.customer_phone?.includes(searchQuery) && !o.order_number?.includes(searchQuery)) return false;
     if (statusFilter !== "all" && o.status !== statusFilter) return false;
-    if (paymentFilter !== "all" && o.payment_status !== paymentFilter) return false;
+    if (paymentFilter !== "all" && resolvePaymentStatus(o) !== paymentFilter) return false;
     if (sourceFilter !== "all" && o.source !== sourceFilter) return false;
     if (dateFilter !== "all") {
       const d = new Date(o.created_at);
@@ -256,7 +324,8 @@ const OrdersPage = () => {
             <tbody>
               {filteredOrders.map((order) => {
                 const sc = statusConfig[order.status] || statusConfig.pending;
-                const pc = paymentConfig[order.payment_status] || paymentConfig.unpaid;
+                const resolvedPS = resolvePaymentStatus(order);
+                const pc = paymentConfig[resolvedPS] || paymentConfig.unpaid;
                 return (
                   <tr key={order.id} className="border-b border-border hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => openOrder(order)}>
                     <td className="p-3 font-mono text-xs">{order.order_number || order.id.slice(0, 8)}</td>
@@ -309,11 +378,15 @@ const OrdersPage = () => {
                     {(() => { const Ic = (statusConfig[selectedOrder.status] || statusConfig.pending).icon; return <Ic className="w-3.5 h-3.5" />; })()}
                     {(statusConfig[selectedOrder.status] || statusConfig.pending).label}
                   </Badge>
-                  {selectedOrder.payment_status && (
-                    <Badge className={cn("text-[10px] border-0", (paymentConfig[selectedOrder.payment_status] || paymentConfig.unpaid).color)}>
-                      {(paymentConfig[selectedOrder.payment_status] || paymentConfig.unpaid).label}
-                    </Badge>
-                  )}
+                  {(() => {
+                    const rps = resolvePaymentStatus(selectedOrder);
+                    const pcc = paymentConfig[rps] || paymentConfig.unpaid;
+                    return (
+                      <Badge className={cn("text-[10px] border-0", pcc.color)}>
+                        {pcc.label}
+                      </Badge>
+                    );
+                  })()}
                 </div>
                 {selectedOrder.source && (
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-secondary/50 rounded-lg px-2 py-1">
@@ -373,6 +446,38 @@ const OrdersPage = () => {
                 {Number(selectedOrder.tax_amount) > 0 && <div className="flex justify-between text-xs"><span>الضريبة</span><span>{Number(selectedOrder.tax_amount).toFixed(2)} ر.س</span></div>}
                 <div className="flex justify-between text-sm font-bold border-t border-border pt-1.5"><span>الإجمالي</span><span>{Number(selectedOrder.total).toFixed(2)} ر.س</span></div>
               </div>
+
+              {/* Lamha Actions */}
+              {lamhaIntegration && (
+                <div className="flex gap-2">
+                  {selectedOrder.shipment_carrier !== "lamha" && (
+                    <Button
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs"
+                      disabled={sendingToLamha === selectedOrder.id}
+                      onClick={() => sendToLamha(selectedOrder.id)}
+                    >
+                      {sendingToLamha === selectedOrder.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5" />
+                      )}
+                      إرسال إلى لمحة
+                    </Button>
+                  )}
+                  {selectedOrder.shipment_carrier === "lamha" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs"
+                      onClick={() => printLamhaLabel(selectedOrder.id)}
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      طباعة البوليصة
+                    </Button>
+                  )}
+                </div>
+              )}
 
               {/* Shipment Timeline */}
               {shipmentEvents.length > 0 && (
