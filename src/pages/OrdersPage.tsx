@@ -197,7 +197,7 @@ const OrdersPage = () => {
                 );
               })}
               {filteredOrders.length === 0 && (
-                <tr><td colSpan={8} className="p-12 text-center text-muted-foreground text-sm">
+                <tr><td colSpan={9} className="p-12 text-center text-muted-foreground text-sm">
                   <ShoppingCart className="w-10 h-10 mx-auto mb-3 opacity-20" />
                   لا توجد طلبات
                 </td></tr>
