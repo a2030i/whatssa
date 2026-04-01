@@ -420,6 +420,15 @@ serve(async (req) => {
 
     const orgId = config.org_id;
 
+    // Log every incoming event for debugging status updates
+    if (event === "MESSAGES_UPDATE" || event === "SEND_MESSAGE") {
+      await logToSystem(supabase, "info", `حدث Webhook وارد: ${event}`, {
+        event, instance: instanceName, data_keys: Object.keys(body.data || body || {}),
+        raw_snippet: JSON.stringify(body.data || body).slice(0, 500),
+      }, orgId);
+    }
+
+
     // Handle CONNECTION_UPDATE
     if (event === "CONNECTION_UPDATE" || event === "connection.update") {
       const state = body.data?.state || body.state || "";
