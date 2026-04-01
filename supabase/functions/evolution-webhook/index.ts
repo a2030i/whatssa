@@ -360,7 +360,34 @@ serve(async (req) => {
       await logToSystem(supabase, "info", `تم تحديث رمز QR للجلسة: ${instanceName}`, {}, orgId);
     }
 
-    // Handle MESSAGES_UPSERT (incoming messages)
+    // ── Handle PRESENCE_UPDATE (customer typing) ──
+    if (event === "PRESENCE_UPDATE" || event === "presence.update") {
+      const presenceData = body.data || body;
+      const participant = presenceData?.participant || presenceData?.id || "";
+      const presenceStatus = presenceData?.status || presenceData?.type || "";
+      const phone = participant.replace("@s.whatsapp.net", "").replace("@c.us", "");
+
+      if (phone && (presenceStatus === "composing" || presenceStatus === "recording")) {
+        // Find active conversation for this phone
+        const { data: conv } = await supabase
+          .from("conversations")
+          .select("id")
+          .eq("customer_phone", phone)
+          .eq("org_id", orgId)
+          .neq("status", "closed")
+          .limit(1)
+          .maybeSingle();
+
+        if (conv) {
+          // Broadcast typing event to frontend via Supabase Realtime
+          const channelName = `customer-typing:${conv.id}`;
+          const channel = supabase.channel(channelName);
+          await channel.send({ type: "broadcast", event: "typing", payload: { phone } });
+          supabase.removeChannel(channel);
+        }
+      }
+    }
+
     if (event === "MESSAGES_UPSERT" || event === "messages.upsert") {
       const messages = body.data || [];
       const messageList = Array.isArray(messages) ? messages : [messages];
