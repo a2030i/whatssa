@@ -706,7 +706,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       const storagePath = `storage:chat-media/${path}`;
       const caption = inputText.trim();
 
-      // Check if using Evolution based on conversation channel type, with fallback for legacy conversations
+      // Check if using Evolution based on conversation channel type
       const isEvolution = conversation.channelType === "evolution" || !conversation.channelType;
 
       if (isEvolution) {
