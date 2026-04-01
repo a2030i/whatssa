@@ -750,13 +750,12 @@ async function setWebhook(
         events: [
           "MESSAGES_UPSERT",
           "MESSAGES_UPDATE",
-          "MESSAGES_REACTION",
+          "MESSAGES_EDITED",
           "MESSAGES_DELETE",
-          "MESSAGES_EDIT",
           "CONNECTION_UPDATE",
           "QRCODE_UPDATED",
           "PRESENCE_UPDATE",
-          "STATUS_INSTANCE",
+          "SEND_MESSAGE",
         ],
       }),
     });
