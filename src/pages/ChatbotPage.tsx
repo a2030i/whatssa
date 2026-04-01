@@ -512,16 +512,9 @@ const ChatbotPage = () => {
 
                       {/* Buttons list */}
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs text-muted-foreground">
-                            الأزرار ({node.buttons.length}/{MAX_BUTTONS})
-                          </Label>
-                          {node.buttons.length < MAX_BUTTONS && (
-                            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => addButton(node.id)}>
-                              <Plus className="w-3 h-3" /> زر +
-                            </Button>
-                          )}
-                        </div>
+                        <Label className="text-xs text-muted-foreground">
+                          الأزرار ({node.buttons.length}/{MAX_BUTTONS})
+                        </Label>
 
                         <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
                           {node.buttons.map((btn, bi) => (
