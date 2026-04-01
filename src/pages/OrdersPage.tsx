@@ -504,27 +504,91 @@ const OrdersPage = () => {
 
               {/* Lamha Actions */}
               {lamhaIntegration && (
-                <div className="flex gap-2">
+                <div className="space-y-2 bg-secondary/30 rounded-lg p-3">
+                  <p className="text-xs font-semibold flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-primary" />
+                    شحن عبر لمحة
+                  </p>
+
+                  {/* Carrier selector */}
                   {selectedOrder.shipment_carrier !== "lamha" && (
-                    <Button
-                      size="sm"
-                      className="flex-1 gap-1.5 text-xs"
-                      disabled={sendingToLamha === selectedOrder.id}
-                      onClick={() => sendToLamha(selectedOrder.id)}
-                    >
-                      {sendingToLamha === selectedOrder.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Send className="w-3.5 h-3.5" />
-                      )}
-                      إرسال إلى لمحة
-                    </Button>
+                    <>
+                      <Select value={selectedCarrierId} onValueChange={setSelectedCarrierId}>
+                        <SelectTrigger className="text-xs bg-card border-border/50">
+                          <SelectValue placeholder={loadingCarriers ? "جاري التحميل..." : "اختر شركة الشحن"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {lamhaCarriers.map((c) => (
+                            <SelectItem key={c.carrier_id} value={String(c.carrier_id)}>
+                              {c.name} {c.has_cod ? "• COD" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 gap-1.5 text-xs"
+                          disabled={sendingToLamha === selectedOrder.id || !selectedCarrierId}
+                          onClick={() => sendToLamha(selectedOrder.id, "create-order-shipment")}
+                        >
+                          {sendingToLamha === selectedOrder.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Send className="w-3.5 h-3.5" />
+                          )}
+                          إرسال مع شحنة
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-xs"
+                          disabled={sendingToLamha === selectedOrder.id}
+                          onClick={() => sendToLamha(selectedOrder.id, "create-order")}
+                        >
+                          طلب فقط
+                        </Button>
+                      </div>
+                    </>
                   )}
-                  {selectedOrder.shipment_carrier === "lamha" && (
+
+                  {/* Order exists in Lamha but no shipment yet */}
+                  {selectedOrder.shipment_carrier === "lamha" && !selectedOrder.shipment_status && (
+                    <>
+                      <Select value={selectedCarrierId} onValueChange={setSelectedCarrierId}>
+                        <SelectTrigger className="text-xs bg-card border-border/50">
+                          <SelectValue placeholder="اختر شركة الشحن لإنشاء الشحنة" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {lamhaCarriers.map((c) => (
+                            <SelectItem key={c.carrier_id} value={String(c.carrier_id)}>
+                              {c.name} {c.has_cod ? "• COD" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
+                        className="w-full gap-1.5 text-xs"
+                        disabled={sendingToLamha === selectedOrder.id || !selectedCarrierId}
+                        onClick={() => createShipmentForExisting(selectedOrder.id)}
+                      >
+                        {sendingToLamha === selectedOrder.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Send className="w-3.5 h-3.5" />
+                        )}
+                        إنشاء شحنة
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Label button when shipment exists */}
+                  {selectedOrder.shipment_carrier === "lamha" && selectedOrder.shipment_status && (
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 gap-1.5 text-xs"
+                      className="w-full gap-1.5 text-xs"
                       onClick={() => printLamhaLabel(selectedOrder.id)}
                     >
                       <Printer className="w-3.5 h-3.5" />
