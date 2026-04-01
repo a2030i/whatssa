@@ -120,8 +120,19 @@ const OrdersPage = () => {
   const filteredOrders = orders.filter(o => {
     if (searchQuery && !o.customer_name?.includes(searchQuery) && !o.customer_phone?.includes(searchQuery) && !o.order_number?.includes(searchQuery)) return false;
     if (statusFilter !== "all" && o.status !== statusFilter) return false;
+    if (paymentFilter !== "all" && o.payment_status !== paymentFilter) return false;
+    if (sourceFilter !== "all" && o.source !== sourceFilter) return false;
+    if (dateFilter !== "all") {
+      const d = new Date(o.created_at);
+      const now = new Date();
+      if (dateFilter === "today" && d.toDateString() !== now.toDateString()) return false;
+      if (dateFilter === "week") { const week = new Date(now.getTime() - 7 * 86400000); if (d < week) return false; }
+      if (dateFilter === "month") { const month = new Date(now.getTime() - 30 * 86400000); if (d < month) return false; }
+    }
     return true;
   });
+
+  const sources = [...new Set(orders.map(o => o.source).filter(Boolean))];
 
   const kpiCards = [
     { label: "إجمالي الطلبات", value: stats.total, icon: ShoppingCart, color: "text-primary" },
