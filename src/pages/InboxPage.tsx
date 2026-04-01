@@ -540,10 +540,12 @@ const InboxPage = () => {
           onBack={() => setSelectedId(null)}
           onSendMessage={handleSendMessage}
           onSendTemplate={handleSendTemplate}
-          onStatusChange={handleStatusChange}
-          onTransfer={handleTransfer}
-          onTagsChange={handleTagsChange}
-        />
+           onStatusChange={handleStatusChange}
+           onTransfer={handleTransfer}
+           onTagsChange={handleTagsChange}
+           onEditMessage={handleEditMessage}
+           onDeleteMessage={handleDeleteMessage}
+         />
       ) : (
         !isMobile && (
           <div className="flex flex-1 items-center justify-center bg-secondary/20">
