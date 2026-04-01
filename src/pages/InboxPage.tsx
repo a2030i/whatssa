@@ -506,10 +506,12 @@ const InboxPage = () => {
           onBack={() => setSelectedId(null)}
           onSendMessage={handleSendMessage}
           onSendTemplate={handleSendTemplate}
-          onStatusChange={handleStatusChange}
-          onTransfer={handleTransfer}
-          onTagsChange={handleTagsChange}
-        />
+           onStatusChange={handleStatusChange}
+           onTransfer={handleTransfer}
+           onTagsChange={handleTagsChange}
+           onEditMessage={handleEditMessage}
+           onDeleteMessage={handleDeleteMessage}
+         />
       </div>
     );
   }
