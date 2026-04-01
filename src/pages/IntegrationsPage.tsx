@@ -85,6 +85,10 @@ const IntegrationsPage = () => {
   const [showWhatsAppChoice, setShowWhatsAppChoice] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [twoStepPin, setTwoStepPin] = useState("");
+  const [onboardingMode, setOnboardingMode] = useState<OnboardingMode>("new");
+  const [migrationPrereqs, setMigrationPrereqs] = useState<{ ready: boolean; issues: string[] } | null>(null);
+  const [previousProvider, setPreviousProvider] = useState("");
+  const [wabaInfo, setWabaInfo] = useState<any>(null);
   const [metaStatus, setMetaStatus] = useState<Record<string, {
     phoneStatus?: string;
     nameStatus?: string;
