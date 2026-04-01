@@ -351,6 +351,203 @@ serve(async (req) => {
       return json({ success: true });
     }
 
+    // ── BLOCK CONTACT ──
+    if (action === "block_contact") {
+      const { phone: blockPhone } = await req.json().catch(() => ({ phone: "" }));
+      if (!blockPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
+      const blockRes = await fetch(`${EVOLUTION_URL}/chat/updateBlockStatus/${instanceName}`, {
+        method: "PUT",
+        headers: evoHeaders,
+        body: JSON.stringify({ number: blockPhone.replace(/\D/g, ""), status: "block" }),
+      });
+      const blockData = await blockRes.json();
+      await logToSystem(adminClient, "info", `تم حظر جهة اتصال: ${blockPhone}`, { instance: instanceName }, orgId, userId);
+      return json({ success: blockRes.ok, data: blockData });
+    }
+
+    // ── UNBLOCK CONTACT ──
+    if (action === "unblock_contact") {
+      const { phone: unblockPhone } = await req.json().catch(() => ({ phone: "" }));
+      if (!unblockPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
+      const unblockRes = await fetch(`${EVOLUTION_URL}/chat/updateBlockStatus/${instanceName}`, {
+        method: "PUT",
+        headers: evoHeaders,
+        body: JSON.stringify({ number: unblockPhone.replace(/\D/g, ""), status: "unblock" }),
+      });
+      const unblockData = await unblockRes.json();
+      await logToSystem(adminClient, "info", `تم إلغاء حظر جهة اتصال: ${unblockPhone}`, { instance: instanceName }, orgId, userId);
+      return json({ success: unblockRes.ok, data: unblockData });
+    }
+
+    // ── ARCHIVE CHAT ──
+    if (action === "archive_chat") {
+      const { phone: archivePhone, archive = true } = await req.json().catch(() => ({ phone: "", archive: true }));
+      if (!archivePhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
+      const archiveRes = await fetch(`${EVOLUTION_URL}/chat/archiveChat/${instanceName}`, {
+        method: "PUT",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          lastMessage: { key: { remoteJid: `${archivePhone.replace(/\D/g, "")}@s.whatsapp.net` } },
+          archive,
+        }),
+      });
+      return json({ success: archiveRes.ok });
+    }
+
+    // ── SEND POLL ──
+    if (action === "send_poll") {
+      const { phone: pollPhone, question, options } = await req.json().catch(() => ({ phone: "", question: "", options: [] }));
+      if (!pollPhone || !question || !options?.length) return json({ error: "البيانات ناقصة" }, 400);
+      const pollRes = await fetch(`${EVOLUTION_URL}/message/sendPoll/${instanceName}`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          number: pollPhone.replace(/\D/g, ""),
+          name: question,
+          values: options,
+          selectableCount: options.length,
+        }),
+      });
+      const pollData = await pollRes.json();
+      if (!pollRes.ok) {
+        await logToSystem(adminClient, "error", "فشل إرسال استطلاع", { error: JSON.stringify(pollData).slice(0, 300) }, orgId, userId);
+        return json({ error: "فشل إرسال الاستطلاع" }, 400);
+      }
+      await logToSystem(adminClient, "info", `تم إرسال استطلاع إلى ${pollPhone}`, { question }, orgId, userId);
+      return json({ success: true, data: pollData });
+    }
+
+    // ── SEND STICKER ──
+    if (action === "send_sticker") {
+      const { phone: stickerPhone, sticker_url } = await req.json().catch(() => ({ phone: "", sticker_url: "" }));
+      if (!stickerPhone || !sticker_url) return json({ error: "البيانات ناقصة" }, 400);
+      const stickerRes = await fetch(`${EVOLUTION_URL}/message/sendSticker/${instanceName}`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({ number: stickerPhone.replace(/\D/g, ""), sticker: sticker_url }),
+      });
+      const stickerData = await stickerRes.json();
+      return json({ success: stickerRes.ok, data: stickerData });
+    }
+
+    // ── GROUP: GET INFO ──
+    if (action === "group_info") {
+      const { group_jid } = await req.json().catch(() => ({ group_jid: "" }));
+      if (!group_jid) return json({ error: "معرف المجموعة مطلوب" }, 400);
+      const infoRes = await fetch(`${EVOLUTION_URL}/group/findGroupInfos/${instanceName}?groupJid=${group_jid}`, {
+        headers: evoHeaders,
+      });
+      const infoData = await infoRes.json();
+      return json({ success: infoRes.ok, data: infoData });
+    }
+
+    // ── GROUP: ADD PARTICIPANTS ──
+    if (action === "group_add") {
+      const { group_jid, participants } = await req.json().catch(() => ({ group_jid: "", participants: [] }));
+      if (!group_jid || !participants?.length) return json({ error: "البيانات ناقصة" }, 400);
+      const addRes = await fetch(`${EVOLUTION_URL}/group/updateParticipant/${instanceName}?groupJid=${group_jid}`, {
+        method: "PUT",
+        headers: evoHeaders,
+        body: JSON.stringify({ action: "add", participants: participants.map((p: string) => `${p.replace(/\D/g, "")}@s.whatsapp.net`) }),
+      });
+      const addData = await addRes.json();
+      await logToSystem(adminClient, "info", `تمت إضافة أعضاء للمجموعة`, { group_jid, count: participants.length }, orgId, userId);
+      return json({ success: addRes.ok, data: addData });
+    }
+
+    // ── GROUP: REMOVE PARTICIPANTS ──
+    if (action === "group_remove") {
+      const { group_jid, participants } = await req.json().catch(() => ({ group_jid: "", participants: [] }));
+      if (!group_jid || !participants?.length) return json({ error: "البيانات ناقصة" }, 400);
+      const removeRes = await fetch(`${EVOLUTION_URL}/group/updateParticipant/${instanceName}?groupJid=${group_jid}`, {
+        method: "PUT",
+        headers: evoHeaders,
+        body: JSON.stringify({ action: "remove", participants: participants.map((p: string) => `${p.replace(/\D/g, "")}@s.whatsapp.net`) }),
+      });
+      const removeData = await removeRes.json();
+      await logToSystem(adminClient, "info", `تمت إزالة أعضاء من المجموعة`, { group_jid, count: participants.length }, orgId, userId);
+      return json({ success: removeRes.ok, data: removeData });
+    }
+
+    // ── GROUP: UPDATE SETTINGS ──
+    if (action === "group_settings") {
+      const { group_jid, subject, description } = await req.json().catch(() => ({ group_jid: "", subject: "", description: "" }));
+      if (!group_jid) return json({ error: "معرف المجموعة مطلوب" }, 400);
+      if (subject) {
+        await fetch(`${EVOLUTION_URL}/group/updateGroupSubject/${instanceName}?groupJid=${group_jid}`, {
+          method: "PUT", headers: evoHeaders,
+          body: JSON.stringify({ subject }),
+        });
+      }
+      if (description) {
+        await fetch(`${EVOLUTION_URL}/group/updateGroupDescription/${instanceName}?groupJid=${group_jid}`, {
+          method: "PUT", headers: evoHeaders,
+          body: JSON.stringify({ description }),
+        });
+      }
+      await logToSystem(adminClient, "info", `تم تحديث إعدادات المجموعة`, { group_jid }, orgId, userId);
+      return json({ success: true });
+    }
+
+    // ── SET DISAPPEARING MESSAGES ──
+    if (action === "set_disappearing") {
+      const { phone: disappearPhone, expiration = 0 } = await req.json().catch(() => ({ phone: "", expiration: 0 }));
+      if (!disappearPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
+      const disappearRes = await fetch(`${EVOLUTION_URL}/chat/setDisappearingMessages/${instanceName}`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          number: `${disappearPhone.replace(/\D/g, "")}@s.whatsapp.net`,
+          expiration, // 0=off, 86400=24h, 604800=7d, 7776000=90d
+        }),
+      });
+      return json({ success: disappearRes.ok });
+    }
+
+    // ── FETCH PROFILE PICTURE ──
+    if (action === "profile_picture") {
+      const { phone: picPhone } = await req.json().catch(() => ({ phone: "" }));
+      if (!picPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
+      const picRes = await fetch(`${EVOLUTION_URL}/chat/fetchProfilePictureUrl/${instanceName}`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({ number: `${picPhone.replace(/\D/g, "")}@s.whatsapp.net` }),
+      });
+      const picData = await picRes.json();
+      return json({ success: picRes.ok, url: picData?.profilePictureUrl || picData?.url || null });
+    }
+
+    // ── CHECK IF NUMBER EXISTS ON WHATSAPP ──
+    if (action === "check_number") {
+      const { phone: checkPhone } = await req.json().catch(() => ({ phone: "" }));
+      if (!checkPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
+      const checkRes = await fetch(`${EVOLUTION_URL}/chat/whatsappNumbers/${instanceName}`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({ numbers: [checkPhone.replace(/\D/g, "")] }),
+      });
+      const checkData = await checkRes.json();
+      return json({ success: checkRes.ok, data: checkData });
+    }
+
+    // ── SEND REACTION ──
+    if (action === "send_reaction") {
+      const { phone: reactPhone, message_id, emoji } = await req.json().catch(() => ({ phone: "", message_id: "", emoji: "" }));
+      if (!reactPhone || !message_id) return json({ error: "البيانات ناقصة" }, 400);
+      const reactRes = await fetch(`${EVOLUTION_URL}/message/sendReaction/${instanceName}`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          key: {
+            remoteJid: `${reactPhone.replace(/\D/g, "")}@s.whatsapp.net`,
+            id: message_id,
+          },
+          reaction: emoji || "", // empty = remove reaction
+        }),
+      });
+      return json({ success: reactRes.ok });
+    }
+
     return json({ error: "إجراء غير معروف" }, 400);
   } catch (err: any) {
     await logToSystem(adminClient, "critical", "خطأ غير متوقع في إدارة Evolution", {
