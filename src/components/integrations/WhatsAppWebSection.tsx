@@ -203,7 +203,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
 
   useEffect(() => {
     if (!autoOpen) return;
-    if (existingConfig?.is_connected && existingConfig?.evolution_instance_status === "connected") {
+    if (existingConfig?.is_connected && (existingConfig?.evolution_instance_status === "connected" || existingConfig?.evolution_instance_status === "connecting")) {
       setInstanceStatus("connected");
       setQrCode(null);
       setPairingCode(null);
