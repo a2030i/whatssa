@@ -378,11 +378,15 @@ const OrdersPage = () => {
                     {(() => { const Ic = (statusConfig[selectedOrder.status] || statusConfig.pending).icon; return <Ic className="w-3.5 h-3.5" />; })()}
                     {(statusConfig[selectedOrder.status] || statusConfig.pending).label}
                   </Badge>
-                  {selectedOrder.payment_status && (
-                    <Badge className={cn("text-[10px] border-0", (paymentConfig[selectedOrder.payment_status] || paymentConfig.unpaid).color)}>
-                      {(paymentConfig[selectedOrder.payment_status] || paymentConfig.unpaid).label}
-                    </Badge>
-                  )}
+                  {(() => {
+                    const rps = resolvePaymentStatus(selectedOrder);
+                    const pcc = paymentConfig[rps] || paymentConfig.unpaid;
+                    return (
+                      <Badge className={cn("text-[10px] border-0", pcc.color)}>
+                        {pcc.label}
+                      </Badge>
+                    );
+                  })()}
                 </div>
                 {selectedOrder.source && (
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-secondary/50 rounded-lg px-2 py-1">
