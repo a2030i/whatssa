@@ -405,17 +405,25 @@ const ChatbotPage = () => {
                     {node.buttons.map(btn => {
                       const targetIdx = nodes.findIndex(n => n.id === btn.next_node_id);
                       const linked = targetIdx >= 0;
+                      const nid = btn.next_node_id || "";
+                      const actionLabel = nid === "action:transfer_agent" ? "👤 تحويل لموظف"
+                        : nid === "action:close" ? "🔒 إغلاق"
+                        : nid.startsWith("team:") ? `👥 ${teams.find(t => t.id === nid.replace("team:", ""))?.name || "فريق"}`
+                        : nid.startsWith("agent:") ? `👤 ${members.find(m => m.id === nid.replace("agent:", ""))?.full_name || "موظف"}`
+                        : nid.startsWith("flow:") ? `↗ ${flows.find(f => f.id === nid.replace("flow:", ""))?.name || "تدفق"}`
+                        : null;
+                      const isAction = !!actionLabel;
                       return (
                         <span
                           key={btn.id}
                           className={cn(
                             "text-[10px] rounded-full px-2 py-0.5 border",
-                            linked 
+                            linked || isAction
                               ? "bg-primary/10 border-primary/30 text-primary" 
                               : "bg-muted border-border text-muted-foreground"
                           )}
                         >
-                          {btn.label || "—"} {linked ? `→ خطوة ${targetIdx + 1}${nodes[targetIdx]?.name?.trim() ? ` (${nodes[targetIdx].name})` : ""}` : btn.next_node_id?.startsWith("flow:") ? `↗ تدفق آخر` : "(⏹)"}
+                          {btn.label || "—"} {linked ? `→ خطوة ${targetIdx + 1}${nodes[targetIdx]?.name?.trim() ? ` (${nodes[targetIdx].name})` : ""}` : isAction ? actionLabel : "(⏹)"}
                         </span>
                       );
                     })}
