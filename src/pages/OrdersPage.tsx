@@ -197,7 +197,7 @@ const OrdersPage = () => {
   const filteredOrders = orders.filter(o => {
     if (searchQuery && !o.customer_name?.includes(searchQuery) && !o.customer_phone?.includes(searchQuery) && !o.order_number?.includes(searchQuery)) return false;
     if (statusFilter !== "all" && o.status !== statusFilter) return false;
-    if (paymentFilter !== "all" && o.payment_status !== paymentFilter) return false;
+    if (paymentFilter !== "all" && resolvePaymentStatus(o) !== paymentFilter) return false;
     if (sourceFilter !== "all" && o.source !== sourceFilter) return false;
     if (dateFilter !== "all") {
       const d = new Date(o.created_at);
