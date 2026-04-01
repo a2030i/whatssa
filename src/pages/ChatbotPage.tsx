@@ -113,6 +113,21 @@ const ChatbotPage = () => {
   const [activeTab, setActiveTab] = useState("basics");
 
   // Per-node quick add state
+
+  // Computed channel type for the selected channels
+  const selectedChannelType = useMemo((): "meta_api" | "evolution" | "mixed" | "none" => {
+    if (channelIds.length === 0) return "none";
+    const selected = channels.filter(c => channelIds.includes(c.id));
+    const hasMeta = selected.some(c => c.channel_type === "meta_api");
+    const hasEvolution = selected.some(c => c.channel_type !== "meta_api");
+    if (hasMeta && hasEvolution) return "mixed";
+    if (hasMeta) return "meta_api";
+    if (hasEvolution) return "evolution";
+    return "none";
+  }, [channelIds, channels]);
+
+  const MAX_BUTTONS = getMaxButtons(selectedChannelType);
+  const metaMode = (count: number) => getMetaButtonMode(count);
   const [quickTexts, setQuickTexts] = useState<Record<string, string>>({});
 
   // ─── Fetch ───
