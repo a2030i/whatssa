@@ -457,11 +457,12 @@ const InboxPage = () => {
           }
 
           if (satEnabled && satMessage) {
-            await supabase.functions.invoke("whatsapp-send", {
+            const satFunc = getSendFunction(conv.channelType);
+            await supabase.functions.invoke(satFunc, {
               body: {
-                phone: conv.customerPhone,
+                to: conv.customerPhone,
                 message: satMessage,
-                org_id: orgId,
+                conversation_id: convId,
               },
             });
             await supabase.from("conversations").update({ satisfaction_status: "pending" }).eq("id", convId);
