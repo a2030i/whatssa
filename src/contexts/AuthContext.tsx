@@ -179,6 +179,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profile,
         userRole,
         orgId: effectiveOrgId,
+        teamId: profile?.team_id || null,
+        isSupervisor: profile?.is_supervisor || false,
         isLoading,
         isSuperAdmin,
         isEcommerce,
