@@ -237,13 +237,18 @@ const InboxPage = () => {
         const updated = payload.new as any;
         setAllMessages((prev) => ({
           ...prev,
-          [selectedId]: (prev[selectedId] || []).map((m) =>
-            m.id === updated.id
-              ? { ...m, status: updated.status as any, reactions: updated.metadata?.reactions || m.reactions }
-              : m.waMessageId && m.waMessageId === updated.wa_message_id
-                ? { ...m, status: updated.status as any, reactions: updated.metadata?.reactions || m.reactions }
-                : m
-          ),
+          [selectedId]: (prev[selectedId] || []).map((m) => {
+            const isMatch = m.id === updated.id || (m.waMessageId && m.waMessageId === updated.wa_message_id);
+            if (!isMatch) return m;
+            return {
+              ...m,
+              text: updated.content || m.text,
+              status: updated.status as any,
+              reactions: updated.metadata?.reactions || m.reactions,
+              editedAt: updated.metadata?.edited_at || m.editedAt,
+              isDeleted: updated.metadata?.is_deleted || false,
+            };
+          }),
         }));
       })
       .subscribe();
