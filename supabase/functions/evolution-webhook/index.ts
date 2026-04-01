@@ -633,6 +633,27 @@ serve(async (req) => {
             }
           }
 
+          // ── Fetch profile picture URL ──
+          let profilePicUrl: string | null = null;
+          if (conversationType === "private" && EVOLUTION_API_URL && EVOLUTION_API_KEY) {
+            try {
+              const picRes = await fetch(
+                `${EVOLUTION_API_URL}/chat/fetchProfilePictureUrl/${instanceName}`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+                  body: JSON.stringify({ number: `${phone}@s.whatsapp.net` }),
+                }
+              );
+              if (picRes.ok) {
+                const picData = await picRes.json();
+                profilePicUrl = picData?.profilePictureUrl || picData?.url || picData?.picture || picData?.data?.profilePictureUrl || null;
+              }
+            } catch {
+              // Silent fail
+            }
+          }
+
           const convInsert: Record<string, any> = {
               customer_phone: phone,
               customer_name: convName,
@@ -642,6 +663,7 @@ serve(async (req) => {
               last_message: text || `[${messageType}]`,
               last_message_at: new Date().toISOString(),
               channel_id: config.id,
+              customer_profile_pic: profilePicUrl,
             };
             // Apply channel routing
             if (config.default_agent_id) {
