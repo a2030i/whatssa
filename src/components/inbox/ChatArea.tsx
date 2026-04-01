@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import TransferDialog from "./TransferDialog";
+import AudioPlayer from "./AudioPlayer";
 import ClosureReasonDialog from "./ClosureReasonDialog";
 import ExportConversation from "./ExportConversation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -91,7 +92,7 @@ const scrollToMessage = (messageId?: string) => {
 };
 
 /** Component to resolve storage: URLs to signed URLs for media display */
-const ResolvedMedia = ({ url, type }: { url: string; type: string }) => {
+const ResolvedMedia = ({ url, type, isAgent = false }: { url: string; type: string; isAgent?: boolean }) => {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -110,17 +111,16 @@ const ResolvedMedia = ({ url, type }: { url: string; type: string }) => {
   if (!resolvedUrl) return null;
 
   const isImage = type === "image" || isImageUrl(resolvedUrl) || isImageUrl(url);
+  const isSticker = type === "sticker";
 
+  if (isSticker) {
+    return <img src={resolvedUrl} alt="ملصق" className="max-w-[140px] max-h-[140px] object-contain mb-1" />;
+  }
   if (isImage) {
     return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(resolvedUrl, "_blank")} />;
   }
   if (type === "audio") {
-    return (
-      <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
-        <div className="mb-2 flex items-center gap-2 text-xs font-medium"><Play className="h-3.5 w-3.5" /><span>مقطع صوتي</span></div>
-        <audio controls preload="none" className="w-full"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الصوت.</audio>
-      </div>
-    );
+    return <AudioPlayer src={resolvedUrl} isAgent={isAgent} className="mb-1" />;
   }
   if (type === "video") {
     return (
@@ -160,7 +160,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
       onTouchStart={canReply ? swipe.onTouchStart : undefined}
       onTouchMove={canReply ? swipe.onTouchMove : undefined}
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
-      className="group relative max-w-[85%] md:max-w-[70%]"
+      className="group relative max-w-[88%] md:max-w-[70%]"
       data-message-id={msg.id}
       data-wa-message-id={msg.waMessageId || undefined}
     >
@@ -350,7 +350,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
               const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
               return (
                 <>
-                  {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} />}
+                  {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} isAgent={msg.sender === "agent"} />}
                   {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
                     <p className="whitespace-pre-wrap">
                       {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
@@ -840,9 +840,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden">
       {/* Header - modern glass */}
       <div className="shrink-0 border-b border-border/30 bg-card/80 backdrop-blur-xl">
-        <div className="h-16 md:h-[68px] flex items-center justify-between px-3 md:px-5">
+        <div className="h-14 md:h-[68px] flex items-center justify-between px-2.5 md:px-5">
           <div className="flex items-center gap-3">
-            <button className="w-9 h-9 rounded-xl hover:bg-secondary/80 transition-all flex items-center justify-center shrink-0" onClick={onBack}>
+            <button className="w-8 h-8 md:w-9 md:h-9 rounded-xl hover:bg-secondary/80 transition-all flex items-center justify-center shrink-0" onClick={onBack}>
               <ArrowRight className="w-5 h-5 text-foreground" />
             </button>
             <div className="relative">
@@ -1040,7 +1040,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 bg-gradient-to-b from-secondary/20 to-secondary/40">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-2 md:space-y-3 bg-gradient-to-b from-secondary/20 to-secondary/40">
         {messages.map((msg) => (
           <div key={msg.id} className={cn(
             "flex",
@@ -1178,7 +1178,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Input Area */}
       {!isRecording && conversation.status !== "closed" && (
-        <div className={cn("shrink-0 border-t bg-card/80 backdrop-blur-sm p-2.5 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border/30")}>
+        <div className={cn("shrink-0 border-t bg-card/80 backdrop-blur-sm p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border/30")}>
           {/* Reply Preview Bar */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
@@ -1195,7 +1195,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
           )}
           {/* Tool buttons row */}
-          <div className="flex items-center gap-0.5 mb-2 overflow-x-auto pb-1">
+          <div className="flex items-center gap-px md:gap-0.5 mb-1.5 md:mb-2 overflow-x-auto pb-0.5 scrollbar-hide">
             {(!windowExpired || isNoteMode) && (
               <>
                 <Popover>
@@ -1365,20 +1365,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
-                className={cn("flex-1 border-0 rounded-xl h-11", isNoteMode ? "bg-amber-500/5" : "bg-secondary/60 focus:bg-secondary")}
+                className={cn("flex-1 border-0 rounded-xl h-10 md:h-11 text-sm", isNoteMode ? "bg-amber-500/5" : "bg-secondary/60 focus:bg-secondary")}
               />
             )}
             {(isNoteMode || !windowExpired) && (
               imagePreview ? (
-                <button onClick={handleSendImage} disabled={isUploading} className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
+                <button onClick={handleSendImage} disabled={isUploading} className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
                   {isUploading ? <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />}
                 </button>
               ) : inputText.trim() ? (
-                <button onClick={handleSend} className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all shadow-md", isNoteMode ? "bg-amber-500 hover:bg-amber-600" : "bg-primary hover:bg-primary/90")}>
+                <button onClick={handleSend} className={cn("w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 transition-all shadow-md", isNoteMode ? "bg-amber-500 hover:bg-amber-600" : "bg-primary hover:bg-primary/90")}>
                   <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
               ) : !isNoteMode ? (
-                <button onClick={startRecording} className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
+                <button onClick={startRecording} className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
                   <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
               ) : (
