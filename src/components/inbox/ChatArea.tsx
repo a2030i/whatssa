@@ -870,6 +870,31 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <DropdownMenuItem onClick={() => setShowTransfer(true)}>
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
+                {conversation.channelType === "evolution" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        await supabase.functions.invoke("evolution-manage", {
+                          body: { action: "block_contact", phone: conversation.customerPhone },
+                        });
+                        toast.success("تم حظر جهة الاتصال");
+                      } catch { toast.error("فشل الحظر"); }
+                    }}>
+                      <XCircle className="w-4 h-4 ml-2 text-destructive" /> حظر الرقم
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        await supabase.functions.invoke("evolution-manage", {
+                          body: { action: "archive_chat", phone: conversation.customerPhone },
+                        });
+                        toast.success("تم أرشفة المحادثة");
+                      } catch { toast.error("فشل الأرشفة"); }
+                    }}>
+                      <FileText className="w-4 h-4 ml-2 text-muted-foreground" /> أرشفة في واتساب
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
