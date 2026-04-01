@@ -8,6 +8,8 @@ interface AuthContextType {
   profile: any;
   userRole: string | null;
   orgId: string | null;
+  teamId: string | null;
+  isSupervisor: boolean;
   isLoading: boolean;
   isSuperAdmin: boolean;
   isEcommerce: boolean;
