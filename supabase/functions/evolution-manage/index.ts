@@ -379,9 +379,11 @@ async function setWebhook(
         webhook_base64: false,
         events: [
           "MESSAGES_UPSERT",
+          "MESSAGES_UPDATE",
+          "MESSAGES_REACTION",
           "CONNECTION_UPDATE",
           "QRCODE_UPDATED",
-          "MESSAGES_UPDATE",
+          "PRESENCE_UPDATE",
         ],
       }),
     });
