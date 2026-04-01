@@ -51,10 +51,16 @@ async function processChatbotFlow(
       return false;
     }
 
-    // Match by button label or number (1, 2, 3)
+    // Match by button label, number (1, 2, 3), or button ID (from interactive replies)
     let matchedButton = currentNode.buttons.find(
       (btn: any) => btn.label && normalizedText === btn.label.trim().toLowerCase()
     );
+    if (!matchedButton) {
+      // Match by button ID (Meta interactive replies send back the id)
+      matchedButton = currentNode.buttons.find(
+        (btn: any) => btn.id && normalizedText === btn.id
+      );
+    }
     if (!matchedButton) {
       const num = parseInt(normalizedText);
       if (num > 0 && num <= currentNode.buttons.length) {
@@ -64,9 +70,8 @@ async function processChatbotFlow(
 
     if (!matchedButton) {
       // No match — re-send current node options
-      const buttonLabels = currentNode.buttons.map((b: any, i: number) => `${i + 1}. ${b.label}`).join("\n");
-      const retryMsg = `اختر أحد الخيارات:\n${buttonLabels}`;
-      await sendBotMessage(client, orgId, conversationId, customerPhone, retryMsg, channel, log);
+      const btns = currentNode.buttons.map((b: any) => ({ id: b.id, label: b.label }));
+      await sendBotMessage(client, orgId, conversationId, customerPhone, "اختر أحد الخيارات:", channel, log, btns);
       return true;
     }
 
@@ -91,13 +96,9 @@ async function processChatbotFlow(
     }
 
     // Send next message node
-    let msgText = nextNode.content || "";
-    if (nextNode.buttons && nextNode.buttons.length > 0) {
-      const buttonLabels = nextNode.buttons.map((b: any, i: number) => `${i + 1}. ${b.label}`).join("\n");
-      msgText += `\n\n${buttonLabels}`;
-    }
-
-    await sendBotMessage(client, orgId, conversationId, customerPhone, msgText, channel, log);
+    const msgText = nextNode.content || "";
+    const btns = (nextNode.buttons || []).filter((b: any) => b.label).map((b: any) => ({ id: b.id, label: b.label }));
+    await sendBotMessage(client, orgId, conversationId, customerPhone, msgText, channel, log, btns);
     
     // Update session to new node
     await client.from("chatbot_sessions").update({
@@ -177,13 +178,9 @@ async function processChatbotFlow(
 
   // Send first node
   const firstNode = nodes[0];
-  let msgText = firstNode.content || "";
-  if (firstNode.buttons && firstNode.buttons.length > 0) {
-    const buttonLabels = firstNode.buttons.map((b: any, i: number) => `${i + 1}. ${b.label}`).join("\n");
-    msgText += `\n\n${buttonLabels}`;
-  }
-
-  await sendBotMessage(client, orgId, conversationId, customerPhone, msgText, channel, log);
+  const msgText = firstNode.content || "";
+  const btns = (firstNode.buttons || []).filter((b: any) => b.label).map((b: any) => ({ id: b.id, label: b.label }));
+  await sendBotMessage(client, orgId, conversationId, customerPhone, msgText, channel, log, btns);
 
   // Create session
   if (firstNode.buttons && firstNode.buttons.length > 0) {
@@ -241,8 +238,11 @@ async function sendBotMessage(
   text: string,
   channel: "meta" | "evolution",
   log: typeof logToSystem,
+  buttons?: { id: string; label: string }[],
 ) {
   if (!text) return;
+
+  const validButtons = (buttons || []).filter(b => b.label?.trim());
 
   if (channel === "meta") {
     const { data: config } = await client
@@ -255,25 +255,80 @@ async function sendBotMessage(
       .maybeSingle();
 
     if (config) {
+      let messagePayload: Record<string, unknown> = { messaging_product: "whatsapp", to: customerPhone };
+
+      if (validButtons.length > 0 && validButtons.length <= 3) {
+        // Reply Buttons (1-3 buttons)
+        messagePayload = {
+          ...messagePayload,
+          type: "interactive",
+          interactive: {
+            type: "button",
+            body: { text },
+            action: {
+              buttons: validButtons.map(b => ({
+                type: "reply",
+                reply: { id: b.id, title: b.label.slice(0, 20) },
+              })),
+            },
+          },
+        };
+      } else if (validButtons.length > 3 && validButtons.length <= 10) {
+        // List message (4-10 buttons)
+        messagePayload = {
+          ...messagePayload,
+          type: "interactive",
+          interactive: {
+            type: "list",
+            body: { text },
+            action: {
+              button: "عرض الخيارات",
+              sections: [{
+                title: "الخيارات",
+                rows: validButtons.map(b => ({
+                  id: b.id,
+                  title: b.label.slice(0, 24),
+                })),
+              }],
+            },
+          },
+        };
+      } else {
+        // Plain text (no buttons or >10)
+        if (validButtons.length > 0) {
+          const buttonLabels = validButtons.map((b, i) => `${i + 1}. ${b.label}`).join("\n");
+          text += `\n\n${buttonLabels}`;
+        }
+        messagePayload = { ...messagePayload, type: "text", text: { body: text } };
+      }
+
       const resp = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
         method: "POST",
         headers: { Authorization: `Bearer ${config.access_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ messaging_product: "whatsapp", to: customerPhone, type: "text", text: { body: text } }),
+        body: JSON.stringify(messagePayload),
       });
       const result = await resp.json();
       if (resp.ok) {
+        const msgType = (messagePayload.type === "interactive") ? "interactive" : "text";
         await client.from("messages").insert({
           conversation_id: conversationId, wa_message_id: result.messages?.[0]?.id || null,
-          sender: "agent", message_type: "text", content: text, status: "sent",
+          sender: "agent", message_type: msgType, content: text, status: "sent",
         });
         await client.from("conversations").update({
           last_message: text, last_message_at: new Date().toISOString(),
         }).eq("id", conversationId);
       } else {
-        await log(client, "error", "فشل إرسال رسالة البوت (Meta)", { error: result?.error?.message }, orgId);
+        await log(client, "error", "فشل إرسال رسالة البوت (Meta)", { error: result?.error?.message, payload_type: messagePayload.type }, orgId);
       }
     }
   } else {
+    // Evolution — always text-based with numbered options
+    let fullText = text;
+    if (validButtons.length > 0) {
+      const buttonLabels = validButtons.map((b, i) => `${i + 1}. ${b.label}`).join("\n");
+      fullText += `\n\n${buttonLabels}`;
+    }
+
     const evoUrl = Deno.env.get("EVOLUTION_API_URL") || "";
     const evoKey = Deno.env.get("EVOLUTION_API_KEY") || "";
     const { data: config } = await client
@@ -290,14 +345,14 @@ async function sendBotMessage(
         const resp = await fetch(`${evoUrl}/message/sendText/${config.evolution_instance_name}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", apikey: evoKey },
-          body: JSON.stringify({ number: customerPhone, text }),
+          body: JSON.stringify({ number: customerPhone, text: fullText }),
         });
         if (resp.ok) {
           await client.from("messages").insert({
-            conversation_id: conversationId, sender: "agent", message_type: "text", content: text, status: "sent",
+            conversation_id: conversationId, sender: "agent", message_type: "text", content: fullText, status: "sent",
           });
           await client.from("conversations").update({
-            last_message: text, last_message_at: new Date().toISOString(),
+            last_message: fullText, last_message_at: new Date().toISOString(),
           }).eq("id", conversationId);
         }
       } catch (e) {
