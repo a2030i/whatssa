@@ -206,7 +206,7 @@ serve(async (req) => {
           instanceName,
           integration: "WHATSAPP-BAILEYS",
           qrcode: true,
-          ...buildWebhookPayload(webhookUrl),
+          ...buildWebhookPayloadWrapped(webhookUrl),
         }),
       });
 
