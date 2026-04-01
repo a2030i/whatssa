@@ -327,13 +327,17 @@ const SallaIntegrationSection = () => {
     return `منذ ${Math.floor(hours / 24)} يوم`;
   };
 
+  // Separate stores from shipping
+  const storeIntegrations = stores.filter(s => STORE_PLATFORMS.some(p => p.id === s.platform));
+  const shippingIntegrations = stores.filter(s => SHIPPING_PLATFORMS.some(p => p.id === s.platform));
+
   // Group stores by platform
-  const storesByPlatform = PLATFORMS.reduce((acc, p) => {
+  const storesByPlatform = ALL_PLATFORMS.reduce((acc, p) => {
     acc[p.id] = stores.filter(s => s.platform === p.id);
     return acc;
   }, {} as Record<string, StoreIntegration[]>);
 
-  const hasAnyStores = stores.length > 0;
+  const hasAnyStores = storeIntegrations.length > 0;
 
   return (
     <div className="space-y-4">
