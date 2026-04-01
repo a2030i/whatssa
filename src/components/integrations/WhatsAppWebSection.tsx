@@ -200,6 +200,24 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
     if (autoOpen) setShowSetup(true);
   }, [autoOpen]);
 
+  useEffect(() => {
+    if (!autoOpen) return;
+    if (existingConfig?.is_connected && existingConfig?.evolution_instance_status === "connected") {
+      setInstanceStatus("connected");
+      return;
+    }
+
+    if (instanceStatus !== "idle") return;
+
+    if (existingConfig?.evolution_instance_name) {
+      setInstanceName(existingConfig.evolution_instance_name);
+      void fetchQR(existingConfig.evolution_instance_name, { allowRecreate: false, silent: true });
+      return;
+    }
+
+    void createInstance();
+  }, [autoOpen, existingConfig?.evolution_instance_name, existingConfig?.evolution_instance_status, existingConfig?.is_connected, instanceStatus]);
+
   const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
     if (!orgId) { setIsLoadingConfig(false); return; }
@@ -611,7 +629,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
                   <div>
                     <p className="text-xs font-bold text-success">الرقم متصل</p>
                     <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">
-                      {existingConfig?.display_phone || instanceName}
+                      {existingConfig?.display_phone || existingConfig?.business_name || instanceName}
                     </p>
                   </div>
                 </div>
@@ -778,7 +796,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) =>
                   disabled={isCreating}
                 >
                   {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-                  {instanceName ? "إعادة الربط — عرض QR" : "إنشاء جلسة جديدة"}
+                  {instanceName ? "إعادة الربط — عرض QR" : autoOpen ? "جاري بدء الربط..." : "إنشاء جلسة جديدة"}
                 </Button>
               ) : (
                 <div className="space-y-2">

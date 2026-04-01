@@ -862,8 +862,19 @@ async function syncInstanceIdentity(
         : data;
     const instance = root?.instance || root?.data?.instance || root;
 
-    const ownerRaw = instance?.owner || instance?.ownerJid || instance?.wid || instance?.wuid || root?.owner || "";
-    const display_phone = typeof ownerRaw === "string" ? ownerRaw.replace(/@.*$/, "").replace(/\D/g, "") : "";
+    const ownerRaw = instance?.owner || instance?.ownerJid || instance?.wid || instance?.wuid || root?.owner || root?.ownerJid || root?.number || instance?.number || "";
+    const displayPhoneCandidates = [
+      ownerRaw,
+      instance?.number,
+      root?.number,
+      instance?.phone,
+      root?.phone,
+      instance?.instancePhone,
+      root?.instancePhone,
+    ];
+    const display_phone = displayPhoneCandidates
+      .map((value) => typeof value === "string" ? value.replace(/@.*$/, "").replace(/\D/g, "") : "")
+      .find((value) => value.length >= 6) || "";
     const business_name = [
       instance?.profileName,
       instance?.profile?.name,
@@ -907,6 +918,8 @@ async function upsertConfig(adminClient: ReturnType<typeof createClient>, orgId:
       .update({
         evolution_instance_name: instanceName,
         evolution_instance_status: "connecting",
+        display_phone: null,
+        business_name: null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.id);
@@ -921,6 +934,8 @@ async function upsertConfig(adminClient: ReturnType<typeof createClient>, orgId:
       access_token: "evolution",
       is_connected: false,
       registration_status: "pending",
+      display_phone: null,
+      business_name: null,
     });
   }
 }

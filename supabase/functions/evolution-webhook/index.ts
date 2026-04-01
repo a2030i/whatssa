@@ -295,6 +295,29 @@ async function fetchEvolutionContactName(instanceName: string, phone: string): P
   }
 }
 
+function chooseBestContactName(...values: Array<string | null | undefined>): string | null {
+  const blocked = new Set([
+    "whatsapp",
+    "whatsapp business",
+    "organization",
+    "org",
+    "respondly",
+    "lamha",
+  ]);
+
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const normalized = value.trim();
+    if (!normalized) continue;
+    const plain = normalized.toLowerCase().replace(/\s+/g, " ");
+    if (blocked.has(plain)) continue;
+    if (/organization$/i.test(normalized)) continue;
+    return normalized;
+  }
+
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -517,7 +540,7 @@ serve(async (req) => {
 
           // If no conversation exists, create one for the new contact
           if (!existingConv) {
-            let outConvName = resolvedOutgoingName || phone;
+            let outConvName = chooseBestContactName(resolvedOutgoingName, msg.pushName) || phone;
             if (conversationType === "group") {
               outConvName = `قروب ${phone}`;
               if (EVOLUTION_API_URL && EVOLUTION_API_KEY) {
@@ -572,8 +595,11 @@ serve(async (req) => {
               conversation_id: newOutConv?.id,
             }, orgId);
           } else if (resolvedOutgoingName) {
-            await supabase.from("conversations").update({ customer_name: resolvedOutgoingName }).eq("id", existingConv.id);
-            await supabase.from("customers").update({ name: resolvedOutgoingName }).eq("org_id", orgId).eq("phone", phone);
+            const safeOutgoingName = chooseBestContactName(resolvedOutgoingName, msg.pushName);
+            if (safeOutgoingName) {
+              await supabase.from("conversations").update({ customer_name: safeOutgoingName }).eq("id", existingConv.id);
+              await supabase.from("customers").update({ name: safeOutgoingName }).eq("org_id", orgId).eq("phone", phone);
+            }
           }
 
           if (existingConv) {
@@ -663,7 +689,7 @@ serve(async (req) => {
         const resolvedIncomingName = conversationType === "private"
           ? await fetchEvolutionContactName(instanceName, phone)
           : null;
-        let conversationDisplayName = resolvedIncomingName || msg.pushName || phone;
+        let conversationDisplayName = chooseBestContactName(resolvedIncomingName, msg.pushName) || phone;
 
         let { data: conversation } = await supabase
           .from("conversations")
@@ -779,7 +805,7 @@ serve(async (req) => {
 
         // Auto-save customer record
         try {
-          const contactDisplayName = conversationDisplayName || "";
+          const contactDisplayName = chooseBestContactName(conversationDisplayName, resolvedIncomingName, msg.pushName) || "";
           const { data: existingCustomer } = await supabase
             .from("customers")
             .select("id, name")
@@ -809,8 +835,11 @@ serve(async (req) => {
             }
           }
 
-          if (conversation && conversationType === "private" && resolvedIncomingName) {
-            await supabase.from("conversations").update({ customer_name: resolvedIncomingName }).eq("id", conversation.id);
+          if (conversation && conversationType === "private") {
+            const safeIncomingName = chooseBestContactName(resolvedIncomingName, msg.pushName);
+            if (safeIncomingName) {
+              await supabase.from("conversations").update({ customer_name: safeIncomingName }).eq("id", conversation.id);
+            }
           }
         } catch (custErr) {
           // Non-critical — log and continue
