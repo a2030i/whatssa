@@ -549,7 +549,7 @@ const InboxPage = () => {
     } else {
       toast.success("تم تعديل الرسالة");
     }
-  }, []);
+  }, [conversations]);
 
   const handleDeleteMessage = useCallback(async (msgId: string, waMessageId: string, convPhone: string) => {
     const conv = conversations.find(c => c.customerPhone === convPhone);
