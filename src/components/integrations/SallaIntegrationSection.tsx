@@ -20,6 +20,7 @@ const LAMHA_WEBHOOK_BASE = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v
 
 interface StoreIntegration {
   id: string;
+  org_id: string;
   platform: string;
   store_name: string | null;
   store_url: string | null;
