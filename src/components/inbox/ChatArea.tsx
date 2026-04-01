@@ -154,6 +154,31 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
     (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
   const canDelete = msg.sender === "agent" && msg.waMessageId && !msg.isDeleted;
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleReaction = async (emoji: string) => {
+    try {
+      await supabase.functions.invoke("evolution-manage", {
+        body: { action: "send_reaction", phone: conversation.customerPhone, message_id: msg.waMessageId, emoji },
+      });
+    } catch {}
+  };
+
+  const handleTranslate = async () => {
+    try {
+      const { data } = await supabase.functions.invoke("ai-features", {
+        body: { action: "translate", text: msg.text, target_language: "العربية" },
+      });
+      if (data?.error === "ai_not_configured") {
+        toast.error("لم يتم إعداد مزود AI");
+      } else if (data?.translation) {
+        toast.success(data.translation, { duration: 8000 });
+      }
+    } catch { toast.error("فشل الترجمة"); }
+  };
+
+  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (msg.sender === "customer" && msg.type === "text") || (msg.waMessageId && conversation.channelType === "evolution"));
+
   return (
     <div
       ref={canReply ? swipe.ref : undefined}
@@ -176,21 +201,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
             </button>
           )}
           {msg.sender === "customer" && msg.type === "text" && (
-            <button
-              onClick={async () => {
-                try {
-                  const { data } = await supabase.functions.invoke("ai-features", {
-                    body: { action: "translate", text: msg.text, target_language: "العربية" },
-                  });
-                  if (data?.error === "ai_not_configured") {
-                    toast.error("لم يتم إعداد مزود AI");
-                  } else if (data?.translation) {
-                    toast.success(data.translation, { duration: 8000 });
-                  }
-                } catch { toast.error("فشل الترجمة"); }
-              }}
-              className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="ترجمة"
-            >
+            <button onClick={handleTranslate} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="ترجمة">
               <Languages className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
@@ -204,13 +215,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
               <PopoverContent className="w-auto p-2" side="top">
                 <div className="flex gap-1">
                   {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
-                    <button key={emoji} className="text-lg hover:scale-125 transition-transform" onClick={async () => {
-                      try {
-                        await supabase.functions.invoke("evolution-manage", {
-                          body: { action: "send_reaction", phone: conversation.customerPhone, message_id: msg.waMessageId, emoji },
-                        });
-                      } catch {}
-                    }}>{emoji}</button>
+                    <button key={emoji} className="text-lg hover:scale-125 transition-transform" onClick={() => handleReaction(emoji)}>{emoji}</button>
                   ))}
                 </div>
               </PopoverContent>
@@ -226,6 +231,63 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
               <Trash2 className="w-3.5 h-3.5 text-destructive" />
             </button>
           )}
+        </div>
+      )}
+
+      {/* Mobile action button (three-dot menu) */}
+      {hasAnyAction && (
+        <div className={cn(
+          "absolute top-1 z-10 md:hidden",
+          msg.sender === "agent" ? "-left-7" : "-right-7"
+        )}>
+          <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <button className="w-6 h-6 rounded-full bg-secondary/80 shadow-sm flex items-center justify-center opacity-60 active:opacity-100">
+                <MoreVertical className="w-3 h-3 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={msg.sender === "agent" ? "start" : "end"} className="min-w-[140px]">
+              {canReply && (
+                <DropdownMenuItem onClick={() => onReply(msg)} className="text-xs gap-2">
+                  <Reply className="w-3.5 h-3.5" /> رد
+                </DropdownMenuItem>
+              )}
+              {msg.type === "text" && (
+                <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(msg.text); toast.success("تم النسخ"); }} className="text-xs gap-2">
+                  <FileText className="w-3.5 h-3.5" /> نسخ الرسالة
+                </DropdownMenuItem>
+              )}
+              {msg.sender === "customer" && msg.type === "text" && (
+                <DropdownMenuItem onClick={handleTranslate} className="text-xs gap-2">
+                  <Languages className="w-3.5 h-3.5" /> ترجمة
+                </DropdownMenuItem>
+              )}
+              {msg.waMessageId && conversation.channelType === "evolution" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5">
+                    <p className="text-[10px] text-muted-foreground mb-1">تفاعل</p>
+                    <div className="flex gap-1">
+                      {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
+                        <button key={emoji} className="text-base hover:scale-125 transition-transform" onClick={() => { handleReaction(emoji); setMobileMenuOpen(false); }}>{emoji}</button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+              {(canEdit || canDelete) && <DropdownMenuSeparator />}
+              {canEdit && onEdit && (
+                <DropdownMenuItem onClick={() => onEdit(msg)} className="text-xs gap-2">
+                  <Pencil className="w-3.5 h-3.5" /> تعديل
+                </DropdownMenuItem>
+              )}
+              {canDelete && onDelete && (
+                <DropdownMenuItem onClick={() => onDelete(msg)} className="text-xs gap-2 text-destructive focus:text-destructive">
+                  <Trash2 className="w-3.5 h-3.5" /> حذف
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
       <div className={cn(
