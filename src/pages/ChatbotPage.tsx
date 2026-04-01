@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageSquare, ArrowRight, Copy, ToggleLeft, GitBranch, ChevronDown, ChevronUp, GripVertical, HelpCircle, Eye, ListOrdered, Globe } from "lucide-react";
+import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageSquare, ArrowRight, Copy, ToggleLeft, GitBranch, ChevronDown, ChevronUp, HelpCircle, Eye, ListOrdered, Globe, Zap, ArrowLeft, Hash, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -7,14 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import ChannelSelector from "@/components/ChannelSelector";
+
+// ─── Types ───
+interface ChatbotButton {
+  id: string;
+  label: string;
+  next_node_id: string;
+}
 
 interface ChatbotNode {
   id: string;
@@ -25,12 +30,6 @@ interface ChatbotNode {
   action_value?: string;
 }
 
-interface ChatbotButton {
-  id: string;
-  label: string;
-  next_node_id: string;
-}
-
 interface ChatbotFlow {
   id: string;
   name: string;
@@ -39,45 +38,62 @@ interface ChatbotFlow {
   trigger_keywords: string[];
   welcome_message: string | null;
   nodes: ChatbotNode[];
+  channel_ids?: string[];
+}
+
+interface Channel {
+  id: string;
+  display_phone_number: string;
+  channel_type: string;
+  evolution_instance_name: string | null;
+  business_name: string | null;
 }
 
 const generateId = () => crypto.randomUUID().slice(0, 8);
+const MAX_BUTTONS = 20;
 
-const MAX_BUTTONS_PER_NODE = 20;
+const TRIGGER_LABELS: Record<string, string> = {
+  keyword: "كلمات مفتاحية",
+  first_message: "أول رسالة",
+  always: "كل الرسائل",
+};
 
+const ACTION_LABELS: Record<string, string> = {
+  transfer_agent: "تحويل لموظف",
+  close: "إغلاق المحادثة",
+  add_tag: "إضافة وسم",
+};
+
+// ─── Main Component ───
 const ChatbotPage = () => {
   const { toast } = useToast();
   const { orgId } = useAuth();
+
   const [flows, setFlows] = useState<ChatbotFlow[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [view, setView] = useState<"list" | "edit">("list");
   const [editingFlow, setEditingFlow] = useState<ChatbotFlow | null>(null);
-  const [expandedFlowId, setExpandedFlowId] = useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Form
+  const [name, setName] = useState("");
+  const [triggerType, setTriggerType] = useState("keyword");
+  const [keywords, setKeywords] = useState("");
+  const [welcome, setWelcome] = useState("");
+  const [nodes, setNodes] = useState<ChatbotNode[]>([]);
+  const [channelIds, setChannelIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("basics");
 
-  // Form state
-  const [formName, setFormName] = useState("");
-  const [formTriggerType, setFormTriggerType] = useState("keyword");
-  const [formKeywords, setFormKeywords] = useState("");
-  const [formWelcome, setFormWelcome] = useState("");
-  const [formNodes, setFormNodes] = useState<ChatbotNode[]>([]);
-  const [formChannelIds, setFormChannelIds] = useState<string[]>([]);
+  // Per-node quick add state
+  const [quickTexts, setQuickTexts] = useState<Record<string, string>>({});
 
-  // Quick add buttons
-  const [quickButtonsText, setQuickButtonsText] = useState("");
-
+  // ─── Fetch ───
   const fetchFlows = useCallback(async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("chatbot_flows")
       .select("*")
       .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching flows:", error);
-      setLoading(false);
-      return;
-    }
 
     setFlows(
       (data || []).map((f: any) => ({
@@ -88,240 +104,182 @@ const ChatbotPage = () => {
         trigger_keywords: f.trigger_keywords || [],
         welcome_message: f.welcome_message,
         nodes: (f.nodes as ChatbotNode[]) || [],
+        channel_ids: f.channel_ids || [],
       }))
     );
     setLoading(false);
   }, []);
 
+  const fetchChannels = useCallback(async () => {
+    if (!orgId) return;
+    const { data } = await supabase
+      .from("whatsapp_config" as any)
+      .select("id, display_phone_number, channel_type, evolution_instance_name, business_name")
+      .eq("org_id", orgId)
+      .eq("is_connected", true)
+      .order("created_at");
+    setChannels((data || []) as unknown as Channel[]);
+  }, [orgId]);
+
   useEffect(() => {
     fetchFlows();
-  }, [fetchFlows]);
+    fetchChannels();
+  }, [fetchFlows, fetchChannels]);
 
+  // ─── Form Helpers ───
   const resetForm = () => {
-    setFormName("");
-    setFormTriggerType("keyword");
-    setFormKeywords("");
-    setFormWelcome("");
-    setFormNodes([
-      {
-        id: generateId(),
-        type: "message",
-        content: "",
-        buttons: [],
-      },
-    ]);
-    setFormChannelIds([]);
-    setQuickButtonsText("");
+    setName("");
+    setTriggerType("keyword");
+    setKeywords("");
+    setWelcome("");
+    setNodes([{ id: generateId(), type: "message", content: "", buttons: [] }]);
+    setChannelIds([]);
+    setQuickTexts({});
     setActiveTab("basics");
   };
 
   const openCreate = () => {
     setEditingFlow(null);
     resetForm();
-    setDialogOpen(true);
+    setView("edit");
   };
 
   const openEdit = (flow: ChatbotFlow) => {
     setEditingFlow(flow);
-    setFormName(flow.name);
-    setFormTriggerType(flow.trigger_type);
-    setFormKeywords(flow.trigger_keywords.join("، "));
-    setFormWelcome(flow.welcome_message || "");
-    setFormNodes(flow.nodes.length > 0 ? flow.nodes : [
-      { id: generateId(), type: "message", content: "", buttons: [] },
-    ]);
-    // Load channel_ids from DB
-    (async () => {
-      const { data } = await supabase.from("chatbot_flows").select("channel_ids").eq("id", flow.id).single();
-      setFormChannelIds((data as any)?.channel_ids || []);
-    })();
+    setName(flow.name);
+    setTriggerType(flow.trigger_type);
+    setKeywords(flow.trigger_keywords.join("، "));
+    setWelcome(flow.welcome_message || "");
+    setNodes(flow.nodes.length > 0 ? flow.nodes : [{ id: generateId(), type: "message", content: "", buttons: [] }]);
+    setChannelIds(flow.channel_ids || []);
+    setQuickTexts({});
     setActiveTab("basics");
-    setDialogOpen(true);
+    setView("edit");
   };
 
   const handleSave = async () => {
-    if (!formName.trim()) {
-      toast({ title: "خطأ", description: "يرجى إدخال اسم التدفق", variant: "destructive" });
+    if (!name.trim()) {
+      toast({ title: "أدخل اسم التدفق", variant: "destructive" });
       return;
     }
     if (!orgId) return;
 
-    const keywords = formKeywords
-      .split(/[,،\n]/)
-      .map((k) => k.trim())
-      .filter(Boolean);
-
-    const linkedNodes = formNodes.map((node) => ({
-      ...node,
-      buttons: node.buttons.map((btn) => ({
-        ...btn,
-        next_node_id: btn.next_node_id || "",
-      })),
-    }));
-
+    const kws = keywords.split(/[,،\n]/).map(k => k.trim()).filter(Boolean);
     const payload = {
-      name: formName.trim(),
+      name: name.trim(),
       org_id: orgId,
-      trigger_type: formTriggerType,
-      trigger_keywords: keywords,
-      welcome_message: formWelcome.trim() || null,
-      nodes: linkedNodes as any,
-      channel_ids: formChannelIds,
+      trigger_type: triggerType,
+      trigger_keywords: kws,
+      welcome_message: welcome.trim() || null,
+      nodes: nodes as any,
+      channel_ids: channelIds,
     } as any;
 
     if (editingFlow) {
-      const { error } = await supabase
-        .from("chatbot_flows")
-        .update(payload)
-        .eq("id", editingFlow.id);
-
-      if (error) {
-        toast({ title: "خطأ", description: "فشل تحديث التدفق", variant: "destructive" });
-        return;
-      }
-      toast({ title: "تم التحديث" });
+      const { error } = await supabase.from("chatbot_flows").update(payload).eq("id", editingFlow.id);
+      if (error) { toast({ title: "فشل التحديث", variant: "destructive" }); return; }
+      toast({ title: "✅ تم حفظ التعديلات" });
     } else {
-      const { error } = await supabase
-        .from("chatbot_flows")
-        .insert(payload);
-
-      if (error) {
-        toast({ title: "خطأ", description: "فشل إنشاء التدفق", variant: "destructive" });
-        return;
-      }
-      toast({ title: "تم الإنشاء" });
+      const { error } = await supabase.from("chatbot_flows").insert(payload);
+      if (error) { toast({ title: "فشل الإنشاء", variant: "destructive" }); return; }
+      toast({ title: "✅ تم إنشاء التدفق" });
     }
-
-    setDialogOpen(false);
+    setView("list");
     fetchFlows();
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("chatbot_flows").delete().eq("id", id);
-    if (error) {
-      toast({ title: "خطأ", description: "فشل حذف التدفق", variant: "destructive" });
-      return;
-    }
+    await supabase.from("chatbot_flows").delete().eq("id", id);
     toast({ title: "تم الحذف" });
     fetchFlows();
   };
 
   const handleToggle = async (id: string, active: boolean) => {
     await supabase.from("chatbot_flows").update({ is_active: active }).eq("id", id);
-    setFlows((prev) => prev.map((f) => (f.id === id ? { ...f, is_active: active } : f)));
+    setFlows(prev => prev.map(f => f.id === id ? { ...f, is_active: active } : f));
   };
 
-  // Node management
+  // ─── Node / Button Management ───
   const addNode = () => {
-    setFormNodes((prev) => [
-      ...prev,
-      { id: generateId(), type: "message", content: "", buttons: [] },
-    ]);
+    setNodes(prev => [...prev, { id: generateId(), type: "message", content: "", buttons: [] }]);
   };
 
-  const updateNode = (nodeId: string, updates: Partial<ChatbotNode>) => {
-    setFormNodes((prev) =>
-      prev.map((n) => (n.id === nodeId ? { ...n, ...updates } : n))
+  const updateNode = (nid: string, u: Partial<ChatbotNode>) => {
+    setNodes(prev => prev.map(n => n.id === nid ? { ...n, ...u } : n));
+  };
+
+  const removeNode = (nid: string) => {
+    setNodes(prev => prev.filter(n => n.id !== nid));
+  };
+
+  const addButton = (nid: string) => {
+    setNodes(prev => prev.map(n =>
+      n.id === nid && n.buttons.length < MAX_BUTTONS
+        ? { ...n, buttons: [...n.buttons, { id: generateId(), label: "", next_node_id: "" }] }
+        : n
+    ));
+  };
+
+  const updateButton = (nid: string, bid: string, u: Partial<ChatbotButton>) => {
+    setNodes(prev => prev.map(n =>
+      n.id === nid
+        ? { ...n, buttons: n.buttons.map(b => b.id === bid ? { ...b, ...u } : b) }
+        : n
+    ));
+  };
+
+  const removeButton = (nid: string, bid: string) => {
+    setNodes(prev => prev.map(n =>
+      n.id === nid ? { ...n, buttons: n.buttons.filter(b => b.id !== bid) } : n
+    ));
+  };
+
+  const handleQuickAdd = (nid: string) => {
+    const text = quickTexts[nid] || "";
+    const labels = text.split("\n").map(l => l.trim()).filter(Boolean);
+    if (!labels.length) return;
+
+    setNodes(prev => prev.map(n => {
+      if (n.id !== nid) return n;
+      const remaining = MAX_BUTTONS - n.buttons.length;
+      const newBtns = labels.slice(0, remaining).map(label => ({ id: generateId(), label, next_node_id: "" }));
+      return { ...n, buttons: [...n.buttons, ...newBtns] };
+    }));
+    setQuickTexts(prev => ({ ...prev, [nid]: "" }));
+    toast({ title: `تم إضافة ${Math.min(labels.length, MAX_BUTTONS)} زر` });
+  };
+
+  const toggleChannel = (id: string) => {
+    setChannelIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
 
-  const removeNode = (nodeId: string) => {
-    setFormNodes((prev) => prev.filter((n) => n.id !== nodeId));
-  };
-
-  const addButton = (nodeId: string) => {
-    setFormNodes((prev) =>
-      prev.map((n) =>
-        n.id === nodeId && n.buttons.length < MAX_BUTTONS_PER_NODE
-          ? { ...n, buttons: [...n.buttons, { id: generateId(), label: "", next_node_id: "" }] }
-          : n
-      )
-    );
-  };
-
-  // Quick add multiple buttons from text (one per line)
-  const handleQuickAddButtons = (nodeId: string) => {
-    const labels = quickButtonsText.split("\n").map(l => l.trim()).filter(Boolean);
-    if (labels.length === 0) return;
-
-    setFormNodes((prev) =>
-      prev.map((n) => {
-        if (n.id !== nodeId) return n;
-        const remaining = MAX_BUTTONS_PER_NODE - n.buttons.length;
-        const newButtons = labels.slice(0, remaining).map(label => ({
-          id: generateId(),
-          label,
-          next_node_id: "",
-        }));
-        return { ...n, buttons: [...n.buttons, ...newButtons] };
-      })
-    );
-    setQuickButtonsText("");
-    toast({ title: `تم إضافة ${Math.min(labels.length, MAX_BUTTONS_PER_NODE)} زر` });
-  };
-
-  const updateButton = (nodeId: string, btnId: string, updates: Partial<ChatbotButton>) => {
-    setFormNodes((prev) =>
-      prev.map((n) =>
-        n.id === nodeId
-          ? { ...n, buttons: n.buttons.map((b) => (b.id === btnId ? { ...b, ...updates } : b)) }
-          : n
-      )
-    );
-  };
-
-  const removeButton = (nodeId: string, btnId: string) => {
-    setFormNodes((prev) =>
-      prev.map((n) =>
-        n.id === nodeId
-          ? { ...n, buttons: n.buttons.filter((b) => b.id !== btnId) }
-          : n
-      )
-    );
-  };
-
-  const TRIGGER_LABELS: Record<string, string> = {
-    keyword: "كلمات مفتاحية",
-    first_message: "أول رسالة",
-    always: "كل الرسائل",
-  };
-
-  const NODE_ACTION_LABELS: Record<string, string> = {
-    transfer_agent: "تحويل لموظف",
-    close: "إغلاق المحادثة",
-    add_tag: "إضافة وسم",
-  };
-
-  // Chat preview simulator
+  // ─── Chat Preview ───
   const ChatPreview = () => {
-    const [currentNodeId, setCurrentNodeId] = useState<string | null>(formNodes[0]?.id || null);
-    const [chatHistory, setChatHistory] = useState<{ sender: string; text: string }[]>([]);
+    const [curId, setCurId] = useState<string | null>(nodes[0]?.id || null);
+    const [history, setHistory] = useState<{ sender: string; text: string }[]>([]);
 
     useEffect(() => {
       const msgs: { sender: string; text: string }[] = [];
-      if (formWelcome) msgs.push({ sender: "bot", text: formWelcome });
-      const firstNode = formNodes[0];
-      if (firstNode?.content) msgs.push({ sender: "bot", text: firstNode.content });
-      setChatHistory(msgs);
-      setCurrentNodeId(firstNode?.id || null);
+      if (welcome) msgs.push({ sender: "bot", text: welcome });
+      if (nodes[0]?.content) msgs.push({ sender: "bot", text: nodes[0].content });
+      setHistory(msgs);
+      setCurId(nodes[0]?.id || null);
     }, []);
 
-    const currentNode = formNodes.find(n => n.id === currentNodeId);
+    const curNode = nodes.find(n => n.id === curId);
 
-    const handleButtonClick = (btn: ChatbotButton) => {
-      const newHistory = [...chatHistory, { sender: "user", text: btn.label }];
-      const nextNode = formNodes.find(n => n.id === btn.next_node_id);
-      if (nextNode) {
-        if (nextNode.type === "action") {
-          newHistory.push({ sender: "bot", text: `⚡ ${NODE_ACTION_LABELS[nextNode.action_type || ""] || "إجراء"}: ${nextNode.content}` });
-        } else {
-          newHistory.push({ sender: "bot", text: nextNode.content });
-        }
-        setChatHistory(newHistory);
-        setCurrentNodeId(nextNode.id);
+    const clickBtn = (btn: ChatbotButton) => {
+      const h = [...history, { sender: "user", text: btn.label }];
+      const next = nodes.find(n => n.id === btn.next_node_id);
+      if (next) {
+        h.push({ sender: "bot", text: next.type === "action" ? `⚡ ${ACTION_LABELS[next.action_type || ""]}: ${next.content}` : next.content });
+        setHistory(h);
+        setCurId(next.id);
       } else {
-        setChatHistory(newHistory);
-        setCurrentNodeId(null);
+        setHistory(h);
+        setCurId(null);
       }
     };
 
@@ -332,38 +290,35 @@ const ChatbotPage = () => {
           معاينة المحادثة
         </div>
         <div className="p-3 space-y-2 min-h-[200px] max-h-[300px] overflow-y-auto">
-          {chatHistory.map((msg, i) => (
+          {history.map((msg, i) => (
             <div key={i} className={cn("flex", msg.sender === "user" ? "justify-start" : "justify-end")}>
               <div className={cn(
-                "rounded-xl px-3 py-1.5 text-sm max-w-[80%]",
-                msg.sender === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border text-foreground"
+                "rounded-xl px-3 py-1.5 text-sm max-w-[80%] whitespace-pre-wrap",
+                msg.sender === "user" ? "bg-primary text-primary-foreground" : "bg-card border"
               )}>
                 {msg.text}
               </div>
             </div>
           ))}
         </div>
-        {currentNode && currentNode.buttons.length > 0 && (
-          <div className="px-3 pb-3">
-            <div className="flex flex-wrap gap-1.5">
-              {currentNode.buttons.filter(b => b.label).map(btn => (
-                <button
-                  key={btn.id}
-                  onClick={() => handleButtonClick(btn)}
-                  className="text-xs border border-primary text-primary rounded-full px-3 py-1 hover:bg-primary hover:text-primary-foreground transition-colors"
-                >
-                  {btn.label}
-                </button>
-              ))}
-            </div>
+        {curNode && curNode.buttons.filter(b => b.label).length > 0 && (
+          <div className="px-3 pb-3 flex flex-wrap gap-1.5">
+            {curNode.buttons.filter(b => b.label).map(btn => (
+              <button
+                key={btn.id}
+                onClick={() => clickBtn(btn)}
+                className="text-xs border border-primary text-primary rounded-full px-3 py-1 hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
         )}
       </div>
     );
   };
 
+  // ─── Loading ───
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center" dir="rtl">
@@ -372,6 +327,331 @@ const ChatbotPage = () => {
     );
   }
 
+  // ═══════════════════════════════════════
+  //  EDIT VIEW (full-page, not dialog)
+  // ═══════════════════════════════════════
+  if (view === "edit") {
+    return (
+      <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-4" dir="rtl">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setView("list")}>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <h1 className="text-lg font-bold">{editingFlow ? "تعديل التدفق" : "تدفق جديد"}</h1>
+        </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="basics" className="text-xs gap-1">
+              <MessageSquare className="w-3.5 h-3.5" /> الأساسيات
+            </TabsTrigger>
+            <TabsTrigger value="steps" className="text-xs gap-1">
+              <ListOrdered className="w-3.5 h-3.5" /> الخطوات والأزرار
+            </TabsTrigger>
+            <TabsTrigger value="preview" className="text-xs gap-1">
+              <Eye className="w-3.5 h-3.5" /> معاينة
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ── Tab: Basics ── */}
+          <TabsContent value="basics" className="space-y-4 mt-4">
+            <Card>
+              <CardContent className="p-4 space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">اسم التدفق *</Label>
+                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="مثال: ترحيب العملاء" className="mt-1" />
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">متى يشتغل البوت؟</Label>
+                  <Select value={triggerType} onValueChange={setTriggerType}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="keyword">عند إرسال كلمة معينة</SelectItem>
+                      <SelectItem value="first_message">أول رسالة من العميل</SelectItem>
+                      <SelectItem value="always">كل رسالة (تنبيه: قد يتكرر)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {triggerType === "keyword" && (
+                  <div>
+                    <Label className="text-sm font-medium">الكلمات التي تفعّل البوت</Label>
+                    <Input value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="مرحبا، هلا، السلام عليكم" className="mt-1" />
+                    <p className="text-[11px] text-muted-foreground mt-1">افصل بين الكلمات بفاصلة — العميل يكتب أي وحدة منها والبوت يرد</p>
+                  </div>
+                )}
+
+                <div>
+                  <Label className="text-sm font-medium">رسالة الترحيب (اختياري)</Label>
+                  <Textarea value={welcome} onChange={e => setWelcome(e.target.value)} placeholder="مرحباً بك! 👋 كيف أقدر أساعدك؟" rows={2} className="mt-1" />
+                  <p className="text-[11px] text-muted-foreground mt-1">تُرسل قبل أول خطوة — مثل رسالة افتتاحية</p>
+                </div>
+
+                {/* Channel Selection - always visible */}
+                <div className="border-t pt-4">
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <Globe className="w-4 h-4" />
+                    على أي قناة يشتغل البوت؟
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground mt-1 mb-3">
+                    {channels.length === 0
+                      ? "لا توجد قنوات مربوطة — اربط رقم واتساب أولاً من صفحة التكامل"
+                      : "اختر القنوات المحددة، أو اتركها فارغة ليعمل على الكل"
+                    }
+                  </p>
+                  {channels.length > 0 && (
+                    <div className="grid gap-2">
+                      {channels.map(ch => {
+                        const selected = channelIds.includes(ch.id);
+                        const isMeta = ch.channel_type === "meta_api";
+                        return (
+                          <label
+                            key={ch.id}
+                            className={cn(
+                              "flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all",
+                              selected ? "border-primary/40 bg-primary/5" : "border-border/40 hover:border-border"
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => toggleChannel(ch.id)}
+                              className="accent-primary w-4 h-4"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {ch.business_name || ch.display_phone_number || ch.evolution_instance_name || "قناة"}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {ch.display_phone_number || ch.evolution_instance_name}
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] shrink-0">
+                              {isMeta ? "واتساب رسمي" : "واتساب ويب"}
+                            </Badge>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")} className="gap-1">
+                التالي: الخطوات والأزرار
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* ── Tab: Steps & Buttons ── */}
+          <TabsContent value="steps" className="space-y-4 mt-4">
+            {/* Explanation */}
+            <Card className="bg-accent/30 border-accent/50">
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground">كل خطوة = رسالة يرسلها البوت + أزرار للعميل.</strong>
+                  <br />
+                  الزر ممكن يوصل لخطوة ثانية (مثل: زر "الفروع" → خطوة تعرض قائمة الفروع)، أو "بدون" = البوت يتوقف بعده.
+                </p>
+              </CardContent>
+            </Card>
+
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">الخطوات</p>
+              <Button type="button" variant="outline" size="sm" onClick={addNode} className="gap-1 text-xs">
+                <Plus className="w-3.5 h-3.5" />
+                خطوة جديدة
+              </Button>
+            </div>
+
+            {nodes.map((node, idx) => (
+              <Card key={node.id} className="border-2 border-dashed border-border/60">
+                <CardContent className="p-4 space-y-3">
+                  {/* Node header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                      <Select value={node.type} onValueChange={val => updateNode(node.id, { type: val as any })}>
+                        <SelectTrigger className="w-36 h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="message">رسالة + أزرار</SelectItem>
+                          <SelectItem value="action">إجراء (تحويل/إغلاق)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {nodes.length > 1 && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeNode(node.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {node.type === "message" ? (
+                    <>
+                      {/* Message text */}
+                      <div>
+                        <Label className="text-xs font-medium">نص الرسالة</Label>
+                        <Textarea
+                          value={node.content}
+                          onChange={e => updateNode(node.id, { content: e.target.value })}
+                          placeholder="اكتب الرسالة التي يرسلها البوت للعميل..."
+                          rows={3}
+                          className="mt-1"
+                        />
+                      </div>
+
+                      {/* Buttons list */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs text-muted-foreground">
+                            الأزرار ({node.buttons.length}/{MAX_BUTTONS})
+                          </Label>
+                          {node.buttons.length < MAX_BUTTONS && (
+                            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => addButton(node.id)}>
+                              <Plus className="w-3 h-3" /> زر +
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
+                          {node.buttons.map((btn, bi) => (
+                            <div key={btn.id} className="flex items-center gap-2">
+                              <span className="text-[10px] text-muted-foreground w-4 text-center shrink-0">{bi + 1}</span>
+                              <Input
+                                value={btn.label}
+                                onChange={e => updateButton(node.id, btn.id, { label: e.target.value })}
+                                placeholder="نص الزر"
+                                className="h-8 text-xs flex-1"
+                              />
+                              <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                              <Select
+                                value={btn.next_node_id || "none"}
+                                onValueChange={val => updateButton(node.id, btn.id, { next_node_id: val === "none" ? "" : val })}
+                              >
+                                <SelectTrigger className="w-28 h-8 text-[11px]">
+                                  <SelectValue placeholder="بدون" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">بدون</SelectItem>
+                                  {nodes.filter(n => n.id !== node.id).map(n => (
+                                    <SelectItem key={n.id} value={n.id}>
+                                      خطوة {nodes.indexOf(n) + 1}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeButton(node.id, btn.id)}>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Quick add - per node */}
+                        {node.buttons.length < MAX_BUTTONS && (
+                          <div className="border-t border-dashed pt-3 mt-2">
+                            <Label className="text-[11px] text-muted-foreground">إضافة سريعة (كل سطر = زر جديد)</Label>
+                            <Textarea
+                              value={quickTexts[node.id] || ""}
+                              onChange={e => setQuickTexts(prev => ({ ...prev, [node.id]: e.target.value }))}
+                              placeholder={"مواقع الفروع\nسياسة إيقاف الاشتراك\nتتبع طلب\nتواصل مع موظف"}
+                              rows={3}
+                              className="text-xs mt-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-1.5 text-xs gap-1"
+                              onClick={() => handleQuickAdd(node.id)}
+                              disabled={!(quickTexts[node.id] || "").trim()}
+                            >
+                              <Plus className="w-3 h-3" />
+                              إضافة الأزرار
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    /* Action node */
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-xs font-medium">نوع الإجراء</Label>
+                        <Select
+                          value={node.action_type || "transfer_agent"}
+                          onValueChange={val => updateNode(node.id, { action_type: val as any })}
+                        >
+                          <SelectTrigger className="h-8 text-sm mt-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="transfer_agent">تحويل المحادثة لموظف</SelectItem>
+                            <SelectItem value="close">إغلاق المحادثة تلقائياً</SelectItem>
+                            <SelectItem value="add_tag">إضافة وسم للمحادثة</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Input
+                        value={node.content}
+                        onChange={e => updateNode(node.id, { content: e.target.value })}
+                        placeholder={node.action_type === "add_tag" ? "اسم الوسم" : "رسالة للعميل (اختياري)"}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Navigation */}
+            <div className="flex justify-between">
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("basics")} className="gap-1 text-xs">
+                <ArrowLeft className="w-3.5 h-3.5" /> الأساسيات
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("preview")} className="gap-1 text-xs">
+                معاينة <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* ── Tab: Preview ── */}
+          <TabsContent value="preview" className="space-y-4 mt-4">
+            <p className="text-xs text-muted-foreground text-center">اضغط على الأزرار لتجربة التدفق كما سيراه العميل في واتساب</p>
+            <ChatPreview />
+            <div className="flex justify-start">
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")} className="gap-1 text-xs">
+                <ArrowLeft className="w-3.5 h-3.5" /> الخطوات
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Action buttons - always visible */}
+        <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t pt-3 pb-4 -mx-3 px-3 md:-mx-6 md:px-6 flex gap-2">
+          <Button onClick={handleSave} className="flex-1 gap-1.5">
+            <Save className="w-4 h-4" />
+            {editingFlow ? "حفظ التعديلات" : "إنشاء التدفق"}
+          </Button>
+          <Button variant="outline" onClick={() => setView("list")}>
+            إلغاء
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════
+  //  LIST VIEW
+  // ═══════════════════════════════════════
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-5" dir="rtl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -381,7 +661,7 @@ const ChatbotPage = () => {
             الشات بوت
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            أنشئ ردود تلقائية بأزرار تفاعلية (حتى {MAX_BUTTONS_PER_NODE} زر لكل خطوة)
+            ردود تلقائية بأزرار تفاعلية — العميل يضغط والبوت يرد
           </p>
         </div>
         <Button onClick={openCreate} size="sm" className="gap-1.5">
@@ -390,40 +670,37 @@ const ChatbotPage = () => {
         </Button>
       </div>
 
-      {/* Help card */}
-      <Card className="bg-accent/30 border-accent">
+      {/* How it works - concise */}
+      <Card className="bg-accent/20 border-accent/40">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            <HelpCircle className="w-5 h-5 text-accent-foreground shrink-0 mt-0.5" />
-            <div className="text-sm space-y-1">
-              <p className="font-semibold text-accent-foreground">كيف يعمل الشات بوت؟</p>
-              <ol className="list-decimal list-inside text-muted-foreground space-y-0.5 text-xs">
-                <li>أنشئ تدفق جديد وحدد <strong>الكلمات المفتاحية</strong> التي تفعّله (مثل: مرحبا، هلا)</li>
-                <li>أضف <strong>خطوات</strong> — كل خطوة فيها رسالة نصية + أزرار (حتى {MAX_BUTTONS_PER_NODE} زر)</li>
-                <li>اربط كل زر بـ<strong>خطوة تالية</strong> — مثلاً: زر "تتبع طلب" → خطوة تعرض تفاصيل</li>
-                <li>استخدم <strong>الإضافة السريعة</strong> لإضافة عدة أزرار دفعة واحدة (كل سطر = زر)</li>
-                <li>شاهد <strong>المعاينة الحية</strong> قبل الحفظ للتأكد من التدفق</li>
-              </ol>
+            <HelpCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1 text-muted-foreground">
+              <p className="font-semibold text-foreground text-sm">كيف يعمل؟</p>
+              <p>١. أنشئ تدفق وحدد <strong>الكلمة</strong> اللي تفعّله (مثل: مرحبا)</p>
+              <p>٢. أضف <strong>خطوات</strong> — كل خطوة فيها رسالة + أزرار</p>
+              <p>٣. اربط كل زر بـ<strong>خطوة ثانية</strong> أو خلّه "بدون" يتوقف البوت</p>
+              <p>٤. <strong>الإضافة السريعة</strong>: الصق قائمة الأزرار (كل سطر = زر)</p>
+              <p>٥. اختر <strong>القناة</strong> (رسمي/ويب) أو خلّه يعمل على الكل</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Flow list */}
       {flows.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <GitBranch className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
             <p className="text-muted-foreground text-sm">لا توجد تدفقات بعد</p>
-            <p className="text-xs text-muted-foreground mt-1">أنشئ أول تدفق وحدد الأزرار التفاعلية</p>
             <Button onClick={openCreate} variant="outline" size="sm" className="mt-4 gap-1.5">
-              <Plus className="w-4 h-4" />
-              أنشئ أول تدفق
+              <Plus className="w-4 h-4" /> أنشئ أول تدفق
             </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {flows.map((flow) => (
+          {flows.map(flow => (
             <Card key={flow.id} className={cn(!flow.is_active && "opacity-60")}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -440,39 +717,30 @@ const ChatbotPage = () => {
                     {flow.trigger_keywords.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {flow.trigger_keywords.map((kw, i) => (
-                          <Badge key={i} variant="outline" className="text-[10px] bg-accent/50">
-                            {kw}
-                          </Badge>
+                          <Badge key={i} variant="outline" className="text-[10px] bg-accent/50">{kw}</Badge>
                         ))}
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      {flow.nodes.length} خطوة · {flow.nodes.reduce((acc, n) => acc + n.buttons.length, 0)} زر
+                      {flow.nodes.length} خطوة · {flow.nodes.reduce((a, n) => a + n.buttons.length, 0)} زر
+                      {flow.channel_ids && flow.channel_ids.length > 0 && ` · ${flow.channel_ids.length} قناة`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0 flex-wrap">
-                    <Switch
-                      checked={flow.is_active}
-                      onCheckedChange={(val) => handleToggle(flow.id, val)}
-                    />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Switch checked={flow.is_active} onCheckedChange={v => handleToggle(flow.id, v)} />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(flow)}>
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(flow.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setExpandedFlowId(expandedFlowId === flow.id ? null : flow.id)}
-                    >
-                      {expandedFlowId === flow.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpandedId(expandedId === flow.id ? null : flow.id)}>
+                      {expandedId === flow.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
 
-                {expandedFlowId === flow.id && (
+                {expandedId === flow.id && (
                   <div className="mt-4 border-t pt-4 space-y-3">
                     {flow.welcome_message && (
                       <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
@@ -487,24 +755,22 @@ const ChatbotPage = () => {
                             {idx + 1}
                           </span>
                           <span className="text-xs font-medium">
-                            {node.type === "action" ? NODE_ACTION_LABELS[node.action_type || ""] || "إجراء" : "رسالة"}
+                            {node.type === "action" ? ACTION_LABELS[node.action_type || ""] || "إجراء" : "رسالة"}
                           </span>
                           <Badge variant="outline" className="text-[9px] mr-auto">{node.buttons.length} زر</Badge>
                         </div>
-                        <p className="text-sm mb-2">{node.content}</p>
+                        <p className="text-sm mb-2 whitespace-pre-wrap">{node.content}</p>
                         {node.buttons.length > 0 && (
                           <div className="flex flex-wrap gap-1.5">
-                            {node.buttons.map((btn) => {
-                              const targetNode = flow.nodes.find((n) => n.id === btn.next_node_id);
+                            {node.buttons.map(btn => {
+                              const target = flow.nodes.find(n => n.id === btn.next_node_id);
                               return (
                                 <div key={btn.id} className="flex items-center gap-1 bg-background rounded-md px-2 py-1 border text-xs">
                                   <span>{btn.label}</span>
-                                  {targetNode && (
+                                  {target && (
                                     <>
                                       <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                                      <span className="text-muted-foreground truncate max-w-[60px]">
-                                        خطوة {flow.nodes.indexOf(targetNode) + 1}
-                                      </span>
+                                      <span className="text-muted-foreground">خطوة {flow.nodes.indexOf(target) + 1}</span>
                                     </>
                                   )}
                                 </div>
@@ -521,287 +787,6 @@ const ChatbotPage = () => {
           ))}
         </div>
       )}
-
-      {/* Create/Edit Dialog - Tabbed for simplicity */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
-          <DialogHeader>
-            <DialogTitle>{editingFlow ? "تعديل التدفق" : "تدفق جديد"}</DialogTitle>
-          </DialogHeader>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="w-full grid grid-cols-3">
-              <TabsTrigger value="basics" className="text-xs gap-1">
-                <MessageSquare className="w-3 h-3" /> الأساسيات
-              </TabsTrigger>
-              <TabsTrigger value="steps" className="text-xs gap-1">
-                <ListOrdered className="w-3 h-3" /> الخطوات والأزرار
-              </TabsTrigger>
-              <TabsTrigger value="preview" className="text-xs gap-1">
-                <Eye className="w-3 h-3" /> معاينة
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Tab 1: Basics */}
-            <TabsContent value="basics" className="space-y-4">
-              <div className="space-y-3">
-                <div>
-                  <Label>اسم التدفق *</Label>
-                  <Input
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    placeholder="مثال: ترحيب العملاء، قائمة الخدمات..."
-                  />
-                </div>
-                <div>
-                  <Label>نوع التفعيل</Label>
-                  <Select value={formTriggerType} onValueChange={setFormTriggerType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="keyword">كلمات مفتاحية</SelectItem>
-                      <SelectItem value="first_message">أول رسالة من العميل</SelectItem>
-                      <SelectItem value="always">كل الرسائل</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    {formTriggerType === "keyword" && "البوت يرد عندما العميل يرسل أي من الكلمات المفتاحية"}
-                    {formTriggerType === "first_message" && "البوت يرد فقط على أول رسالة من العميل"}
-                    {formTriggerType === "always" && "البوت يرد على كل رسالة (انتبه: ممكن يتكرر)"}
-                  </p>
-                </div>
-
-                {formTriggerType === "keyword" && (
-                  <div>
-                    <Label>الكلمات المفتاحية</Label>
-                    <Input
-                      value={formKeywords}
-                      onChange={(e) => setFormKeywords(e.target.value)}
-                      placeholder="مرحبا، هلا، السلام عليكم"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1">افصل بين الكلمات بفاصلة</p>
-                  </div>
-                )}
-
-                <div>
-                  <Label>رسالة ترحيب (اختياري)</Label>
-                  <Textarea
-                    value={formWelcome}
-                    onChange={(e) => setFormWelcome(e.target.value)}
-                    placeholder="مرحباً بك! 👋 اختر من القائمة التالية:"
-                    rows={2}
-                  />
-                </div>
-
-                {orgId && (
-                  <ChannelSelector
-                    orgId={orgId}
-                    selectedIds={formChannelIds}
-                    onChange={setFormChannelIds}
-                    label="القنوات التي يعمل عليها هذا البوت"
-                  />
-                )}
-              </div>
-              <div className="flex justify-end">
-                <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")}>
-                  التالي: الخطوات والأزرار ←
-                </Button>
-              </div>
-            </TabsContent>
-
-            {/* Tab 2: Steps & Buttons */}
-            <TabsContent value="steps" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-base font-semibold">الخطوات</Label>
-                  <p className="text-[11px] text-muted-foreground">كل خطوة = رسالة يرسلها البوت + أزرار للعميل</p>
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={addNode} className="gap-1">
-                  <Plus className="w-3.5 h-3.5" />
-                  خطوة جديدة
-                </Button>
-              </div>
-
-              {formNodes.map((node, nodeIdx) => (
-                <Card key={node.id} className="border-2 border-dashed">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-                          {nodeIdx + 1}
-                        </span>
-                        <Select
-                          value={node.type}
-                          onValueChange={(val) => updateNode(node.id, { type: val as any })}
-                        >
-                          <SelectTrigger className="w-28 h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="message">رسالة + أزرار</SelectItem>
-                            <SelectItem value="action">إجراء (تحويل/إغلاق)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {formNodes.length > 1 && (
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeNode(node.id)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                    </div>
-
-                    {node.type === "message" ? (
-                      <>
-                        <div>
-                          <Label className="text-xs">نص الرسالة</Label>
-                          <Textarea
-                            value={node.content}
-                            onChange={(e) => updateNode(node.id, { content: e.target.value })}
-                            placeholder="اكتب الرسالة التي يرسلها البوت للعميل..."
-                            rows={2}
-                          />
-                        </div>
-
-                        {/* Buttons section */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs text-muted-foreground">
-                              الأزرار ({node.buttons.length}/{MAX_BUTTONS_PER_NODE})
-                            </Label>
-                            <div className="flex gap-1">
-                              {node.buttons.length < MAX_BUTTONS_PER_NODE && (
-                                <Button type="button" variant="ghost" size="sm" className="h-6 text-[11px] gap-1" onClick={() => addButton(node.id)}>
-                                  <Plus className="w-3 h-3" />
-                                  زر
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Existing buttons */}
-                          <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                            {node.buttons.map((btn, btnIdx) => (
-                              <div key={btn.id} className="flex items-center gap-2">
-                                <span className="text-[10px] text-muted-foreground w-4 text-center shrink-0">{btnIdx + 1}</span>
-                                <Input
-                                  value={btn.label}
-                                  onChange={(e) => updateButton(node.id, btn.id, { label: e.target.value })}
-                                  placeholder="نص الزر"
-                                  className="h-7 text-xs flex-1"
-                                />
-                                <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
-                                <Select
-                                  value={btn.next_node_id || "none"}
-                                  onValueChange={(val) => updateButton(node.id, btn.id, { next_node_id: val === "none" ? "" : val })}
-                                >
-                                  <SelectTrigger className="w-28 h-7 text-[11px]">
-                                    <SelectValue placeholder="الخطوة التالية" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="none">بدون</SelectItem>
-                                    {formNodes
-                                      .filter((n) => n.id !== node.id)
-                                      .map((n) => (
-                                        <SelectItem key={n.id} value={n.id}>
-                                          خطوة {formNodes.indexOf(n) + 1}
-                                        </SelectItem>
-                                      ))}
-                                  </SelectContent>
-                                </Select>
-                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive shrink-0" onClick={() => removeButton(node.id, btn.id)}>
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Quick add buttons */}
-                          {node.buttons.length < MAX_BUTTONS_PER_NODE && (
-                            <div className="mt-2 border-t pt-2">
-                              <Label className="text-[11px] text-muted-foreground">إضافة سريعة (كل سطر = زر جديد)</Label>
-                              <Textarea
-                                value={quickButtonsText}
-                                onChange={(e) => setQuickButtonsText(e.target.value)}
-                                placeholder={"تتبع طلب\nاستفسار\nتواصل مع موظف\nالأسعار\nالفروع"}
-                                rows={3}
-                                className="text-xs mt-1"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="mt-1.5 text-xs gap-1"
-                                onClick={() => handleQuickAddButtons(node.id)}
-                                disabled={!quickButtonsText.trim()}
-                              >
-                                <Plus className="w-3 h-3" />
-                                إضافة الأزرار
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="space-y-2">
-                        <Select
-                          value={node.action_type || "transfer_agent"}
-                          onValueChange={(val) => updateNode(node.id, { action_type: val as any })}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="transfer_agent">تحويل لموظف</SelectItem>
-                            <SelectItem value="close">إغلاق المحادثة</SelectItem>
-                            <SelectItem value="add_tag">إضافة وسم</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          value={node.content}
-                          onChange={(e) => updateNode(node.id, { content: e.target.value })}
-                          placeholder={node.action_type === "add_tag" ? "اسم الوسم" : "رسالة تظهر للعميل (اختياري)"}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-
-              <div className="flex justify-between">
-                <Button variant="outline" size="sm" onClick={() => setActiveTab("basics")}>
-                  ← الأساسيات
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setActiveTab("preview")}>
-                  معاينة ←
-                </Button>
-              </div>
-            </TabsContent>
-
-            {/* Tab 3: Preview */}
-            <TabsContent value="preview" className="space-y-4">
-              <p className="text-xs text-muted-foreground text-center">اضغط على الأزرار لتجربة التدفق كما سيراه العميل</p>
-              <ChatPreview />
-              <div className="flex justify-between">
-                <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")}>
-                  ← الخطوات
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              إلغاء
-            </Button>
-            <Button onClick={handleSave} className="gap-1.5">
-              <Save className="w-4 h-4" />
-              {editingFlow ? "حفظ التعديلات" : "إنشاء التدفق"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
