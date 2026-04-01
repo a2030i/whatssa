@@ -627,7 +627,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
           )}
 
           {/* ═══ QR PENDING STATE ═══ */}
-          {instanceStatus === "qr_pending" && qrCode && (
+          {instanceStatus === "qr_pending" && qrCode && !pairingCode && (
             <div className="space-y-3">
               <div className="bg-white rounded-xl p-6 text-center space-y-3 border border-border">
                 <p className="text-sm font-bold text-foreground">امسح رمز QR بهاتفك</p>
@@ -645,6 +645,34 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
                   <RefreshCw className="w-3 h-3" /> تحديث QR
                 </Button>
                 <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => { setQrCode(null); setInstanceStatus("disconnected"); if (pollRef.current) clearInterval(pollRef.current); }}>
+                  إلغاء
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ PAIRING CODE PENDING STATE ═══ */}
+          {instanceStatus === "qr_pending" && pairingCode && (
+            <div className="space-y-3">
+              <div className="bg-white rounded-xl p-6 text-center space-y-4 border border-border">
+                <p className="text-sm font-bold text-foreground">أدخل الكود في هاتفك</p>
+                <p className="text-[11px] text-muted-foreground">واتساب → الأجهزة المرتبطة → ربط جهاز → الربط برقم الهاتف</p>
+                <div className="flex justify-center">
+                  <div className="bg-muted rounded-xl px-6 py-4 font-mono text-2xl font-bold tracking-[0.4em] text-foreground" dir="ltr">
+                    {pairingCode.slice(0, 4)}-{pairingCode.slice(4)}
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  جاري انتظار الربط...
+                </div>
+                <p className="text-[10px] text-muted-foreground">الكود صالح لمدة دقيقة واحدة فقط</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => requestPairingCode()}>
+                  <RefreshCw className="w-3 h-3" /> كود جديد
+                </Button>
+                <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => { setPairingCode(null); setInstanceStatus("disconnected"); if (pollRef.current) clearInterval(pollRef.current); }}>
                   إلغاء
                 </Button>
               </div>
