@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { order_id, org_id, carrier_id } = body;
+  const { order_id, org_id, carrier_id, warehouse_id } = body;
 
   if (!order_id || !org_id) {
     return new Response(JSON.stringify({ error: "order_id and org_id required" }), {
