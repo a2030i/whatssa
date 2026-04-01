@@ -215,6 +215,7 @@ const SallaIntegrationSection = () => {
   const [newStoreUrl, setNewStoreUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [showApiDocs, setShowApiDocs] = useState(false);
+  const [newApiToken, setNewApiToken] = useState("");
 
   useEffect(() => {
     if (orgId) fetchStores();
