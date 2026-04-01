@@ -259,6 +259,35 @@ const InboxPage = () => {
     };
   }, [selectedId]);
 
+  useEffect(() => {
+    if (!selectedId) return;
+
+    const conversation = conversations.find((item) => item.id === selectedId);
+    if (!conversation || conversation.channelType !== "evolution") return;
+
+    const pendingMessages = (allMessages[selectedId] || []).filter(
+      (message) => message.sender === "agent" && message.waMessageId && message.status !== "read"
+    );
+
+    if (pendingMessages.length === 0) return;
+
+    const timer = window.setTimeout(() => {
+      supabase.functions.invoke("evolution-manage", {
+        body: {
+          action: "sync_message_statuses",
+          phone: conversation.customerPhone,
+          instance_name: conversation.channelId,
+          messages: pendingMessages.map((message) => ({
+            message_id: message.waMessageId,
+            status: message.status,
+          })),
+        },
+      }).catch(() => {});
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [selectedId, allMessages, conversations]);
+
   // Send read receipts to Evolution when opening a conversation with unread messages
   useEffect(() => {
     if (!selectedId || !orgId) return;
