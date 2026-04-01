@@ -193,10 +193,13 @@ const OrdersPage = () => {
       
       const msg = `تم إرسال الطلب إلى لمحة بنجاح${data.tracking_number ? ` - رقم التتبع: ${data.tracking_number}` : ""}`;
       toast.success(msg);
-      loadOrders();
-      if (selectedOrder?.id === orderId) {
-        loadShipmentEvents(orderId);
-      }
+      // Refresh order list + update selected order immediately so button changes
+      const { data: freshOrders } = await supabase.from("orders").select("*").eq("org_id", orgId!).order("created_at", { ascending: false });
+      const list = freshOrders || [];
+      setOrders(list);
+      const updatedOrder = list.find((o: any) => o.id === orderId);
+      if (updatedOrder) setSelectedOrder(updatedOrder);
+      loadShipmentEvents(orderId);
     } catch (err: any) {
       toast.error("فشل إرسال الطلب إلى لمحة: " + (err.message || "خطأ غير معروف"));
     } finally {
