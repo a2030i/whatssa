@@ -175,6 +175,28 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
               <Reply className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
+          {msg.waMessageId && conversation.channelType === "evolution" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="تفاعل">
+                  <Smile className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" side="top">
+                <div className="flex gap-1">
+                  {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
+                    <button key={emoji} className="text-lg hover:scale-125 transition-transform" onClick={async () => {
+                      try {
+                        await supabase.functions.invoke("evolution-manage", {
+                          body: { action: "send_reaction", phone: conversation.customerPhone, message_id: msg.waMessageId, emoji },
+                        });
+                      } catch {}
+                    }}>{emoji}</button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
           {canEdit && onEdit && (
             <button onClick={() => onEdit(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="تعديل">
               <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
