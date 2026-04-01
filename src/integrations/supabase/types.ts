@@ -469,6 +469,55 @@ export type Database = {
           },
         ]
       }
+      channel_send_log: {
+        Row: {
+          channel_id: string
+          id: string
+          message_type: string | null
+          org_id: string
+          recipient_phone: string | null
+          sent_at: string
+        }
+        Insert: {
+          channel_id: string
+          id?: string
+          message_type?: string | null
+          org_id: string
+          recipient_phone?: string | null
+          sent_at?: string
+        }
+        Update: {
+          channel_id?: string
+          id?: string
+          message_type?: string | null
+          org_id?: string
+          recipient_phone?: string | null
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_send_log_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_send_log_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_config_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_send_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chatbot_flows: {
         Row: {
           channel_ids: string[] | null
@@ -2511,6 +2560,7 @@ export type Database = {
           phone_number_id: string
           previous_provider: string | null
           quality_rating: string | null
+          rate_limit_settings: Json | null
           registered_at: string | null
           registration_error: string | null
           registration_status: string | null
@@ -2554,6 +2604,7 @@ export type Database = {
           phone_number_id: string
           previous_provider?: string | null
           quality_rating?: string | null
+          rate_limit_settings?: Json | null
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
@@ -2597,6 +2648,7 @@ export type Database = {
           phone_number_id?: string
           previous_provider?: string | null
           quality_rating?: string | null
+          rate_limit_settings?: Json | null
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
@@ -2658,6 +2710,7 @@ export type Database = {
           phone_number_id: string | null
           previous_provider: string | null
           quality_rating: string | null
+          rate_limit_settings: Json | null
           registered_at: string | null
           registration_error: string | null
           registration_status: string | null
@@ -2696,6 +2749,7 @@ export type Database = {
           phone_number_id?: string | null
           previous_provider?: string | null
           quality_rating?: string | null
+          rate_limit_settings?: Json | null
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
@@ -2734,6 +2788,7 @@ export type Database = {
           phone_number_id?: string | null
           previous_provider?: string | null
           quality_rating?: string | null
+          rate_limit_settings?: Json | null
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
@@ -2764,6 +2819,7 @@ export type Database = {
       admin_get_hourly_messages: { Args: { _date?: string }; Returns: Json }
       admin_get_system_stats: { Args: never; Returns: Json }
       admin_get_top_orgs_usage: { Args: { _limit?: number }; Returns: Json }
+      check_channel_rate_limit: { Args: { _channel_id: string }; Returns: Json }
       check_org_limit: {
         Args: { _check_type: string; _org_id: string }
         Returns: Json
