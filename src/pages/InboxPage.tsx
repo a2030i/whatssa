@@ -13,6 +13,11 @@ import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from 
 
 const TYPING_TIMEOUT = 3000;
 
+const getSendFunction = (channelType?: string): string => {
+  if (channelType === "meta_api") return "whatsapp-send";
+  return "evolution-send"; // Default to evolution for evolution or unknown channels
+};
+
 const formatTimestamp = (isoStr: string | null): string => {
   if (!isoStr) return "";
   const date = new Date(isoStr);
