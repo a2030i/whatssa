@@ -436,6 +436,28 @@ const InboxPage = () => {
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, tags } : conversation)));
   }, []);
 
+  const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
+    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+      body: { to: convPhone, type: "edit", edit_message_id: waMessageId, message: newText },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || "فشل تعديل الرسالة");
+    } else {
+      toast.success("تم تعديل الرسالة");
+    }
+  }, []);
+
+  const handleDeleteMessage = useCallback(async (msgId: string, waMessageId: string, convPhone: string) => {
+    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+      body: { to: convPhone, delete_message_id: waMessageId },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || "فشل حذف الرسالة");
+    } else {
+      toast.success("تم حذف الرسالة");
+    }
+  }, []);
+
   const handleSendTemplate = useCallback(async (convId: string, template: WhatsAppTemplate, variables: string[]) => {
     const conversation = conversations.find((item) => item.id === convId);
     if (!conversation) {
