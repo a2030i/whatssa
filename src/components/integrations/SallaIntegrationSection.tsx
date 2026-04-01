@@ -543,6 +543,38 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
   timeSince: string;
   onRefetch: () => void;
 }) {
+  const [apiToken, setApiToken] = useState((store.metadata as any)?.api_token || "");
+  const [savingToken, setSavingToken] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const isLamha = store.platform === "lamha";
+
+  const saveApiToken = async () => {
+    setSavingToken(true);
+    const currentMeta = (store.metadata || {}) as any;
+    await supabase.from("store_integrations").update({
+      metadata: { ...currentMeta, api_token: apiToken.trim() },
+    } as any).eq("id", store.id);
+    toast.success("تم حفظ التوكن");
+    setSavingToken(false);
+    onRefetch();
+  };
+
+  const syncNow = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("lamha-sync-status", {
+        body: { org_id: store.org_id },
+      });
+      if (error) throw error;
+      toast.success(`تم المزامنة: ${data?.updated || 0} تحديث`);
+      onRefetch();
+    } catch (err) {
+      toast.error("فشلت المزامنة");
+      console.error(err);
+    }
+    setSyncing(false);
+  };
+
   return (
     <div className="bg-card border border-border rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -560,6 +592,12 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isLamha && (
+            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={syncNow} disabled={syncing}>
+              <RefreshCw className={cn("w-3 h-3", syncing && "animate-spin")} />
+              مزامنة
+            </Button>
+          )}
           <Switch checked={store.is_active} onCheckedChange={(v) => onToggle(store.id, v)} />
           <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => onDelete(store.id)}>
             <Trash2 className="w-3.5 h-3.5" />
@@ -567,29 +605,49 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
         </div>
       </div>
 
-      {/* Webhook URL */}
-      <div className="bg-secondary/50 rounded-md p-3 space-y-2">
-        <Label className="text-[11px] text-muted-foreground">رابط الـ Webhook</Label>
-        <div className="flex gap-2">
-          <Input readOnly value={webhookUrl} className="text-[11px] font-mono h-8 bg-card" dir="ltr" />
-          <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={onCopyUrl}>
-            <Copy className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-
-        {/* Show secret for platforms that need it */}
-        {(store.platform === "woocommerce" || store.platform === "shopify") && (
-          <div className="pt-1">
-            <Label className="text-[11px] text-muted-foreground">Webhook Secret</Label>
-            <div className="flex gap-2 mt-1">
-              <Input readOnly value={store.webhook_secret} className="text-[11px] font-mono h-8 bg-card" dir="ltr" />
-              <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={onCopySecret}>
-                <Copy className="w-3.5 h-3.5" />
-              </Button>
-            </div>
+      {/* Lamha API Token */}
+      {isLamha ? (
+        <div className="bg-secondary/50 rounded-md p-3 space-y-2">
+          <Label className="text-[11px] text-muted-foreground">توكن API لمحة</Label>
+          <div className="flex gap-2">
+            <Input
+              value={apiToken}
+              onChange={(e) => setApiToken(e.target.value)}
+              className="text-[11px] font-mono h-8 bg-card"
+              dir="ltr"
+              type="password"
+              placeholder="أدخل التوكن"
+            />
+            <Button size="sm" variant="outline" className="h-8 shrink-0 text-[10px]" onClick={saveApiToken} disabled={savingToken}>
+              {savingToken ? <RefreshCw className="w-3 h-3 animate-spin" /> : "حفظ"}
+            </Button>
           </div>
-        )}
-      </div>
+          <p className="text-[10px] text-muted-foreground">
+            📌 رابط تتبع الشحنات للعملاء: <code className="bg-secondary px-1 rounded" dir="ltr">{window.location.origin}/tracking</code>
+          </p>
+        </div>
+      ) : (
+        <div className="bg-secondary/50 rounded-md p-3 space-y-2">
+          <Label className="text-[11px] text-muted-foreground">رابط الـ Webhook</Label>
+          <div className="flex gap-2">
+            <Input readOnly value={webhookUrl} className="text-[11px] font-mono h-8 bg-card" dir="ltr" />
+            <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={onCopyUrl}>
+              <Copy className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+          {(store.platform === "woocommerce" || store.platform === "shopify") && (
+            <div className="pt-1">
+              <Label className="text-[11px] text-muted-foreground">Webhook Secret</Label>
+              <div className="flex gap-2 mt-1">
+                <Input readOnly value={store.webhook_secret} className="text-[11px] font-mono h-8 bg-card" dir="ltr" />
+                <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={onCopySecret}>
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Status */}
       <div className="flex items-center justify-between text-xs">
@@ -600,11 +658,11 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
             </Badge>
           ) : store.last_webhook_at ? (
             <Badge variant="secondary" className="text-[10px] gap-1 bg-success/10 text-success border-0">
-              <CheckCircle2 className="w-3 h-3" /> متصل
+              <CheckCircle2 className="w-3 h-3" /> {isLamha ? "آخر مزامنة" : "متصل"}
             </Badge>
           ) : (
             <Badge variant="secondary" className="text-[10px] gap-1">
-              في انتظار أول حدث
+              {isLamha ? "لم تتم مزامنة بعد" : "في انتظار أول حدث"}
             </Badge>
           )}
         </div>
@@ -622,16 +680,24 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
         onSaved={onRefetch}
       />
 
-      {/* Events */}
+      {/* Events/Features */}
       <div className="flex flex-wrap gap-1.5">
-        {store.events_enabled.map((evt) => {
-          const label = platform.events.find(e => e.key === evt)?.label || EVENT_LABELS_AR[evt] || evt;
-          return (
-            <span key={evt} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
-              {label}
+        {isLamha ? (
+          platform.events.map((evt) => (
+            <span key={evt.key} className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600">
+              {evt.label}
             </span>
-          );
-        })}
+          ))
+        ) : (
+          store.events_enabled.map((evt) => {
+            const label = platform.events.find(e => e.key === evt)?.label || EVENT_LABELS_AR[evt] || evt;
+            return (
+              <span key={evt} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
+                {label}
+              </span>
+            );
+          })
+        )}
       </div>
     </div>
   );
