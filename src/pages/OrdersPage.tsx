@@ -507,6 +507,23 @@ const OrdersPage = () => {
                   {/* Carrier selector */}
                   {selectedOrder.shipment_carrier !== "lamha" && (
                     <>
+                      {/* Warehouse selector */}
+                      {warehouses.length > 0 && (
+                        <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
+                          <SelectTrigger className="text-xs bg-card border-border/50">
+                            <SelectValue placeholder="اختر المستودع (المرسل)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {warehouses.map((w: any) => (
+                              <SelectItem key={w.id} value={w.id}>
+                                {w.name} — {w.city} {w.is_default ? "⭐" : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {/* Carrier selector */}
                       <Select value={selectedCarrierId} onValueChange={setSelectedCarrierId}>
                         <SelectTrigger className="text-xs bg-card border-border/50">
                           <SelectValue placeholder={loadingCarriers ? "جاري التحميل..." : "اختر شركة الشحن"} />
