@@ -61,8 +61,24 @@ const OrdersPage = () => {
   const [lamhaCarriers, setLamhaCarriers] = useState<any[]>([]);
   const [selectedCarrierId, setSelectedCarrierId] = useState<string>("");
   const [loadingCarriers, setLoadingCarriers] = useState(false);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
 
-  useEffect(() => { if (orgId) { loadOrders(); loadLamhaIntegration(); } }, [orgId]);
+  useEffect(() => { if (orgId) { loadOrders(); loadLamhaIntegration(); loadWarehouses(); } }, [orgId]);
+
+  const loadWarehouses = async () => {
+    const { data } = await supabase
+      .from("warehouses")
+      .select("*")
+      .eq("org_id", orgId!)
+      .eq("is_active", true)
+      .order("is_default", { ascending: false });
+    const list = data || [];
+    setWarehouses(list);
+    const def = list.find((w: any) => w.is_default);
+    if (def) setSelectedWarehouseId(def.id);
+    else if (list.length > 0) setSelectedWarehouseId(list[0].id);
+  };
 
   const loadLamhaIntegration = async () => {
     const { data } = await supabase
@@ -169,6 +185,7 @@ const OrdersPage = () => {
           order_id: orderId,
           org_id: orgId,
           carrier_id: selectedCarrierId,
+          warehouse_id: selectedWarehouseId || undefined,
         },
       });
       if (error) throw error;
@@ -490,6 +507,23 @@ const OrdersPage = () => {
                   {/* Carrier selector */}
                   {selectedOrder.shipment_carrier !== "lamha" && (
                     <>
+                      {/* Warehouse selector */}
+                      {warehouses.length > 0 && (
+                        <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
+                          <SelectTrigger className="text-xs bg-card border-border/50">
+                            <SelectValue placeholder="اختر المستودع (المرسل)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {warehouses.map((w: any) => (
+                              <SelectItem key={w.id} value={w.id}>
+                                {w.name} — {w.city} {w.is_default ? "⭐" : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {/* Carrier selector */}
                       <Select value={selectedCarrierId} onValueChange={setSelectedCarrierId}>
                         <SelectTrigger className="text-xs bg-card border-border/50">
                           <SelectValue placeholder={loadingCarriers ? "جاري التحميل..." : "اختر شركة الشحن"} />
