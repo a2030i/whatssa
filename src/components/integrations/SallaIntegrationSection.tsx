@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Store, Plus, Trash2, Copy, CheckCircle2, XCircle, RefreshCw, ExternalLink, ShoppingBag, Globe, Code2 } from "lucide-react";
+import { Store, Plus, Trash2, Copy, CheckCircle2, XCircle, RefreshCw, ExternalLink, ShoppingBag, Globe, Code2, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ interface StoreIntegration {
   metadata?: any;
 }
 
-const PLATFORMS = [
+const STORE_PLATFORMS = [
   {
     id: "salla",
     name: "سلة (Salla)",
@@ -127,26 +127,6 @@ const PLATFORMS = [
     ],
   },
   {
-    id: "lamha",
-    name: "لمحة (Lamha)",
-    icon: "🚚",
-    color: "bg-orange-500/10 text-orange-600",
-    webhookBase: LAMHA_WEBHOOK_BASE,
-    description: "منصة إدارة الشحن — إنشاء شحنات تلقائياً + تتبع الحالة + إشعارات واتساب",
-    instructions: [
-      "أضف ربط لمحة هنا واحفظ",
-      "أدخل توكن API الخاص بحسابك في لمحة",
-      "سيتم إنشاء الشحنات تلقائياً لما يوصلنا طلب من المتجر",
-      "حالة الشحن تتحدث دورياً من API لمحة + إرسال إشعار واتساب للعميل",
-    ],
-    events: [
-      { key: "auto_create_shipment", label: "إنشاء شحنة تلقائي" },
-      { key: "auto_sync_status", label: "تحديث حالة تلقائي" },
-      { key: "notify_customer", label: "إشعار العميل" },
-    ],
-    usesApiToken: true,
-  },
-  {
     id: "generic",
     name: "ربط مخصص (Generic)",
     icon: "⚙️",
@@ -168,6 +148,31 @@ const PLATFORMS = [
   },
 ];
 
+const SHIPPING_PLATFORMS = [
+  {
+    id: "lamha",
+    name: "لمحة (Lamha)",
+    icon: "🚚",
+    color: "bg-orange-500/10 text-orange-600",
+    webhookBase: LAMHA_WEBHOOK_BASE,
+    description: "منصة إدارة الشحن — إنشاء شحنات تلقائياً + تتبع الحالة + إشعارات واتساب",
+    instructions: [
+      "أضف شركة الشحن هنا واحفظ",
+      "أدخل توكن API الخاص بحسابك في لمحة",
+      "سيتم إنشاء الشحنات تلقائياً لما يوصلنا طلب من المتجر",
+      "حالة الشحن تتحدث دورياً من API لمحة + إرسال إشعار واتساب للعميل",
+    ],
+    events: [
+      { key: "auto_create_shipment", label: "إنشاء شحنة تلقائي" },
+      { key: "auto_sync_status", label: "تحديث حالة تلقائي" },
+      { key: "notify_customer", label: "إشعار العميل" },
+    ],
+    usesApiToken: true,
+  },
+];
+
+// Combined for lookups
+const ALL_PLATFORMS = [...STORE_PLATFORMS, ...SHIPPING_PLATFORMS];
 // Fallback Arabic labels for event keys not defined in platform configs
 const EVENT_LABELS_AR: Record<string, string> = {
   "order.created": "طلب جديد",
@@ -294,7 +299,7 @@ const SallaIntegrationSection = () => {
   };
 
   const getWebhookUrl = (store: StoreIntegration) => {
-    const platformConfig = PLATFORMS.find(p => p.id === store.platform);
+    const platformConfig = ALL_PLATFORMS.find(p => p.id === store.platform);
     const base = platformConfig?.webhookBase || STORE_WEBHOOK_BASE;
     return `${base}/${store.id}`;
   };
@@ -309,7 +314,7 @@ const SallaIntegrationSection = () => {
     toast.success("تم نسخ الـ Secret");
   };
 
-  const getPlatformConfig = (platformId: string) => PLATFORMS.find(p => p.id === platformId);
+  const getPlatformConfig = (platformId: string) => ALL_PLATFORMS.find(p => p.id === platformId);
 
   const getTimeSince = (date: string | null) => {
     if (!date) return "لم يستلم أي حدث";
@@ -322,13 +327,17 @@ const SallaIntegrationSection = () => {
     return `منذ ${Math.floor(hours / 24)} يوم`;
   };
 
+  // Separate stores from shipping
+  const storeIntegrations = stores.filter(s => STORE_PLATFORMS.some(p => p.id === s.platform));
+  const shippingIntegrations = stores.filter(s => SHIPPING_PLATFORMS.some(p => p.id === s.platform));
+
   // Group stores by platform
-  const storesByPlatform = PLATFORMS.reduce((acc, p) => {
+  const storesByPlatform = ALL_PLATFORMS.reduce((acc, p) => {
     acc[p.id] = stores.filter(s => s.platform === p.id);
     return acc;
   }, {} as Record<string, StoreIntegration[]>);
 
-  const hasAnyStores = stores.length > 0;
+  const hasAnyStores = storeIntegrations.length > 0;
 
   return (
     <div className="space-y-4">
@@ -358,7 +367,7 @@ const SallaIntegrationSection = () => {
           <p className="text-sm text-muted-foreground mb-1">لم تربط أي متجر بعد</p>
           <p className="text-[11px] text-muted-foreground/70 mb-3">يدعم سلة، زد، Shopify، WooCommerce وأي منصة أخرى</p>
           <div className="flex flex-wrap justify-center gap-2">
-            {PLATFORMS.map(p => (
+            {STORE_PLATFORMS.map(p => (
               <Button key={p.id} size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => { setSelectedPlatform(p.id); setShowAdd(true); }}>
                 <span>{p.icon}</span> {p.name}
               </Button>
@@ -368,7 +377,7 @@ const SallaIntegrationSection = () => {
       ) : (
         <Tabs defaultValue={stores[0]?.platform || "salla"} className="w-full">
           <TabsList className="w-full flex-wrap h-auto gap-1 bg-secondary/50 p-1">
-            {PLATFORMS.filter(p => storesByPlatform[p.id]?.length > 0).map(p => (
+            {STORE_PLATFORMS.filter(p => storesByPlatform[p.id]?.length > 0).map(p => (
               <TabsTrigger key={p.id} value={p.id} className="text-xs gap-1.5 data-[state=active]:bg-card">
                 <span>{p.icon}</span>
                 {p.name}
@@ -377,7 +386,7 @@ const SallaIntegrationSection = () => {
             ))}
           </TabsList>
 
-          {PLATFORMS.filter(p => storesByPlatform[p.id]?.length > 0).map(p => (
+          {STORE_PLATFORMS.filter(p => storesByPlatform[p.id]?.length > 0).map(p => (
             <TabsContent key={p.id} value={p.id} className="space-y-3 mt-3">
               {storesByPlatform[p.id].map(store => (
                 <StoreCard
@@ -398,11 +407,64 @@ const SallaIntegrationSection = () => {
         </Tabs>
       )}
 
-      {/* Add Store Dialog */}
+      {/* ─── Shipping Companies Section ─── */}
+      <div className="border-t border-border pt-4 mt-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Truck className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold">شركات الشحن</h3>
+            {shippingIntegrations.length > 0 && (
+              <Badge variant="secondary" className="text-[10px]">{shippingIntegrations.length}</Badge>
+            )}
+          </div>
+          <Button size="sm" onClick={() => { setSelectedPlatform("lamha"); setShowAdd(true); }} className="gap-1 text-xs">
+            <Plus className="w-3.5 h-3.5" /> إضافة شركة شحن
+          </Button>
+        </div>
+
+        {shippingIntegrations.length === 0 ? (
+          <div className="bg-secondary/50 rounded-lg p-6 text-center">
+            <Truck className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground mb-1">لم تربط أي شركة شحن بعد</p>
+            <p className="text-[11px] text-muted-foreground/70 mb-3">اربط شركة الشحن لإنشاء شحنات تلقائياً وتتبع الحالة</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {SHIPPING_PLATFORMS.map(p => (
+                <Button key={p.id} size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => { setSelectedPlatform(p.id); setShowAdd(true); }}>
+                  <span>{p.icon}</span> {p.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {shippingIntegrations.map(store => {
+              const platform = SHIPPING_PLATFORMS.find(p => p.id === store.platform)!;
+              return (
+                <StoreCard
+                  key={store.id}
+                  store={store}
+                  platform={platform}
+                  onToggle={toggleStore}
+                  onDelete={deleteStore}
+                  onCopyUrl={() => copyWebhookUrl(store)}
+                  onCopySecret={() => copySecret(store.webhook_secret)}
+                  webhookUrl={getWebhookUrl(store)}
+                  timeSince={getTimeSince(store.last_webhook_at)}
+                  onRefetch={fetchStores}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Add Store/Shipping Dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-base">إضافة متجر جديد</DialogTitle>
+            <DialogTitle className="text-base">
+              {SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) ? "إضافة شركة شحن" : "إضافة متجر جديد"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -412,13 +474,23 @@ const SallaIntegrationSection = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PLATFORMS.map(p => (
-                    <SelectItem key={p.id} value={p.id}>
-                      <span className="flex items-center gap-2">
-                        <span>{p.icon}</span> {p.name}
-                      </span>
-                    </SelectItem>
-                  ))}
+                  {SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) ? (
+                    SHIPPING_PLATFORMS.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{p.icon}</span> {p.name}
+                        </span>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    STORE_PLATFORMS.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{p.icon}</span> {p.name}
+                        </span>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-muted-foreground mt-1">
@@ -426,24 +498,28 @@ const SallaIntegrationSection = () => {
               </p>
             </div>
             <div>
-              <Label className="text-xs">اسم المتجر</Label>
+              <Label className="text-xs">
+                {SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) ? "اسم شركة الشحن" : "اسم المتجر"}
+              </Label>
               <Input
                 value={newStoreName}
                 onChange={(e) => setNewStoreName(e.target.value)}
-                placeholder="مثال: متجر الأناقة"
+                placeholder={SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) ? "مثال: لمحة" : "مثال: متجر الأناقة"}
                 className="mt-1 text-sm"
               />
             </div>
-            <div>
-              <Label className="text-xs">رابط المتجر (اختياري)</Label>
-              <Input
-                value={newStoreUrl}
-                onChange={(e) => setNewStoreUrl(e.target.value)}
-                placeholder="https://store.example.com"
-                className="mt-1 text-sm"
-                dir="ltr"
-              />
-            </div>
+            {!SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) && (
+              <div>
+                <Label className="text-xs">رابط المتجر (اختياري)</Label>
+                <Input
+                  value={newStoreUrl}
+                  onChange={(e) => setNewStoreUrl(e.target.value)}
+                  placeholder="https://store.example.com"
+                  className="mt-1 text-sm"
+                  dir="ltr"
+                />
+              </div>
+            )}
             {(getPlatformConfig(selectedPlatform) as any)?.usesApiToken && (
               <div>
                 <Label className="text-xs">توكن API لمحة</Label>
@@ -467,7 +543,9 @@ const SallaIntegrationSection = () => {
               </ol>
             </div>
             <Button onClick={addStore} disabled={saving} className="w-full">
-              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : "إضافة المتجر"}
+              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : 
+                SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) ? "إضافة شركة الشحن" : "إضافة المتجر"
+              }
             </Button>
           </div>
         </DialogContent>
@@ -536,7 +614,7 @@ product.created, product.updated, product.deleted`}</pre>
 // ─── Store Card Component ───
 function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecret, webhookUrl, timeSince, onRefetch }: {
   store: StoreIntegration;
-  platform: typeof PLATFORMS[0];
+  platform: typeof ALL_PLATFORMS[0];
   onToggle: (id: string, active: boolean) => void;
   onDelete: (id: string) => void;
   onCopyUrl: () => void;
