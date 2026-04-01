@@ -60,7 +60,7 @@ export interface Message {
   sender: "customer" | "agent" | "system";
   timestamp: string;
   status?: "sent" | "delivered" | "read";
-  type?: "text" | "image" | "document" | "note" | "template" | "audio" | "video" | "location" | "contacts" | "sticker" | "reaction";
+  type?: "text" | "image" | "document" | "note" | "template" | "audio" | "video" | "location" | "contacts" | "sticker" | "reaction" | "poll";
   mediaUrl?: string;
   senderName?: string;
   quoted?: {
@@ -73,6 +73,14 @@ export interface Message {
   reactions?: MessageReaction[];
   location?: MessageLocation;
   contacts?: MessageContact[];
+  editedAt?: string;
+  isDeleted?: boolean;
+  poll?: {
+    question: string;
+    options: { id: string; title: string }[];
+    votes?: Record<string, string[]>; // option_id -> voter phones
+  };
+  createdAt?: string;
 }
 
 export interface Agent {

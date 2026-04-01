@@ -131,6 +131,11 @@ serve(async (req) => {
       location,
       // Contact fields
       contacts,
+      // Reply context
+      reply_to,
+      // Edit/Delete
+      edit_message_id,
+      delete_message_id,
     } = body;
 
     if (!to || typeof to !== "string") {
@@ -159,10 +164,62 @@ serve(async (req) => {
       return json({ error: "واتساب غير مربوط بشكل حقيقي بعد" }, 400);
     }
 
+    // ── Delete message ──
+    if (delete_message_id) {
+      const deleteRes = await fetch(`https://graph.facebook.com/v21.0/${delete_message_id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${config.access_token}` },
+      });
+      const deleteResult = await deleteRes.json();
+      if (!deleteRes.ok) {
+        return json({ error: deleteResult?.error?.message || "فشل حذف الرسالة" }, deleteRes.status);
+      }
+      // Mark message as deleted in DB
+      if (conversation_id) {
+        await adminClient.from("messages").update({
+          content: "تم حذف هذه الرسالة",
+          metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
+        }).eq("wa_message_id", delete_message_id);
+      }
+      return json({ success: true, deleted: true });
+    }
+
+    // ── Edit message ──
+    if (type === "edit" && edit_message_id && message) {
+      const editPayload = {
+        messaging_product: "whatsapp",
+        to,
+        type: "text",
+        text: { body: message },
+        context: { message_id: edit_message_id },
+      };
+      // Meta uses PUT for editing
+      const editRes = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${config.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(editPayload),
+      });
+      const editResult = await editRes.json();
+      if (!editRes.ok) {
+        return json({ error: editResult?.error?.message || "فشل تعديل الرسالة" }, editRes.status);
+      }
+      // Update message in DB
+      await adminClient.from("messages").update({
+        content: message,
+        metadata: { edited_at: new Date().toISOString() },
+      }).eq("wa_message_id", edit_message_id);
+      return json({ success: true, edited: true });
+    }
+
     let messagePayload: Record<string, unknown> = {
       messaging_product: "whatsapp",
       to,
     };
+
+    // Add reply context if provided
+    if (reply_to?.wa_message_id) {
+      messagePayload.context = { message_id: reply_to.wa_message_id };
+    }
 
     // ── Reaction message ──
     if (type === "reaction" && reaction_message_id) {
@@ -451,6 +508,16 @@ serve(async (req) => {
         };
         if (Object.keys(msgMetadata).length > 0) {
           msgInsert.metadata = msgMetadata;
+        }
+        // Add reply context to metadata
+        if (reply_to) {
+          const existing = (msgInsert.metadata as Record<string, any>) || {};
+          existing.quoted = {
+            message_id: reply_to.wa_message_id || reply_to.message_id,
+            sender_name: reply_to.sender_name || "العميل",
+            text: reply_to.text?.slice(0, 200) || "",
+          };
+          msgInsert.metadata = existing;
         }
 
         await adminClient.from("messages").insert(msgInsert);

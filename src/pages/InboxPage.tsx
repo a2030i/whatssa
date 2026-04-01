@@ -193,6 +193,10 @@ const InboxPage = () => {
         reactions: (message.metadata as any)?.reactions || undefined,
         location: (message.metadata as any)?.location || undefined,
         contacts: (message.metadata as any)?.contacts || undefined,
+        editedAt: (message.metadata as any)?.edited_at || undefined,
+        isDeleted: (message.metadata as any)?.is_deleted || false,
+        poll: (message.metadata as any)?.poll || undefined,
+        createdAt: message.created_at || undefined,
       }));
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
@@ -219,6 +223,10 @@ const InboxPage = () => {
           reactions: message.metadata?.reactions || undefined,
           location: message.metadata?.location || undefined,
           contacts: message.metadata?.contacts || undefined,
+          editedAt: message.metadata?.edited_at || undefined,
+          isDeleted: message.metadata?.is_deleted || false,
+          poll: message.metadata?.poll || undefined,
+          createdAt: message.created_at || undefined,
         };
         setAllMessages((prev) => ({
           ...prev,
@@ -229,13 +237,18 @@ const InboxPage = () => {
         const updated = payload.new as any;
         setAllMessages((prev) => ({
           ...prev,
-          [selectedId]: (prev[selectedId] || []).map((m) =>
-            m.id === updated.id
-              ? { ...m, status: updated.status as any, reactions: updated.metadata?.reactions || m.reactions }
-              : m.waMessageId && m.waMessageId === updated.wa_message_id
-                ? { ...m, status: updated.status as any, reactions: updated.metadata?.reactions || m.reactions }
-                : m
-          ),
+          [selectedId]: (prev[selectedId] || []).map((m) => {
+            const isMatch = m.id === updated.id || (m.waMessageId && m.waMessageId === updated.wa_message_id);
+            if (!isMatch) return m;
+            return {
+              ...m,
+              text: updated.content || m.text,
+              status: updated.status as any,
+              reactions: updated.metadata?.reactions || m.reactions,
+              editedAt: updated.metadata?.edited_at || m.editedAt,
+              isDeleted: updated.metadata?.is_deleted || false,
+            };
+          }),
         }));
       })
       .subscribe();
@@ -423,6 +436,28 @@ const InboxPage = () => {
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, tags } : conversation)));
   }, []);
 
+  const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
+    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+      body: { to: convPhone, type: "edit", edit_message_id: waMessageId, message: newText },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || "فشل تعديل الرسالة");
+    } else {
+      toast.success("تم تعديل الرسالة");
+    }
+  }, []);
+
+  const handleDeleteMessage = useCallback(async (msgId: string, waMessageId: string, convPhone: string) => {
+    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+      body: { to: convPhone, delete_message_id: waMessageId },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || "فشل حذف الرسالة");
+    } else {
+      toast.success("تم حذف الرسالة");
+    }
+  }, []);
+
   const handleSendTemplate = useCallback(async (convId: string, template: WhatsAppTemplate, variables: string[]) => {
     const conversation = conversations.find((item) => item.id === convId);
     if (!conversation) {
@@ -471,10 +506,12 @@ const InboxPage = () => {
           onBack={() => setSelectedId(null)}
           onSendMessage={handleSendMessage}
           onSendTemplate={handleSendTemplate}
-          onStatusChange={handleStatusChange}
-          onTransfer={handleTransfer}
-          onTagsChange={handleTagsChange}
-        />
+           onStatusChange={handleStatusChange}
+           onTransfer={handleTransfer}
+           onTagsChange={handleTagsChange}
+           onEditMessage={handleEditMessage}
+           onDeleteMessage={handleDeleteMessage}
+         />
       </div>
     );
   }
@@ -503,10 +540,12 @@ const InboxPage = () => {
           onBack={() => setSelectedId(null)}
           onSendMessage={handleSendMessage}
           onSendTemplate={handleSendTemplate}
-          onStatusChange={handleStatusChange}
-          onTransfer={handleTransfer}
-          onTagsChange={handleTagsChange}
-        />
+           onStatusChange={handleStatusChange}
+           onTransfer={handleTransfer}
+           onTagsChange={handleTagsChange}
+           onEditMessage={handleEditMessage}
+           onDeleteMessage={handleDeleteMessage}
+         />
       ) : (
         !isMobile && (
           <div className="flex flex-1 items-center justify-center bg-secondary/20">
