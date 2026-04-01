@@ -50,13 +50,22 @@ const OrdersPage = () => {
     
     const today = new Date().toISOString().slice(0, 10);
     const todayOrders = list.filter(o => o.created_at?.slice(0, 10) === today);
-    const revenue = list.filter(o => o.status !== "cancelled" && o.status !== "refunded").reduce((s, o) => s + Number(o.total || 0), 0);
-    const todayRevenue = todayOrders.filter(o => o.status !== "cancelled").reduce((s, o) => s + Number(o.total || 0), 0);
+    // Only count revenue for paid or COD orders (exclude unpaid, cancelled, refunded)
+    const paidOrders = list.filter(o => 
+      o.status !== "cancelled" && o.status !== "refunded" && 
+      (o.payment_status === "paid" || o.payment_method === "cod" || o.payment_method === "الدفع عند الاستلام")
+    );
+    const revenue = paidOrders.reduce((s, o) => s + Number(o.total || 0), 0);
+    const todayPaid = todayOrders.filter(o => 
+      o.status !== "cancelled" && 
+      (o.payment_status === "paid" || o.payment_method === "cod" || o.payment_method === "الدفع عند الاستلام")
+    );
+    const todayRevenue = todayPaid.reduce((s, o) => s + Number(o.total || 0), 0);
     
     setStats({
       total: list.length,
       revenue,
-      avgOrder: list.length > 0 ? revenue / list.filter(o => o.status !== "cancelled").length : 0,
+      avgOrder: paidOrders.length > 0 ? revenue / paidOrders.length : 0,
       pendingCount: list.filter(o => o.status === "pending").length,
       todayOrders: todayOrders.length,
       todayRevenue,
