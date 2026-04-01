@@ -1299,6 +1299,29 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </DialogContent>
       </Dialog>
 
+      {/* Edit Message Dialog */}
+      <Dialog open={!!editingMsg} onOpenChange={() => setEditingMsg(null)}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader><DialogTitle>تعديل الرسالة</DialogTitle></DialogHeader>
+          <div className="space-y-3 mt-2">
+            <Input
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleConfirmEdit()}
+              className="text-sm"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button size="sm" className="flex-1 gap-1" onClick={handleConfirmEdit} disabled={!editText.trim()}>
+                <Pencil className="w-3 h-3" /> حفظ التعديل
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingMsg(null)}>إلغاء</Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">يمكن تعديل الرسالة خلال 15 دقيقة من الإرسال فقط</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Transfer Dialog */}
       <TransferDialog
         open={showTransfer}
