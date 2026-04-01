@@ -400,8 +400,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         }
       });
 
+    // Listen for customer typing broadcasts from Evolution webhook
+    const customerTypingChannel = supabase.channel(`customer-typing:${conversation.id}`);
+    customerTypingChannel
+      .on("broadcast", { event: "typing" }, (payload) => {
+        setCustomerTyping(true);
+        setTimeout(() => setCustomerTyping(false), 4000);
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(customerTypingChannel);
     };
   }, [conversation.id, user?.id, profile?.full_name]);
 
