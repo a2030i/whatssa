@@ -83,6 +83,8 @@ const ChatbotPage = () => {
 
   const [flows, setFlows] = useState<ChatbotFlow[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"list" | "edit">("list");
   const [editingFlow, setEditingFlow] = useState<ChatbotFlow | null>(null);
