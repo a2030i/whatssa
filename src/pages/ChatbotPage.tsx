@@ -909,7 +909,7 @@ const ChatbotPage = () => {
                             {idx + 1}
                           </span>
                           <span className="text-xs font-medium">
-                            {node.type === "action" ? ACTION_LABELS[node.action_type || ""] || "إجراء" : "رسالة"}
+                            {node.name?.trim() ? node.name : (node.type === "action" ? ACTION_LABELS[node.action_type || ""] || "إجراء" : "رسالة")}
                           </span>
                           <Badge variant="outline" className="text-[9px] mr-auto">{node.buttons.length} زر</Badge>
                         </div>
