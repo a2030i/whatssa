@@ -19,13 +19,15 @@ interface CustomerInfoPanelProps {
   onAssignTeam?: (convId: string, teamId: string | null, teamName: string) => void;
 }
 
-const CustomerInfoPanel = ({ conversation, onUpdateNotes }: CustomerInfoPanelProps) => {
+const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssignTeam }: CustomerInfoPanelProps) => {
   const { orgId } = useAuth();
   const [notes, setNotes] = useState(conversation.notes || "");
   const [editingNotes, setEditingNotes] = useState(false);
   const [customer, setCustomer] = useState<any>(null);
   const [newTag, setNewTag] = useState("");
   const [showAddTag, setShowAddTag] = useState(false);
+  const [agents, setAgents] = useState<{ id: string; full_name: string; team_id: string | null }[]>([]);
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [sections, setSections] = useState({
     contact: true,
     assignment: true,
