@@ -367,7 +367,7 @@ const SallaIntegrationSection = () => {
           <p className="text-sm text-muted-foreground mb-1">لم تربط أي متجر بعد</p>
           <p className="text-[11px] text-muted-foreground/70 mb-3">يدعم سلة، زد، Shopify، WooCommerce وأي منصة أخرى</p>
           <div className="flex flex-wrap justify-center gap-2">
-            {PLATFORMS.map(p => (
+            {STORE_PLATFORMS.map(p => (
               <Button key={p.id} size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => { setSelectedPlatform(p.id); setShowAdd(true); }}>
                 <span>{p.icon}</span> {p.name}
               </Button>
