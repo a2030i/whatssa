@@ -183,6 +183,13 @@ const OrdersPage = () => {
                     <td className="p-3 text-xs hidden md:table-cell">{order.source === "salla" ? "سلة" : order.source === "zid" ? "زد" : order.source === "shopify" ? "Shopify" : order.source === "woocommerce" ? "WooCommerce" : order.source === "lamha" ? "لمحة" : order.source || "-"}</td>
                     <td className="p-3 font-bold text-xs">{Number(order.total).toFixed(2)} ر.س</td>
                     <td className="p-3"><Badge className={cn("text-[10px] border-0", sc.color)}>{sc.label}</Badge></td>
+                    <td className="p-3 hidden md:table-cell">
+                      {(order as any).shipment_status ? (
+                        <Badge className="text-[10px] border-0 bg-blue-500/10 text-blue-600">
+                          {{"new":"جديد","pending":"معلق","fulfilled":"تم التنفيذ","ready_for_pickup":"جاهز للالتقاط","reverse_shipment":"شحنة عكسية","cancelled":"ملغي","picked_up":"تم الالتقاط","shipping":"جاري الشحن","delivered":"تم التوصيل","delivery_failed":"فشل التوصيل","returned":"مرتجع"}[(order as any).shipment_status] || (order as any).shipment_status}
+                        </Badge>
+                      ) : <span className="text-muted-foreground text-[10px]">-</span>}
+                    </td>
                     <td className="p-3 hidden sm:table-cell"><Badge className={cn("text-[10px] border-0", pc.color)}>{pc.label}</Badge></td>
                     <td className="p-3 text-xs text-muted-foreground hidden lg:table-cell">{new Date(order.created_at).toLocaleDateString("ar-SA")}</td>
                     <td className="p-3"><Eye className="w-4 h-4 text-muted-foreground" /></td>
