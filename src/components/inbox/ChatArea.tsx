@@ -287,14 +287,23 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
                 ))}
               </div>
             )}
-            {/* Sticker message */}
-            {msg.type === "sticker" && msg.mediaUrl && (
-              <div className="mb-1">
-                <ResolvedMedia url={msg.mediaUrl} type="image" />
+            {/* Poll message */}
+            {msg.type === "poll" && msg.poll && (
+              <div className="mb-1 space-y-1.5">
+                <p className="text-xs font-bold flex items-center gap-1">📊 {msg.poll.question}</p>
+                {msg.poll.options.map((opt) => {
+                  const votes = msg.poll.votes?.[opt.id]?.length || 0;
+                  return (
+                    <div key={opt.id} className="flex items-center gap-2 bg-background/30 rounded-lg px-2.5 py-1.5">
+                      <span className="text-xs flex-1">{opt.title}</span>
+                      {votes > 0 && <Badge variant="secondary" className="text-[9px] px-1.5">{votes}</Badge>}
+                    </div>
+                  );
+                })}
               </div>
             )}
             {/* Regular content rendering */}
-            {msg.type !== "location" && msg.type !== "contacts" && msg.type !== "sticker" && (() => {
+            {msg.type !== "location" && msg.type !== "contacts" && msg.type !== "sticker" && msg.type !== "poll" && (() => {
               const textMediaUrl = getStorageUrlFromText(msg.text);
               const mediaUrl = msg.mediaUrl || textMediaUrl;
               const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
