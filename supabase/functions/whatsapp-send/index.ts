@@ -247,12 +247,52 @@ serve(async (req) => {
         return json({ error: "فشل رفع الوسائط إلى واتساب" }, 400);
       }
     }
-    // ── Interactive message (buttons/list/product) ──
+    // ── Interactive message (buttons/list/product/product_list) ──
     else if (type === "interactive" && interactive) {
       messagePayload = {
         ...messagePayload,
         type: "interactive",
         interactive,
+      };
+    }
+    // ── Single product message ──
+    else if (type === "product") {
+      const { catalog_id, product_retailer_id } = body;
+      if (!catalog_id || !product_retailer_id) return json({ error: "catalog_id و product_retailer_id مطلوبين" }, 400);
+      messagePayload = {
+        ...messagePayload,
+        type: "interactive",
+        interactive: {
+          type: "product",
+          body: { text: message || "" },
+          footer: body.footer ? { text: body.footer } : undefined,
+          action: {
+            catalog_id,
+            product_retailer_id,
+          },
+        },
+      };
+    }
+    // ── Multi-product message ──
+    else if (type === "product_list") {
+      const { catalog_id, sections } = body;
+      if (!catalog_id || !sections || !Array.isArray(sections)) return json({ error: "catalog_id و sections مطلوبين" }, 400);
+      messagePayload = {
+        ...messagePayload,
+        type: "interactive",
+        interactive: {
+          type: "product_list",
+          header: { type: "text", text: body.header_text || "منتجاتنا" },
+          body: { text: message || "اختر من المنتجات التالية:" },
+          footer: body.footer ? { text: body.footer } : undefined,
+          action: {
+            catalog_id,
+            sections: sections.map((s: any) => ({
+              title: s.title,
+              product_items: (s.products || []).map((p: any) => ({ product_retailer_id: p.product_retailer_id || p.id })),
+            })),
+          },
+        },
       };
     }
     // ── Text message ──
