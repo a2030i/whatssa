@@ -260,7 +260,7 @@ const ChatbotPage = () => {
     const [curId, setCurId] = useState<string | null>(nodes[0]?.id || null);
     const [history, setHistory] = useState<{ sender: string; text: string }[]>([]);
 
-    useEffect(() => {
+    const resetPreview = useCallback(() => {
       const msgs: { sender: string; text: string }[] = [];
       if (welcome) msgs.push({ sender: "bot", text: welcome });
       if (nodes[0]?.content) msgs.push({ sender: "bot", text: nodes[0].content });
@@ -268,7 +268,12 @@ const ChatbotPage = () => {
       setCurId(nodes[0]?.id || null);
     }, []);
 
+    useEffect(() => {
+      resetPreview();
+    }, [resetPreview]);
+
     const curNode = nodes.find(n => n.id === curId);
+    const ended = !curNode || (curNode.buttons.filter(b => b.label).length === 0 && history.length > 0);
 
     const clickBtn = (btn: ChatbotButton) => {
       const h = [...history, { sender: "user", text: btn.label }];
@@ -278,6 +283,7 @@ const ChatbotPage = () => {
         setHistory(h);
         setCurId(next.id);
       } else {
+        h.push({ sender: "bot", text: "— انتهى التدفق —" });
         setHistory(h);
         setCurId(null);
       }
@@ -285,11 +291,19 @@ const ChatbotPage = () => {
 
     return (
       <div className="bg-muted/30 rounded-xl border max-w-sm mx-auto overflow-hidden">
-        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold flex items-center gap-2">
-          <Bot className="w-4 h-4" />
-          معاينة المحادثة
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bot className="w-4 h-4" />
+            معاينة المحادثة
+          </div>
+          <button onClick={resetPreview} className="hover:bg-primary-foreground/20 rounded-full p-1 transition-colors" title="إعادة المعاينة">
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
         </div>
         <div className="p-3 space-y-2 min-h-[200px] max-h-[300px] overflow-y-auto">
+          {history.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-8">أضف نص رسالة في الخطوات لتظهر المعاينة</p>
+          )}
           {history.map((msg, i) => (
             <div key={i} className={cn("flex", msg.sender === "user" ? "justify-start" : "justify-end")}>
               <div className={cn(
@@ -300,6 +314,9 @@ const ChatbotPage = () => {
               </div>
             </div>
           ))}
+          {ended && history.length > 0 && (
+            <p className="text-[10px] text-muted-foreground text-center pt-2">— انتهى التدفق — اضغط ↻ للإعادة</p>
+          )}
         </div>
         {curNode && curNode.buttons.filter(b => b.label).length > 0 && (
           <div className="px-3 pb-3 flex flex-wrap gap-1.5">
@@ -313,6 +330,85 @@ const ChatbotPage = () => {
               </button>
             ))}
           </div>
+        )}
+      </div>
+    );
+  };
+
+  // ─── Flow Map (Visual Tree) ───
+  const FlowMap = () => {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Network className="w-4 h-4 text-primary" />
+          <p className="text-sm font-semibold">خريطة التدفق</p>
+        </div>
+        {welcome && (
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+            <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-1.5 text-xs">
+              🎉 ترحيب: {welcome.slice(0, 30)}{welcome.length > 30 ? "…" : ""}
+            </div>
+          </div>
+        )}
+        {nodes.map((node, idx) => {
+          const linkedFrom = nodes.flatMap(n => n.buttons.filter(b => b.next_node_id === node.id).map(b => ({
+            fromStep: nodes.indexOf(n) + 1,
+            btnLabel: b.label,
+          })));
+          return (
+            <div key={node.id} className="relative">
+              <div className={cn(
+                "border-2 rounded-xl p-3 transition-all",
+                node.buttons.some(b => b.next_node_id) ? "border-primary/30 bg-primary/5" : "border-border/60 bg-card"
+              )}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                    {idx + 1}
+                  </span>
+                  <span className="text-xs font-medium flex-1 truncate">
+                    {node.type === "action" ? `⚡ ${ACTION_LABELS[node.action_type || ""]}` : (node.content?.slice(0, 25) || "رسالة فارغة")}{node.content && node.content.length > 25 ? "…" : ""}
+                  </span>
+                </div>
+                {linkedFrom.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground mb-2">
+                    ← يصل إليها من: {linkedFrom.map(l => `خطوة ${l.fromStep} (${l.btnLabel})`).join("، ")}
+                  </p>
+                )}
+                {node.buttons.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {node.buttons.map(btn => {
+                      const targetIdx = nodes.findIndex(n => n.id === btn.next_node_id);
+                      const linked = targetIdx >= 0;
+                      return (
+                        <span
+                          key={btn.id}
+                          className={cn(
+                            "text-[10px] rounded-full px-2 py-0.5 border",
+                            linked 
+                              ? "bg-primary/10 border-primary/30 text-primary" 
+                              : "bg-muted border-border text-muted-foreground"
+                          )}
+                        >
+                          {btn.label || "—"} {linked ? `→ خطوة ${targetIdx + 1}` : "(⏹)"}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {idx < nodes.length - 1 && (
+                <div className="flex justify-center py-1">
+                  <div className="w-px h-4 bg-border" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {nodes.length <= 1 && (
+          <p className="text-[11px] text-muted-foreground text-center py-2">
+            أضف خطوات أكثر لرؤية الترابط بين الأزرار والخطوات
+          </p>
         )}
       </div>
     );
