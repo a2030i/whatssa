@@ -763,7 +763,7 @@ const IntegrationsPage = () => {
 
   const renderAllChannelsView = (currentConfigs: WhatsAppConfig[]) => {
     const connectedOfficialConfigs = currentConfigs.filter(c => !(c as any).channel_type || (c as any).channel_type !== "evolution");
-    const connectedUnofficialConfigs = unofficialConfigs.filter(c => c.is_connected || c.evolution_instance_status === "connected" || !!c.display_phone || !!c.business_name || !!c.evolution_instance_name);
+    const connectedUnofficialConfigs = unofficialConfigs.filter(c => c.is_connected || c.evolution_instance_status === "connected" || !!c.display_phone);
     const hasConnected = connectedOfficialConfigs.length > 0;
     const hasConnectedUnofficial = connectedUnofficialConfigs.length > 0;
 
