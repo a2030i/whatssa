@@ -61,8 +61,24 @@ const OrdersPage = () => {
   const [lamhaCarriers, setLamhaCarriers] = useState<any[]>([]);
   const [selectedCarrierId, setSelectedCarrierId] = useState<string>("");
   const [loadingCarriers, setLoadingCarriers] = useState(false);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
 
-  useEffect(() => { if (orgId) { loadOrders(); loadLamhaIntegration(); } }, [orgId]);
+  useEffect(() => { if (orgId) { loadOrders(); loadLamhaIntegration(); loadWarehouses(); } }, [orgId]);
+
+  const loadWarehouses = async () => {
+    const { data } = await supabase
+      .from("warehouses")
+      .select("*")
+      .eq("org_id", orgId!)
+      .eq("is_active", true)
+      .order("is_default", { ascending: false });
+    const list = data || [];
+    setWarehouses(list);
+    const def = list.find((w: any) => w.is_default);
+    if (def) setSelectedWarehouseId(def.id);
+    else if (list.length > 0) setSelectedWarehouseId(list[0].id);
+  };
 
   const loadLamhaIntegration = async () => {
     const { data } = await supabase
