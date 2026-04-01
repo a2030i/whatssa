@@ -73,6 +73,23 @@ const OrdersPage = () => {
       .eq("is_active", true)
       .maybeSingle();
     setLamhaIntegration(data);
+    if (data) loadLamhaCarriers();
+  };
+
+  const loadLamhaCarriers = async () => {
+    setLoadingCarriers(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("lamha-carriers", {
+        body: { org_id: orgId },
+      });
+      if (!error && data?.carriers) {
+        setLamhaCarriers(data.carriers);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingCarriers(false);
+    }
   };
 
 
