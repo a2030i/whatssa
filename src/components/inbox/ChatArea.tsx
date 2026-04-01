@@ -507,6 +507,25 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     inputRef.current?.focus();
   };
 
+  const handleStartEdit = (msg: Message) => {
+    setEditingMsg(msg);
+    setEditText(msg.text);
+  };
+
+  const handleConfirmEdit = () => {
+    if (!editingMsg || !editText.trim() || !onEditMessage) return;
+    onEditMessage(editingMsg.id, editingMsg.waMessageId || "", editText.trim(), conversation.customerPhone);
+    setEditingMsg(null);
+    setEditText("");
+  };
+
+  const handleDeleteMsg = (msg: Message) => {
+    if (!onDeleteMessage || !msg.waMessageId) return;
+    if (confirm("هل تريد حذف هذه الرسالة للجميع؟")) {
+      onDeleteMessage(msg.id, msg.waMessageId, conversation.customerPhone);
+    }
+  };
+
   const cancelReply = () => setReplyTo(null);
 
   const handleInputChange = (value: string) => {
