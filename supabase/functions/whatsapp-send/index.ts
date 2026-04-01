@@ -352,6 +352,45 @@ serve(async (req) => {
         },
       };
     }
+    // ── Address message (request delivery address) ──
+    else if (type === "address") {
+      const { address_body, address_values } = body;
+      messagePayload = {
+        ...messagePayload,
+        type: "interactive",
+        interactive: {
+          type: "address_message",
+          body: { text: address_body || message || "يرجى إدخال عنوان التوصيل" },
+          action: {
+            name: "address_message",
+            parameters: {
+              country: body.country || "SA",
+              values: address_values || {},
+            },
+          },
+        },
+      };
+    }
+    // ── CTA URL button message ──
+    else if (type === "cta_url") {
+      const { cta_display_text, cta_url } = body;
+      if (!cta_url || !cta_display_text) return json({ error: "cta_url و cta_display_text مطلوبين" }, 400);
+      messagePayload = {
+        ...messagePayload,
+        type: "interactive",
+        interactive: {
+          type: "cta_url",
+          body: { text: message || "" },
+          action: {
+            name: "cta_url",
+            parameters: {
+              display_text: cta_display_text,
+              url: cta_url,
+            },
+          },
+        },
+      };
+    }
     // ── Text message ──
     else {
       if (!message || typeof message !== "string") {

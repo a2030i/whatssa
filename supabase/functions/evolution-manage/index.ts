@@ -548,6 +548,179 @@ serve(async (req) => {
       return json({ success: reactRes.ok });
     }
 
+    // ── POST STATUS/STORY ──
+    if (action === "post_status") {
+      const { content: statusContent, media_url: statusMediaUrl, media_type: statusMediaType, background_color, font, caption: statusCaption } = await req.json().catch(() => ({} as any));
+      
+      if (statusMediaUrl) {
+        // Media status (image/video)
+        const statusRes = await fetch(`${EVOLUTION_URL}/message/sendStatus/${instanceName}`, {
+          method: "POST",
+          headers: evoHeaders,
+          body: JSON.stringify({
+            type: statusMediaType || "image",
+            content: statusMediaUrl,
+            caption: statusCaption || "",
+            statusJidList: ["broadcast"],
+          }),
+        });
+        const statusData = await statusRes.json();
+        await logToSystem(adminClient, "info", `تم نشر حالة (وسائط)`, { type: statusMediaType }, orgId, userId);
+        return json({ success: statusRes.ok, data: statusData });
+      } else if (statusContent) {
+        // Text status
+        const statusRes = await fetch(`${EVOLUTION_URL}/message/sendStatus/${instanceName}`, {
+          method: "POST",
+          headers: evoHeaders,
+          body: JSON.stringify({
+            type: "text",
+            content: statusContent,
+            backgroundColor: background_color || "#00bfa5",
+            font: font || 1,
+            statusJidList: ["broadcast"],
+          }),
+        });
+        const statusData = await statusRes.json();
+        await logToSystem(adminClient, "info", `تم نشر حالة (نص)`, {}, orgId, userId);
+        return json({ success: statusRes.ok, data: statusData });
+      }
+      return json({ error: "محتوى الحالة مطلوب" }, 400);
+    }
+
+    // ── GET STATUS UPDATES ──
+    if (action === "get_status") {
+      const statusRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${instanceName}`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({}),
+      });
+      const statusData = await statusRes.json();
+      return json({ success: statusRes.ok, data: statusData });
+    }
+
+    // ── EDIT MESSAGE ──
+    if (action === "edit_message") {
+      const { phone: editPhone, message_id: editMsgId, new_text } = await req.json().catch(() => ({} as any));
+      if (!editPhone || !editMsgId || !new_text) return json({ error: "البيانات ناقصة" }, 400);
+      const editRes = await fetch(`${EVOLUTION_URL}/message/editMessage/${instanceName}`, {
+        method: "PUT",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          number: editPhone.replace(/\D/g, ""),
+          key: { id: editMsgId, fromMe: true, remoteJid: `${editPhone.replace(/\D/g, "")}@s.whatsapp.net` },
+          text: new_text,
+        }),
+      });
+      const editData = await editRes.json();
+      if (editRes.ok) {
+        // Update in DB
+        await adminClient.from("messages").update({
+          content: new_text,
+          metadata: { edited_at: new Date().toISOString() },
+        }).eq("wa_message_id", editMsgId);
+        await logToSystem(adminClient, "info", `تم تعديل رسالة`, { message_id: editMsgId }, orgId, userId);
+      }
+      return json({ success: editRes.ok, data: editData });
+    }
+
+    // ── DELETE MESSAGE ──
+    if (action === "delete_message") {
+      const { phone: delPhone, message_id: delMsgId } = await req.json().catch(() => ({} as any));
+      if (!delPhone || !delMsgId) return json({ error: "البيانات ناقصة" }, 400);
+      const delRes = await fetch(`${EVOLUTION_URL}/message/deleteMessage/${instanceName}`, {
+        method: "DELETE",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          number: delPhone.replace(/\D/g, ""),
+          key: { id: delMsgId, fromMe: true, remoteJid: `${delPhone.replace(/\D/g, "")}@s.whatsapp.net` },
+        }),
+      });
+      const delData = await delRes.json();
+      if (delRes.ok) {
+        await adminClient.from("messages").update({
+          content: "تم حذف هذه الرسالة",
+          metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
+        }).eq("wa_message_id", delMsgId);
+        await logToSystem(adminClient, "info", `تم حذف رسالة`, { message_id: delMsgId }, orgId, userId);
+      }
+      return json({ success: delRes.ok, data: delData });
+    }
+
+    // ── PIN MESSAGE ──
+    if (action === "pin_message") {
+      const { phone: pinPhone, message_id: pinMsgId, duration = 604800 } = await req.json().catch(() => ({} as any));
+      if (!pinPhone || !pinMsgId) return json({ error: "البيانات ناقصة" }, 400);
+      const pinRes = await fetch(`${EVOLUTION_URL}/chat/pinMessage/${instanceName}`, {
+        method: "PUT",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          key: { id: pinMsgId, remoteJid: `${pinPhone.replace(/\D/g, "")}@s.whatsapp.net` },
+          duration, // seconds: 86400=24h, 604800=7d, 2592000=30d
+        }),
+      });
+      const pinData = await pinRes.json();
+      await logToSystem(adminClient, "info", `تم تثبيت رسالة`, { message_id: pinMsgId, duration }, orgId, userId);
+      return json({ success: pinRes.ok, data: pinData });
+    }
+
+    // ── UNPIN MESSAGE ──
+    if (action === "unpin_message") {
+      const { phone: unpinPhone, message_id: unpinMsgId } = await req.json().catch(() => ({} as any));
+      if (!unpinPhone || !unpinMsgId) return json({ error: "البيانات ناقصة" }, 400);
+      const unpinRes = await fetch(`${EVOLUTION_URL}/chat/unpinMessage/${instanceName}`, {
+        method: "PUT",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          key: { id: unpinMsgId, remoteJid: `${unpinPhone.replace(/\D/g, "")}@s.whatsapp.net` },
+        }),
+      });
+      return json({ success: unpinRes.ok });
+    }
+
+    // ── SEND BROADCAST (List Message) ──
+    if (action === "send_broadcast") {
+      const { phones, text: broadcastText, media_url: bcMediaUrl, media_type: bcMediaType } = await req.json().catch(() => ({} as any));
+      if (!phones || !Array.isArray(phones) || phones.length === 0) return json({ error: "قائمة الأرقام مطلوبة" }, 400);
+      if (!broadcastText && !bcMediaUrl) return json({ error: "نص الرسالة أو الوسائط مطلوبة" }, 400);
+
+      const results: Array<{ phone: string; success: boolean; error?: string }> = [];
+      const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+      for (const phone of phones) {
+        try {
+          const cleanPhone = phone.replace(/\D/g, "");
+          let sendRes;
+          if (bcMediaUrl) {
+            sendRes = await fetch(`${EVOLUTION_URL}/message/sendMedia/${instanceName}`, {
+              method: "POST",
+              headers: evoHeaders,
+              body: JSON.stringify({
+                number: cleanPhone,
+                mediatype: bcMediaType || "image",
+                media: bcMediaUrl,
+                caption: broadcastText || "",
+              }),
+            });
+          } else {
+            sendRes = await fetch(`${EVOLUTION_URL}/message/sendText/${instanceName}`, {
+              method: "POST",
+              headers: evoHeaders,
+              body: JSON.stringify({ number: cleanPhone, text: broadcastText }),
+            });
+          }
+          results.push({ phone: cleanPhone, success: sendRes.ok });
+          // Rate limit: 1 message per second
+          await delay(1000);
+        } catch (e) {
+          results.push({ phone, success: false, error: (e as Error).message });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      await logToSystem(adminClient, "info", `إرسال جماعي (بث): ${successCount}/${phones.length} نجحت`, { total: phones.length }, orgId, userId);
+      return json({ success: true, results, sent: successCount, total: phones.length });
+    }
+
     return json({ error: "إجراء غير معروف" }, 400);
   } catch (err: any) {
     await logToSystem(adminClient, "critical", "خطأ غير متوقع في إدارة Evolution", {
@@ -578,9 +751,12 @@ async function setWebhook(
           "MESSAGES_UPSERT",
           "MESSAGES_UPDATE",
           "MESSAGES_REACTION",
+          "MESSAGES_DELETE",
+          "MESSAGES_EDIT",
           "CONNECTION_UPDATE",
           "QRCODE_UPDATED",
           "PRESENCE_UPDATE",
+          "STATUS_INSTANCE",
         ],
       }),
     });
