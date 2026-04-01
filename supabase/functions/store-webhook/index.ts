@@ -765,9 +765,28 @@ async function sendEventNotification(supabase: any, integration: any, evt: Norma
   const notifConfigs = metadata.event_notifications || {};
 
   // Map normalized events to notification keys
-  const notifKey = evt.event.replace("status_updated", "status.updated");
-  const cfg = notifConfigs[notifKey];
-  if (!cfg?.enabled || !cfg?.channel_id) return;
+  // For status_updated events, derive key from order status (shipped, delivered, cancelled, refunded)
+  let notifKey = evt.event;
+  if (evt.event === "order.status_updated" && evt.order) {
+    const statusMap: Record<string, string> = {
+      shipped: "order.shipped",
+      delivered: "order.delivered",
+      cancelled: "order.cancelled",
+      refunded: "order.refunded",
+    };
+    notifKey = statusMap[evt.order.status] || evt.event;
+  }
+
+  // Try multiple keys for matching
+  const keysToTry = [notifKey, evt.event];
+  let cfg: any = null;
+  for (const key of keysToTry) {
+    if (notifConfigs[key]?.enabled && notifConfigs[key]?.channel_id) {
+      cfg = notifConfigs[key];
+      break;
+    }
+  }
+  if (!cfg) return;
 
   const { data: waConfig } = await supabase
     .from("whatsapp_config")
