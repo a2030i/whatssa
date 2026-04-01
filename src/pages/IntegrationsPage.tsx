@@ -363,15 +363,24 @@ const IntegrationsPage = () => {
     return raw;
   };
 
-  const completeSignup = async ({ token, phoneId, wabaId }: { token: string; phoneId: string; wabaId: string }) => {
-    if (!orgId) { handleError("تعذر تحديد المؤسسة. أعد تسجيل الدخول وحاول مرة أخرى."); return false; }
+  const completeSignup = async ({ token, phoneId, wabaId }: { token: string; phoneId: string; wabaId: string }): Promise<any> => {
+    if (!orgId) { handleError("تعذر تحديد المؤسسة. أعد تسجيل الدخول وحاول مرة أخرى."); return null; }
 
-    const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", {
-      body: { access_token: token, phone_number_id: phoneId, waba_id: wabaId, org_id: orgId, auto_register: true, ...(twoStepPin ? { pin: twoStepPin } : {}) },
-    });
+    const migrationBody: Record<string, any> = {
+      access_token: token, phone_number_id: phoneId, waba_id: wabaId, org_id: orgId, auto_register: true,
+      ...(twoStepPin ? { pin: twoStepPin } : {}),
+    };
+    if (onboardingMode === "migrate_app") {
+      migrationBody.migration_source = "business_app";
+    } else if (onboardingMode === "migrate_provider") {
+      migrationBody.migration_source = "other_provider";
+      if (previousProvider) migrationBody.previous_provider = previousProvider;
+    }
 
-    if (error || data?.error) { handleError(friendlyError(data?.error || "فشل في إكمال الربط")); return false; }
-    if (!data?.selected_phone || !data?.saved_config) { handleError("تعذر تسجيل الرقم — حاول مرة أخرى"); return false; }
+    const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", { body: migrationBody });
+
+    if (error || data?.error) { handleError(friendlyError(data?.error || "فشل في إكمال الربط")); return null; }
+    if (!data?.selected_phone || !data?.saved_config) { handleError("تعذر تسجيل الرقم — حاول مرة أخرى"); return null; }
 
     // Check registration result
     if (data.registration && !data.registration.success) {
@@ -380,7 +389,7 @@ const IntegrationsPage = () => {
     }
 
     await loadConfigs();
-    return true;
+    return data;
   };
 
   const handleError = (msg: string) => {
