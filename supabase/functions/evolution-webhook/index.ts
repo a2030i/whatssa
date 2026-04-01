@@ -1013,13 +1013,47 @@ serve(async (req) => {
       }
     }
 
-    // ── Handle MESSAGES_UPDATE (status: delivered / read) ──
+    // ── Handle MESSAGES_UPDATE (status + edits + deletes) ──
     if (event === "MESSAGES_UPDATE" || event === "messages.update") {
       const updates = Array.isArray(body.data) ? body.data : [body.data];
       for (const upd of updates) {
         const key = upd?.key || upd?.keyId ? { id: upd.keyId } : null;
         const waMessageId = key?.id || upd?.key?.id || upd?.id;
         const newStatus = upd?.update?.status || upd?.status;
+
+        // ── Message edited by remote user ──
+        if (upd?.update?.editedMessage || upd?.update?.message?.editedMessage) {
+          const editedMsg = upd.update.editedMessage || upd.update.message.editedMessage;
+          const editedText = editedMsg?.conversation || editedMsg?.extendedTextMessage?.text || editedMsg?.protocolMessage?.editedMessage?.conversation || "";
+          if (waMessageId && editedText) {
+            const { data: existingMsg } = await supabase
+              .from("messages")
+              .select("id, metadata")
+              .eq("wa_message_id", waMessageId)
+              .limit(1)
+              .maybeSingle();
+            if (existingMsg) {
+              const meta = (existingMsg.metadata as Record<string, any>) || {};
+              await supabase.from("messages").update({
+                content: editedText,
+                metadata: { ...meta, edited_at: new Date().toISOString(), original_content: meta.original_content || undefined },
+              }).eq("id", existingMsg.id);
+            }
+          }
+          continue;
+        }
+
+        // ── Message deleted (revoked) ──
+        if (upd?.update?.messageStubType === 1 || upd?.update?.message?.protocolMessage?.type === 0 || String(newStatus) === "REVOKED") {
+          if (waMessageId) {
+            await supabase.from("messages").update({
+              content: "تم حذف هذه الرسالة",
+              metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
+            }).eq("wa_message_id", waMessageId);
+          }
+          continue;
+        }
+
         if (!waMessageId || !newStatus) continue;
 
         // Evolution uses numeric statuses: 2=sent, 3=delivered, 4=read, 5=played
