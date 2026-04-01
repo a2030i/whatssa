@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import {
   AlertTriangle, CheckCircle2, Loader2, QrCode,
   Server, Trash2, Wifi, Settings, Smartphone, RefreshCw,
-  LogOut, Send, Pencil, Check, X
+  LogOut, Send, Pencil, Check, X, Shield, Clock, Gauge
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import ChannelRoutingConfig from "./ChannelRoutingConfig";
 import WhatsAppProfileEditor from "./WhatsAppProfileEditor";
 import { Input } from "@/components/ui/input";
