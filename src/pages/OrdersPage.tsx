@@ -171,7 +171,7 @@ const OrdersPage = () => {
               <tr className="border-b border-border bg-secondary/30">
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground">رقم الطلب</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground">العميل</th>
-                <th className="text-right p-3 text-xs font-medium text-muted-foreground hidden md:table-cell">المدينة</th>
+                <th className="text-right p-3 text-xs font-medium text-muted-foreground hidden md:table-cell">المنصة</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground">المبلغ</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground">الحالة</th>
                 <th className="text-right p-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">الدفع</th>
