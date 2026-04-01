@@ -456,7 +456,7 @@ const SallaIntegrationSection = () => {
             })}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Add Store/Shipping Dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
