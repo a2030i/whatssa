@@ -480,7 +480,8 @@ serve(async (req) => {
 
     // ── GROUP: REMOVE PARTICIPANTS ──
     if (action === "group_remove") {
-      const { group_jid, participants } = await req.json().catch(() => ({ group_jid: "", participants: [] }));
+      const group_jid = asString(payload.group_jid);
+      const participants = asStringArray(payload.participants);
       if (!group_jid || !participants?.length) return json({ error: "البيانات ناقصة" }, 400);
       const removeRes = await fetch(`${EVOLUTION_URL}/group/updateParticipant/${instanceName}?groupJid=${group_jid}`, {
         method: "PUT",
@@ -494,7 +495,9 @@ serve(async (req) => {
 
     // ── GROUP: UPDATE SETTINGS ──
     if (action === "group_settings") {
-      const { group_jid, subject, description } = await req.json().catch(() => ({ group_jid: "", subject: "", description: "" }));
+      const group_jid = asString(payload.group_jid);
+      const subject = asString(payload.subject);
+      const description = asString(payload.description);
       if (!group_jid) return json({ error: "معرف المجموعة مطلوب" }, 400);
       if (subject) {
         await fetch(`${EVOLUTION_URL}/group/updateGroupSubject/${instanceName}?groupJid=${group_jid}`, {
