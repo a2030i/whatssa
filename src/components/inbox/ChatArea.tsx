@@ -29,6 +29,8 @@ interface ChatAreaProps {
   onStatusChange: (convId: string, status: "active" | "waiting" | "closed") => void;
   onTransfer: (convId: string, agent: string) => void;
   onTagsChange?: (convId: string, tags: string[]) => void;
+  onEditMessage?: (msgId: string, waMessageId: string, newText: string, convPhone: string) => void;
+  onDeleteMessage?: (msgId: string, waMessageId: string, convPhone: string) => void;
 }
 
 const MessageStatus = ({ status }: { status?: string }) => {
