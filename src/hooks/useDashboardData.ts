@@ -79,18 +79,29 @@ export const useDashboardData = (): DashboardData => {
       const days7 = getDateRange(7);
       const days30 = getDateRange(30);
 
-      const [waConfig, convs, msgs, automations, wallet, org] = await Promise.all([
+      // First fetch conversations to get IDs, then fetch messages filtered by those conversations
+      const [waConfig, convs, automations, wallet, org] = await Promise.all([
         supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).maybeSingle(),
         supabase.from("conversations").select("id, status").eq("org_id", orgId),
-        supabase.from("messages").select("id, sender, status, created_at, conversation_id").order("created_at", { ascending: false }),
         supabase.from("automation_rules").select("id").eq("org_id", orgId),
         supabase.from("wallets").select("balance").eq("org_id", orgId).maybeSingle(),
         supabase.from("organizations").select("name, subscription_status, plans(name_ar)").eq("id", orgId).maybeSingle(),
       ]);
 
-      // Filter messages for this org's conversations
-      const orgConvIds = new Set((convs.data || []).map(c => c.id));
-      const orgMsgs = (msgs.data || []).filter(m => orgConvIds.has(m.conversation_id));
+      const orgConvIds = (convs.data || []).map(c => c.id);
+      
+      // Fetch messages only for this org's conversations and only from last 30 days
+      let orgMsgs: any[] = [];
+      if (orgConvIds.length > 0) {
+        const { data: msgsData } = await supabase
+          .from("messages")
+          .select("id, sender, status, created_at, conversation_id")
+          .in("conversation_id", orgConvIds.slice(0, 100))
+          .gte("created_at", days30)
+          .order("created_at", { ascending: false })
+          .limit(1000);
+        orgMsgs = msgsData || [];
+      }
 
       const agentMsgs = orgMsgs.filter(m => m.sender === "agent");
       const countByRange = (items: any[], from: string, statusFilter?: string) =>
