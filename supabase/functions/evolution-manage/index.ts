@@ -259,7 +259,7 @@ serve(async (req) => {
 
     // ── PAIRING CODE (Phone Number Linking) ──
     if (action === "pairing_code") {
-      const { phone_number } = await req.json().catch(() => ({}));
+      const { phone_number } = body;
       if (!phone_number) {
         return json({ error: "رقم الهاتف مطلوب" }, 400);
       }
