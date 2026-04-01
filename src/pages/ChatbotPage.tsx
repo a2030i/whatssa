@@ -342,6 +342,10 @@ const ChatbotPage = () => {
       }
     };
 
+    const visibleBtns = curNode?.buttons.filter(b => b.label) || [];
+    const isMeta = selectedChannelType === "meta_api" || selectedChannelType === "mixed";
+    const btnMode = isMeta ? metaMode(visibleBtns.length) : "text";
+
     return (
       <div className="bg-muted/30 rounded-xl border max-w-sm mx-auto overflow-hidden">
         <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold flex items-center justify-between">
@@ -349,9 +353,14 @@ const ChatbotPage = () => {
             <Bot className="w-4 h-4" />
             معاينة المحادثة
           </div>
-          <button onClick={resetPreview} className="hover:bg-primary-foreground/20 rounded-full p-1 transition-colors" title="إعادة المعاينة">
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-[9px] bg-primary-foreground/20">
+              {isMeta ? (btnMode === "reply_buttons" ? "أزرار تفاعلية" : btnMode === "list" ? "قائمة تفاعلية" : "نص") : "نص مرقّم"}
+            </Badge>
+            <button onClick={resetPreview} className="hover:bg-primary-foreground/20 rounded-full p-1 transition-colors" title="إعادة المعاينة">
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
         <div className="p-3 space-y-2 min-h-[200px] max-h-[300px] overflow-y-auto">
           {history.length === 0 && (
@@ -371,18 +380,72 @@ const ChatbotPage = () => {
             <p className="text-[10px] text-muted-foreground text-center pt-2">— انتهى التدفق — اضغط ↻ للإعادة</p>
           )}
         </div>
-        {curNode && curNode.buttons.filter(b => b.label).length > 0 && (
-          <div className="px-3 pb-3 flex flex-wrap gap-1.5">
-            {curNode.buttons.filter(b => b.label).map(btn => (
-              <button
-                key={btn.id}
-                onClick={() => clickBtn(btn)}
-                className="text-xs border border-primary text-primary rounded-full px-3 py-1 hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
+        
+        {/* Buttons rendering based on channel type */}
+        {curNode && visibleBtns.length > 0 && (
+          <>
+            {/* Meta Reply Buttons (≤3) */}
+            {isMeta && btnMode === "reply_buttons" && (
+              <div className="px-3 pb-3 flex flex-wrap gap-1.5">
+                {visibleBtns.map(btn => (
+                  <button
+                    key={btn.id}
+                    onClick={() => clickBtn(btn)}
+                    className="text-xs border border-primary text-primary rounded-full px-3 py-1.5 hover:bg-primary hover:text-primary-foreground transition-colors font-medium"
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Meta List (4-10) */}
+            {isMeta && btnMode === "list" && (
+              <div className="border-t">
+                <button
+                  onClick={() => {
+                    const listEl = document.getElementById("preview-list");
+                    if (listEl) listEl.classList.toggle("hidden");
+                  }}
+                  className="w-full py-2.5 text-xs font-semibold text-primary hover:bg-primary/5 transition-colors"
+                >
+                  📋 عرض القائمة ({visibleBtns.length} خيار)
+                </button>
+                <div id="preview-list" className="hidden border-t max-h-[200px] overflow-y-auto">
+                  {visibleBtns.map(btn => (
+                    <button
+                      key={btn.id}
+                      onClick={() => {
+                        clickBtn(btn);
+                        document.getElementById("preview-list")?.classList.add("hidden");
+                      }}
+                      className="w-full text-right px-4 py-3 text-sm hover:bg-accent/50 transition-colors border-b last:border-b-0"
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Text-based (Evolution / fallback) */}
+            {!isMeta && (
+              <div className="px-3 pb-3">
+                <div className="bg-card border rounded-lg p-2.5 space-y-1">
+                  {visibleBtns.map((btn, i) => (
+                    <button
+                      key={btn.id}
+                      onClick={() => clickBtn(btn)}
+                      className="w-full text-right text-xs hover:bg-accent/50 rounded px-2 py-1.5 transition-colors"
+                    >
+                      {i + 1}. {btn.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1 text-center">العميل يكتب رقم الخيار</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     );
