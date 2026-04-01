@@ -185,6 +185,7 @@ serve(async (req) => {
         const currentState = stateData.instance?.state || stateData.state || "unknown";
 
         if (currentState === "open") {
+          await syncInstanceIdentity(adminClient, orgId, instanceName, EVOLUTION_URL, evoHeaders);
           return json({ success: true, qr_code: null, status: "open" });
         }
       } catch (e) {
@@ -215,12 +216,15 @@ serve(async (req) => {
       const state = data.instance?.state || data.state || "unknown";
 
       if (state === "open") {
+        const identity = await syncInstanceIdentity(adminClient, orgId, instanceName, EVOLUTION_URL, evoHeaders);
         await adminClient
           .from("whatsapp_config")
           .update({
             evolution_instance_status: "connected",
             is_connected: true,
             registration_status: "connected",
+            ...(identity.display_phone ? { display_phone: identity.display_phone } : {}),
+            ...(identity.business_name ? { business_name: identity.business_name } : {}),
           })
           .eq("evolution_instance_name", instanceName)
           .eq("org_id", orgId);
@@ -834,6 +838,58 @@ async function setWebhook(
     await logToSystem(adminClient, "error", "خطأ في تعيين Webhook لجلسة Evolution", {
       error: e instanceof Error ? e.message : String(e), instance: instanceName,
     }, orgId);
+  }
+}
+
+async function syncInstanceIdentity(
+  adminClient: ReturnType<typeof createClient>,
+  orgId: string,
+  instanceName: string,
+  evolutionUrl: string,
+  headers: Record<string, string>,
+) {
+  try {
+    const res = await fetch(`${evolutionUrl}/instance/fetchInstances?instanceName=${encodeURIComponent(instanceName)}`, {
+      headers,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { display_phone: null, business_name: null };
+
+    const root = Array.isArray(data)
+      ? data[0]
+      : Array.isArray(data?.data)
+        ? data.data[0]
+        : data;
+    const instance = root?.instance || root?.data?.instance || root;
+
+    const ownerRaw = instance?.owner || instance?.ownerJid || instance?.wid || instance?.wuid || root?.owner || "";
+    const display_phone = typeof ownerRaw === "string" ? ownerRaw.replace(/@.*$/, "").replace(/\D/g, "") : "";
+    const business_name = [
+      instance?.profileName,
+      instance?.profile?.name,
+      root?.profileName,
+      root?.name,
+    ].find((value) => typeof value === "string" && value.trim()) || "";
+
+    if (display_phone || business_name) {
+      await adminClient
+        .from("whatsapp_config")
+        .update({
+          ...(display_phone ? { display_phone } : {}),
+          ...(business_name ? { business_name } : {}),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("org_id", orgId)
+        .eq("channel_type", "evolution")
+        .eq("evolution_instance_name", instanceName);
+    }
+
+    return {
+      display_phone: display_phone || null,
+      business_name: business_name || null,
+    };
+  } catch {
+    return { display_phone: null, business_name: null };
   }
 }
 
