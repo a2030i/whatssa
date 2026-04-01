@@ -34,6 +34,25 @@ export interface MessageTemplate {
   createdAt: string;
 }
 
+export interface MessageReaction {
+  emoji: string;
+  fromMe: boolean;
+  timestamp?: string;
+}
+
+export interface MessageLocation {
+  latitude: number;
+  longitude: number;
+  name?: string;
+  address?: string;
+}
+
+export interface MessageContact {
+  name: string;
+  phone: string;
+  email?: string;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -41,7 +60,7 @@ export interface Message {
   sender: "customer" | "agent" | "system";
   timestamp: string;
   status?: "sent" | "delivered" | "read";
-  type?: "text" | "image" | "document" | "note" | "template" | "audio" | "video";
+  type?: "text" | "image" | "document" | "note" | "template" | "audio" | "video" | "location" | "contacts" | "sticker" | "reaction";
   mediaUrl?: string;
   senderName?: string;
   quoted?: {
@@ -51,6 +70,9 @@ export interface Message {
     text?: string;
   };
   waMessageId?: string;
+  reactions?: MessageReaction[];
+  location?: MessageLocation;
+  contacts?: MessageContact[];
 }
 
 export interface Agent {
