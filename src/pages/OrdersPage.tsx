@@ -213,12 +213,17 @@ const OrdersPage = () => {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      if (data?.pdf_base64) {
-        const byteChars = atob(data.pdf_base64);
+      const pdfBase64 = data?.label_pdf_base64 || data?.pdf_base64;
+      if (pdfBase64) {
+        const byteChars = atob(pdfBase64);
         const byteNumbers = new Array(byteChars.length).fill(0).map((_, i) => byteChars.charCodeAt(i));
         const blob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
         window.open(url, "_blank");
+      } else if (data?.label_url) {
+        window.open(data.label_url, "_blank");
+      } else {
+        throw new Error("لم يتم استلام ملف البوليصة من لمحة");
       }
     } catch (err: any) {
       toast.error("فشل تحميل البوليصة: " + (err.message || "خطأ غير معروف"));
