@@ -554,7 +554,9 @@ const InboxPage = () => {
   }, []);
 
   const handleDeleteMessage = useCallback(async (msgId: string, waMessageId: string, convPhone: string) => {
-    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+    const conv = conversations.find(c => c.customerPhone === convPhone);
+    const func = getSendFunction(conv?.channelType);
+    const { data, error } = await supabase.functions.invoke(func, {
       body: { to: convPhone, delete_message_id: waMessageId },
     });
     if (error || data?.error) {
