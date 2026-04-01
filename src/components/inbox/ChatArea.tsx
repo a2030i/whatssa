@@ -594,8 +594,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     onSendMessage(conversation.id, text);
     setShowQuickReplies(false);
-    setIsTyping(true);
-    setTimeout(() => setIsTyping(false), 2000);
   };
 
   const handleEmoji = (emoji: string) => setInputText((prev) => prev + emoji);
