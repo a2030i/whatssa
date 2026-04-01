@@ -51,10 +51,16 @@ async function processChatbotFlow(
       return false;
     }
 
-    // Match by button label or number (1, 2, 3)
+    // Match by button label, number (1, 2, 3), or button ID (from interactive replies)
     let matchedButton = currentNode.buttons.find(
       (btn: any) => btn.label && normalizedText === btn.label.trim().toLowerCase()
     );
+    if (!matchedButton) {
+      // Match by button ID (Meta interactive replies send back the id)
+      matchedButton = currentNode.buttons.find(
+        (btn: any) => btn.id && normalizedText === btn.id
+      );
+    }
     if (!matchedButton) {
       const num = parseInt(normalizedText);
       if (num > 0 && num <= currentNode.buttons.length) {
