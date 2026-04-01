@@ -458,11 +458,13 @@ const SallaIntegrationSection = () => {
         )}
       </div>
 
-      {/* Add Store Dialog */}
+      {/* Add Store/Shipping Dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-base">إضافة متجر جديد</DialogTitle>
+            <DialogTitle className="text-base">
+              {SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) ? "إضافة شركة شحن" : "إضافة متجر جديد"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -472,13 +474,23 @@ const SallaIntegrationSection = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PLATFORMS.map(p => (
-                    <SelectItem key={p.id} value={p.id}>
-                      <span className="flex items-center gap-2">
-                        <span>{p.icon}</span> {p.name}
-                      </span>
-                    </SelectItem>
-                  ))}
+                  {SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) ? (
+                    SHIPPING_PLATFORMS.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{p.icon}</span> {p.name}
+                        </span>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    STORE_PLATFORMS.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{p.icon}</span> {p.name}
+                        </span>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-muted-foreground mt-1">
@@ -486,24 +498,28 @@ const SallaIntegrationSection = () => {
               </p>
             </div>
             <div>
-              <Label className="text-xs">اسم المتجر</Label>
+              <Label className="text-xs">
+                {SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) ? "اسم شركة الشحن" : "اسم المتجر"}
+              </Label>
               <Input
                 value={newStoreName}
                 onChange={(e) => setNewStoreName(e.target.value)}
-                placeholder="مثال: متجر الأناقة"
+                placeholder={SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) ? "مثال: لمحة" : "مثال: متجر الأناقة"}
                 className="mt-1 text-sm"
               />
             </div>
-            <div>
-              <Label className="text-xs">رابط المتجر (اختياري)</Label>
-              <Input
-                value={newStoreUrl}
-                onChange={(e) => setNewStoreUrl(e.target.value)}
-                placeholder="https://store.example.com"
-                className="mt-1 text-sm"
-                dir="ltr"
-              />
-            </div>
+            {!SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) && (
+              <div>
+                <Label className="text-xs">رابط المتجر (اختياري)</Label>
+                <Input
+                  value={newStoreUrl}
+                  onChange={(e) => setNewStoreUrl(e.target.value)}
+                  placeholder="https://store.example.com"
+                  className="mt-1 text-sm"
+                  dir="ltr"
+                />
+              </div>
+            )}
             {(getPlatformConfig(selectedPlatform) as any)?.usesApiToken && (
               <div>
                 <Label className="text-xs">توكن API لمحة</Label>
@@ -527,7 +543,9 @@ const SallaIntegrationSection = () => {
               </ol>
             </div>
             <Button onClick={addStore} disabled={saving} className="w-full">
-              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : "إضافة المتجر"}
+              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : 
+                SHIPPING_PLATFORMS.some(p => p.id === selectedPlatform) ? "إضافة شركة الشحن" : "إضافة المتجر"
+              }
             </Button>
           </div>
         </DialogContent>
