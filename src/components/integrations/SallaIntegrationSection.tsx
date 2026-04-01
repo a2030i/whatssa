@@ -238,12 +238,18 @@ const SallaIntegrationSection = () => {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("store_integrations").insert({
+    const platformConfig = getPlatformConfig(selectedPlatform);
+    const insertData: any = {
       org_id: orgId!,
       platform: selectedPlatform,
       store_name: newStoreName.trim(),
       store_url: newStoreUrl.trim() || null,
-    } as any);
+    };
+    // Save API token in metadata for Lamha
+    if ((platformConfig as any)?.usesApiToken && newApiToken.trim()) {
+      insertData.metadata = { api_token: newApiToken.trim() };
+    }
+    const { error } = await supabase.from("store_integrations").insert(insertData);
 
     if (error) {
       toast.error("فشل إضافة المتجر");
