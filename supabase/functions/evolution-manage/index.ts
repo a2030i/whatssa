@@ -76,8 +76,14 @@ serve(async (req) => {
       return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
     }
 
-    const body = await req.json();
-    const { action, instance_name } = body;
+    const body = await req.json().catch(() => ({} as Record<string, unknown>));
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return json({ error: "بيانات الطلب غير صالحة" }, 400);
+    }
+
+    const payload = body as Record<string, any>;
+    const action = typeof payload.action === "string" ? payload.action : "";
+    const instance_name = typeof payload.instance_name === "string" ? payload.instance_name : undefined;
     const instanceName = instance_name || `org_${orgId.replace(/-/g, "").slice(0, 12)}`;
 
     const evoHeaders = {
