@@ -320,7 +320,9 @@ serve(async (req) => {
         return json({ error: codeData?.message || "فشل الحصول على كود الربط — تأكد أن السيرفر يدعم هذه الميزة" }, 400);
       }
 
-      const pairingCode = codeData?.pairingCode || codeData?.code || null;
+      // pairingCode is 8 alphanumeric chars; codeData.code is the QR string — never use it as pairing code
+      const rawCode = codeData?.pairingCode || null;
+      const pairingCode = rawCode && /^[A-Z0-9]{4,8}$/i.test(rawCode) ? rawCode : null;
 
       if (!pairingCode) {
         await logToSystem(adminClient, "warn", "لم يتم إرجاع كود الربط من السيرفر", {
