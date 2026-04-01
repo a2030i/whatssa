@@ -202,7 +202,7 @@ const ChatbotPage = () => {
 
   // ─── Node / Button Management ───
   const addNode = () => {
-    setNodes(prev => [...prev, { id: generateId(), type: "message", content: "", buttons: [] }]);
+    setNodes(prev => [...prev, { id: generateId(), name: "", type: "message", content: "", buttons: [] }]);
   };
 
   const updateNode = (nid: string, u: Partial<ChatbotNode>) => {
