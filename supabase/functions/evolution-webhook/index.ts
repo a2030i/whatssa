@@ -1087,8 +1087,8 @@ serve(async (req) => {
       }
     }
 
-    // ── Handle MESSAGES_REACTION ──
-    if (event === "MESSAGES_REACTION" || event === "messages.reaction") {
+    // ── Handle Reactions (v2.3.7: reactions come inside MESSAGES_UPSERT, no separate event) ──
+    if (event === "MESSAGES_REACTION" || event === "messages.reaction" || event === "MESSAGES_EDITED") {
       const reactionData = body.data || body;
       const reactionKey = reactionData?.key || {};
       const waMessageId = reactionKey?.id || reactionData?.messageId;
