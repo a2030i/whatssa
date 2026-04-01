@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageCircle, Tag, Users } from "lucide-react";
+import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageCircle, Tag, Users, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import ChannelSelector from "@/components/ChannelSelector";
+import AutomationLogsPanel from "@/components/automation/AutomationLogsPanel";
 
 interface AutomationRule {
   id: string;
@@ -426,6 +427,11 @@ const AutomationPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Automation Execution Logs */}
+      <div className="bg-card rounded-lg shadow-card p-5 mt-6">
+        <AutomationLogsPanel />
+      </div>
     </div>
   );
 };

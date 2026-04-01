@@ -190,6 +190,57 @@ export type Database = {
           },
         ]
       }
+      api_request_logs: {
+        Row: {
+          created_at: string | null
+          endpoint: string
+          id: string
+          ip_address: string | null
+          method: string
+          org_id: string
+          response_time_ms: number | null
+          status_code: number | null
+          token_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          ip_address?: string | null
+          method?: string
+          org_id: string
+          response_time_ms?: number | null
+          status_code?: number | null
+          token_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          ip_address?: string | null
+          method?: string
+          org_id?: string
+          response_time_ms?: number | null
+          status_code?: number | null
+          token_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_request_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_request_logs_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "api_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_tokens: {
         Row: {
           created_at: string
@@ -239,6 +290,67 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_logs: {
+        Row: {
+          action_result: string | null
+          action_type: string
+          conversation_id: string | null
+          created_at: string | null
+          customer_phone: string | null
+          id: string
+          metadata: Json | null
+          org_id: string
+          rule_id: string | null
+          rule_name: string | null
+        }
+        Insert: {
+          action_result?: string | null
+          action_type: string
+          conversation_id?: string | null
+          created_at?: string | null
+          customer_phone?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id: string
+          rule_id?: string | null
+          rule_name?: string | null
+        }
+        Update: {
+          action_result?: string | null
+          action_type?: string
+          conversation_id?: string | null
+          created_at?: string | null
+          customer_phone?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id?: string
+          rule_id?: string | null
+          rule_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_logs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -295,6 +407,99 @@ export type Database = {
             columns: ["action_team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blacklisted_numbers: {
+        Row: {
+          blocked_by: string | null
+          created_at: string | null
+          id: string
+          org_id: string
+          phone: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_by?: string | null
+          created_at?: string | null
+          id?: string
+          org_id: string
+          phone: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_by?: string | null
+          created_at?: string | null
+          id?: string
+          org_id?: string
+          phone?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blacklisted_numbers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_analytics: {
+        Row: {
+          conversation_id: string | null
+          created_at: string | null
+          customer_phone: string | null
+          event_type: string
+          flow_id: string
+          id: string
+          metadata: Json | null
+          node_id: string | null
+          org_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string | null
+          customer_phone?: string | null
+          event_type: string
+          flow_id: string
+          id?: string
+          metadata?: Json | null
+          node_id?: string | null
+          org_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string | null
+          customer_phone?: string | null
+          event_type?: string
+          flow_id?: string
+          id?: string
+          metadata?: Json | null
+          node_id?: string | null
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_analytics_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_analytics_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "chatbot_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_analytics_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -527,6 +732,10 @@ export type Database = {
           name: string
           nodes: Json | null
           org_id: string
+          schedule_days: number[] | null
+          schedule_enabled: boolean | null
+          schedule_end: string | null
+          schedule_start: string | null
           trigger_keywords: string[] | null
           trigger_type: string
           updated_at: string | null
@@ -540,6 +749,10 @@ export type Database = {
           name: string
           nodes?: Json | null
           org_id: string
+          schedule_days?: number[] | null
+          schedule_enabled?: boolean | null
+          schedule_end?: string | null
+          schedule_start?: string | null
           trigger_keywords?: string[] | null
           trigger_type?: string
           updated_at?: string | null
@@ -553,6 +766,10 @@ export type Database = {
           name?: string
           nodes?: Json | null
           org_id?: string
+          schedule_days?: number[] | null
+          schedule_enabled?: boolean | null
+          schedule_end?: string | null
+          schedule_start?: string | null
           trigger_keywords?: string[] | null
           trigger_type?: string
           updated_at?: string | null
@@ -2590,6 +2807,60 @@ export type Database = {
           },
         ]
       }
+      webhook_logs: {
+        Row: {
+          created_at: string | null
+          duration_ms: number | null
+          error: string | null
+          event: string
+          id: string
+          org_id: string
+          response_body: string | null
+          status_code: number | null
+          url: string
+          webhook_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          event: string
+          id?: string
+          org_id: string
+          response_body?: string | null
+          status_code?: number | null
+          url: string
+          webhook_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          event?: string
+          id?: string
+          org_id?: string
+          response_body?: string | null
+          status_code?: number | null
+          url?: string
+          webhook_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_logs_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "org_webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_config: {
         Row: {
           access_token: string
@@ -2634,6 +2905,9 @@ export type Database = {
           token_refresh_error: string | null
           updated_at: string | null
           webhook_verify_token: string
+          welcome_message_enabled: boolean | null
+          welcome_message_new_only: boolean | null
+          welcome_message_text: string | null
         }
         Insert: {
           access_token: string
@@ -2678,6 +2952,9 @@ export type Database = {
           token_refresh_error?: string | null
           updated_at?: string | null
           webhook_verify_token?: string
+          welcome_message_enabled?: boolean | null
+          welcome_message_new_only?: boolean | null
+          welcome_message_text?: string | null
         }
         Update: {
           access_token?: string
@@ -2722,6 +2999,9 @@ export type Database = {
           token_refresh_error?: string | null
           updated_at?: string | null
           webhook_verify_token?: string
+          welcome_message_enabled?: boolean | null
+          welcome_message_new_only?: boolean | null
+          welcome_message_text?: string | null
         }
         Relationships: [
           {

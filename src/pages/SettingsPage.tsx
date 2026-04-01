@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Bell, CreditCard, Shield, ChevronLeft, BellRing, Save, Timer } from "lucide-react";
+import { Building2, Bell, CreditCard, Shield, ChevronLeft, BellRing, Save, Timer, Ban, Webhook, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import usePushNotifications from "@/hooks/usePushNotifications";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import BlacklistSection from "@/components/settings/BlacklistSection";
+import OutgoingWebhooksSection from "@/components/settings/OutgoingWebhooksSection";
+import AuditLogSection from "@/components/settings/AuditLogSection";
 
 const PushNotificationSettings = () => {
   const { isSupported, isSubscribed, subscribe, unsubscribe } = usePushNotifications();
@@ -157,6 +160,21 @@ const SettingsPage = () => {
 
       {/* Push Notifications */}
       <PushNotificationSettings />
+
+      {/* Blacklist */}
+      <div className="bg-card rounded-lg shadow-card p-5">
+        <BlacklistSection />
+      </div>
+
+      {/* Outgoing Webhooks */}
+      <div className="bg-card rounded-lg shadow-card p-5">
+        <OutgoingWebhooksSection />
+      </div>
+
+      {/* Audit Log */}
+      <div className="bg-card rounded-lg shadow-card p-5">
+        <AuditLogSection />
+      </div>
 
       {/* Quick Links */}
       <div className="bg-card rounded-lg shadow-card">
