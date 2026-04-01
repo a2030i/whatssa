@@ -439,12 +439,15 @@ const ChatbotPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-3">
+          <TabsList className="w-full grid grid-cols-4">
             <TabsTrigger value="basics" className="text-xs gap-1">
               <MessageSquare className="w-3.5 h-3.5" /> الأساسيات
             </TabsTrigger>
             <TabsTrigger value="steps" className="text-xs gap-1">
-              <ListOrdered className="w-3.5 h-3.5" /> الخطوات والأزرار
+              <ListOrdered className="w-3.5 h-3.5" /> الخطوات
+            </TabsTrigger>
+            <TabsTrigger value="map" className="text-xs gap-1">
+              <Network className="w-3.5 h-3.5" /> الخريطة
             </TabsTrigger>
             <TabsTrigger value="preview" className="text-xs gap-1">
               <Eye className="w-3.5 h-3.5" /> معاينة
