@@ -64,9 +64,8 @@ async function processChatbotFlow(
 
     if (!matchedButton) {
       // No match — re-send current node options
-      const buttonLabels = currentNode.buttons.map((b: any, i: number) => `${i + 1}. ${b.label}`).join("\n");
-      const retryMsg = `اختر أحد الخيارات:\n${buttonLabels}`;
-      await sendBotMessage(client, orgId, conversationId, customerPhone, retryMsg, channel, log);
+      const btns = currentNode.buttons.map((b: any) => ({ id: b.id, label: b.label }));
+      await sendBotMessage(client, orgId, conversationId, customerPhone, "اختر أحد الخيارات:", channel, log, btns);
       return true;
     }
 
