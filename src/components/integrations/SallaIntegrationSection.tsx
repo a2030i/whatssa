@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Store, Plus, Trash2, Copy, CheckCircle2, XCircle, RefreshCw, ExternalLink, ShoppingBag, Globe, Code2 } from "lucide-react";
+import { Store, Plus, Trash2, Copy, CheckCircle2, XCircle, RefreshCw, ExternalLink, ShoppingBag, Globe, Code2, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
