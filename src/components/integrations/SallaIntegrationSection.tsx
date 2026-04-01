@@ -536,17 +536,24 @@ const SallaIntegrationSection = () => {
               </div>
             )}
             {(getPlatformConfig(selectedPlatform) as any)?.usesApiToken && (
-              <div>
-                <Label className="text-xs">توكن API لمحة</Label>
-                <Input
-                  value={newApiToken}
-                  onChange={(e) => setNewApiToken(e.target.value)}
-                  placeholder="أدخل التوكن من لوحة تحكم لمحة"
-                  className="mt-1 text-sm font-mono"
-                  dir="ltr"
-                  type="password"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">تجده في لوحة تحكم لمحة → الإعدادات → API</p>
+              <div className="space-y-3 border border-border rounded-lg p-3 bg-secondary/20">
+                <p className="text-xs font-semibold text-foreground">بيانات المرسل (مطلوبة)</p>
+                <div>
+                  <Label className="text-xs">اسم المرسل</Label>
+                  <Input value={shipperName} onChange={e => setShipperName(e.target.value)} placeholder="مثال: متجر الأناقة" className="mt-1 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs">رقم جوال المرسل</Label>
+                  <Input value={shipperPhone} onChange={e => setShipperPhone(e.target.value)} placeholder="05XXXXXXXX" className="mt-1 text-sm" dir="ltr" />
+                </div>
+                <div>
+                  <Label className="text-xs">المدينة</Label>
+                  <Input value={shipperCity} onChange={e => setShipperCity(e.target.value)} placeholder="مثال: الرياض" className="mt-1 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs">العنوان</Label>
+                  <Input value={shipperAddress} onChange={e => setShipperAddress(e.target.value)} placeholder="مثال: حي النرجس، شارع الأمير محمد" className="mt-1 text-sm" />
+                </div>
               </div>
             )}
             <div className="bg-secondary/50 rounded-lg p-3 text-xs text-muted-foreground space-y-1.5">
