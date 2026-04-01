@@ -58,7 +58,19 @@ const OrdersPage = () => {
   const [sendingToLamha, setSendingToLamha] = useState<string | null>(null);
   const [lamhaIntegration, setLamhaIntegration] = useState<any>(null);
 
-  useEffect(() => { if (orgId) loadOrders(); }, [orgId]);
+  useEffect(() => { if (orgId) { loadOrders(); loadLamhaIntegration(); } }, [orgId]);
+
+  const loadLamhaIntegration = async () => {
+    const { data } = await supabase
+      .from("store_integrations")
+      .select("*")
+      .eq("org_id", orgId!)
+      .eq("platform", "lamha")
+      .eq("is_active", true)
+      .maybeSingle();
+    setLamhaIntegration(data);
+  };
+
 
   const loadOrders = async () => {
     const { data } = await supabase.from("orders").select("*").eq("org_id", orgId!).order("created_at", { ascending: false });
