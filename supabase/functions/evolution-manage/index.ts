@@ -76,7 +76,8 @@ serve(async (req) => {
       return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
     }
 
-    const { action, instance_name } = await req.json();
+    const body = await req.json();
+    const { action, instance_name } = body;
     const instanceName = instance_name || `org_${orgId.replace(/-/g, "").slice(0, 12)}`;
 
     const evoHeaders = {
@@ -258,7 +259,7 @@ serve(async (req) => {
 
     // ── PAIRING CODE (Phone Number Linking) ──
     if (action === "pairing_code") {
-      const { phone_number } = await req.json().catch(() => ({}));
+      const { phone_number } = body;
       if (!phone_number) {
         return json({ error: "رقم الهاتف مطلوب" }, 400);
       }
