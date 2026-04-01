@@ -382,13 +382,6 @@ const InboxPage = () => {
     });
 
     if (error || data?.error) {
-      // If evolution failed, try meta as fallback
-      if (isEvolution && templates.length > 0) {
-        const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke("whatsapp-send", {
-          body: { to: conversation.customerPhone, message: text, conversation_id: convId },
-        });
-        if (!fallbackError && !fallbackData?.error) return;
-      }
       toast.error(data?.error || "فشل إرسال الرسالة");
     }
   }, [conversations, templates]);
