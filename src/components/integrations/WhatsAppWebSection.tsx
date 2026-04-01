@@ -314,7 +314,58 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     await createInstance();
   };
 
-  const startPolling = (name: string) => {
+  const requestPairingCode = async () => {
+    if (!pairingPhone.trim()) {
+      toast.error("أدخل رقم الهاتف أولاً");
+      return;
+    }
+    setIsRequestingCode(true);
+    setPairingCode(null);
+
+    try {
+      // Ensure instance exists first
+      let iName = instanceName;
+      if (!iName) {
+        const { data, error } = await supabase.functions.invoke("evolution-manage", {
+          body: { action: "create" },
+        });
+        if (error || !data?.success) {
+          // If already exists, use the default name
+          iName = `org_${(orgId || "").replace(/-/g, "").slice(0, 12)}`;
+        } else {
+          iName = data.instance_name;
+        }
+        setInstanceName(iName);
+      }
+
+      const { data, error } = await supabase.functions.invoke("evolution-manage", {
+        body: { action: "pairing_code", instance_name: iName, phone_number: pairingPhone.trim() },
+      });
+
+      if (error || !data?.success) {
+        toast.error(data?.error || "فشل الحصول على كود الربط");
+        setIsRequestingCode(false);
+        return;
+      }
+
+      if (data.status === "open") {
+        setInstanceStatus("connected");
+        toast.success("✅ الرقم متصل بالفعل");
+        loadExistingConfig();
+        setIsRequestingCode(false);
+        return;
+      }
+
+      setPairingCode(data.pairing_code);
+      setInstanceStatus("qr_pending"); // reuse this state for polling
+      startPolling(iName);
+    } catch {
+      toast.error("خطأ في الاتصال بالسيرفر");
+    }
+    setIsRequestingCode(false);
+  };
+
+
     if (pollRef.current) clearInterval(pollRef.current);
     let attempts = 0;
     pollRef.current = setInterval(async () => {
