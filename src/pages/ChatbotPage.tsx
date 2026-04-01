@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageSquare, ArrowRight, Copy, ToggleLeft, GitBranch, ChevronDown, ChevronUp, HelpCircle, Eye, ListOrdered, Globe, Zap, ArrowLeft, Hash, Tag } from "lucide-react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageSquare, ArrowRight, Copy, ToggleLeft, GitBranch, ChevronDown, ChevronUp, HelpCircle, Eye, ListOrdered, Globe, Zap, ArrowLeft, Hash, Tag, RotateCcw, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -260,7 +260,7 @@ const ChatbotPage = () => {
     const [curId, setCurId] = useState<string | null>(nodes[0]?.id || null);
     const [history, setHistory] = useState<{ sender: string; text: string }[]>([]);
 
-    useEffect(() => {
+    const resetPreview = useCallback(() => {
       const msgs: { sender: string; text: string }[] = [];
       if (welcome) msgs.push({ sender: "bot", text: welcome });
       if (nodes[0]?.content) msgs.push({ sender: "bot", text: nodes[0].content });
@@ -268,7 +268,12 @@ const ChatbotPage = () => {
       setCurId(nodes[0]?.id || null);
     }, []);
 
+    useEffect(() => {
+      resetPreview();
+    }, [resetPreview]);
+
     const curNode = nodes.find(n => n.id === curId);
+    const ended = !curNode || (curNode.buttons.filter(b => b.label).length === 0 && history.length > 0);
 
     const clickBtn = (btn: ChatbotButton) => {
       const h = [...history, { sender: "user", text: btn.label }];
@@ -278,6 +283,7 @@ const ChatbotPage = () => {
         setHistory(h);
         setCurId(next.id);
       } else {
+        h.push({ sender: "bot", text: "— انتهى التدفق —" });
         setHistory(h);
         setCurId(null);
       }
@@ -285,11 +291,19 @@ const ChatbotPage = () => {
 
     return (
       <div className="bg-muted/30 rounded-xl border max-w-sm mx-auto overflow-hidden">
-        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold flex items-center gap-2">
-          <Bot className="w-4 h-4" />
-          معاينة المحادثة
+        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bot className="w-4 h-4" />
+            معاينة المحادثة
+          </div>
+          <button onClick={resetPreview} className="hover:bg-primary-foreground/20 rounded-full p-1 transition-colors" title="إعادة المعاينة">
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
         </div>
         <div className="p-3 space-y-2 min-h-[200px] max-h-[300px] overflow-y-auto">
+          {history.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-8">أضف نص رسالة في الخطوات لتظهر المعاينة</p>
+          )}
           {history.map((msg, i) => (
             <div key={i} className={cn("flex", msg.sender === "user" ? "justify-start" : "justify-end")}>
               <div className={cn(
@@ -300,6 +314,9 @@ const ChatbotPage = () => {
               </div>
             </div>
           ))}
+          {ended && history.length > 0 && (
+            <p className="text-[10px] text-muted-foreground text-center pt-2">— انتهى التدفق — اضغط ↻ للإعادة</p>
+          )}
         </div>
         {curNode && curNode.buttons.filter(b => b.label).length > 0 && (
           <div className="px-3 pb-3 flex flex-wrap gap-1.5">
@@ -313,6 +330,85 @@ const ChatbotPage = () => {
               </button>
             ))}
           </div>
+        )}
+      </div>
+    );
+  };
+
+  // ─── Flow Map (Visual Tree) ───
+  const FlowMap = () => {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Network className="w-4 h-4 text-primary" />
+          <p className="text-sm font-semibold">خريطة التدفق</p>
+        </div>
+        {welcome && (
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+            <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-1.5 text-xs">
+              🎉 ترحيب: {welcome.slice(0, 30)}{welcome.length > 30 ? "…" : ""}
+            </div>
+          </div>
+        )}
+        {nodes.map((node, idx) => {
+          const linkedFrom = nodes.flatMap(n => n.buttons.filter(b => b.next_node_id === node.id).map(b => ({
+            fromStep: nodes.indexOf(n) + 1,
+            btnLabel: b.label,
+          })));
+          return (
+            <div key={node.id} className="relative">
+              <div className={cn(
+                "border-2 rounded-xl p-3 transition-all",
+                node.buttons.some(b => b.next_node_id) ? "border-primary/30 bg-primary/5" : "border-border/60 bg-card"
+              )}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                    {idx + 1}
+                  </span>
+                  <span className="text-xs font-medium flex-1 truncate">
+                    {node.type === "action" ? `⚡ ${ACTION_LABELS[node.action_type || ""]}` : (node.content?.slice(0, 25) || "رسالة فارغة")}{node.content && node.content.length > 25 ? "…" : ""}
+                  </span>
+                </div>
+                {linkedFrom.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground mb-2">
+                    ← يصل إليها من: {linkedFrom.map(l => `خطوة ${l.fromStep} (${l.btnLabel})`).join("، ")}
+                  </p>
+                )}
+                {node.buttons.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {node.buttons.map(btn => {
+                      const targetIdx = nodes.findIndex(n => n.id === btn.next_node_id);
+                      const linked = targetIdx >= 0;
+                      return (
+                        <span
+                          key={btn.id}
+                          className={cn(
+                            "text-[10px] rounded-full px-2 py-0.5 border",
+                            linked 
+                              ? "bg-primary/10 border-primary/30 text-primary" 
+                              : "bg-muted border-border text-muted-foreground"
+                          )}
+                        >
+                          {btn.label || "—"} {linked ? `→ خطوة ${targetIdx + 1}` : "(⏹)"}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {idx < nodes.length - 1 && (
+                <div className="flex justify-center py-1">
+                  <div className="w-px h-4 bg-border" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {nodes.length <= 1 && (
+          <p className="text-[11px] text-muted-foreground text-center py-2">
+            أضف خطوات أكثر لرؤية الترابط بين الأزرار والخطوات
+          </p>
         )}
       </div>
     );
@@ -343,12 +439,15 @@ const ChatbotPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-3">
+          <TabsList className="w-full grid grid-cols-4">
             <TabsTrigger value="basics" className="text-xs gap-1">
               <MessageSquare className="w-3.5 h-3.5" /> الأساسيات
             </TabsTrigger>
             <TabsTrigger value="steps" className="text-xs gap-1">
-              <ListOrdered className="w-3.5 h-3.5" /> الخطوات والأزرار
+              <ListOrdered className="w-3.5 h-3.5" /> الخطوات
+            </TabsTrigger>
+            <TabsTrigger value="map" className="text-xs gap-1">
+              <Network className="w-3.5 h-3.5" /> الخريطة
             </TabsTrigger>
             <TabsTrigger value="preview" className="text-xs gap-1">
               <Eye className="w-3.5 h-3.5" /> معاينة
@@ -452,6 +551,15 @@ const ChatbotPage = () => {
           {/* ── Tab: Steps & Buttons ── */}
           <TabsContent value="steps" className="space-y-4 mt-4">
             {/* Explanation */}
+            {nodes.length <= 1 && (
+              <Card className="bg-warning/10 border-warning/30">
+                <CardContent className="p-3">
+                  <p className="text-xs text-warning-foreground leading-relaxed">
+                    ⚠️ <strong>لربط الأزرار بخطوات:</strong> أضف أكثر من خطوة واحدة أولاً باستخدام زر "خطوة جديدة"، ثم اربط كل زر بالخطوة المناسبة من القائمة المنسدلة.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             <Card className="bg-accent/30 border-accent/50">
               <CardContent className="p-3">
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -538,16 +646,22 @@ const ChatbotPage = () => {
                                 value={btn.next_node_id || "none"}
                                 onValueChange={val => updateButton(node.id, btn.id, { next_node_id: val === "none" ? "" : val })}
                               >
-                                <SelectTrigger className="w-28 h-8 text-[11px]">
+                                <SelectTrigger className={cn("w-32 h-8 text-[11px]", nodes.length <= 1 && "opacity-50")}>
                                   <SelectValue placeholder="بدون" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="none">بدون</SelectItem>
-                                  {nodes.filter(n => n.id !== node.id).map(n => (
-                                    <SelectItem key={n.id} value={n.id}>
-                                      خطوة {nodes.indexOf(n) + 1}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="none">⏹ بدون (يتوقف)</SelectItem>
+                                  {nodes.filter(n => n.id !== node.id).map((n, ni) => {
+                                    const stepNum = nodes.indexOf(n) + 1;
+                                    const preview = n.type === "action" 
+                                      ? (ACTION_LABELS[n.action_type || ""] || "إجراء")
+                                      : (n.content?.slice(0, 15) || "رسالة فارغة");
+                                    return (
+                                      <SelectItem key={n.id} value={n.id}>
+                                        خطوة {stepNum}: {preview}{n.content && n.content.length > 15 ? "…" : ""}
+                                      </SelectItem>
+                                    );
+                                  })}
                                 </SelectContent>
                               </Select>
                               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeButton(node.id, btn.id)}>
@@ -617,6 +731,19 @@ const ChatbotPage = () => {
               <Button variant="outline" size="sm" onClick={() => setActiveTab("basics")} className="gap-1 text-xs">
                 <ArrowLeft className="w-3.5 h-3.5" /> الأساسيات
               </Button>
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("map")} className="gap-1 text-xs">
+                الخريطة <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* ── Tab: Flow Map ── */}
+          <TabsContent value="map" className="space-y-4 mt-4">
+            <FlowMap />
+            <div className="flex justify-between">
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")} className="gap-1 text-xs">
+                <ArrowLeft className="w-3.5 h-3.5" /> الخطوات
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setActiveTab("preview")} className="gap-1 text-xs">
                 معاينة <ArrowRight className="w-3.5 h-3.5" />
               </Button>
@@ -628,8 +755,8 @@ const ChatbotPage = () => {
             <p className="text-xs text-muted-foreground text-center">اضغط على الأزرار لتجربة التدفق كما سيراه العميل في واتساب</p>
             <ChatPreview />
             <div className="flex justify-start">
-              <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")} className="gap-1 text-xs">
-                <ArrowLeft className="w-3.5 h-3.5" /> الخطوات
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("map")} className="gap-1 text-xs">
+                <ArrowLeft className="w-3.5 h-3.5" /> الخريطة
               </Button>
             </div>
           </TabsContent>
