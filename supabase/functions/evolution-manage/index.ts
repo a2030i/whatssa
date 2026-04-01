@@ -27,24 +27,24 @@ const EVOLUTION_WEBHOOK_EVENTS = [
   "SEND_MESSAGE",
 ];
 
+// v2.3.7: webhook/set expects flat body with url, enabled, events
 const buildWebhookPayload = (webhookUrl: string) => ({
+  url: webhookUrl,
+  enabled: true,
+  webhookByEvents: false,
+  webhookBase64: false,
+  events: EVOLUTION_WEBHOOK_EVENTS,
+});
+
+// v1.x fallback: wrapped in "webhook" property (used by instance/create)
+const buildWebhookPayloadWrapped = (webhookUrl: string) => ({
   webhook: {
     enabled: true,
     url: webhookUrl,
-    byEvents: true,
-    webhookByEvents: true,
-    base64: false,
+    webhookByEvents: false,
     webhookBase64: false,
     events: EVOLUTION_WEBHOOK_EVENTS,
   },
-});
-
-const buildWebhookPayloadFallback = (webhookUrl: string) => ({
-  enabled: true,
-  url: webhookUrl,
-  webhookByEvents: true,
-  webhookBase64: false,
-  events: EVOLUTION_WEBHOOK_EVENTS,
 });
 
 const mapEvolutionMessageStatus = (status: unknown): "sent" | "delivered" | "read" | null => {
@@ -206,7 +206,7 @@ serve(async (req) => {
           instanceName,
           integration: "WHATSAPP-BAILEYS",
           qrcode: true,
-          ...buildWebhookPayload(webhookUrl),
+          ...buildWebhookPayloadWrapped(webhookUrl),
         }),
       });
 
@@ -382,18 +382,27 @@ serve(async (req) => {
             },
           ];
 
-          for (const queryBody of statusQueries) {
-            const statusRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${targetInstanceName}`, {
-              method: "POST",
-              headers: evoHeaders,
-              body: JSON.stringify(queryBody),
-            });
+          // Try multiple endpoints: findStatusMessage (v2.3.x) and findMessages (fallback)
+          const statusEndpoints = [
+            `${EVOLUTION_URL}/chat/findStatusMessage/${targetInstanceName}`,
+            `${EVOLUTION_URL}/chat/findMessages/${targetInstanceName}`,
+          ];
 
-            const statusData = await statusRes.json().catch(() => ({}));
-            if (!statusRes.ok) continue;
-
-            statusPayload = pickStatusResponseItem(statusData, messageId);
+          for (const endpoint of statusEndpoints) {
             if (statusPayload) break;
+            for (const queryBody of statusQueries) {
+              const statusRes = await fetch(endpoint, {
+                method: "POST",
+                headers: evoHeaders,
+                body: JSON.stringify(queryBody),
+              });
+
+              const statusData = await statusRes.json().catch(() => ({}));
+              if (!statusRes.ok) continue;
+
+              statusPayload = pickStatusResponseItem(statusData, messageId);
+              if (statusPayload) break;
+            }
           }
 
           if (!statusPayload) continue;
@@ -539,13 +548,25 @@ serve(async (req) => {
       }
 
       try {
-        const readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
-          method: "PUT",
+        // Try POST first (v2.3.7+), then PUT as fallback
+        let readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
+          method: "POST",
           headers: evoHeaders,
           body: JSON.stringify({
             readMessages: messageKeys,
           }),
         });
+
+        // Fallback to PUT if POST returns 404/405
+        if (readRes.status === 404 || readRes.status === 405) {
+          readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
+            method: "PUT",
+            headers: evoHeaders,
+            body: JSON.stringify({
+              readMessages: messageKeys,
+            }),
+          });
+        }
 
         if (!readRes.ok) {
           // Silent fail — not critical
@@ -983,10 +1004,11 @@ async function setWebhook(
     let data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      // Fallback: try wrapped format for older versions
       res = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
         method: "POST",
         headers,
-        body: JSON.stringify(buildWebhookPayloadFallback(webhookUrl)),
+        body: JSON.stringify(buildWebhookPayloadWrapped(webhookUrl)),
       });
       data = await res.json().catch(() => ({}));
     }
@@ -994,6 +1016,10 @@ async function setWebhook(
     if (!res.ok) {
       await logToSystem(adminClient, "error", "فشل تعيين Webhook لجلسة Evolution", {
         http_status: res.status, instance: instanceName, error: JSON.stringify(data).slice(0, 300),
+      }, orgId);
+    } else {
+      await logToSystem(adminClient, "info", "✅ تم تسجيل Webhook بنجاح", {
+        instance: instanceName, url: webhookUrl, events: EVOLUTION_WEBHOOK_EVENTS,
       }, orgId);
     }
   } catch (e) {
