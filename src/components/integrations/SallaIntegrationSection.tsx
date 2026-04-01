@@ -15,6 +15,7 @@ import StoreEventNotifications from "./StoreEventNotifications";
 
 const SALLA_WEBHOOK_BASE = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/salla-webhook`;
 const STORE_WEBHOOK_BASE = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/store-webhook`;
+const LAMHA_WEBHOOK_BASE = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/lamha-webhook`;
 
 interface StoreIntegration {
   id: string;
