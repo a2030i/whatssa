@@ -58,6 +58,9 @@ const OrdersPage = () => {
   const [stats, setStats] = useState({ total: 0, revenue: 0, avgOrder: 0, pendingCount: 0, todayOrders: 0, todayRevenue: 0 });
   const [sendingToLamha, setSendingToLamha] = useState<string | null>(null);
   const [lamhaIntegration, setLamhaIntegration] = useState<any>(null);
+  const [lamhaCarriers, setLamhaCarriers] = useState<any[]>([]);
+  const [selectedCarrierId, setSelectedCarrierId] = useState<string>("");
+  const [loadingCarriers, setLoadingCarriers] = useState(false);
 
   useEffect(() => { if (orgId) { loadOrders(); loadLamhaIntegration(); } }, [orgId]);
 
