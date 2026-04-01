@@ -383,6 +383,11 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                 {/* Number input */}
                 <div className="relative flex-1">
                   <Input
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="tel-national"
+                    enterKeyHint="next"
                     placeholder={`${"0".repeat(selectedCountry.digits)}`}
                     value={localNumber}
                     onChange={(e) => {
