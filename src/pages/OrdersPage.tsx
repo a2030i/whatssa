@@ -221,18 +221,27 @@ const OrdersPage = () => {
           </DialogHeader>
           {selectedOrder && (
             <div className="space-y-4">
-              {/* Status Actions */}
-              <div className="flex flex-wrap gap-2">
-                {["confirmed", "processing", "shipped", "delivered", "cancelled"].map((s) => {
-                  const sc = statusConfig[s];
-                  return (
-                    <Button key={s} size="sm" variant={selectedOrder.status === s ? "default" : "outline"} className="text-[10px] h-7 gap-1"
-                      onClick={() => updateOrderStatus(selectedOrder.id, s)} disabled={selectedOrder.status === s}>
-                      <sc.icon className="w-3 h-3" /> {sc.label}
-                    </Button>
-                  );
-                })}
+              {/* Status (read-only from platform) */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge className={cn("text-xs border-0 gap-1", (statusConfig[selectedOrder.status] || statusConfig.pending).color)}>
+                    {(() => { const Ic = (statusConfig[selectedOrder.status] || statusConfig.pending).icon; return <Ic className="w-3.5 h-3.5" />; })()}
+                    {(statusConfig[selectedOrder.status] || statusConfig.pending).label}
+                  </Badge>
+                  {selectedOrder.payment_status && (
+                    <Badge className={cn("text-[10px] border-0", (paymentConfig[selectedOrder.payment_status] || paymentConfig.unpaid).color)}>
+                      {(paymentConfig[selectedOrder.payment_status] || paymentConfig.unpaid).label}
+                    </Badge>
+                  )}
+                </div>
+                {selectedOrder.source && (
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-secondary/50 rounded-lg px-2 py-1">
+                    <Store className="w-3 h-3" />
+                    {selectedOrder.source === "salla" ? "سلة" : selectedOrder.source === "zid" ? "زد" : selectedOrder.source === "shopify" ? "Shopify" : selectedOrder.source === "woocommerce" ? "WooCommerce" : selectedOrder.source}
+                  </div>
+                )}
               </div>
+              <p className="text-[10px] text-muted-foreground">الحالات تتحدث تلقائياً من المنصة</p>
 
               {/* Customer Info */}
               <div className="bg-secondary/50 rounded-lg p-3 space-y-1.5">
