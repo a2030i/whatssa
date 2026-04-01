@@ -301,7 +301,7 @@ const InboxPage = () => {
 
     if (error || data?.error) {
       // If evolution failed, try meta as fallback
-      if (evoConfig) {
+      if (isEvolution) {
         const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke("whatsapp-send", {
           body: { to: conversation.customerPhone, message: text, conversation_id: convId },
         });
