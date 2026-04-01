@@ -156,22 +156,57 @@ const OrdersPage = () => {
     cancelled: "text-destructive", creation_failed: "text-destructive",
   };
 
-  const sendToLamha = async (orderId: string) => {
+  const sendToLamha = async (orderId: string, action: string = "create-order-shipment") => {
     if (!orgId || !lamhaIntegration) return;
+    if (action !== "create-order" && !selectedCarrierId) {
+      toast.error("يرجى اختيار شركة الشحن أولاً");
+      return;
+    }
     setSendingToLamha(orderId);
     try {
       const { data, error } = await supabase.functions.invoke("lamha-create-shipment", {
-        body: { order_id: orderId, org_id: orgId, create_shipment: true },
+        body: {
+          order_id: orderId,
+          org_id: orgId,
+          action,
+          carrier_id: action !== "create-order" ? selectedCarrierId : undefined,
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success(`تم إرسال الطلب إلى لمحة بنجاح${data.tracking_number ? ` - رقم التتبع: ${data.tracking_number}` : ""}`);
+      
+      const msg = action === "create-order" 
+        ? "تم إنشاء الطلب في لمحة بنجاح (بدون شحنة)" 
+        : `تم إرسال الطلب إلى لمحة بنجاح${data.tracking_number ? ` - رقم التتبع: ${data.tracking_number}` : ""}`;
+      toast.success(msg);
       loadOrders();
       if (selectedOrder?.id === orderId) {
         loadShipmentEvents(orderId);
       }
     } catch (err: any) {
       toast.error("فشل إرسال الطلب إلى لمحة: " + (err.message || "خطأ غير معروف"));
+    } finally {
+      setSendingToLamha(null);
+    }
+  };
+
+  const createShipmentForExisting = async (orderId: string) => {
+    if (!orgId || !selectedCarrierId) {
+      toast.error("يرجى اختيار شركة الشحن أولاً");
+      return;
+    }
+    setSendingToLamha(orderId);
+    try {
+      const { data, error } = await supabase.functions.invoke("lamha-create-shipment", {
+        body: { order_id: orderId, org_id: orgId, action: "create-shipment", carrier_id: selectedCarrierId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("تم إنشاء الشحنة بنجاح");
+      loadOrders();
+      if (selectedOrder?.id === orderId) loadShipmentEvents(orderId);
+    } catch (err: any) {
+      toast.error("فشل إنشاء الشحنة: " + (err.message || "خطأ غير معروف"));
     } finally {
       setSendingToLamha(null);
     }
