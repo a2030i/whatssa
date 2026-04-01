@@ -1,13 +1,18 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.1";
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.100.1/cors";
 
 // ─────────────────────────────────────────────
-// Lamha Sync Status (Polling)
-// Checks Lamha API for shipment status updates
-// Can be called via cron or manually
+// Lamha Sync Status (Polling fallback)
+// Uses Lamha v2 API: GET /show-order/{order_id}
+// Polls active shipments and updates statuses
+// Runs via cron or manually — fallback if webhook missed
 // ─────────────────────────────────────────────
 
-const LAMHA_API_BASE = "https://api.lamha.sa/v1";
+const LAMHA_API_BASE = "https://app.lamha.sa/api/v2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 const LAMHA_STATUS_MAP: Record<string, { key: string; label: string }> = {
   "0": { key: "new", label: "جديد" },
@@ -25,11 +30,12 @@ const LAMHA_STATUS_MAP: Record<string, { key: string; label: string }> = {
 
 function lamhaToOrderStatus(statusKey: string): string | null {
   const map: Record<string, string> = {
-    "picked_up": "shipped",
-    "shipping": "shipped",
-    "delivered": "delivered",
-    "cancelled": "cancelled",
-    "returned": "refunded",
+    picked_up: "shipped",
+    shipping: "shipped",
+    delivered: "delivered",
+    cancelled: "cancelled",
+    returned: "refunded",
+    delivery_failed: "pending",
   };
   return map[statusKey] || null;
 }
@@ -44,7 +50,6 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Optional: sync specific org only
   let targetOrgId: string | null = null;
   try {
     const body = await req.json();
@@ -52,7 +57,6 @@ Deno.serve(async (req) => {
   } catch { /* no body = sync all */ }
 
   try {
-    // Get all active Lamha integrations
     let query = supabase
       .from("store_integrations")
       .select("*")
@@ -82,48 +86,82 @@ Deno.serve(async (req) => {
 
       const orgId = integration.org_id;
 
-      // Get orders with active shipments (not delivered/cancelled/returned)
+      // Get orders with active Lamha shipments (not in terminal state)
       const { data: orders } = await supabase
         .from("orders")
         .select("id, shipment_status, shipment_tracking_number, order_number, external_id, customer_phone, customer_name")
         .eq("org_id", orgId)
         .eq("shipment_carrier", "lamha")
         .not("shipment_status", "in", '("delivered","cancelled","returned")')
-        .not("shipment_tracking_number", "is", null);
+        .not("shipment_status", "is", null);
 
       if (!orders || orders.length === 0) continue;
 
+      // Get lamha_order_ids from shipment_events
+      const orderIds = orders.map(o => o.id);
+      const { data: events } = await supabase
+        .from("shipment_events")
+        .select("order_id, metadata")
+        .in("order_id", orderIds)
+        .eq("source", "lamha")
+        .in("status_key", ["created", "order_only"]);
+
+      const lamhaIdMap: Record<string, string> = {};
+      for (const evt of (events || [])) {
+        const lamhaId = (evt.metadata as any)?.lamha_order_id;
+        if (lamhaId) lamhaIdMap[evt.order_id] = String(lamhaId);
+      }
+
       for (const order of orders) {
         totalChecked++;
+        const lamhaOrderId = lamhaIdMap[order.id];
+
+        if (!lamhaOrderId) {
+          console.warn(`[lamha-sync] No lamha_order_id for order ${order.id}, skipping`);
+          continue;
+        }
+
         try {
-          // Check shipment status from Lamha API
-          const trackingNum = order.shipment_tracking_number;
-          const lamhaRes = await fetch(`${LAMHA_API_BASE}/shipments/track/${trackingNum}`, {
+          // Call Lamha v2 show-order endpoint
+          const lamhaRes = await fetch(`${LAMHA_API_BASE}/show-order/${lamhaOrderId}`, {
             headers: {
-              "Authorization": `Bearer ${apiToken}`,
+              "X-LAMHA-TOKEN": apiToken,
               "Accept": "application/json",
             },
           });
 
           if (!lamhaRes.ok) {
-            console.warn(`[lamha-sync] Failed to check ${trackingNum}: ${lamhaRes.status}`);
+            console.warn(`[lamha-sync] Failed to check order ${lamhaOrderId}: ${lamhaRes.status}`);
             continue;
           }
 
           const lamhaData = await lamhaRes.json();
-          const statusId = String(lamhaData.status_id ?? lamhaData.data?.status_id ?? lamhaData.status ?? "");
-          const statusInfo = LAMHA_STATUS_MAP[statusId] || { key: statusId, label: lamhaData.status_name || statusId };
 
-          // Skip if status hasn't changed
+          // Extract status from response
+          const statusId = String(
+            lamhaData.status_id ?? lamhaData.data?.status_id ?? lamhaData.status ?? ""
+          );
+          const statusInfo = LAMHA_STATUS_MAP[statusId] || {
+            key: statusId,
+            label: lamhaData.status_name || lamhaData.data?.status_name || statusId,
+          };
+
+          // Skip if unchanged
           if (statusInfo.key === order.shipment_status) continue;
 
           console.log(`[lamha-sync] Order ${order.id}: ${order.shipment_status} → ${statusInfo.key}`);
 
-          // Update order status
+          // Update order
           const updateData: any = {
             shipment_status: statusInfo.key,
             updated_at: new Date().toISOString(),
           };
+
+          // Extract tracking number if available
+          const trackingNumber = lamhaData.tracking_number || lamhaData.data?.tracking_number || order.shipment_tracking_number;
+          if (trackingNumber && !order.shipment_tracking_number) {
+            updateData.shipment_tracking_number = trackingNumber;
+          }
 
           const mappedStatus = lamhaToOrderStatus(statusInfo.key);
           if (mappedStatus) {
@@ -136,26 +174,30 @@ Deno.serve(async (req) => {
 
           await supabase.from("orders").update(updateData).eq("id", order.id);
 
-          // Log shipment event
+          // Log event
           await supabase.from("shipment_events").insert({
             order_id: order.id,
             org_id: orgId,
             status_key: statusInfo.key,
             status_label: statusInfo.label,
-            source: "lamha",
-            tracking_number: trackingNum,
+            source: "lamha_poll",
+            tracking_number: trackingNumber || null,
             carrier: "lamha",
-            metadata: { lamha_response: lamhaData },
+            metadata: { lamha_order_id: lamhaOrderId, lamha_response: lamhaData },
           });
 
           totalUpdated++;
 
-          // Send WhatsApp notification if configured
-          await sendShipmentNotification(supabase, integration, order, statusInfo);
-
+          // Send notification
+          if (order.customer_phone && metadata.shipment_notifications?.enabled) {
+            await sendShipmentNotification(supabase, integration, order, statusInfo);
+          }
         } catch (orderErr) {
           console.error(`[lamha-sync] Error checking order ${order.id}:`, orderErr);
         }
+
+        // Rate limit: 1 req/sec
+        await new Promise(r => setTimeout(r, 1000));
       }
 
       // Update last sync time
@@ -184,9 +226,6 @@ Deno.serve(async (req) => {
   }
 });
 
-// ─────────────────────────────────────────────
-// WhatsApp Notification for Shipment Updates
-// ─────────────────────────────────────────────
 async function sendShipmentNotification(
   supabase: any,
   integration: any,
@@ -223,7 +262,6 @@ async function sendShipmentNotification(
       if (order.shipment_tracking_number) {
         bodyParams.push({ type: "text", text: order.shipment_tracking_number });
       }
-      const components = [{ type: "body", parameters: bodyParams }];
 
       await fetch(`https://graph.facebook.com/v21.0/${waConfig.phone_number_id}/messages`, {
         method: "POST",
@@ -238,7 +276,7 @@ async function sendShipmentNotification(
           template: {
             name: notifConfig.template_name,
             language: { code: notifConfig.template_language || "ar" },
-            components,
+            components: [{ type: "body", parameters: bodyParams }],
           },
         }),
       });
