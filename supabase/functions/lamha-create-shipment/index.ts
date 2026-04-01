@@ -1,10 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.1";
 
 // ─────────────────────────────────────────────
-// Lamha v2 API - Two flows:
-// 1. create-order: POST /create-order (create_shippment=false) → order only
-// 2. create-order-shipment: POST /create-order (create_shippment=true) with carrier_id
-// 3. create-shipment: POST /create-shipment → shipment for existing Lamha order
+// Lamha v2 API - POST /create-order
+// Always creates order + shipment (create_shippment=true) with carrier_id
 // ─────────────────────────────────────────────
 
 const LAMHA_API_BASE = "https://app.lamha.sa/api/v2";
@@ -35,11 +33,17 @@ Deno.serve(async (req) => {
     });
   }
 
-  // action: "create-order" | "create-order-shipment" | "create-shipment"
-  const { order_id, org_id, action = "create-order-shipment", carrier_id } = body;
+  const { order_id, org_id, carrier_id } = body;
 
   if (!order_id || !org_id) {
     return new Response(JSON.stringify({ error: "order_id and org_id required" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (!carrier_id) {
+    return new Response(JSON.stringify({ error: "carrier_id مطلوب — يرجى اختيار شركة الشحن" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -81,114 +85,23 @@ Deno.serve(async (req) => {
     const apiToken = metadata.api_token;
 
     if (!apiToken) {
-      return new Response(JSON.stringify({ error: "Lamha API token not configured" }), {
+      return new Response(JSON.stringify({ error: "توكن API لمحة غير مُعد — اذهب للإعدادات → التكاملات" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ─── Flow: create-shipment (for existing Lamha order) ───
-    if (action === "create-shipment") {
-      if (!carrier_id) {
-        return new Response(JSON.stringify({ error: "carrier_id required for create-shipment" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Find lamha_order_id from shipment_events
-      const { data: events } = await supabase
-        .from("shipment_events")
-        .select("metadata")
-        .eq("order_id", order_id)
-        .eq("source", "lamha")
-        .in("status_key", ["order_only", "created"])
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      const lamhaOrderId = (events?.[0]?.metadata as any)?.lamha_order_id;
-      if (!lamhaOrderId) {
-        return new Response(JSON.stringify({ error: "Lamha order not found. Create order first." }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const shipperConfig = metadata.shipper || {};
-      const { data: org } = await supabase
-        .from("organizations")
-        .select("name")
-        .eq("id", org_id)
-        .single();
-
-      const shipmentPayload = {
-        shipper: {
-          name: shipperConfig.name || org?.name || "المتجر",
-          phone: shipperConfig.phone || "",
-          Country: shipperConfig.country || "SA",
-          District: shipperConfig.district || "",
-          City: shipperConfig.city || "",
-          AddressLine1: shipperConfig.address_line1 || "",
-          AddressLine2: shipperConfig.address_line2 || "",
-          national_address: shipperConfig.national_address || "",
-        },
-        coupon: "",
-        parcels: "1",
-        carrier_id: Number(carrier_id),
-        order_id: String(lamhaOrderId),
-      };
-
-      console.log(`[lamha] Creating shipment for lamha order ${lamhaOrderId} with carrier ${carrier_id}`);
-
-      const res = await fetch(`${LAMHA_API_BASE}/create-shipment`, {
-        method: "POST",
-        headers: {
-          "X-LAMHA-TOKEN": apiToken,
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: JSON.stringify(shipmentPayload),
-      });
-
-      const resData = await res.json();
-
-      if (!res.ok || !resData.success) {
-        console.error(`[lamha] Create shipment error:`, resData);
-        return new Response(JSON.stringify({ error: "Lamha API error", details: resData }), {
-          status: res.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Update order
-      await supabase.from("orders").update({
-        shipment_status: "new",
-        shipment_carrier: "lamha",
-        updated_at: new Date().toISOString(),
-      }).eq("id", order_id);
-
-      // Log event
-      await supabase.from("shipment_events").insert({
-        order_id,
-        org_id,
-        status_key: "created",
-        status_label: "تم إنشاء الشحنة",
-        source: "lamha",
-        carrier: "lamha",
-        metadata: { lamha_order_id: lamhaOrderId, carrier_id, lamha_response: resData },
-      });
-
-      return new Response(JSON.stringify({ success: true, lamha_order_id: lamhaOrderId }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ─── Flow: create-order or create-order-shipment ───
-    const createShipment = action === "create-order-shipment";
-
-    if (createShipment && !carrier_id) {
-      return new Response(JSON.stringify({ error: "carrier_id required when creating shipment" }), {
+    // Validate shipper config
+    const shipperConfig = metadata.shipper || {};
+    if (!shipperConfig.phone || !shipperConfig.city || !shipperConfig.address_line1) {
+      return new Response(JSON.stringify({ 
+        error: "بيانات المرسل ناقصة (الجوال، المدينة، العنوان) — اذهب للإعدادات → التكاملات → لمحة",
+        missing_fields: {
+          phone: !shipperConfig.phone,
+          city: !shipperConfig.city,
+          address_line1: !shipperConfig.address_line1,
+        }
+      }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -207,7 +120,6 @@ Deno.serve(async (req) => {
       .eq("id", org_id)
       .single();
 
-    const shipperConfig = metadata.shipper || {};
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const callbackUrl = `${supabaseUrl}/functions/v1/lamha-webhook`;
 
@@ -221,14 +133,14 @@ Deno.serve(async (req) => {
       ShipmentCurrency: order.currency || "SAR",
       reference_id: order.order_number || order.external_id || order.id,
       order_id: order.order_number || order.external_id || order.id,
-      create_shippment: createShipment,
+      create_shippment: true,
       shipper: {
         name: shipperConfig.name || org?.name || "المتجر",
-        phone: shipperConfig.phone || "",
+        phone: normalizePhone(shipperConfig.phone),
         Country: shipperConfig.country || "SA",
         District: shipperConfig.district || "",
-        City: shipperConfig.city || "",
-        AddressLine1: shipperConfig.address_line1 || "",
+        City: shipperConfig.city,
+        AddressLine1: shipperConfig.address_line1,
         AddressLine2: shipperConfig.address_line2 || "",
         national_address: shipperConfig.national_address || "",
       },
@@ -253,7 +165,7 @@ Deno.serve(async (req) => {
       })),
       callback_url: callbackUrl,
       callback_pdf_url: "",
-      carrier_id: createShipment ? String(carrier_id) : "",
+      carrier_id: String(carrier_id),
       coupon: "",
       parcels: String(items?.reduce((sum: number, i: any) => sum + (i.quantity || 1), 0) || 1),
     };
@@ -269,10 +181,11 @@ Deno.serve(async (req) => {
       }];
     }
 
-    console.log(`[lamha] Creating order for ${order_id}`, {
-      action,
+    console.log(`[lamha] Creating order+shipment for ${order_id}`, {
       reference_id: orderPayload.reference_id,
       carrier_id: orderPayload.carrier_id,
+      shipper_phone: orderPayload.shipper.phone,
+      shipper_city: orderPayload.shipper.City,
     });
 
     // Call Lamha API
@@ -289,7 +202,16 @@ Deno.serve(async (req) => {
     const lamhaData = await lamhaRes.json();
 
     if (!lamhaRes.ok || !lamhaData.success) {
-      console.error(`[lamha] Lamha API error:`, lamhaData);
+      console.error(`[lamha] Lamha API error:`, JSON.stringify(lamhaData));
+
+      // Build readable error from fields
+      let errorMsg = lamhaData.msg || "خطأ من لمحة";
+      if (lamhaData.fields) {
+        const fieldErrors = Object.entries(lamhaData.fields)
+          .map(([k, v]: [string, any]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join(" | ");
+        errorMsg += ` — ${fieldErrors}`;
+      }
 
       await supabase.from("shipment_events").insert({
         order_id,
@@ -300,7 +222,7 @@ Deno.serve(async (req) => {
         metadata: { error: lamhaData, payload: { reference_id: orderPayload.reference_id } },
       });
 
-      return new Response(JSON.stringify({ error: "Lamha API error", details: lamhaData }), {
+      return new Response(JSON.stringify({ error: errorMsg, details: lamhaData }), {
         status: lamhaRes.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -312,13 +234,10 @@ Deno.serve(async (req) => {
     // Update order
     const updateData: any = {
       shipment_carrier: "lamha",
+      shipment_status: "new",
       updated_at: new Date().toISOString(),
     };
-
-    if (createShipment) {
-      updateData.shipment_status = "new";
-      if (trackingNumber) updateData.shipment_tracking_number = trackingNumber;
-    }
+    if (trackingNumber) updateData.shipment_tracking_number = trackingNumber;
 
     await supabase.from("orders").update(updateData).eq("id", order_id);
 
@@ -326,12 +245,12 @@ Deno.serve(async (req) => {
     await supabase.from("shipment_events").insert({
       order_id,
       org_id,
-      status_key: createShipment ? "created" : "order_only",
-      status_label: createShipment ? "تم إنشاء الشحنة" : "تم إنشاء الطلب في لمحة",
+      status_key: "created",
+      status_label: "تم إنشاء الشحنة",
       source: "lamha",
       tracking_number: trackingNumber || null,
       carrier: "lamha",
-      metadata: { lamha_order_id: lamhaOrderId, carrier_id: carrier_id || null, lamha_response: lamhaData },
+      metadata: { lamha_order_id: lamhaOrderId, carrier_id, lamha_response: lamhaData },
     });
 
     console.log(`[lamha] Success: lamha_order_id=${lamhaOrderId}, tracking=${trackingNumber}`);
@@ -340,7 +259,6 @@ Deno.serve(async (req) => {
       success: true,
       lamha_order_id: lamhaOrderId,
       tracking_number: trackingNumber,
-      shipment_created: createShipment,
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
