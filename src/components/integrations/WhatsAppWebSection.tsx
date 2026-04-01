@@ -413,6 +413,11 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
                 />
               )}
 
+              {/* Rate Limit Settings */}
+              {existingConfig?.id && (
+                <RateLimitPanel configId={existingConfig.id} initialSettings={existingConfig.rate_limit_settings} />
+              )}
+
               {/* Delete Instance */}
               {isSuperAdmin && (
                 <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={deleteInstance} disabled={isDeleting}>
