@@ -108,13 +108,11 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   useEffect(() => {
     if (!orgId || !open) return;
     const load = async () => {
-      const { data } = await supabase
-        .from("whatsapp_config_safe")
-        .select("id, display_phone, channel_type, evolution_instance_name, business_name")
-        .eq("org_id", orgId)
-        .eq("is_connected", true)
-        .order("created_at");
-      setChannels((data || []) as Channel[]);
+      const { data } = await supabase.rpc("get_org_whatsapp_channels");
+      const connectedChannels = ((data || []) as Channel[])
+        .filter((channel) => channel.org_id === orgId && channel.is_connected)
+        .sort((a: any, b: any) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+      setChannels(connectedChannels);
     };
     load();
   }, [orgId, open]);
