@@ -2481,25 +2481,41 @@ export type Database = {
       whatsapp_config: {
         Row: {
           access_token: string
+          account_mode: string | null
+          app_scoped_user_id: string | null
           business_account_id: string
           business_name: string | null
           channel_label: string | null
           channel_type: string
+          code_verification_status: string | null
           created_at: string | null
+          data_localization_region: string | null
           default_agent_id: string | null
           default_team_id: string | null
           display_phone: string | null
           evolution_instance_name: string | null
           evolution_instance_status: string | null
+          health_status: Json | null
           id: string
           is_connected: boolean | null
           last_register_attempt_at: string | null
+          messaging_limit_tier: string | null
+          meta_business_id: string | null
+          migrated_at: string | null
+          migration_error: string | null
+          migration_source: string | null
+          migration_status: string | null
+          name_status: string | null
+          onboarding_type: string | null
           org_id: string | null
           phone_number_id: string
+          previous_provider: string | null
+          quality_rating: string | null
           registered_at: string | null
           registration_error: string | null
           registration_status: string | null
           settings: Json | null
+          throughput_level: string | null
           token_expires_at: string | null
           token_last_refreshed_at: string | null
           token_refresh_error: string | null
@@ -2508,25 +2524,41 @@ export type Database = {
         }
         Insert: {
           access_token: string
+          account_mode?: string | null
+          app_scoped_user_id?: string | null
           business_account_id: string
           business_name?: string | null
           channel_label?: string | null
           channel_type?: string
+          code_verification_status?: string | null
           created_at?: string | null
+          data_localization_region?: string | null
           default_agent_id?: string | null
           default_team_id?: string | null
           display_phone?: string | null
           evolution_instance_name?: string | null
           evolution_instance_status?: string | null
+          health_status?: Json | null
           id?: string
           is_connected?: boolean | null
           last_register_attempt_at?: string | null
+          messaging_limit_tier?: string | null
+          meta_business_id?: string | null
+          migrated_at?: string | null
+          migration_error?: string | null
+          migration_source?: string | null
+          migration_status?: string | null
+          name_status?: string | null
+          onboarding_type?: string | null
           org_id?: string | null
           phone_number_id: string
+          previous_provider?: string | null
+          quality_rating?: string | null
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
           settings?: Json | null
+          throughput_level?: string | null
           token_expires_at?: string | null
           token_last_refreshed_at?: string | null
           token_refresh_error?: string | null
@@ -2535,25 +2567,41 @@ export type Database = {
         }
         Update: {
           access_token?: string
+          account_mode?: string | null
+          app_scoped_user_id?: string | null
           business_account_id?: string
           business_name?: string | null
           channel_label?: string | null
           channel_type?: string
+          code_verification_status?: string | null
           created_at?: string | null
+          data_localization_region?: string | null
           default_agent_id?: string | null
           default_team_id?: string | null
           display_phone?: string | null
           evolution_instance_name?: string | null
           evolution_instance_status?: string | null
+          health_status?: Json | null
           id?: string
           is_connected?: boolean | null
           last_register_attempt_at?: string | null
+          messaging_limit_tier?: string | null
+          meta_business_id?: string | null
+          migrated_at?: string | null
+          migration_error?: string | null
+          migration_source?: string | null
+          migration_status?: string | null
+          name_status?: string | null
+          onboarding_type?: string | null
           org_id?: string | null
           phone_number_id?: string
+          previous_provider?: string | null
+          quality_rating?: string | null
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
           settings?: Json | null
+          throughput_level?: string | null
           token_expires_at?: string | null
           token_last_refreshed_at?: string | null
           token_refresh_error?: string | null
@@ -2581,78 +2629,117 @@ export type Database = {
     Views: {
       whatsapp_config_safe: {
         Row: {
+          account_mode: string | null
           business_account_id: string | null
           business_name: string | null
           channel_label: string | null
           channel_type: string | null
+          code_verification_status: string | null
           created_at: string | null
+          data_localization_region: string | null
           default_agent_id: string | null
           default_team_id: string | null
           display_phone: string | null
           evolution_instance_name: string | null
           evolution_instance_status: string | null
+          health_status: Json | null
           id: string | null
           is_connected: boolean | null
           last_register_attempt_at: string | null
+          messaging_limit_tier: string | null
+          meta_business_id: string | null
+          migrated_at: string | null
+          migration_error: string | null
+          migration_source: string | null
+          migration_status: string | null
+          name_status: string | null
+          onboarding_type: string | null
           org_id: string | null
           phone_number_id: string | null
+          previous_provider: string | null
+          quality_rating: string | null
           registered_at: string | null
           registration_error: string | null
           registration_status: string | null
           settings: Json | null
+          throughput_level: string | null
           token_expires_at: string | null
-          token_last_refreshed_at: string | null
-          token_refresh_error: string | null
           updated_at: string | null
         }
         Insert: {
+          account_mode?: string | null
           business_account_id?: string | null
           business_name?: string | null
           channel_label?: string | null
           channel_type?: string | null
+          code_verification_status?: string | null
           created_at?: string | null
+          data_localization_region?: string | null
           default_agent_id?: string | null
           default_team_id?: string | null
           display_phone?: string | null
           evolution_instance_name?: string | null
           evolution_instance_status?: string | null
+          health_status?: Json | null
           id?: string | null
           is_connected?: boolean | null
           last_register_attempt_at?: string | null
+          messaging_limit_tier?: string | null
+          meta_business_id?: string | null
+          migrated_at?: string | null
+          migration_error?: string | null
+          migration_source?: string | null
+          migration_status?: string | null
+          name_status?: string | null
+          onboarding_type?: string | null
           org_id?: string | null
           phone_number_id?: string | null
+          previous_provider?: string | null
+          quality_rating?: string | null
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
           settings?: Json | null
+          throughput_level?: string | null
           token_expires_at?: string | null
-          token_last_refreshed_at?: string | null
-          token_refresh_error?: string | null
           updated_at?: string | null
         }
         Update: {
+          account_mode?: string | null
           business_account_id?: string | null
           business_name?: string | null
           channel_label?: string | null
           channel_type?: string | null
+          code_verification_status?: string | null
           created_at?: string | null
+          data_localization_region?: string | null
           default_agent_id?: string | null
           default_team_id?: string | null
           display_phone?: string | null
           evolution_instance_name?: string | null
           evolution_instance_status?: string | null
+          health_status?: Json | null
           id?: string | null
           is_connected?: boolean | null
           last_register_attempt_at?: string | null
+          messaging_limit_tier?: string | null
+          meta_business_id?: string | null
+          migrated_at?: string | null
+          migration_error?: string | null
+          migration_source?: string | null
+          migration_status?: string | null
+          name_status?: string | null
+          onboarding_type?: string | null
           org_id?: string | null
           phone_number_id?: string | null
+          previous_provider?: string | null
+          quality_rating?: string | null
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
           settings?: Json | null
+          throughput_level?: string | null
           token_expires_at?: string | null
-          token_last_refreshed_at?: string | null
-          token_refresh_error?: string | null
           updated_at?: string | null
         }
         Relationships: [

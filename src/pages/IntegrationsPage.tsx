@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import {
   CheckCircle2, Copy, Loader2, Phone, RefreshCw,
   MessageSquare, KeyRound, Plus, Trash2, Send,
-  AlertTriangle, ExternalLink,
-  ShieldCheck, CreditCard, PhoneCall, Building2, QrCode, Pencil, Check, X
+  AlertTriangle, ExternalLink, ArrowLeftRight, ArrowRight,
+  ShieldCheck, CreditCard, PhoneCall, Building2, QrCode, Pencil, Check, X, Smartphone
 } from "lucide-react";
 import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import SallaIntegrationSection from "@/components/integrations/SallaIntegrationSection";
@@ -46,10 +46,21 @@ interface WhatsAppConfig {
   registration_error: string | null;
   registered_at: string | null;
   channel_type?: string;
+  onboarding_type?: string;
+  migration_source?: string;
+  migration_status?: string;
+  migration_error?: string;
+  migrated_at?: string;
+  previous_provider?: string;
+  quality_rating?: string;
+  messaging_limit_tier?: string;
+  meta_business_id?: string;
   [key: string]: any;
 }
 
-type FlowStep = "idle" | "checklist" | "connecting" | "pick_phone" | "success" | "error";
+type OnboardingMode = "new" | "migrate_app" | "migrate_provider";
+
+type FlowStep = "idle" | "choose_type" | "checklist" | "migration_info" | "connecting" | "pick_phone" | "migration_prereqs" | "success" | "error";
 
 const IntegrationsPage = () => {
   const { orgId, isSuperAdmin } = useAuth();
@@ -74,6 +85,10 @@ const IntegrationsPage = () => {
   const [showWhatsAppChoice, setShowWhatsAppChoice] = useState(false);
   const [testPhone, setTestPhone] = useState("");
   const [twoStepPin, setTwoStepPin] = useState("");
+  const [onboardingMode, setOnboardingMode] = useState<OnboardingMode>("new");
+  const [migrationPrereqs, setMigrationPrereqs] = useState<{ ready: boolean; issues: string[] } | null>(null);
+  const [previousProvider, setPreviousProvider] = useState("");
+  const [wabaInfo, setWabaInfo] = useState<any>(null);
   const [metaStatus, setMetaStatus] = useState<Record<string, {
     phoneStatus?: string;
     nameStatus?: string;
@@ -202,13 +217,21 @@ const IntegrationsPage = () => {
       toast.error(`وصلت للحد الأقصى (${maxPhones} رقم). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
       return;
     }
-    // Show checklist first if there are already connected numbers
-    if (configs.length > 0) {
-      setFlowStep("checklist");
-      return;
-    }
-    proceedToMetaLogin();
+    // Always show type chooser first
+    setFlowStep("choose_type");
+    setOnboardingMode("new");
+    setPreviousProvider("");
+    setMigrationPrereqs(null);
+    setWabaInfo(null);
   }, [configs, maxPhones, isSuperAdmin]);
+
+  const proceedFromTypeChoice = useCallback(() => {
+    if (onboardingMode === "new") {
+      setFlowStep("checklist");
+    } else {
+      setFlowStep("migration_info");
+    }
+  }, [onboardingMode]);
 
   const proceedToMetaLogin = useCallback(() => {
     const FB = (window as any).FB;
@@ -301,8 +324,17 @@ const IntegrationsPage = () => {
         wabaId: wabaId || businessAccountId,
       });
       if (result) {
-        setConnectedPhone(phone.display_phone_number);
-        setFlowStep("success");
+        // If migration, check prereqs before showing success
+        if (result.migration_prereqs && !result.migration_prereqs.ready) {
+          setMigrationPrereqs(result.migration_prereqs);
+          setWabaInfo(result.waba_details);
+          setConnectedPhone(phone.display_phone_number);
+          setFlowStep("migration_prereqs");
+        } else {
+          setConnectedPhone(phone.display_phone_number);
+          setWabaInfo(result.waba_details);
+          setFlowStep("success");
+        }
       }
     } catch {
       handleError("فشل في إكمال الربط");
@@ -331,15 +363,24 @@ const IntegrationsPage = () => {
     return raw;
   };
 
-  const completeSignup = async ({ token, phoneId, wabaId }: { token: string; phoneId: string; wabaId: string }) => {
-    if (!orgId) { handleError("تعذر تحديد المؤسسة. أعد تسجيل الدخول وحاول مرة أخرى."); return false; }
+  const completeSignup = async ({ token, phoneId, wabaId }: { token: string; phoneId: string; wabaId: string }): Promise<any> => {
+    if (!orgId) { handleError("تعذر تحديد المؤسسة. أعد تسجيل الدخول وحاول مرة أخرى."); return null; }
 
-    const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", {
-      body: { access_token: token, phone_number_id: phoneId, waba_id: wabaId, org_id: orgId, auto_register: true, ...(twoStepPin ? { pin: twoStepPin } : {}) },
-    });
+    const migrationBody: Record<string, any> = {
+      access_token: token, phone_number_id: phoneId, waba_id: wabaId, org_id: orgId, auto_register: true,
+      ...(twoStepPin ? { pin: twoStepPin } : {}),
+    };
+    if (onboardingMode === "migrate_app") {
+      migrationBody.migration_source = "business_app";
+    } else if (onboardingMode === "migrate_provider") {
+      migrationBody.migration_source = "other_provider";
+      if (previousProvider) migrationBody.previous_provider = previousProvider;
+    }
 
-    if (error || data?.error) { handleError(friendlyError(data?.error || "فشل في إكمال الربط")); return false; }
-    if (!data?.selected_phone || !data?.saved_config) { handleError("تعذر تسجيل الرقم — حاول مرة أخرى"); return false; }
+    const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", { body: migrationBody });
+
+    if (error || data?.error) { handleError(friendlyError(data?.error || "فشل في إكمال الربط")); return null; }
+    if (!data?.selected_phone || !data?.saved_config) { handleError("تعذر تسجيل الرقم — حاول مرة أخرى"); return null; }
 
     // Check registration result
     if (data.registration && !data.registration.success) {
@@ -348,7 +389,7 @@ const IntegrationsPage = () => {
     }
 
     await loadConfigs();
-    return true;
+    return data;
   };
 
   const handleError = (msg: string) => {
@@ -443,6 +484,26 @@ const IntegrationsPage = () => {
     setConnectedPhone("");
     setTestPhone("");
     setShowManual(false);
+    setOnboardingMode("new");
+    setPreviousProvider("");
+    setMigrationPrereqs(null);
+    setWabaInfo(null);
+  };
+
+  const onboardingTypeLabel = (type?: string) => {
+    if (type === "migrated") return "منقول";
+    if (type === "existing") return "موجود";
+    return "جديد";
+  };
+
+  const migrationIssueLabel = (issue: string) => {
+    const map: Record<string, { title: string; desc: string; link?: string }> = {
+      business_not_verified: { title: "النشاط التجاري غير موثّق", desc: "وثّق نشاطك من إعدادات الأمان في Meta Business Suite", link: "https://business.facebook.com/settings/security" },
+      account_not_approved: { title: "حساب WABA غير معتمد", desc: "يجب اعتماد حسابك من ميتا قبل نقل الرقم", link: "https://business.facebook.com/settings/whatsapp-business-accounts" },
+      payment_method_missing: { title: "طريقة الدفع مفقودة", desc: "أضف بطاقة ائتمان في إعدادات الدفع", link: "https://business.facebook.com/billing_hub/payment_methods" },
+      phone_not_registered: { title: "الرقم غير مسجّل", desc: "سيتم تسجيل الرقم تلقائياً بعد النقل" },
+    };
+    return map[issue] || { title: issue, desc: "" };
   };
 
   const renderConfigCard = (config: WhatsAppConfig) => {
@@ -493,6 +554,16 @@ const IntegrationsPage = () => {
           {isConnected && (
             <Badge className="bg-success/10 text-success border-0 text-xs gap-1 px-3 py-1">
               <CheckCircle2 className="w-3 h-3" /> متصل
+            </Badge>
+          )}
+          {config.onboarding_type && config.onboarding_type !== "new" && (
+            <Badge className="bg-primary/10 text-primary border-0 text-[10px] gap-1 px-2 py-0.5">
+              <ArrowLeftRight className="w-2.5 h-2.5" /> {onboardingTypeLabel(config.onboarding_type)}
+            </Badge>
+          )}
+          {config.migration_status === "pending" && (
+            <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-1 px-2 py-0.5">
+              <Loader2 className="w-2.5 h-2.5 animate-spin" /> نقل جارٍ
             </Badge>
           )}
           {isFailed && (
@@ -812,6 +883,153 @@ const IntegrationsPage = () => {
       </div>
     );
   }
+  // ============ CHOOSE ONBOARDING TYPE ============
+  if (flowStep === "choose_type") {
+    return (
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
+          <div className="p-6 border-b border-border">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              كيف تريد ربط رقمك؟
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">اختر نوع العملية بناءً على حالة رقمك الحالية</p>
+          </div>
+          <div className="p-5 space-y-3">
+            {([
+              {
+                mode: "new" as OnboardingMode,
+                icon: Plus,
+                title: "رقم جديد",
+                desc: "ربط رقم لأول مرة — لم يُستخدم مع WhatsApp Business API من قبل",
+                color: "text-primary",
+                bgColor: "bg-primary/10",
+                borderColor: "border-primary",
+              },
+              {
+                mode: "migrate_app" as OnboardingMode,
+                icon: Smartphone,
+                title: "نقل من تطبيق واتساب أعمال",
+                desc: "نقل رقم مُستخدم حالياً على تطبيق WhatsApp Business العادي إلى Cloud API",
+                color: "text-warning",
+                bgColor: "bg-warning/10",
+                borderColor: "border-warning",
+              },
+              {
+                mode: "migrate_provider" as OnboardingMode,
+                icon: ArrowLeftRight,
+                title: "نقل من مزوّد آخر",
+                desc: "نقل رقم مربوط حالياً بمزوّد Cloud API آخر (مثل 360dialog, Twilio, MessageBird)",
+                color: "text-accent-foreground",
+                bgColor: "bg-accent/50",
+                borderColor: "border-accent",
+              },
+            ]).map((opt) => (
+              <button
+                key={opt.mode}
+                onClick={() => setOnboardingMode(opt.mode)}
+                className={cn(
+                  "w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-right",
+                  onboardingMode === opt.mode
+                    ? `${opt.borderColor} bg-muted/50`
+                    : "border-border hover:border-muted-foreground/30"
+                )}
+              >
+                <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0", opt.bgColor)}>
+                  <opt.icon className={cn("w-5 h-5", opt.color)} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-foreground">{opt.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{opt.desc}</p>
+                </div>
+                {onboardingMode === opt.mode && (
+                  <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                )}
+              </button>
+            ))}
+
+            <div className="pt-3 space-y-2">
+              <Button onClick={proceedFromTypeChoice} className="w-full gap-2 py-5 text-sm font-bold rounded-xl">
+                <ArrowRight className="w-4 h-4" />
+                متابعة
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetFlow}>← رجوع</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============ MIGRATION INFO ============
+  if (flowStep === "migration_info") {
+    return (
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
+          <div className="p-6 border-b border-border">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5 text-primary" />
+              {onboardingMode === "migrate_app" ? "نقل من تطبيق واتساب أعمال" : "نقل من مزوّد آخر"}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {onboardingMode === "migrate_app"
+                ? "تأكد من المتطلبات التالية قبل البدء بنقل رقمك"
+                : "أدخل معلومات المزوّد الحالي لتسهيل عملية النقل"}
+            </p>
+          </div>
+          <div className="p-5 space-y-4">
+            {onboardingMode === "migrate_app" && (
+              <div className="space-y-3">
+                <div className="bg-warning/5 border border-warning/20 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-warning flex items-center gap-1.5 mb-2">
+                    <AlertTriangle className="w-3.5 h-3.5" /> متطلبات مهمة قبل النقل
+                  </p>
+                  <ul className="text-[11px] text-muted-foreground space-y-1.5 pr-4">
+                    <li>• <strong>فصل الرقم</strong> من تطبيق واتساب أعمال على هاتفك (حذف الحساب من التطبيق)</li>
+                    <li>• <strong>الانتظار دقيقتين</strong> على الأقل بعد فصل الرقم قبل بدء الربط</li>
+                    <li>• <strong>ملاحظة:</strong> سجل المحادثات السابقة لن يُنقل — فقط الرقم</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {onboardingMode === "migrate_provider" && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">اسم المزوّد الحالي (اختياري)</Label>
+                  <Input
+                    value={previousProvider}
+                    onChange={(e) => setPreviousProvider(e.target.value)}
+                    placeholder="مثال: 360dialog, Twilio, MessageBird..."
+                    className="bg-secondary border-0 text-xs"
+                  />
+                </div>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-primary flex items-center gap-1.5 mb-2">
+                    <ShieldCheck className="w-3.5 h-3.5" /> خطوات النقل
+                  </p>
+                  <ol className="text-[11px] text-muted-foreground space-y-1.5 pr-4">
+                    <li>1. أوقف الخدمة لدى المزوّد الحالي (لا تحذف الرقم)</li>
+                    <li>2. اطلب من المزوّد الحالي تحرير الرقم (Release) من حسابه</li>
+                    <li>3. انتظر حتى يتم التحرير (قد يستغرق 24-48 ساعة)</li>
+                    <li>4. ابدأ عملية الربط عبر Respondly بمجرد تحرير الرقم</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 space-y-2">
+              <Button onClick={proceedToMetaLogin} disabled={!sdkLoaded} className="w-full gap-2 py-5 text-sm font-bold rounded-xl">
+                {!sdkLoaded ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                بدء عملية النقل
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setFlowStep("choose_type")}>← رجوع</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ============ CHECKLIST BEFORE ADDING NEW NUMBER ============
   if (flowStep === "checklist") {
@@ -915,40 +1133,123 @@ const IntegrationsPage = () => {
 
   // ============ PICK PHONE NUMBER ============
   if (flowStep === "pick_phone") {
+    const isMigration = onboardingMode !== "new";
     return (
       <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
         <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
           <div className="p-6 border-b border-border">
-            <h2 className="text-lg font-bold text-foreground">اختر رقمك</h2>
-            <p className="text-sm text-muted-foreground mt-1">تم العثور على {phoneNumbers.length} رقم — اختر الرقم الذي تريد ربطه</p>
+            <div className="flex items-center gap-2">
+              {isMigration && <ArrowLeftRight className="w-5 h-5 text-primary" />}
+              <h2 className="text-lg font-bold text-foreground">
+                {isMigration ? "اختر الرقم للنقل" : "اختر رقمك"}
+              </h2>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              تم العثور على {phoneNumbers.length} رقم — اختر الرقم الذي تريد {isMigration ? "نقله" : "ربطه"}
+            </p>
           </div>
           <div className="p-4 space-y-2">
-            {phoneNumbers.map((phone) => (
-              <button
-                key={phone.id}
-                onClick={() => selectPhone(phone)}
-                disabled={isLoading}
-                className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-right"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Phone className="w-5 h-5 text-primary" />
+            {phoneNumbers.map((phone) => {
+              const phoneStatus = (phone as any).status;
+              const isAlreadyConnected = phoneStatus === "CONNECTED";
+              const statusLabel = isAlreadyConnected ? "متصل" : phoneStatus === "PENDING" ? "معلّق" : null;
+              return (
+                <button
+                  key={phone.id}
+                  onClick={() => selectPhone(phone)}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-right"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Phone className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm" dir="ltr">{phone.display_phone_number}</p>
+                      <p className="text-xs text-muted-foreground">{phone.verified_name}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {statusLabel && (
+                          <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0",
+                            isAlreadyConnected ? "text-success border-success/30" : "text-warning border-warning/30"
+                          )}>
+                            {statusLabel}
+                          </Badge>
+                        )}
+                        {(phone as any).account_mode && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
+                            {(phone as any).account_mode}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-sm" dir="ltr">{phone.display_phone_number}</p>
-                    <p className="text-xs text-muted-foreground">{phone.verified_name}</p>
+                  <div className="flex flex-col items-end gap-1">
+                    {phone.quality_rating && (
+                      <Badge variant="outline" className={cn("text-[10px]",
+                        phone.quality_rating === "GREEN" ? "text-success border-success/30" : "text-warning border-warning/30"
+                      )}>
+                        {phone.quality_rating === "GREEN" ? "جودة عالية" : "متوسطة"}
+                      </Badge>
+                    )}
                   </div>
-                </div>
-                {phone.quality_rating && (
-                  <Badge variant="outline" className={cn("text-[10px]",
-                    phone.quality_rating === "GREEN" ? "text-success border-success/30" : "text-warning border-warning/30"
-                  )}>
-                    {phone.quality_rating === "GREEN" ? "جودة عالية" : "متوسطة"}
-                  </Badge>
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
             <Button variant="ghost" size="sm" className="text-xs mt-2" onClick={resetFlow}>← رجوع</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============ MIGRATION PREREQUISITES ============
+  if (flowStep === "migration_prereqs" && migrationPrereqs) {
+    return (
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+        <div className="bg-card rounded-2xl shadow-card border border-warning/30 overflow-hidden">
+          <div className="bg-warning/5 p-6 border-b border-warning/20">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-warning" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-foreground">متطلبات ناقصة للنقل</h2>
+                <p className="text-sm text-muted-foreground">يجب حل المشاكل التالية قبل اكتمال نقل الرقم</p>
+              </div>
+            </div>
+            {connectedPhone && (
+              <p className="text-sm font-mono text-primary mt-3" dir="ltr">{connectedPhone}</p>
+            )}
+          </div>
+          <div className="p-5 space-y-3">
+            {migrationPrereqs.issues.map((issue, i) => {
+              const info = migrationIssueLabel(issue);
+              return (
+                <div key={i} className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-1">
+                  <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />
+                    {info.title}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground pr-3">{info.desc}</p>
+                  {info.link && (
+                    <a href={info.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline pr-3">
+                      <ExternalLink className="w-3 h-3" /> حل المشكلة ←
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                💡 تم حفظ بيانات الرقم. بعد حل المشاكل أعلاه، يمكنك إعادة محاولة التسجيل من بطاقة الرقم.
+              </p>
+            </div>
+            <div className="pt-2 space-y-2">
+              <Button onClick={resetFlow} className="w-full gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                تم — الذهاب لإدارة الأرقام
+              </Button>
+            </div>
           </div>
         </div>
       </div>
