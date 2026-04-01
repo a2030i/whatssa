@@ -103,9 +103,12 @@ const IntegrationsPage = () => {
   const [unofficialConfigs, setUnofficialConfigs] = useState<WhatsAppConfig[]>([]);
 
   useEffect(() => {
-    loadConfigs();
     loadFacebookSDK();
   }, []);
+
+  useEffect(() => {
+    if (orgId) loadConfigs();
+  }, [orgId]);
 
   const loadConfigs = async () => {
     if (!orgId) return;
