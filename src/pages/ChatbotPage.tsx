@@ -731,6 +731,19 @@ const ChatbotPage = () => {
               <Button variant="outline" size="sm" onClick={() => setActiveTab("basics")} className="gap-1 text-xs">
                 <ArrowLeft className="w-3.5 h-3.5" /> الأساسيات
               </Button>
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("map")} className="gap-1 text-xs">
+                الخريطة <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* ── Tab: Flow Map ── */}
+          <TabsContent value="map" className="space-y-4 mt-4">
+            <FlowMap />
+            <div className="flex justify-between">
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")} className="gap-1 text-xs">
+                <ArrowLeft className="w-3.5 h-3.5" /> الخطوات
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setActiveTab("preview")} className="gap-1 text-xs">
                 معاينة <ArrowRight className="w-3.5 h-3.5" />
               </Button>
@@ -742,8 +755,8 @@ const ChatbotPage = () => {
             <p className="text-xs text-muted-foreground text-center">اضغط على الأزرار لتجربة التدفق كما سيراه العميل في واتساب</p>
             <ChatPreview />
             <div className="flex justify-start">
-              <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")} className="gap-1 text-xs">
-                <ArrowLeft className="w-3.5 h-3.5" /> الخطوات
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("map")} className="gap-1 text-xs">
+                <ArrowLeft className="w-3.5 h-3.5" /> الخريطة
               </Button>
             </div>
           </TabsContent>
