@@ -391,7 +391,7 @@ const ChatbotPage = () => {
                               : "bg-muted border-border text-muted-foreground"
                           )}
                         >
-                          {btn.label || "—"} {linked ? `→ خطوة ${targetIdx + 1}` : "(⏹)"}
+                          {btn.label || "—"} {linked ? `→ خطوة ${targetIdx + 1}${nodes[targetIdx]?.name?.trim() ? ` (${nodes[targetIdx].name})` : ""}` : btn.next_node_id?.startsWith("flow:") ? `↗ تدفق آخر` : "(⏹)"}
                         </span>
                       );
                     })}
