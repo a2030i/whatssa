@@ -497,8 +497,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     setInputText("");
     setReplyTo(null);
     broadcastTyping(false);
-    setIsTyping(true);
-    setTimeout(() => setIsTyping(false), 2000);
   };
 
   const handleReply = (msg: Message) => {
