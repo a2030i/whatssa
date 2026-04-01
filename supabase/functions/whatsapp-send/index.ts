@@ -124,6 +124,13 @@ serve(async (req) => {
       interactive,
       // Phone number selection (multi-number support)
       phone_number_id: requestedPhoneId,
+      // Reaction fields
+      reaction_emoji,
+      reaction_message_id,
+      // Location fields
+      location,
+      // Contact fields
+      contacts,
     } = body;
 
     if (!to || typeof to !== "string") {
@@ -157,8 +164,44 @@ serve(async (req) => {
       to,
     };
 
+    // ── Reaction message ──
+    if (type === "reaction" && reaction_message_id) {
+      messagePayload = {
+        ...messagePayload,
+        type: "reaction",
+        reaction: {
+          message_id: reaction_message_id,
+          emoji: reaction_emoji || "",
+        },
+      };
+    }
+    // ── Location message ──
+    else if (type === "location" && location) {
+      messagePayload = {
+        ...messagePayload,
+        type: "location",
+        location: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          name: location.name || undefined,
+          address: location.address || undefined,
+        },
+      };
+    }
+    // ── Contacts message ──
+    else if (type === "contacts" && contacts && Array.isArray(contacts)) {
+      messagePayload = {
+        ...messagePayload,
+        type: "contacts",
+        contacts: contacts.map((c: any) => ({
+          name: { formatted_name: c.name || "", first_name: c.name || "" },
+          phones: c.phone ? [{ phone: c.phone, type: "CELL" }] : [],
+          emails: c.email ? [{ email: c.email, type: "WORK" }] : [],
+        })),
+      };
+    }
     // ── Template message ──
-    if (type === "template") {
+    else if (type === "template") {
       if (!template_name || typeof template_name !== "string") {
         return json({ error: "اسم القالب مطلوب" }, 400);
       }
@@ -191,7 +234,6 @@ serve(async (req) => {
       }
       // If it's a direct URL, pass as link
       else if (media_url && media_url.startsWith("http")) {
-        // Meta supports sending by link for images/documents
         const mediaObj: Record<string, unknown> = { link: media_url };
         if (caption) mediaObj.caption = caption;
         messagePayload = { ...messagePayload, type: mType, [mType]: mediaObj };
@@ -306,39 +348,76 @@ serve(async (req) => {
     if (conversation) {
       let content = message || "";
       let msgType = "text";
+      let msgMetadata: Record<string, unknown> = {};
 
-      if (type === "template") {
-        content = `[قالب: ${template_name}]`;
-        msgType = "template";
-      } else if (type === "interactive" || interactive) {
-        const interBody = interactive?.body?.text || "";
-        content = interBody || "[رسالة تفاعلية]";
-        msgType = "interactive";
-      } else if (type === "media" || media_url) {
-        const mType = media_type || "image";
-        const label = mType === "image" ? "📷" : mType === "video" ? "🎬" : mType === "audio" ? "🎤" : "📎";
-        content = caption || message || `${label} ${mType}`;
-        msgType = mType;
+      if (type === "reaction") {
+        // For reactions, update the target message metadata instead of creating new message
+        if (reaction_message_id) {
+          const { data: targetMsg } = await adminClient
+            .from("messages")
+            .select("id, metadata")
+            .eq("wa_message_id", reaction_message_id)
+            .maybeSingle();
+
+          if (targetMsg) {
+            const existingMeta = (targetMsg.metadata as Record<string, any>) || {};
+            const reactions = (existingMeta.reactions as any[]) || [];
+            if (reaction_emoji) {
+              reactions.push({ emoji: reaction_emoji, from: "agent", timestamp: new Date().toISOString() });
+            }
+            await adminClient.from("messages").update({
+              metadata: { ...existingMeta, reactions },
+            }).eq("id", targetMsg.id);
+          }
+        }
+        // Don't create a separate message or update last_message for reactions
+      } else {
+        if (type === "template") {
+          content = `[قالب: ${template_name}]`;
+          msgType = "template";
+        } else if (type === "location" && location) {
+          content = location.name || location.address || "📍 موقع";
+          msgType = "location";
+          msgMetadata.location = location;
+        } else if (type === "contacts" && contacts) {
+          content = contacts.map((c: any) => `👤 ${c.name}`).join(", ") || "[جهة اتصال]";
+          msgType = "contacts";
+          msgMetadata.contacts = contacts;
+        } else if (type === "interactive" || interactive) {
+          const interBody = interactive?.body?.text || "";
+          content = interBody || "[رسالة تفاعلية]";
+          msgType = "interactive";
+        } else if (type === "media" || media_url) {
+          const mType = media_type || "image";
+          const label = mType === "image" ? "📷" : mType === "video" ? "🎬" : mType === "audio" ? "🎤" : "📎";
+          content = caption || message || `${label} ${mType}`;
+          msgType = mType;
+        }
+
+        const msgInsert: Record<string, unknown> = {
+          conversation_id: conversation.id,
+          wa_message_id: waMessageId,
+          sender: "agent",
+          message_type: msgType,
+          content,
+          media_url: media_url || null,
+          status: "sent",
+        };
+        if (Object.keys(msgMetadata).length > 0) {
+          msgInsert.metadata = msgMetadata;
+        }
+
+        await adminClient.from("messages").insert(msgInsert);
+
+        await adminClient
+          .from("conversations")
+          .update({
+            last_message: content,
+            last_message_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", conversation.id);
       }
-
-      await adminClient.from("messages").insert({
-        conversation_id: conversation.id,
-        wa_message_id: waMessageId,
-        sender: "agent",
-        message_type: msgType,
-        content,
-        media_url: media_url || null,
-        status: "sent",
-      });
-
-      await adminClient
-        .from("conversations")
-        .update({
-          last_message: content,
-          last_message_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", conversation.id);
     }
 
     return json({ success: true, message_id: waMessageId });
