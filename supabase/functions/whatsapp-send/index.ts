@@ -423,6 +423,12 @@ serve(async (req) => {
           content = contacts.map((c: any) => `👤 ${c.name}`).join(", ") || "[جهة اتصال]";
           msgType = "contacts";
           msgMetadata.contacts = contacts;
+        } else if (type === "product") {
+          content = `🛍️ ${body.product_retailer_id || "منتج"}`;
+          msgType = "interactive";
+        } else if (type === "product_list") {
+          content = `🛒 ${body.header_text || "كتالوج منتجات"}`;
+          msgType = "interactive";
         } else if (type === "interactive" || interactive) {
           const interBody = interactive?.body?.text || "";
           content = interBody || "[رسالة تفاعلية]";
