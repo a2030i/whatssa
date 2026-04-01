@@ -256,9 +256,20 @@ const SallaIntegrationSection = () => {
       store_name: newStoreName.trim(),
       store_url: newStoreUrl.trim() || null,
     };
-    // Save API token in metadata for Lamha
-    if ((platformConfig as any)?.usesApiToken && newApiToken.trim()) {
-      insertData.metadata = { api_token: newApiToken.trim() };
+    // Save API token + shipper config in metadata for Lamha
+    if ((platformConfig as any)?.usesApiToken) {
+      const meta: any = {};
+      if (newApiToken.trim()) meta.api_token = newApiToken.trim();
+      if (shipperPhone.trim() || shipperCity.trim() || shipperAddress.trim()) {
+        meta.shipper = {
+          name: shipperName.trim() || newStoreName.trim(),
+          phone: shipperPhone.trim(),
+          city: shipperCity.trim(),
+          address_line1: shipperAddress.trim(),
+          country: "SA",
+        };
+      }
+      if (Object.keys(meta).length > 0) insertData.metadata = meta;
     }
     const { error } = await supabase.from("store_integrations").insert(insertData);
 
