@@ -91,11 +91,36 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Determine shipper: warehouse overrides integration config
+    let shipperConfig: any = metadata.shipper || {};
+    
+    if (warehouse_id) {
+      const { data: warehouse } = await supabase
+        .from("warehouses")
+        .select("*")
+        .eq("id", warehouse_id)
+        .eq("org_id", org_id)
+        .eq("is_active", true)
+        .single();
+      
+      if (warehouse) {
+        shipperConfig = {
+          name: warehouse.name,
+          phone: warehouse.phone,
+          city: warehouse.city,
+          address_line1: warehouse.address_line1,
+          address_line2: warehouse.address_line2 || "",
+          district: warehouse.district || "",
+          country: warehouse.country || "SA",
+          national_address: warehouse.national_address || "",
+        };
+      }
+    }
+
     // Validate shipper config
-    const shipperConfig = metadata.shipper || {};
     if (!shipperConfig.phone || !shipperConfig.city || !shipperConfig.address_line1) {
       return new Response(JSON.stringify({ 
-        error: "بيانات المرسل ناقصة (الجوال، المدينة، العنوان) — اذهب للإعدادات → التكاملات → لمحة",
+        error: "بيانات المرسل ناقصة (الجوال، المدينة، العنوان) — أضف مستودعاً من صفحة المستودعات أو أكمل إعدادات لمحة",
         missing_fields: {
           phone: !shipperConfig.phone,
           city: !shipperConfig.city,
