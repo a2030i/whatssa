@@ -62,7 +62,20 @@ interface TeamMember {
 }
 
 const generateId = () => crypto.randomUUID().slice(0, 8);
-const MAX_BUTTONS = 20;
+
+// Dynamic limits based on channel type
+const getMaxButtons = (channelType: "meta_api" | "evolution" | "mixed" | "none") => {
+  if (channelType === "meta_api") return 10; // List message max
+  if (channelType === "evolution") return 20; // Text-based, flexible
+  if (channelType === "mixed") return 10; // Respect stricter limit
+  return 20;
+};
+
+const getMetaButtonMode = (count: number): "reply_buttons" | "list" | "text" => {
+  if (count <= 3) return "reply_buttons";
+  if (count <= 10) return "list";
+  return "text"; // fallback
+};
 
 const TRIGGER_LABELS: Record<string, string> = {
   keyword: "كلمات مفتاحية",
