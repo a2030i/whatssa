@@ -570,6 +570,7 @@ serve(async (req) => {
               conversation_type: conversationType,
               last_message: text || `[${messageType}]`,
               last_message_at: new Date().toISOString(),
+              channel_id: config.id,
             };
             // Apply channel routing
             if (config.default_agent_id) {
