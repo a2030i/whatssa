@@ -18,6 +18,7 @@ import { toast } from "sonner";
 interface Props {
   orgId: string | null;
   isSuperAdmin: boolean;
+  autoOpen?: boolean;
 }
 
 type InstanceStatus = "idle" | "connecting" | "qr_pending" | "connected" | "disconnected";
@@ -165,7 +166,7 @@ const RateLimitPanel = ({ configId, initialSettings }: RateLimitPanelProps) => {
   );
 };
 
-const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
+const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false }: Props) => {
   const [showSetup, setShowSetup] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -195,10 +196,14 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [orgId]);
 
+  useEffect(() => {
+    if (autoOpen) setShowSetup(true);
+  }, [autoOpen]);
+
   const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
     if (!orgId) { setIsLoadingConfig(false); return; }
-    const { data } = await supabase
+    const fetchConfig = () => supabase
       .from("whatsapp_config_safe")
       .select("*")
       .eq("org_id", orgId)
@@ -206,6 +211,16 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    let { data } = await fetchConfig();
+
+    if (data?.is_connected && data.evolution_instance_status === "connected" && !data.display_phone && data.evolution_instance_name) {
+      await supabase.functions.invoke("evolution-manage", {
+        body: { action: "status", instance_name: data.evolution_instance_name },
+      });
+      const refreshed = await fetchConfig();
+      data = refreshed.data || data;
+    }
 
     if (data) {
       setExistingConfig(data);
@@ -256,7 +271,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
           return;
         }
 
-        if (!error && guessedName) {
+        if (guessedName && !errorMessage.toLowerCase().includes("unauthorized")) {
           const recovered = await fetchQR(guessedName, { allowRecreate: false, silent: true });
           if (recovered) {
             setInstanceName(guessedName);
@@ -561,15 +576,17 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
             </p>
           </div>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5 text-xs"
-          onClick={() => setShowSetup(!showSetup)}
-        >
-          <Smartphone className="w-3.5 h-3.5" />
-          {showSetup ? "إخفاء" : instanceStatus === "connected" ? "إدارة" : "ربط رقم"}
-        </Button>
+        {!autoOpen && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs"
+            onClick={() => setShowSetup(!showSetup)}
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            {showSetup ? "إخفاء" : instanceStatus === "connected" ? "إدارة" : "ربط رقم"}
+          </Button>
+        )}
       </div>
 
       {/* Compact Risk Warning - only visible when setup is open */}

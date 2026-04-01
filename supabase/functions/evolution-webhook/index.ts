@@ -262,6 +262,39 @@ async function logToSystem(
   }
 }
 
+async function fetchEvolutionContactName(instanceName: string, phone: string): Promise<string | null> {
+  if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) return null;
+
+  try {
+    const contactRes = await fetch(`${EVOLUTION_API_URL}/chat/findContacts/${instanceName}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+      body: JSON.stringify({ where: { id: `${phone}@s.whatsapp.net` } }),
+    });
+
+    if (!contactRes.ok) return null;
+
+    const contacts = await contactRes.json();
+    const contact = Array.isArray(contacts)
+      ? contacts[0]
+      : Array.isArray(contacts?.data)
+        ? contacts.data[0]
+        : contacts?.data || contacts;
+
+    const candidate = [
+      contact?.pushName,
+      contact?.name,
+      contact?.notify,
+      contact?.verifiedName,
+      contact?.profileName,
+    ].find((value) => typeof value === "string" && value.trim() && value.trim() !== phone);
+
+    return candidate?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -467,6 +500,10 @@ serve(async (req) => {
 
         // ── Handle outgoing messages sent from phone ──
         if (isFromMe) {
+          const resolvedOutgoingName = conversationType === "private"
+            ? await fetchEvolutionContactName(instanceName, phone)
+            : null;
+
           // Find existing conversation to sync the outgoing message
           let { data: existingConv } = await supabase
             .from("conversations")
@@ -480,7 +517,7 @@ serve(async (req) => {
 
           // If no conversation exists, create one for the new contact
           if (!existingConv) {
-            let outConvName = msg.pushName || phone;
+            let outConvName = resolvedOutgoingName || phone;
             if (conversationType === "group") {
               outConvName = `قروب ${phone}`;
               if (EVOLUTION_API_URL && EVOLUTION_API_KEY) {
@@ -534,6 +571,9 @@ serve(async (req) => {
             await logToSystem(supabase, "info", `محادثة جديدة أُنشئت من رسالة صادرة (Evolution) إلى ${phone}`, {
               conversation_id: newOutConv?.id,
             }, orgId);
+          } else if (resolvedOutgoingName) {
+            await supabase.from("conversations").update({ customer_name: resolvedOutgoingName }).eq("id", existingConv.id);
+            await supabase.from("customers").update({ name: resolvedOutgoingName }).eq("org_id", orgId).eq("phone", phone);
           }
 
           if (existingConv) {
@@ -620,6 +660,11 @@ serve(async (req) => {
           }
         }
 
+        const resolvedIncomingName = conversationType === "private"
+          ? await fetchEvolutionContactName(instanceName, phone)
+          : null;
+        let conversationDisplayName = resolvedIncomingName || msg.pushName || phone;
+
         let { data: conversation } = await supabase
           .from("conversations")
           .select("id")
@@ -631,7 +676,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (!conversation) {
-          let convName = msg.pushName || phone;
+          let convName = conversationDisplayName;
 
           if (conversationType === "group" && EVOLUTION_API_URL && EVOLUTION_API_KEY) {
             try {
@@ -655,31 +700,9 @@ serve(async (req) => {
             }
           } else if (conversationType === "group") {
             convName = `قروب ${phone}`;
-          } else if (conversationType === "private" && EVOLUTION_API_URL && EVOLUTION_API_KEY && (!convName || convName === phone)) {
-            // ── Contact sync: fetch contact name from Evolution ──
-            try {
-              const contactRes = await fetch(
-                `${EVOLUTION_API_URL}/chat/findContacts/${instanceName}`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
-                  body: JSON.stringify({ where: { id: `${phone}@s.whatsapp.net` } }),
-                }
-              );
-              if (contactRes.ok) {
-                const contacts = await contactRes.json();
-                const contact = Array.isArray(contacts) ? contacts[0] : contacts;
-                const contactName = contact?.pushName || contact?.name || contact?.notify || contact?.verifiedName;
-                if (contactName && contactName !== phone) {
-                  convName = contactName;
-                  // Also update customer record if exists
-                  await supabase.from("customers").update({ name: contactName }).eq("phone", phone).eq("org_id", orgId);
-                }
-              }
-            } catch (e) {
-              // Silent fail — pushName fallback is fine
-            }
           }
+
+          conversationDisplayName = convName;
 
           // ── Fetch profile picture URL ──
           let profilePicUrl: string | null = null;
@@ -756,7 +779,7 @@ serve(async (req) => {
 
         // Auto-save customer record
         try {
-          const contactDisplayName = msg.pushName || convName || "";
+          const contactDisplayName = conversationDisplayName || "";
           const { data: existingCustomer } = await supabase
             .from("customers")
             .select("id, name")
@@ -784,6 +807,10 @@ serve(async (req) => {
                 await supabase.from("conversations").update({ customer_id: cust.id }).eq("id", conversation.id);
               }
             }
+          }
+
+          if (conversation && conversationType === "private" && resolvedIncomingName) {
+            await supabase.from("conversations").update({ customer_name: resolvedIncomingName }).eq("id", conversation.id);
           }
         } catch (custErr) {
           // Non-critical — log and continue
