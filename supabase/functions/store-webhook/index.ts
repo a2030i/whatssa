@@ -779,6 +779,12 @@ async function sendEventNotification(supabase: any, integration: any, evt: Norma
 
   // Try multiple keys for matching
   const keysToTry = [notifKey, evt.event];
+
+  // Also check for unpaid order notification
+  if (evt.event === "order.created" && evt.order?.payment_status === "unpaid") {
+    keysToTry.unshift("order.created_unpaid");
+  }
+
   let cfg: any = null;
   for (const key of keysToTry) {
     if (notifConfigs[key]?.enabled && notifConfigs[key]?.channel_id) {
