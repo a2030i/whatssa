@@ -479,6 +479,41 @@ const InboxPage = () => {
     });
   }, [conversations, profile]);
 
+  const handleAssignAgent = useCallback(async (convId: string, agentId: string | null, agentName: string) => {
+    const actorName = profile?.full_name || "النظام";
+    await supabase.from("conversations").update({
+      assigned_to: agentName === "غير معيّن" ? null : agentName,
+      assigned_to_id: agentId,
+      assigned_at: agentId ? new Date().toISOString() : null,
+    }).eq("id", convId);
+    setConversations(prev => prev.map(c => c.id === convId ? { ...c, assignedTo: agentName, assignedToId: agentId || undefined } : c));
+    
+    await supabase.from("messages").insert({
+      conversation_id: convId,
+      content: agentId ? `تم تثبيت الموظف "${agentName}" كمسؤول عن المحادثة بواسطة ${actorName}` : `تم إلغاء تعيين الموظف بواسطة ${actorName}`,
+      sender: "system",
+      message_type: "text",
+    });
+    toast.success(agentId ? `تم تعيين ${agentName} كمسؤول` : "تم إلغاء تعيين الموظف");
+  }, [profile]);
+
+  const handleAssignTeam = useCallback(async (convId: string, teamId: string | null, teamName: string) => {
+    const actorName = profile?.full_name || "النظام";
+    await supabase.from("conversations").update({
+      assigned_team: teamId ? teamName : null,
+      assigned_team_id: teamId,
+    }).eq("id", convId);
+    setConversations(prev => prev.map(c => c.id === convId ? { ...c, assignedTeam: teamId ? teamName : undefined, assignedTeamId: teamId || undefined } : c));
+    
+    await supabase.from("messages").insert({
+      conversation_id: convId,
+      content: teamId ? `تم تعيين الفريق "${teamName}" كمسؤول عن المحادثة بواسطة ${actorName}` : `تم إلغاء تعيين الفريق بواسطة ${actorName}`,
+      sender: "system",
+      message_type: "text",
+    });
+    toast.success(teamId ? `تم تعيين فريق ${teamName}` : "تم إلغاء تعيين الفريق");
+  }, [profile]);
+
   const handleUpdateNotes = useCallback(async (convId: string, notes: string) => {
     await supabase.from("conversations").update({ notes }).eq("id", convId);
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, notes } : conversation)));
