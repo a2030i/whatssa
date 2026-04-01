@@ -2807,6 +2807,65 @@ export type Database = {
           },
         ]
       }
+      warehouses: {
+        Row: {
+          address_line1: string
+          address_line2: string | null
+          city: string
+          country: string
+          created_at: string
+          district: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          national_address: string | null
+          org_id: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          address_line1: string
+          address_line2?: string | null
+          city: string
+          country?: string
+          created_at?: string
+          district?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          national_address?: string | null
+          org_id: string
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          address_line1?: string
+          address_line2?: string | null
+          city?: string
+          country?: string
+          created_at?: string
+          district?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          national_address?: string | null
+          org_id?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_logs: {
         Row: {
           created_at: string | null
