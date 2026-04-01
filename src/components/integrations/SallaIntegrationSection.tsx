@@ -223,6 +223,10 @@ const SallaIntegrationSection = () => {
   const [saving, setSaving] = useState(false);
   const [showApiDocs, setShowApiDocs] = useState(false);
   const [newApiToken, setNewApiToken] = useState("");
+  const [shipperPhone, setShipperPhone] = useState("");
+  const [shipperCity, setShipperCity] = useState("");
+  const [shipperAddress, setShipperAddress] = useState("");
+  const [shipperName, setShipperName] = useState("");
 
   useEffect(() => {
     if (orgId) fetchStores();

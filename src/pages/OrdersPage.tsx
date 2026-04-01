@@ -522,30 +522,19 @@ const OrdersPage = () => {
                           ))}
                         </SelectContent>
                       </Select>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="flex-1 gap-1.5 text-xs"
-                          disabled={sendingToLamha === selectedOrder.id || !selectedCarrierId}
-                          onClick={() => sendToLamha(selectedOrder.id, "create-order-shipment")}
-                        >
-                          {sendingToLamha === selectedOrder.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Send className="w-3.5 h-3.5" />
-                          )}
-                          إرسال مع شحنة
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 text-xs"
-                          disabled={sendingToLamha === selectedOrder.id}
-                          onClick={() => sendToLamha(selectedOrder.id, "create-order")}
-                        >
-                          طلب فقط
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        className="w-full gap-1.5 text-xs"
+                        disabled={sendingToLamha === selectedOrder.id || !selectedCarrierId}
+                        onClick={() => sendToLamha(selectedOrder.id)}
+                      >
+                        {sendingToLamha === selectedOrder.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Send className="w-3.5 h-3.5" />
+                        )}
+                        إرسال إلى لمحة
+                      </Button>
                     </>
                   )}
 
