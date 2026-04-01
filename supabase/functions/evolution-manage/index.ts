@@ -1017,6 +1017,10 @@ async function setWebhook(
       await logToSystem(adminClient, "error", "فشل تعيين Webhook لجلسة Evolution", {
         http_status: res.status, instance: instanceName, error: JSON.stringify(data).slice(0, 300),
       }, orgId);
+    } else {
+      await logToSystem(adminClient, "info", "✅ تم تسجيل Webhook بنجاح", {
+        instance: instanceName, url: webhookUrl, events: EVOLUTION_WEBHOOK_EVENTS,
+      }, orgId);
     }
   } catch (e) {
     await logToSystem(adminClient, "error", "خطأ في تعيين Webhook لجلسة Evolution", {
