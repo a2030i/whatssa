@@ -305,6 +305,51 @@ const OrdersPage = () => {
                 {Number(selectedOrder.tax_amount) > 0 && <div className="flex justify-between text-xs"><span>الضريبة</span><span>{Number(selectedOrder.tax_amount).toFixed(2)} ر.س</span></div>}
                 <div className="flex justify-between text-sm font-bold border-t border-border pt-1.5"><span>الإجمالي</span><span>{Number(selectedOrder.total).toFixed(2)} ر.س</span></div>
               </div>
+
+              {/* Shipment Timeline */}
+              {shipmentEvents.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-info" />
+                    مراحل الشحن
+                    {(selectedOrder as any).shipment_tracking_number && (
+                      <span className="text-[10px] font-mono text-muted-foreground mr-auto" dir="ltr">
+                        #{(selectedOrder as any).shipment_tracking_number}
+                      </span>
+                    )}
+                  </p>
+                  <div className="space-y-0">
+                    {shipmentEvents.map((event, idx) => {
+                      const Icon = SHIPMENT_ICONS[event.status_key] || Package;
+                      const color = SHIPMENT_COLORS[event.status_key] || "text-muted-foreground";
+                      const isFirst = idx === 0;
+                      return (
+                        <div key={event.id} className="flex gap-2.5 relative">
+                          {idx < shipmentEvents.length - 1 && (
+                            <div className="absolute right-[11px] top-7 bottom-0 w-px bg-border" />
+                          )}
+                          <div className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10",
+                            isFirst ? "bg-primary/10" : "bg-secondary"
+                          )}>
+                            <Icon className={cn("w-3 h-3", isFirst ? color : "text-muted-foreground")} />
+                          </div>
+                          <div className="pb-4 flex-1">
+                            <p className={cn("text-xs", isFirst ? "font-medium text-foreground" : "text-muted-foreground")}>
+                              {event.status_label}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {new Date(event.created_at).toLocaleDateString("ar-SA", {
+                                month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
