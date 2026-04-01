@@ -185,6 +185,7 @@ const OrdersPage = () => {
           order_id: orderId,
           org_id: orgId,
           carrier_id: selectedCarrierId,
+          warehouse_id: selectedWarehouseId || undefined,
         },
       });
       if (error) throw error;
