@@ -17,10 +17,13 @@ import { buildTemplateComponents } from "@/types/whatsapp";
 
 interface Channel {
   id: string;
+  org_id?: string | null;
   display_phone: string;
   channel_type: string;
   evolution_instance_name: string | null;
   business_name: string | null;
+  is_connected?: boolean | null;
+  created_at?: string | null;
 }
 
 interface Customer {
