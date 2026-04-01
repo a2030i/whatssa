@@ -770,7 +770,7 @@ const IntegrationsPage = () => {
     return (
       <>
         {/* Connected Numbers */}
-        {(hasConnected || hasConnectedUnofficial) && (
+        {hasAnyConnected && (
           <div className="space-y-3">
             <h2 className="text-base font-bold text-foreground">الأرقام المتصلة</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
