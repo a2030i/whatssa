@@ -182,7 +182,7 @@ const InboxPage = () => {
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [orgId, isMobile]);
+  }, [orgId, isMobile, userRole, teamId, isSupervisor, isSuperAdmin, profile?.id]);
 
   useEffect(() => {
     if (!selectedId) return;
