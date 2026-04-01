@@ -50,6 +50,17 @@ interface Channel {
   business_name: string | null;
 }
 
+interface Team {
+  id: string;
+  name: string;
+}
+
+interface TeamMember {
+  id: string;
+  full_name: string | null;
+  team_id: string | null;
+}
+
 const generateId = () => crypto.randomUUID().slice(0, 8);
 const MAX_BUTTONS = 20;
 
