@@ -35,6 +35,7 @@ const OrdersPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [shipmentEvents, setShipmentEvents] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, revenue: 0, avgOrder: 0, pendingCount: 0, todayOrders: 0, todayRevenue: 0 });
 
   useEffect(() => { if (orgId) loadOrders(); }, [orgId]);
