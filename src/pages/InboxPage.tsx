@@ -276,7 +276,7 @@ const InboxPage = () => {
         body: {
           action: "sync_message_statuses",
           phone: conversation.customerPhone,
-          instance_name: conversation.channelId,
+          channel_id: conversation.channelId,
           messages: pendingMessages.map((message) => ({
             message_id: message.waMessageId,
             status: message.status,
