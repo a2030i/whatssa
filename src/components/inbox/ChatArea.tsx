@@ -111,6 +111,7 @@ const ResolvedMedia = ({ url, type, isAgent = false }: { url: string; type: stri
   if (!resolvedUrl) return null;
 
   const isImage = type === "image" || isImageUrl(resolvedUrl) || isImageUrl(url);
+  const isSticker = type === "sticker";
 
   if (isSticker) {
     return <img src={resolvedUrl} alt="ملصق" className="max-w-[140px] max-h-[140px] object-contain mb-1" />;
