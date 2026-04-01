@@ -689,11 +689,22 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
           )}
 
           {/* ═══ IDLE / DISCONNECTED STATE ═══ */}
-          {(instanceStatus === "idle" || instanceStatus === "disconnected") && !qrCode && (
+          {(instanceStatus === "idle" || instanceStatus === "disconnected") && !qrCode && !pairingCode && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 pb-2 border-b border-border">
-                <QrCode className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-bold">ربط رقم عبر QR</h3>
+              {/* Method Toggle */}
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                <button
+                  onClick={() => setLinkMethod("qr")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors ${linkMethod === "qr" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <QrCode className="w-3.5 h-3.5" /> مسح QR
+                </button>
+                <button
+                  onClick={() => setLinkMethod("code")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors ${linkMethod === "code" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" /> ربط بالكود
+                </button>
               </div>
 
               {instanceStatus === "disconnected" && instanceName && (
@@ -701,19 +712,46 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin }: Props) => {
                   <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-warning">الجلسة غير متصلة</p>
-                    <p className="text-[10px] text-muted-foreground">اضغط "إعادة الربط" لعرض QR جديد</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {linkMethod === "qr" ? 'اضغط "إعادة الربط" لعرض QR جديد' : "أدخل رقم الهاتف للحصول على كود الربط"}
+                    </p>
                   </div>
                 </div>
               )}
 
-              <Button
-                className="w-full gap-1.5 text-xs py-5 font-bold"
-                onClick={instanceName ? () => fetchQR() : createInstance}
-                disabled={isCreating}
-              >
-                {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-                {instanceName ? "إعادة الربط — عرض QR" : "إنشاء جلسة جديدة"}
-              </Button>
+              {linkMethod === "qr" ? (
+                <Button
+                  className="w-full gap-1.5 text-xs py-5 font-bold"
+                  onClick={instanceName ? () => fetchQR() : createInstance}
+                  disabled={isCreating}
+                >
+                  {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                  {instanceName ? "إعادة الربط — عرض QR" : "إنشاء جلسة جديدة"}
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={pairingPhone}
+                      onChange={(e) => setPairingPhone(e.target.value)}
+                      placeholder="966535195202"
+                      className="bg-card border border-border text-xs flex-1"
+                      dir="ltr"
+                    />
+                    <Button
+                      className="gap-1.5 text-xs font-bold"
+                      onClick={requestPairingCode}
+                      disabled={isRequestingCode || !pairingPhone.trim()}
+                    >
+                      {isRequestingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
+                      طلب الكود
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    أدخل رقم الواتساب الذي تريد ربطه (مع رمز الدولة بدون +)
+                  </p>
+                </div>
+              )}
 
               {instanceName && isSuperAdmin && (
                 <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={deleteInstance} disabled={isDeleting}>
