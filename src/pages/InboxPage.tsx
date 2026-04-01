@@ -381,7 +381,7 @@ const InboxPage = () => {
 
     if (error || data?.error) {
       // If evolution failed, try meta as fallback
-      if (isEvolution) {
+      if (isEvolution && templates.length > 0) {
         const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke("whatsapp-send", {
           body: { to: conversation.customerPhone, message: text, conversation_id: convId },
         });
@@ -389,7 +389,7 @@ const InboxPage = () => {
       }
       toast.error(data?.error || "فشل إرسال الرسالة");
     }
-  }, [conversations]);
+  }, [conversations, templates]);
 
   const handleStatusChange = useCallback(async (convId: string, status: "active" | "waiting" | "closed") => {
     const conv = conversations.find(c => c.id === convId);
