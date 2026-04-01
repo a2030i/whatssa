@@ -447,6 +447,38 @@ const OrdersPage = () => {
                 <div className="flex justify-between text-sm font-bold border-t border-border pt-1.5"><span>الإجمالي</span><span>{Number(selectedOrder.total).toFixed(2)} ر.س</span></div>
               </div>
 
+              {/* Lamha Actions */}
+              {lamhaIntegration && (
+                <div className="flex gap-2">
+                  {selectedOrder.shipment_carrier !== "lamha" && (
+                    <Button
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs"
+                      disabled={sendingToLamha === selectedOrder.id}
+                      onClick={() => sendToLamha(selectedOrder.id)}
+                    >
+                      {sendingToLamha === selectedOrder.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5" />
+                      )}
+                      إرسال إلى لمحة
+                    </Button>
+                  )}
+                  {selectedOrder.shipment_carrier === "lamha" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs"
+                      onClick={() => printLamhaLabel(selectedOrder.id)}
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      طباعة البوليصة
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {/* Shipment Timeline */}
               {shipmentEvents.length > 0 && (
                 <div>
