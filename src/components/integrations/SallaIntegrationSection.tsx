@@ -614,7 +614,7 @@ product.created, product.updated, product.deleted`}</pre>
 // ─── Store Card Component ───
 function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecret, webhookUrl, timeSince, onRefetch }: {
   store: StoreIntegration;
-  platform: typeof PLATFORMS[0];
+  platform: typeof ALL_PLATFORMS[0];
   onToggle: (id: string, active: boolean) => void;
   onDelete: (id: string) => void;
   onCopyUrl: () => void;
