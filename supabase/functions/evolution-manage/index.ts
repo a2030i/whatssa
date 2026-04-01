@@ -322,6 +322,35 @@ serve(async (req) => {
       });
     }
 
+    // ── SEND READ RECEIPT ──
+    if (action === "read_messages") {
+      const { messages: messageKeys } = await req.json().catch(() => ({ messages: [] }));
+      if (!messageKeys || !Array.isArray(messageKeys) || messageKeys.length === 0) {
+        return json({ success: true }); // Nothing to mark
+      }
+
+      try {
+        const readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
+          method: "PUT",
+          headers: evoHeaders,
+          body: JSON.stringify({
+            readMessages: messageKeys,
+          }),
+        });
+
+        if (!readRes.ok) {
+          // Silent fail — not critical
+          await logToSystem(adminClient, "warn", "فشل إرسال إشعار قراءة إلى Evolution", {
+            http_status: readRes.status, count: messageKeys.length,
+          }, orgId, userId);
+        }
+      } catch {
+        // Silent fail
+      }
+
+      return json({ success: true });
+    }
+
     return json({ error: "إجراء غير معروف" }, 400);
   } catch (err: any) {
     await logToSystem(adminClient, "critical", "خطأ غير متوقع في إدارة Evolution", {
