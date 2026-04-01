@@ -270,7 +270,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
       supabase.from("organizations").select("plans(max_unofficial_phones)").eq("id", orgId).maybeSingle(),
     ]);
     const unofficialChannels = ((channelsRes.data || []) as any[]).filter((config) => config.org_id === orgId && config.channel_type === "evolution");
-    setUnofficialCount(countRes.count || 0);
+    setUnofficialCount(unofficialChannels.length);
     const planData = orgRes?.data as any;
     if (planData?.plans?.max_unofficial_phones != null) setMaxUnofficialPhones(planData.plans.max_unofficial_phones);
   };
