@@ -256,6 +256,72 @@ serve(async (req) => {
       return json({ success: true, logged_out: instanceName });
     }
 
+    // ── PAIRING CODE (Phone Number Linking) ──
+    if (action === "pairing_code") {
+      const { phone_number } = await req.json().catch(() => ({}));
+      if (!phone_number) {
+        return json({ error: "رقم الهاتف مطلوب" }, 400);
+      }
+
+      // Ensure instance exists and is in connecting state
+      try {
+        const stateRes = await fetch(`${EVOLUTION_URL}/instance/connectionState/${instanceName}`, {
+          headers: evoHeaders,
+        });
+        const stateData = await stateRes.json();
+        const currentState = stateData.instance?.state || stateData.state || "unknown";
+
+        if (currentState === "open") {
+          return json({ success: true, status: "open", pairing_code: null });
+        }
+      } catch {
+        // Instance might not exist, continue
+      }
+
+      // Request pairing code from Evolution API
+      const pairingRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+        method: "GET",
+        headers: evoHeaders,
+      });
+
+      // Now request the pairing code
+      const codeRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          number: phone_number.replace(/\D/g, ""),
+        }),
+      });
+
+      const codeData = await codeRes.json();
+
+      if (!codeRes.ok) {
+        await logToSystem(adminClient, "error", "فشل الحصول على كود الربط", {
+          http_status: codeRes.status, error: JSON.stringify(codeData).slice(0, 300),
+        }, orgId, userId);
+        return json({ error: codeData?.message || "فشل الحصول على كود الربط — تأكد أن السيرفر يدعم هذه الميزة" }, 400);
+      }
+
+      const pairingCode = codeData?.pairingCode || codeData?.code || null;
+
+      if (!pairingCode) {
+        await logToSystem(adminClient, "warn", "لم يتم إرجاع كود الربط من السيرفر", {
+          response: JSON.stringify(codeData).slice(0, 500),
+        }, orgId, userId);
+        return json({ error: "السيرفر لا يدعم الربط بالكود — تأكد من تحديث Evolution API لإصدار v2+" }, 400);
+      }
+
+      await logToSystem(adminClient, "info", `تم توليد كود ربط لـ ${phone_number}`, {
+        instance: instanceName,
+      }, orgId, userId);
+
+      return json({
+        success: true,
+        pairing_code: pairingCode,
+        status: "pairing_code_ready",
+      });
+    }
+
     return json({ error: "إجراء غير معروف" }, 400);
   } catch (err: any) {
     await logToSystem(adminClient, "critical", "خطأ غير متوقع في إدارة Evolution", {
