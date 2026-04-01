@@ -634,7 +634,18 @@ const ChatbotPage = () => {
             </Card>
 
             <div className="flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => setActiveTab("steps")} className="gap-1">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  if (channelIds.length === 0 && channels.length > 0) {
+                    toast({ title: "اختر قناة واحدة على الأقل أولاً", variant: "destructive" });
+                    return;
+                  }
+                  setActiveTab("steps");
+                }} 
+                className="gap-1"
+              >
                 التالي: الخطوات والأزرار
                 <ArrowRight className="w-3.5 h-3.5" />
               </Button>
