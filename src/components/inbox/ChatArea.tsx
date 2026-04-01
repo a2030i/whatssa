@@ -971,6 +971,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 msg={msg}
                 conversation={conversation}
                 onReply={handleReply}
+                onEdit={onEditMessage ? handleStartEdit : undefined}
+                onDelete={onDeleteMessage ? handleDeleteMsg : undefined}
               />
             )}
           </div>
