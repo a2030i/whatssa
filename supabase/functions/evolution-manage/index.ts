@@ -785,26 +785,46 @@ async function setWebhook(
   orgId: string,
 ) {
   try {
-    const res = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
+    const webhookEvents = [
+      "MESSAGES_UPSERT",
+      "MESSAGES_UPDATE",
+      "MESSAGES_EDITED",
+      "MESSAGES_DELETE",
+      "CONNECTION_UPDATE",
+      "QRCODE_UPDATED",
+      "PRESENCE_UPDATE",
+      "SEND_MESSAGE",
+    ];
+
+    let res = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
       method: "POST",
       headers,
       body: JSON.stringify({
-        url: webhookUrl,
-        webhook_by_events: true,
-        webhook_base64: false,
-        events: [
-          "MESSAGES_UPSERT",
-          "MESSAGES_UPDATE",
-          "MESSAGES_EDITED",
-          "MESSAGES_DELETE",
-          "CONNECTION_UPDATE",
-          "QRCODE_UPDATED",
-          "PRESENCE_UPDATE",
-          "SEND_MESSAGE",
-        ],
+        webhook: {
+          url: webhookUrl,
+          byEvents: true,
+          webhookBase64: false,
+          events: webhookEvents,
+        },
       }),
     });
-    const data = await res.json();
+
+    let data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      res = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          url: webhookUrl,
+          webhook_by_events: true,
+          webhook_base64: false,
+          events: webhookEvents,
+        }),
+      });
+      data = await res.json().catch(() => ({}));
+    }
+
     if (!res.ok) {
       await logToSystem(adminClient, "error", "فشل تعيين Webhook لجلسة Evolution", {
         http_status: res.status, instance: instanceName, error: JSON.stringify(data).slice(0, 300),
