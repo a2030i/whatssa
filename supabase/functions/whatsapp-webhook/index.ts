@@ -626,8 +626,121 @@ serve(async (req) => {
           let content = "";
           let messageType = incomingMessage.type || "text";
           let mediaUrl = null;
+          let messageMetadata: Record<string, unknown> = {};
 
-          if (incomingMessage.type === "text") {
+          // ── Reaction handling ──
+          if (incomingMessage.type === "reaction") {
+            const reaction = incomingMessage.reaction;
+            const targetMsgId = reaction?.message_id;
+            const emoji = reaction?.emoji || "";
+
+            if (targetMsgId) {
+              // Find the target message and update its metadata with the reaction
+              const { data: targetMsg } = await supabase
+                .from("messages")
+                .select("id, metadata")
+                .eq("wa_message_id", targetMsgId)
+                .maybeSingle();
+
+              if (targetMsg) {
+                const existingMeta = (targetMsg.metadata as Record<string, any>) || {};
+                const reactions = (existingMeta.reactions as any[]) || [];
+                
+                if (emoji) {
+                  // Add or update reaction
+                  const existingIdx = reactions.findIndex((r: any) => r.from === customerPhone);
+                  if (existingIdx >= 0) {
+                    reactions[existingIdx] = { emoji, from: customerPhone, timestamp: new Date().toISOString() };
+                  } else {
+                    reactions.push({ emoji, from: customerPhone, timestamp: new Date().toISOString() });
+                  }
+                } else {
+                  // Remove reaction (empty emoji = unreact)
+                  const filtered = reactions.filter((r: any) => r.from !== customerPhone);
+                  existingMeta.reactions = filtered;
+                }
+
+                await supabase.from("messages").update({
+                  metadata: { ...existingMeta, reactions },
+                }).eq("id", targetMsg.id);
+              }
+            }
+            continue; // Don't create a separate message for reactions
+          }
+
+          // ── Location handling ──
+          if (incomingMessage.type === "location") {
+            const loc = incomingMessage.location;
+            content = loc?.name || loc?.address || "📍 موقع";
+            messageMetadata.location = {
+              latitude: loc?.latitude,
+              longitude: loc?.longitude,
+              name: loc?.name || null,
+              address: loc?.address || null,
+            };
+          }
+          // ── Contacts handling ──
+          else if (incomingMessage.type === "contacts") {
+            const contacts = incomingMessage.contacts || [];
+            const contactsList = contacts.map((c: any) => ({
+              name: c.name?.formatted_name || [c.name?.first_name, c.name?.last_name].filter(Boolean).join(" ") || "جهة اتصال",
+              phone: c.phones?.[0]?.phone || c.phones?.[0]?.wa_id || "",
+              email: c.emails?.[0]?.email || null,
+            }));
+            content = contactsList.map((c: any) => `👤 ${c.name}: ${c.phone}`).join("\n") || "[جهة اتصال]";
+            messageMetadata.contacts = contactsList;
+          }
+          // ── Sticker handling ──
+          else if (incomingMessage.type === "sticker") {
+            content = "[ملصق]";
+            const stickerId = incomingMessage.sticker?.id;
+            if (stickerId) {
+              try {
+                const { data: metaConfig } = await supabase
+                  .from("whatsapp_config")
+                  .select("access_token")
+                  .eq("org_id", orgId)
+                  .eq("is_connected", true)
+                  .eq("channel_type", "meta_api")
+                  .limit(1)
+                  .maybeSingle();
+
+                if (metaConfig) {
+                  const mediaInfoRes = await fetch(`https://graph.facebook.com/v21.0/${stickerId}`, {
+                    headers: { Authorization: `Bearer ${metaConfig.access_token}` },
+                  });
+                  const mediaInfo = await mediaInfoRes.json();
+
+                  if (mediaInfo.url) {
+                    const mediaFileRes = await fetch(mediaInfo.url, {
+                      headers: { Authorization: `Bearer ${metaConfig.access_token}` },
+                    });
+
+                    if (mediaFileRes.ok) {
+                      const fileBuffer = await mediaFileRes.arrayBuffer();
+                      const ext = "webp";
+                      const storagePath = `${conversation.id}/${Date.now()}_sticker.${ext}`;
+
+                      const { error: uploadErr } = await supabase.storage
+                        .from("chat-media")
+                        .upload(storagePath, new Uint8Array(fileBuffer), {
+                          contentType: "image/webp",
+                          upsert: false,
+                        });
+
+                      if (!uploadErr) {
+                        mediaUrl = `storage:chat-media/${storagePath}`;
+                      }
+                    }
+                  }
+                }
+              } catch (stickerErr) {
+                await logToSystem(supabase, "warn", "فشل تحميل الملصق", { error: (stickerErr as Error).message }, orgId);
+              }
+            }
+          }
+          // ── Text handling ──
+          else if (incomingMessage.type === "text") {
             content = incomingMessage.text.body;
           } else if (["image", "audio", "video", "document"].includes(incomingMessage.type)) {
             content = incomingMessage[incomingMessage.type]?.caption || `[${incomingMessage.type}]`;
