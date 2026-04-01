@@ -663,17 +663,32 @@ const ChatbotPage = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="none">⏹ بدون (يتوقف)</SelectItem>
-                                  {nodes.filter(n => n.id !== node.id).map((n, ni) => {
+                                  {nodes.filter(n => n.id !== node.id).map((n) => {
                                     const stepNum = nodes.indexOf(n) + 1;
-                                    const preview = n.type === "action" 
-                                      ? (ACTION_LABELS[n.action_type || ""] || "إجراء")
-                                      : (n.content?.slice(0, 15) || "رسالة فارغة");
+                                    const label = n.name?.trim() 
+                                      ? n.name 
+                                      : n.type === "action" 
+                                        ? (ACTION_LABELS[n.action_type || ""] || "إجراء")
+                                        : (n.content?.slice(0, 15) || "رسالة فارغة");
                                     return (
                                       <SelectItem key={n.id} value={n.id}>
-                                        خطوة {stepNum}: {preview}{n.content && n.content.length > 15 ? "…" : ""}
+                                        خطوة {stepNum}: {label}{!n.name?.trim() && n.content && n.content.length > 15 ? "…" : ""}
                                       </SelectItem>
                                     );
                                   })}
+                                  {/* Cross-flow linking */}
+                                  {flows.filter(f => f.id !== editingFlow?.id).length > 0 && (
+                                    <>
+                                      <div className="px-2 py-1.5 text-[10px] text-muted-foreground font-semibold border-t mt-1 pt-1.5">
+                                        ↗ تدفقات أخرى
+                                      </div>
+                                      {flows.filter(f => f.id !== editingFlow?.id).map(f => (
+                                        <SelectItem key={`flow:${f.id}`} value={`flow:${f.id}`}>
+                                          ↗ {f.name}
+                                        </SelectItem>
+                                      ))}
+                                    </>
+                                  )}
                                 </SelectContent>
                               </Select>
                               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeButton(node.id, btn.id)}>
