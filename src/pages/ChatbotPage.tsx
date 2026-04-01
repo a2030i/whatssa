@@ -23,6 +23,7 @@ interface ChatbotButton {
 
 interface ChatbotNode {
   id: string;
+  name?: string;
   type: "message" | "action";
   content: string;
   buttons: ChatbotButton[];
@@ -132,7 +133,7 @@ const ChatbotPage = () => {
     setTriggerType("keyword");
     setKeywords("");
     setWelcome("");
-    setNodes([{ id: generateId(), type: "message", content: "", buttons: [] }]);
+    setNodes([{ id: generateId(), name: "", type: "message", content: "", buttons: [] }]);
     setChannelIds([]);
     setQuickTexts({});
     setActiveTab("basics");
@@ -150,7 +151,7 @@ const ChatbotPage = () => {
     setTriggerType(flow.trigger_type);
     setKeywords(flow.trigger_keywords.join("، "));
     setWelcome(flow.welcome_message || "");
-    setNodes(flow.nodes.length > 0 ? flow.nodes : [{ id: generateId(), type: "message", content: "", buttons: [] }]);
+    setNodes(flow.nodes.length > 0 ? flow.nodes : [{ id: generateId(), name: "", type: "message", content: "", buttons: [] }]);
     setChannelIds(flow.channel_ids || []);
     setQuickTexts({});
     setActiveTab("basics");
@@ -201,7 +202,7 @@ const ChatbotPage = () => {
 
   // ─── Node / Button Management ───
   const addNode = () => {
-    setNodes(prev => [...prev, { id: generateId(), type: "message", content: "", buttons: [] }]);
+    setNodes(prev => [...prev, { id: generateId(), name: "", type: "message", content: "", buttons: [] }]);
   };
 
   const updateNode = (nid: string, u: Partial<ChatbotNode>) => {
@@ -367,7 +368,7 @@ const ChatbotPage = () => {
                     {idx + 1}
                   </span>
                   <span className="text-xs font-medium flex-1 truncate">
-                    {node.type === "action" ? `⚡ ${ACTION_LABELS[node.action_type || ""]}` : (node.content?.slice(0, 25) || "رسالة فارغة")}{node.content && node.content.length > 25 ? "…" : ""}
+                    {node.name?.trim() ? `${node.name}` : (node.type === "action" ? `⚡ ${ACTION_LABELS[node.action_type || ""]}` : (node.content?.slice(0, 25) || "رسالة فارغة"))}{!node.name?.trim() && node.content && node.content.length > 25 ? "…" : ""}
                   </span>
                 </div>
                 {linkedFrom.length > 0 && (
@@ -390,7 +391,7 @@ const ChatbotPage = () => {
                               : "bg-muted border-border text-muted-foreground"
                           )}
                         >
-                          {btn.label || "—"} {linked ? `→ خطوة ${targetIdx + 1}` : "(⏹)"}
+                          {btn.label || "—"} {linked ? `→ خطوة ${targetIdx + 1}${nodes[targetIdx]?.name?.trim() ? ` (${nodes[targetIdx].name})` : ""}` : btn.next_node_id?.startsWith("flow:") ? `↗ تدفق آخر` : "(⏹)"}
                         </span>
                       );
                     })}
@@ -604,6 +605,17 @@ const ChatbotPage = () => {
                     )}
                   </div>
 
+                  {/* Step name */}
+                  <div>
+                    <Label className="text-xs font-medium">اسم الخطوة (للتنظيم)</Label>
+                    <Input
+                      value={node.name || ""}
+                      onChange={e => updateNode(node.id, { name: e.target.value })}
+                      placeholder={`مثال: القائمة الرئيسية، الفروع، الأسعار...`}
+                      className="h-8 text-xs mt-1"
+                    />
+                  </div>
+
                   {node.type === "message" ? (
                     <>
                       {/* Message text */}
@@ -651,17 +663,32 @@ const ChatbotPage = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="none">⏹ بدون (يتوقف)</SelectItem>
-                                  {nodes.filter(n => n.id !== node.id).map((n, ni) => {
+                                  {nodes.filter(n => n.id !== node.id).map((n) => {
                                     const stepNum = nodes.indexOf(n) + 1;
-                                    const preview = n.type === "action" 
-                                      ? (ACTION_LABELS[n.action_type || ""] || "إجراء")
-                                      : (n.content?.slice(0, 15) || "رسالة فارغة");
+                                    const label = n.name?.trim() 
+                                      ? n.name 
+                                      : n.type === "action" 
+                                        ? (ACTION_LABELS[n.action_type || ""] || "إجراء")
+                                        : (n.content?.slice(0, 15) || "رسالة فارغة");
                                     return (
                                       <SelectItem key={n.id} value={n.id}>
-                                        خطوة {stepNum}: {preview}{n.content && n.content.length > 15 ? "…" : ""}
+                                        خطوة {stepNum}: {label}{!n.name?.trim() && n.content && n.content.length > 15 ? "…" : ""}
                                       </SelectItem>
                                     );
                                   })}
+                                  {/* Cross-flow linking */}
+                                  {flows.filter(f => f.id !== editingFlow?.id).length > 0 && (
+                                    <>
+                                      <div className="px-2 py-1.5 text-[10px] text-muted-foreground font-semibold border-t mt-1 pt-1.5">
+                                        ↗ تدفقات أخرى
+                                      </div>
+                                      {flows.filter(f => f.id !== editingFlow?.id).map(f => (
+                                        <SelectItem key={`flow:${f.id}`} value={`flow:${f.id}`}>
+                                          ↗ {f.name}
+                                        </SelectItem>
+                                      ))}
+                                    </>
+                                  )}
                                 </SelectContent>
                               </Select>
                               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive shrink-0" onClick={() => removeButton(node.id, btn.id)}>
@@ -882,7 +909,7 @@ const ChatbotPage = () => {
                             {idx + 1}
                           </span>
                           <span className="text-xs font-medium">
-                            {node.type === "action" ? ACTION_LABELS[node.action_type || ""] || "إجراء" : "رسالة"}
+                            {node.name?.trim() ? node.name : (node.type === "action" ? ACTION_LABELS[node.action_type || ""] || "إجراء" : "رسالة")}
                           </span>
                           <Badge variant="outline" className="text-[9px] mr-auto">{node.buttons.length} زر</Badge>
                         </div>
