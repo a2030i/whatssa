@@ -124,6 +124,13 @@ serve(async (req) => {
       interactive,
       // Phone number selection (multi-number support)
       phone_number_id: requestedPhoneId,
+      // Reaction fields
+      reaction_emoji,
+      reaction_message_id,
+      // Location fields
+      location,
+      // Contact fields
+      contacts,
     } = body;
 
     if (!to || typeof to !== "string") {
