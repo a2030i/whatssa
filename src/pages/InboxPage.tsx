@@ -190,6 +190,9 @@ const InboxPage = () => {
         senderName: (message.metadata as any)?.sender_name || undefined,
         quoted: (message.metadata as any)?.quoted || undefined,
         waMessageId: message.wa_message_id || undefined,
+        reactions: (message.metadata as any)?.reactions || undefined,
+        location: (message.metadata as any)?.location || undefined,
+        contacts: (message.metadata as any)?.contacts || undefined,
       }));
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
