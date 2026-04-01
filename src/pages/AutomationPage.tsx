@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import ChannelSelector from "@/components/ChannelSelector";
+import AutomationLogsPanel from "@/components/automation/AutomationLogsPanel";
 
 interface AutomationRule {
   id: string;
