@@ -916,6 +916,87 @@ serve(async (req) => {
       }
     }
 
+    // ── Handle MESSAGES_UPDATE (status: delivered / read) ──
+    if (event === "MESSAGES_UPDATE" || event === "messages.update") {
+      const updates = Array.isArray(body.data) ? body.data : [body.data];
+      for (const upd of updates) {
+        const key = upd?.key || upd?.keyId ? { id: upd.keyId } : null;
+        const waMessageId = key?.id || upd?.key?.id || upd?.id;
+        const newStatus = upd?.update?.status || upd?.status;
+        if (!waMessageId || !newStatus) continue;
+
+        // Evolution uses numeric statuses: 2=sent, 3=delivered, 4=read, 5=played
+        const statusMap: Record<string, string> = {
+          "DELIVERY_ACK": "delivered",
+          "READ": "read",
+          "PLAYED": "read",
+          "2": "sent",
+          "3": "delivered",
+          "4": "read",
+          "5": "read",
+          "SERVER_ACK": "sent",
+        };
+        const mappedStatus = statusMap[String(newStatus)] || null;
+        if (!mappedStatus) continue;
+
+        const { data: existingMsg } = await supabase
+          .from("messages")
+          .select("id, status")
+          .eq("wa_message_id", waMessageId)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingMsg) {
+          // Only upgrade status (sent→delivered→read), never downgrade
+          const priority: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
+          if ((priority[mappedStatus] || 0) > (priority[existingMsg.status || ""] || 0)) {
+            await supabase.from("messages").update({ status: mappedStatus }).eq("id", existingMsg.id);
+          }
+        }
+      }
+    }
+
+    // ── Handle MESSAGES_REACTION ──
+    if (event === "MESSAGES_REACTION" || event === "messages.reaction") {
+      const reactionData = body.data || body;
+      const reactionKey = reactionData?.key || {};
+      const waMessageId = reactionKey?.id || reactionData?.messageId;
+      const reaction = reactionData?.reaction || reactionData;
+      const emoji = reaction?.text || reaction?.emoji || "";
+      const fromMe = !!reactionKey?.fromMe;
+
+      if (waMessageId) {
+        const { data: existingMsg } = await supabase
+          .from("messages")
+          .select("id, metadata")
+          .eq("wa_message_id", waMessageId)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingMsg) {
+          const meta = (existingMsg.metadata as Record<string, any>) || {};
+          let reactions: Array<{ emoji: string; fromMe: boolean; timestamp?: string }> = meta.reactions || [];
+
+          if (emoji) {
+            // Add or update reaction
+            const existingIdx = reactions.findIndex(r => r.fromMe === fromMe);
+            if (existingIdx >= 0) {
+              reactions[existingIdx] = { emoji, fromMe, timestamp: new Date().toISOString() };
+            } else {
+              reactions.push({ emoji, fromMe, timestamp: new Date().toISOString() });
+            }
+          } else {
+            // Empty emoji = remove reaction
+            reactions = reactions.filter(r => r.fromMe !== fromMe);
+          }
+
+          await supabase.from("messages").update({
+            metadata: { ...meta, reactions },
+          }).eq("id", existingMsg.id);
+        }
+      }
+    }
+
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
