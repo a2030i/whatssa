@@ -18,5 +18,5 @@ export const supabase = createClient<Database>(EXTERNAL_URL, EXTERNAL_ANON_KEY, 
   }
 });
 
-// Cloud client — only for supabase.functions.invoke() calls
+// Cloud client — only for cloudSupabase.functions.invoke() calls
 export const cloudSupabase = createClient(CLOUD_URL, CLOUD_KEY);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudSupabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -72,7 +72,7 @@ const CheckoutPage = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await supabase.functions.invoke("moyasar-checkout", {
+      const res = await cloudSupabase.functions.invoke("moyasar-checkout", {
         body: {
           org_id: orgId,
           plan_id: planId,

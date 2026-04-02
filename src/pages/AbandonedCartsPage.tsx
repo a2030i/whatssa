@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudSupabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -39,7 +39,7 @@ const AbandonedCartsPage = () => {
     // Send WhatsApp reminder
     const message = `مرحباً ${cart.customer_name || ""}! 🛒\n\nلاحظنا أنك تركت منتجات في سلة التسوق بقيمة ${Number(cart.total).toFixed(2)} ر.س\n\nأكمل طلبك الآن${cart.checkout_url ? `: ${cart.checkout_url}` : ""}`;
     
-    await supabase.functions.invoke("whatsapp-send", {
+    await cloudSupabase.functions.invoke("whatsapp-send", {
       body: { to: cart.customer_phone, message }
     }).catch(() => {});
 

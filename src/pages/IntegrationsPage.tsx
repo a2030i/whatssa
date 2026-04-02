@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudSupabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -141,7 +141,7 @@ const IntegrationsPage = () => {
 
     setMetaStatus(p => ({ ...p, [config.id]: { ...p[config.id], isLoading: true } }));
     try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-check-status", {
+      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-check-status", {
         body: { config_id: config.id },
       });
       if (error || !data) {
@@ -277,7 +277,7 @@ const IntegrationsPage = () => {
 
   const handleCodeExchange = async (code: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", { body: { code } });
+      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-exchange-token", { body: { code } });
       if (error || data?.error) {
         handleError(data?.error || "فشل في تبادل الرمز");
         return;
@@ -295,7 +295,7 @@ const IntegrationsPage = () => {
   const handleDirectToken = async (token: string) => {
     try {
       setAccessToken(token);
-      const { data, error } = await supabase.functions.invoke("whatsapp-exchange-token", { body: { access_token: token } });
+      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-exchange-token", { body: { access_token: token } });
       if (error || data?.error) { handleError(data?.error || "فشل في جلب بيانات الحساب"); return; }
 
       const allPhones: PhoneNumber[] = [];
@@ -386,7 +386,7 @@ const IntegrationsPage = () => {
       if (previousProvider) migrationBody.previous_provider = previousProvider;
     }
 
-    const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", { body: migrationBody });
+    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-complete-signup", { body: migrationBody });
 
     if (error || data?.error) { handleError(friendlyError(data?.error || "فشل في إكمال الربط")); return null; }
     if (!data?.selected_phone || !data?.saved_config) { handleError("تعذر تسجيل الرقم — حاول مرة أخرى"); return null; }
@@ -432,7 +432,7 @@ const IntegrationsPage = () => {
   const retryRegister = async (config: WhatsAppConfig) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-complete-signup", {
+      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-complete-signup", {
         body: {
           config_id: config.id,
           phone_number_id: config.phone_number_id,
@@ -460,7 +460,7 @@ const IntegrationsPage = () => {
     if (!testPhone.trim()) { toast.error("أدخل رقم الهاتف"); return; }
     setTestSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-send", {
         body: { to: testPhone.trim(), message: "✅ تم الربط بنجاح! هذه رسالة اختبار من Respondly." },
       });
       if (error || data?.error) {
