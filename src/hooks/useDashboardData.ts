@@ -125,6 +125,7 @@ export const useDashboardData = (): DashboardData => {
         const openConvs = (convs.data || []).filter(c => c.status === "active").length;
 
         const waData = waConfig.data;
+        const channelType: "official" | "unofficial" | null = waData?.channel_type === "official" ? "official" : waData?.channel_type === "unofficial" ? "unofficial" : null;
         const waStatus: WhatsAppStatus = {
           isConnected: waData?.is_connected || false,
           phoneNumberId: waData?.phone_number_id || null,
@@ -139,7 +140,8 @@ export const useDashboardData = (): DashboardData => {
         let metaQualityRating: string | null = null;
         let metaMessagingLimit: string | null = null;
 
-        if (waData?.is_connected && waData?.id) {
+        // Only fetch Meta status for official channels
+        if (channelType === "official" && waData?.is_connected && waData?.id) {
           try {
             const { data: statusData } = await invokeCloud("whatsapp-check-status", {
               body: { config_id: waData.id },
