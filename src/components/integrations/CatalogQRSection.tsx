@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ShoppingBag, Loader2, RefreshCw, Eye, ShoppingCart, Package, ExternalLink, QrCode, Plus, Trash2, Copy, Link } from "lucide-react";
-import { supabase, cloudSupabase, invokeCloud } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
