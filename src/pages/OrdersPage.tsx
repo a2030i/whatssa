@@ -64,7 +64,7 @@ const OrdersPage = () => {
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
 
-  useEffect(() => { if (orgId) { loadOrders(); loadLamhaIntegration(); loadWarehouses(); } }, [orgId]);
+  useEffect(() => { if (orgId) { loadOrders(); loadWarehouses(); } }, [orgId]);
 
   const loadWarehouses = async () => {
     const { data } = await supabase
@@ -504,77 +504,7 @@ const OrdersPage = () => {
                 <div className="flex justify-between text-sm font-bold border-t border-border pt-1.5"><span>الإجمالي</span><span>{Number(selectedOrder.total).toFixed(2)} ر.س</span></div>
               </div>
 
-              {/* Lamha Actions */}
-              {lamhaIntegration && (
-                <div className="space-y-2 bg-secondary/30 rounded-lg p-3">
-                  <p className="text-xs font-semibold flex items-center gap-1.5">
-                    <Truck className="w-3.5 h-3.5 text-primary" />
-                    شحن عبر لمحة
-                  </p>
-
-                  {/* Carrier selector */}
-                  {selectedOrder.shipment_carrier !== "lamha" && (
-                    <>
-                      {/* Warehouse selector */}
-                      {warehouses.length > 0 && (
-                        <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
-                          <SelectTrigger className="text-xs bg-card border-border/50">
-                            <SelectValue placeholder="اختر المستودع (المرسل)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {warehouses.map((w: any) => (
-                              <SelectItem key={w.id} value={w.id}>
-                                {w.name} — {w.city} {w.is_default ? "⭐" : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-
-                      {/* Carrier selector */}
-                      <Select value={selectedCarrierId} onValueChange={setSelectedCarrierId}>
-                        <SelectTrigger className="text-xs bg-card border-border/50">
-                          <SelectValue placeholder={loadingCarriers ? "جاري التحميل..." : "اختر شركة الشحن"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {lamhaCarriers.map((c) => (
-                            <SelectItem key={c.carrier_id} value={String(c.carrier_id)}>
-                              {c.name} {c.has_cod ? "• COD" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        size="sm"
-                        className="w-full gap-1.5 text-xs"
-                        disabled={sendingToLamha === selectedOrder.id || !selectedCarrierId}
-                        onClick={() => sendToLamha(selectedOrder.id)}
-                      >
-                        {sendingToLamha === selectedOrder.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Send className="w-3.5 h-3.5" />
-                        )}
-                        إرسال إلى لمحة
-                      </Button>
-                    </>
-                  )}
-
-
-                  {/* Label button when shipment exists */}
-                  {selectedOrder.shipment_carrier === "lamha" && selectedOrder.shipment_status && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full gap-1.5 text-xs"
-                      onClick={() => printLamhaLabel(selectedOrder.id)}
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      طباعة البوليصة
-                    </Button>
-                  )}
-                </div>
-              )}
+              {/* Lamha Actions — hidden until integration is complete */}
 
               {/* Shipment Timeline */}
               {shipmentEvents.length > 0 && (
