@@ -38,7 +38,7 @@ const SHIPMENT_STATUS_MAP: Record<string, string> = {
 };
 
 const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssignTeam }: CustomerInfoPanelProps) => {
-  const { orgId } = useAuth();
+  const { orgId, isEcommerce } = useAuth();
   const [notes, setNotes] = useState(conversation.notes || "");
   const [editingNotes, setEditingNotes] = useState(false);
   const [customer, setCustomer] = useState<any>(null);
