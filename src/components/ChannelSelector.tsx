@@ -82,10 +82,10 @@ const ChannelSelector = ({ orgId, selectedIds, onChange, label = "القنوات
                 )}
                 <div className="min-w-0">
                   <p className="text-xs font-medium truncate">
-                    {ch.business_name || ch.display_phone_number || ch.evolution_instance_name || "قناة"}
+                    {ch.business_name || ch.display_phone || ch.evolution_instance_name || "قناة"}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    {ch.display_phone_number || ch.evolution_instance_name}
+                    {ch.display_phone || ch.evolution_instance_name}
                   </p>
                 </div>
               </div>
