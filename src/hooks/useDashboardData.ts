@@ -162,6 +162,7 @@ export const useDashboardData = (): DashboardData => {
         setData({
           waStatus,
           messageStats: { sentToday, sent7Days, sent30Days, deliveredToday, failedToday, delivered7Days, failed7Days, delivered30Days, failed30Days, totalReceived },
+          channelType,
           openConversations: openConvs,
           totalConversations: (convs.data || []).length,
           templateCount: 0,
