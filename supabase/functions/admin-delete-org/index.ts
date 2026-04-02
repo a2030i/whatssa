@@ -96,8 +96,19 @@ Deno.serve(async (req) => {
     }
 
     // Delete each user from auth (cascade handles profiles, user_roles)
+    // Some users may already be deleted from auth — skip errors gracefully
     for (const member of (members || [])) {
-      await adminClient.auth.admin.deleteUser(member.id);
+      try {
+        const { error: authDelErr } = await adminClient.auth.admin.deleteUser(member.id);
+        if (authDelErr) {
+          console.warn(`[admin-delete-org] Auth delete skipped for ${member.id}: ${authDelErr.message}`);
+        }
+      } catch (authErr: any) {
+        console.warn(`[admin-delete-org] Auth delete skipped for ${member.id}: ${authErr.message}`);
+      }
+      // Clean up profiles and roles manually in case cascade didn't run
+      await adminClient.from("user_roles").delete().eq("user_id", member.id);
+      await adminClient.from("profiles").delete().eq("id", member.id);
     }
 
     // Finally delete the org
