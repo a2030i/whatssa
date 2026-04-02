@@ -83,7 +83,7 @@ const AdminOverview = () => {
   }, []);
 
   const load = async () => {
-    const [statsRes, hourlyRes, topOrgsRes, profiles, orgs, plans, wallets, transactions, usage] = await Promise.all([
+    const [statsRes, hourlyRes, topOrgsRes, profiles, orgs, plans, wallets, transactions, usage, infraRes] = await Promise.all([
       supabase.rpc("admin_get_system_stats"),
       supabase.rpc("admin_get_hourly_messages", { _date: new Date().toISOString().slice(0, 10) }),
       supabase.rpc("admin_get_top_orgs_usage", { _limit: 10 }),
@@ -93,6 +93,7 @@ const AdminOverview = () => {
       supabase.from("wallets").select("balance"),
       supabase.from("wallet_transactions").select("amount, type").eq("type", "credit"),
       supabase.from("usage_tracking").select("*").order("period", { ascending: false }).limit(12),
+      supabase.rpc("admin_get_infra_status"),
     ]);
 
     if (statsRes.data) setSysStats(statsRes.data as unknown as SystemStats);
