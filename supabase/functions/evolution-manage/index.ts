@@ -191,7 +191,9 @@ serve(async (req) => {
       apikey: EVOLUTION_KEY,
     };
 
-    const webhookUrl = `${SUPABASE_URL}/functions/v1/evolution-webhook`;
+    // Webhook URL must point to Lovable Cloud (where edge functions are hosted), NOT external DB
+    const CLOUD_URL = Deno.env.get("SUPABASE_URL")!;
+    const webhookUrl = `${CLOUD_URL}/functions/v1/evolution-webhook`;
 
     await logToSystem(adminClient, "info", `طلب إدارة Evolution: ${action}`, {
       action, instance: instanceName,
