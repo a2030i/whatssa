@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Bell, MessageSquare, Loader2, Save, ChevronDown, ChevronUp,
-  Smartphone, FileText
+  Smartphone, FileText, Info, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,10 +24,8 @@ interface Props {
 interface EventNotifConfig {
   enabled: boolean;
   channel_id: string;
-  // For meta_api
   template_name?: string;
   template_language?: string;
-  // For evolution
   message_text?: string;
 }
 
@@ -45,34 +43,201 @@ interface ChannelOption {
   is_connected: boolean;
 }
 
+// ── الأحداث المتاحة فعلياً في لوحة تاجر سلة ──
 const STORE_EVENTS = [
-  { key: "order.created", label: "طلب جديد", icon: "🛒", description: "عند إنشاء طلب جديد في المتجر" },
-  { key: "order.created_unpaid", label: "طلب جديد (غير مدفوع)", icon: "💳", description: "تذكير بالسداد للطلبات غير المدفوعة" },
-  { key: "order.shipped", label: "تم الشحن", icon: "📦", description: "عند شحن الطلب" },
-  { key: "order.delivered", label: "تم التوصيل", icon: "✅", description: "عند توصيل الطلب للعميل" },
-  { key: "order.cancelled", label: "طلب ملغي", icon: "❌", description: "عند إلغاء الطلب" },
-  { key: "order.refunded", label: "تم الاسترجاع", icon: "💰", description: "عند استرجاع المبلغ" },
-  { key: "order.payment.updated", label: "تحديث الدفع", icon: "💳", description: "عند تحديث حالة الدفع للطلب" },
-  { key: "order.shipment.created", label: "تم إنشاء الشحنة", icon: "🚚", description: "عند إنشاء شحنة جديدة للطلب" },
-  { key: "order.shipment.cancelled", label: "إلغاء الشحنة", icon: "🚫", description: "عند إلغاء شحنة الطلب" },
-  { key: "order.shipment.return.created", label: "طلب إرجاع شحنة", icon: "↩️", description: "عند إنشاء طلب إرجاع للشحنة" },
-  { key: "abandoned.cart", label: "سلة متروكة", icon: "🛒", description: "تذكير العميل بالسلة المتروكة" },
-  { key: "customer.created", label: "عميل جديد", icon: "👤", description: "رسالة ترحيب لعميل جديد سجّل بالمتجر" },
+  // ── السلات المتروكة ──
+  {
+    key: "abandoned.cart",
+    label: "سلة متروكة",
+    icon: "🛒",
+    description: "تذكير العميل بإتمام الشراء",
+    sallaLabel: "انشاء سلة مشتريات متروكة",
+    benefit: "استرداد المبيعات المفقودة بإرسال تذكير تلقائي للعميل",
+    category: "cart",
+  },
+  {
+    key: "abandoned.cart.purchased",
+    label: "شراء سلة متروكة",
+    icon: "✅",
+    description: "عند إتمام شراء سلة كانت متروكة",
+    sallaLabel: "شراء سلة متروكة",
+    benefit: "تتبع نجاح حملات استرداد السلات المتروكة",
+    category: "cart",
+  },
+
+  // ── الشحنات ──
+  {
+    key: "shipment.creating",
+    label: "طلب إنشاء شحنة",
+    icon: "📋",
+    description: "عند بدء إنشاء شحنة للطلب",
+    sallaLabel: "طلب إنشاء شحنة",
+    benefit: "إشعار العميل أن طلبه قيد التجهيز للشحن",
+    category: "shipment",
+  },
+  {
+    key: "shipment.created",
+    label: "تم إنشاء شحنة",
+    icon: "📦",
+    description: "عند تأكيد إنشاء الشحنة مع رقم التتبع",
+    sallaLabel: "تم إنشاء شحنة",
+    benefit: "إرسال رقم التتبع للعميل تلقائياً عبر واتساب",
+    category: "shipment",
+  },
+  {
+    key: "shipment.updated",
+    label: "تحديث شحنة",
+    icon: "🔄",
+    description: "عند تحديث حالة الشحنة",
+    sallaLabel: "تم تحديث شحنة",
+    benefit: "إبقاء العميل على اطلاع بآخر تحديثات شحنته",
+    category: "shipment",
+  },
+  {
+    key: "shipment.cancelled",
+    label: "إلغاء شحنة",
+    icon: "🚫",
+    description: "عند إلغاء الشحنة",
+    sallaLabel: "تم إلغاء شحنة",
+    benefit: "إشعار العميل بإلغاء الشحنة وإعادة ترتيب الموقف",
+    category: "shipment",
+  },
+
+  // ── الفاتورة (بديل عن أحداث الطلبات) ──
+  {
+    key: "invoice.created",
+    label: "فاتورة طلب جديد",
+    icon: "🧾",
+    description: "عند إنشاء فاتورة لطلب (يعمل كبديل لحدث طلب جديد)",
+    sallaLabel: "انشاء فاتورة طلب",
+    benefit: "⭐ أفضل بديل لتتبع الطلبات الجديدة — أرسل تأكيد فوري للعميل",
+    category: "order",
+  },
+
+  // ── العملاء ──
+  {
+    key: "customer.created",
+    label: "عميل جديد",
+    icon: "👤",
+    description: "عند تسجيل عميل جديد في المتجر",
+    sallaLabel: "تمت إضافة عميل",
+    benefit: "إرسال رسالة ترحيب تلقائية لبناء علاقة مع العميل",
+    category: "customer",
+  },
+  {
+    key: "customer.updated",
+    label: "تحديث بيانات عميل",
+    icon: "📝",
+    description: "عند تعديل بيانات العميل",
+    sallaLabel: "تم تحديث بيانات عميل",
+    benefit: "مزامنة بيانات العميل تلقائياً مع نظام CRM",
+    category: "customer",
+  },
+
+  // ── المنتجات ──
+  {
+    key: "product.created",
+    label: "منتج جديد",
+    icon: "🆕",
+    description: "عند إضافة منتج جديد للمتجر",
+    sallaLabel: "تم إنشاء منتج",
+    benefit: "مزامنة كتالوج المنتجات تلقائياً",
+    category: "product",
+  },
+  {
+    key: "product.updated",
+    label: "تحديث منتج",
+    icon: "✏️",
+    description: "عند تعديل بيانات المنتج",
+    sallaLabel: "تم تحديث بيانات منتج",
+    benefit: "تحديث بيانات المنتج في النظام تلقائياً",
+    category: "product",
+  },
+  {
+    key: "product.deleted",
+    label: "حذف منتج",
+    icon: "🗑️",
+    description: "عند حذف منتج من المتجر",
+    sallaLabel: "تم حذف منتج",
+    benefit: "إلغاء تفعيل المنتج تلقائياً في النظام",
+    category: "product",
+  },
+  {
+    key: "product.price.updated",
+    label: "تحديث سعر منتج",
+    icon: "💰",
+    description: "عند تغيير سعر المنتج",
+    sallaLabel: "تم تحديث سعر المنتج",
+    benefit: "تحديث الأسعار تلقائياً في الكتالوج",
+    category: "product",
+  },
+  {
+    key: "product.quantity.low",
+    label: "قرب نفاذ المخزون",
+    icon: "⚠️",
+    description: "عند قرب نفاذ كمية المنتج",
+    sallaLabel: "قرب نفاذ كمية منتج",
+    benefit: "تنبيه فريق العمل لإعادة تعبئة المخزون",
+    category: "product",
+  },
+  {
+    key: "product.available",
+    label: "المنتج متاح",
+    icon: "✅",
+    description: "عند توفر المنتج مرة أخرى",
+    sallaLabel: "المنتج متاح",
+    benefit: "إشعار العملاء المهتمين بتوفر المنتج",
+    category: "product",
+  },
+
+  // ── أحداث إضافية ──
+  {
+    key: "coupon.applied",
+    label: "تطبيق كوبون",
+    icon: "🏷️",
+    description: "عند استخدام كوبون خصم",
+    sallaLabel: "تطبيق كوبون خصم",
+    benefit: "تتبع استخدام الكوبونات وقياس فعالية العروض",
+    category: "other",
+  },
+  {
+    key: "review.added",
+    label: "تقييم جديد",
+    icon: "⭐",
+    description: "عند إضافة تقييم جديد لمنتج",
+    sallaLabel: "إضافة تقييم جديد",
+    benefit: "مراقبة تقييمات العملاء والرد السريع",
+    category: "other",
+  },
 ];
 
+const CATEGORY_LABELS: Record<string, string> = {
+  order: "🧾 الطلبات والفواتير",
+  cart: "🛒 السلات المتروكة",
+  shipment: "🚚 الشحنات",
+  customer: "👤 العملاء",
+  product: "📦 المنتجات",
+  other: "🏷️ أخرى",
+};
+
 const VARIABLE_HINTS: Record<string, string[]> = {
-  "order.created": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{currency}}", "{{payment_method}}", "{{items_summary}}"],
-  "order.created_unpaid": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{currency}}"],
-  "order.shipped": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{tracking_number}}", "{{shipping_company}}"],
-  "order.delivered": ["{{customer_name}}", "{{order_number}}"],
-  "order.cancelled": ["{{customer_name}}", "{{order_number}}", "{{total}}"],
-  "order.refunded": ["{{customer_name}}", "{{order_number}}", "{{total}}"],
-  "order.payment.updated": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{payment_status}}", "{{payment_method}}"],
-  "order.shipment.created": ["{{customer_name}}", "{{order_number}}", "{{tracking_number}}", "{{shipping_company}}"],
-  "order.shipment.cancelled": ["{{customer_name}}", "{{order_number}}"],
-  "order.shipment.return.created": ["{{customer_name}}", "{{order_number}}"],
   "abandoned.cart": ["{{customer_name}}", "{{total}}", "{{currency}}", "{{checkout_url}}", "{{items_summary}}"],
+  "abandoned.cart.purchased": ["{{customer_name}}", "{{total}}", "{{currency}}"],
+  "shipment.creating": ["{{customer_name}}", "{{order_number}}"],
+  "shipment.created": ["{{customer_name}}", "{{order_number}}", "{{tracking_number}}", "{{shipping_company}}"],
+  "shipment.updated": ["{{customer_name}}", "{{order_number}}", "{{tracking_number}}", "{{status}}"],
+  "shipment.cancelled": ["{{customer_name}}", "{{order_number}}"],
+  "invoice.created": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{currency}}"],
   "customer.created": ["{{customer_name}}"],
+  "customer.updated": ["{{customer_name}}"],
+  "product.created": ["{{product_name}}", "{{price}}", "{{currency}}"],
+  "product.updated": ["{{product_name}}", "{{price}}"],
+  "product.deleted": ["{{product_name}}"],
+  "product.price.updated": ["{{product_name}}", "{{price}}", "{{currency}}"],
+  "product.quantity.low": ["{{product_name}}", "{{quantity}}"],
+  "product.available": ["{{product_name}}", "{{price}}"],
+  "coupon.applied": ["{{customer_name}}", "{{coupon_code}}"],
+  "review.added": ["{{customer_name}}", "{{product_name}}", "{{rating}}"],
 };
 
 const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) => {
@@ -93,7 +258,6 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
     }
   }, [open]);
 
-  // Fetch templates when a meta_api channel exists
   useEffect(() => {
     const hasMetaChannel = channels.some((c) => c.type === "meta_api");
     if (hasMetaChannel && templates.length === 0 && !loadingTemplates) {
@@ -181,6 +345,14 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
 
   const enabledCount = Object.values(configs).filter((c) => c.enabled).length;
 
+  // Group events by category
+  const categories = ["order", "cart", "shipment", "customer", "product", "other"];
+  const groupedEvents = categories.map((cat) => ({
+    key: cat,
+    label: CATEGORY_LABELS[cat],
+    events: STORE_EVENTS.filter((e) => e.category === cat),
+  })).filter((g) => g.events.length > 0);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -205,6 +377,17 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
           </p>
         </DialogHeader>
 
+        {/* Info Banner */}
+        <div className="mx-4 mt-3 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <div className="flex gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-[10px] text-amber-800 dark:text-amber-300 space-y-1">
+              <p className="font-bold">ملاحظة: لوحة تاجر سلة لا تدعم أحداث الطلبات مباشرة</p>
+              <p>استخدم حدث <strong>"انشاء فاتورة طلب"</strong> كبديل لتتبع الطلبات الجديدة. لكل حدث ستجد اسمه في سلة لتسهيل التفعيل.</p>
+            </div>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-10">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -216,180 +399,201 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
             <p className="text-xs text-muted-foreground">اربط رقم واتساب أولاً من صفحة التكاملات</p>
           </div>
         ) : (
-          <div className="p-4 space-y-2">
-            {STORE_EVENTS.map((evt) => {
-              const cfg = configs[evt.key] || { enabled: false, channel_id: "" };
-              const isExpanded = expandedEvent === evt.key;
-              const channelType = cfg.channel_id ? getChannelType(cfg.channel_id) : null;
-              const variables = VARIABLE_HINTS[evt.key] || [];
+          <div className="p-4 space-y-4">
+            {groupedEvents.map((group) => (
+              <div key={group.key} className="space-y-2">
+                <h3 className="text-xs font-bold text-muted-foreground px-1">{group.label}</h3>
+                {group.events.map((evt) => {
+                  const cfg = configs[evt.key] || { enabled: false, channel_id: "" };
+                  const isExpanded = expandedEvent === evt.key;
+                  const channelType = cfg.channel_id ? getChannelType(cfg.channel_id) : null;
+                  const variables = VARIABLE_HINTS[evt.key] || [];
 
-              return (
-                <div
-                  key={evt.key}
-                  className={`rounded-xl border transition-all ${
-                    cfg.enabled ? "border-primary/30 bg-primary/[0.02]" : "border-border bg-card"
-                  }`}
-                >
-                  {/* Header Row */}
-                  <div
-                    className="flex items-center gap-3 p-3 cursor-pointer"
-                    onClick={() => setExpandedEvent(isExpanded ? null : evt.key)}
-                  >
-                    <span className="text-lg">{evt.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-bold">{evt.label}</p>
-                        {cfg.enabled && (
-                          <Badge className="bg-success/10 text-success border-0 text-[9px] px-1.5 h-4">
-                            مفعّل
-                          </Badge>
+                  return (
+                    <div
+                      key={evt.key}
+                      className={`rounded-xl border transition-all ${
+                        cfg.enabled ? "border-primary/30 bg-primary/[0.02]" : "border-border bg-card"
+                      }`}
+                    >
+                      {/* Header Row */}
+                      <div
+                        className="flex items-center gap-3 p-3 cursor-pointer"
+                        onClick={() => setExpandedEvent(isExpanded ? null : evt.key)}
+                      >
+                        <span className="text-lg">{evt.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-bold">{evt.label}</p>
+                            {cfg.enabled && (
+                              <Badge className="bg-success/10 text-success border-0 text-[9px] px-1.5 h-4">
+                                مفعّل
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground truncate">{evt.description}</p>
+                        </div>
+                        <Switch
+                          checked={cfg.enabled}
+                          onCheckedChange={(v) => updateEventConfig(evt.key, { enabled: v })}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        {isExpanded ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                         )}
                       </div>
-                      <p className="text-[10px] text-muted-foreground truncate">{evt.description}</p>
-                    </div>
-                    <Switch
-                      checked={cfg.enabled}
-                      onCheckedChange={(v) => updateEventConfig(evt.key, { enabled: v })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    {isExpanded ? (
-                      <ChevronUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    )}
-                  </div>
 
-                  {/* Expanded Config */}
-                  {isExpanded && (
-                    <div className="px-3 pb-3 space-y-3 border-t border-border/50 pt-3 animate-fade-in">
-                      {/* Channel Select */}
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">قناة الإرسال</Label>
-                        <Select
-                          value={cfg.channel_id || "none"}
-                          onValueChange={(v) =>
-                            updateEventConfig(evt.key, {
-                              channel_id: v === "none" ? "" : v,
-                              template_name: "",
-                              message_text: "",
-                            })
-                          }
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="اختر القناة" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none" className="text-xs">
-                              بدون تحديد
-                            </SelectItem>
-                            {channels.map((ch) => (
-                              <SelectItem key={ch.id} value={ch.id} className="text-xs">
-                                {ch.label}{" "}
-                                <span className="text-muted-foreground">
-                                  ({ch.type === "meta_api" ? "رسمي" : "غير رسمي"})
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Meta API: Template Select */}
-                      {channelType === "meta_api" && (
-                        <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <FileText className="w-3 h-3" /> القالب
-                          </Label>
-                          {loadingTemplates ? (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              جاري تحميل القوالب...
+                      {/* Expanded Config */}
+                      {isExpanded && (
+                        <div className="px-3 pb-3 space-y-3 border-t border-border/50 pt-3 animate-fade-in">
+                          {/* Salla Setup Guide */}
+                          <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-2.5 space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                              <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400">إعداد في سلة</p>
                             </div>
-                          ) : templates.length === 0 ? (
-                            <p className="text-[10px] text-muted-foreground py-1">لا توجد قوالب معتمدة</p>
-                          ) : (
+                            <p className="text-[10px] text-blue-600 dark:text-blue-300">
+                              اختر الحدث: <strong className="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">{evt.sallaLabel}</strong>
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              💡 {evt.benefit}
+                            </p>
+                          </div>
+
+                          {/* Channel Select */}
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">قناة الإرسال</Label>
                             <Select
-                              value={cfg.template_name && cfg.template_language ? `${cfg.template_name}::${cfg.template_language}` : "none"}
-                              onValueChange={(v) => {
-                                if (v === "none") {
-                                  updateEventConfig(evt.key, { template_name: "", template_language: "" });
-                                } else {
-                                  const [name, lang] = v.split("::");
-                                  updateEventConfig(evt.key, { template_name: name, template_language: lang });
-                                }
-                              }}
+                              value={cfg.channel_id || "none"}
+                              onValueChange={(v) =>
+                                updateEventConfig(evt.key, {
+                                  channel_id: v === "none" ? "" : v,
+                                  template_name: "",
+                                  message_text: "",
+                                })
+                              }
                             >
                               <SelectTrigger className="h-8 text-xs">
-                                <SelectValue placeholder="اختر القالب" />
+                                <SelectValue placeholder="اختر القناة" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="none" className="text-xs">بدون تحديد</SelectItem>
-                                {templates.map((t) => (
-                                  <SelectItem key={`${t.name}::${t.language}`} value={`${t.name}::${t.language}`} className="text-xs">
-                                    {t.name} ({t.language})
+                                <SelectItem value="none" className="text-xs">
+                                  بدون تحديد
+                                </SelectItem>
+                                {channels.map((ch) => (
+                                  <SelectItem key={ch.id} value={ch.id} className="text-xs">
+                                    {ch.label}{" "}
+                                    <span className="text-muted-foreground">
+                                      ({ch.type === "meta_api" ? "رسمي" : "غير رسمي"})
+                                    </span>
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
+                          </div>
+
+                          {/* Meta API: Template Select */}
+                          {channelType === "meta_api" && (
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <FileText className="w-3 h-3" /> القالب
+                              </Label>
+                              {loadingTemplates ? (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  جاري تحميل القوالب...
+                                </div>
+                              ) : templates.length === 0 ? (
+                                <p className="text-[10px] text-muted-foreground py-1">لا توجد قوالب معتمدة</p>
+                              ) : (
+                                <Select
+                                  value={cfg.template_name && cfg.template_language ? `${cfg.template_name}::${cfg.template_language}` : "none"}
+                                  onValueChange={(v) => {
+                                    if (v === "none") {
+                                      updateEventConfig(evt.key, { template_name: "", template_language: "" });
+                                    } else {
+                                      const [name, lang] = v.split("::");
+                                      updateEventConfig(evt.key, { template_name: name, template_language: lang });
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="اختر القالب" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none" className="text-xs">بدون تحديد</SelectItem>
+                                    {templates.map((t) => (
+                                      <SelectItem key={`${t.name}::${t.language}`} value={`${t.name}::${t.language}`} className="text-xs">
+                                        {t.name} ({t.language})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Evolution: Free-text Message */}
+                          {channelType === "evolution" && (
+                            <div className="space-y-1">
+                              <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <MessageSquare className="w-3 h-3" /> نص الرسالة
+                              </Label>
+                              <Textarea
+                                value={cfg.message_text || ""}
+                                onChange={(e) => updateEventConfig(evt.key, { message_text: e.target.value })}
+                                placeholder="مثال: مرحباً {{customer_name}}، تم استلام طلبك ✅"
+                                className="text-xs min-h-[70px]"
+                              />
+                            </div>
+                          )}
+
+                          {/* Variable Hints */}
+                          {cfg.channel_id && variables.length > 0 && (
+                            <div className="bg-muted/50 rounded-lg p-2">
+                              <p className="text-[10px] text-muted-foreground font-medium mb-1">
+                                المتغيرات المتاحة:
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {variables.map((v) => (
+                                  <button
+                                    key={v}
+                                    type="button"
+                                    className="text-[9px] px-1.5 py-0.5 rounded bg-background border border-border font-mono hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                                    onClick={() => {
+                                      if (channelType === "evolution") {
+                                        updateEventConfig(evt.key, {
+                                          message_text: (cfg.message_text || "") + " " + v,
+                                        });
+                                      }
+                                      navigator.clipboard.writeText(v);
+                                      toast.success(`تم نسخ ${v}`);
+                                    }}
+                                    dir="ltr"
+                                  >
+                                    {v}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           )}
                         </div>
                       )}
-
-                      {/* Evolution: Free-text Message */}
-                      {channelType === "evolution" && (
-                        <div className="space-y-1">
-                          <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <MessageSquare className="w-3 h-3" /> نص الرسالة
-                          </Label>
-                          <Textarea
-                            value={cfg.message_text || ""}
-                            onChange={(e) => updateEventConfig(evt.key, { message_text: e.target.value })}
-                            placeholder="مثال: مرحباً {{customer_name}}، تم استلام طلبك رقم {{order_number}} بقيمة {{total}} {{currency}} ✅"
-                            className="text-xs min-h-[70px]"
-                          />
-                        </div>
-                      )}
-
-                      {/* Variable Hints */}
-                      {cfg.channel_id && variables.length > 0 && (
-                        <div className="bg-muted/50 rounded-lg p-2">
-                          <p className="text-[10px] text-muted-foreground font-medium mb-1">
-                            المتغيرات المتاحة:
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {variables.map((v) => (
-                              <button
-                                key={v}
-                                type="button"
-                                className="text-[9px] px-1.5 py-0.5 rounded bg-background border border-border font-mono hover:bg-primary/5 hover:border-primary/30 transition-colors"
-                                onClick={() => {
-                                  if (channelType === "evolution") {
-                                    updateEventConfig(evt.key, {
-                                      message_text: (cfg.message_text || "") + " " + v,
-                                    });
-                                  }
-                                  navigator.clipboard.writeText(v);
-                                  toast.success(`تم نسخ ${v}`);
-                                }}
-                                dir="ltr"
-                              >
-                                {v}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            ))}
 
             {/* Save Button */}
-            <Button className="w-full gap-2 text-sm mt-4" onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              حفظ الإعدادات
-            </Button>
+            <div className="sticky bottom-0 pt-3 pb-1 bg-background border-t border-border -mx-4 px-4">
+              <Button onClick={handleSave} disabled={saving} className="w-full h-9 text-xs gap-2">
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                حفظ الإعدادات
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>
