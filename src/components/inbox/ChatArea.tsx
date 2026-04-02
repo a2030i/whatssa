@@ -1642,6 +1642,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         conversationId={conversation.id}
         onClose={onStatusChange}
       />
+
+      {/* Image Lightbox */}
+      {lightboxSrc && (
+        <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+      )}
     </div>
   );
 };
