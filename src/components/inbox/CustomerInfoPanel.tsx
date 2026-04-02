@@ -382,8 +382,8 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         </TabsContent>
 
         {/* Orders Tab */}
-        <TabsContent value="orders" className="flex-1 flex flex-col overflow-hidden mt-0">
-          <div className="flex-1 overflow-y-auto">
+        <TabsContent value="orders" className="mt-0">
+          <div>
             {/* Orders Summary Header */}
             {orders.length > 0 && (
               <div className="p-3 border-b border-border bg-secondary/30">
