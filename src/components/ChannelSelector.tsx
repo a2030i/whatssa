@@ -27,8 +27,8 @@ const ChannelSelector = ({ orgId, selectedIds, onChange, label = "القنوات
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase
-        .from("whatsapp_config" as any)
-        .select("id, display_phone_number, channel_type, evolution_instance_name, business_name")
+        .from("whatsapp_config_safe")
+        .select("id, display_phone, channel_type, evolution_instance_name, business_name")
         .eq("org_id", orgId)
         .eq("is_connected", true)
         .order("created_at");
