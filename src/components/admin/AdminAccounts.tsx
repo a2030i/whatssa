@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const AdminAccounts = () => {
   const [orgs, setOrgs] = useState<any[]>([]);
+  const [superAdminOrgIds, setSuperAdminOrgIds] = useState<Set<string>>(new Set());
   const [profiles, setProfiles] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [wallets, setWallets] = useState<any[]>([]);
