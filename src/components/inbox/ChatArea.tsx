@@ -484,12 +484,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [showMessageSearch, setShowMessageSearch] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Real-time typing presence
   useEffect(() => {
