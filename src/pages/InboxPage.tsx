@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Conversation, Message } from "@/data/mockData";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, cloudSupabase, invokeCloud } from "@/lib/supabase";
 import ConversationList from "@/components/inbox/ConversationList";
 import ChatArea from "@/components/inbox/ChatArea";
 import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";

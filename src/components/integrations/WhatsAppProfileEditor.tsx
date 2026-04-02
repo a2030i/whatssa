@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, cloudSupabase, invokeCloud } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface Props {

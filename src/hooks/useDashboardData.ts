@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, cloudSupabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface WhatsAppStatus {
