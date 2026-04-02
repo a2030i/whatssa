@@ -426,56 +426,7 @@ const SallaIntegrationSection = () => {
         </Tabs>
       )}
 
-      {/* ─── Shipping Companies Section (Hidden - Lamha disabled) ─── */}
-      {<div className="border-t border-border pt-4 mt-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Truck className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold">شركات الشحن</h3>
-            {shippingIntegrations.length > 0 && (
-              <Badge variant="secondary" className="text-[10px]">{shippingIntegrations.length}</Badge>
-            )}
-          </div>
-          <Button size="sm" onClick={() => { setSelectedPlatform("lamha"); setShowAdd(true); }} className="gap-1 text-xs">
-            <Plus className="w-3.5 h-3.5" /> إضافة شركة شحن
-          </Button>
-        </div>
-
-        {shippingIntegrations.length === 0 ? (
-          <div className="bg-secondary/50 rounded-lg p-6 text-center">
-            <Truck className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground mb-1">لم تربط أي شركة شحن بعد</p>
-            <p className="text-[11px] text-muted-foreground/70 mb-3">اربط شركة الشحن لإنشاء شحنات تلقائياً وتتبع الحالة</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {SHIPPING_PLATFORMS.map(p => (
-                <Button key={p.id} size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => { setSelectedPlatform(p.id); setShowAdd(true); }}>
-                  <span>{p.icon}</span> {p.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {shippingIntegrations.map(store => {
-              const platform = SHIPPING_PLATFORMS.find(p => p.id === store.platform)!;
-              return (
-                <StoreCard
-                  key={store.id}
-                  store={store}
-                  platform={platform}
-                  onToggle={toggleStore}
-                  onDelete={deleteStore}
-                  onCopyUrl={() => copyWebhookUrl(store)}
-                  onCopySecret={() => copySecret(store.webhook_secret)}
-                  webhookUrl={getWebhookUrl(store)}
-                  timeSince={getTimeSince(store.last_webhook_at)}
-                  onRefetch={fetchStores}
-                />
-              );
-            })}
-          </div>
-        )}
-      </div>}
+      {/* ─── Shipping Companies Section — Hidden until Lamha integration is complete ─── */}
 
       {/* Add Store/Shipping Dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
