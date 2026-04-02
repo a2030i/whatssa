@@ -851,8 +851,99 @@ async function handleProductDeleted(supabase: any, orgId: string, data: any) {
 }
 
 // ─────────────────────────────────────────────
-// Utilities
+// Invoice Handler (Merchant dashboard alternative for order tracking)
 // ─────────────────────────────────────────────
+async function handleInvoiceCreated(supabase: any, orgId: string, integrationId: string, data: any) {
+  // invoice.created contains order data — use it to create/update the order
+  const orderId = String(data.order_id || data.id);
+  const customer = data.customer || {};
+  const amounts = data.amounts || data.total || {};
+
+  let customerId: string | null = null;
+  const customerName = customer.first_name ? `${customer.first_name} ${customer.last_name || ""}`.trim() : customer.name || null;
+
+  if (customer.mobile || customer.phone) {
+    const phone = normalizePhone(customer.mobile || customer.phone);
+    const { data: existing } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("phone", phone)
+      .maybeSingle();
+
+    if (existing) {
+      customerId = existing.id;
+      await supabase.from("customers").update({
+        name: customerName || undefined,
+        email: customer.email || undefined,
+        lifecycle_stage: "customer",
+        updated_at: new Date().toISOString(),
+      }).eq("id", existing.id);
+    } else {
+      const { data: created } = await supabase
+        .from("customers")
+        .insert({
+          org_id: orgId,
+          phone,
+          name: customerName,
+          email: customer.email || null,
+          source: "salla",
+          lifecycle_stage: "customer",
+        })
+        .select("id")
+        .single();
+      if (created) customerId = created.id;
+    }
+  }
+
+  const orderData: any = {
+    org_id: orgId,
+    external_id: orderId,
+    order_number: data.reference_id ? String(data.reference_id) : orderId,
+    customer_id: customerId,
+    customer_name: customerName,
+    customer_phone: normalizePhone(customer.mobile || customer.phone || ""),
+    customer_email: customer.email || null,
+    total: amounts.total?.amount || amounts.amount || data.total || 0,
+    currency: amounts.total?.currency || amounts.currency || "SAR",
+    status: "pending",
+    payment_status: data.payment?.status || "unpaid",
+    source: "salla",
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: existingOrder } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("external_id", orderId)
+    .maybeSingle();
+
+  if (existingOrder) {
+    await supabase.from("orders").update(orderData).eq("id", existingOrder.id);
+  } else {
+    await supabase.from("orders").insert(orderData);
+  }
+
+  console.log(`[salla] Invoice created (order tracked): ${orderId}`);
+}
+
+// ─────────────────────────────────────────────
+// Product Low Stock Handler
+// ─────────────────────────────────────────────
+async function handleProductLowStock(supabase: any, orgId: string, data: any) {
+  const productId = String(data.id);
+  const quantity = data.quantity || data.stock_quantity || 0;
+
+  await supabase
+    .from("products")
+    .update({ stock_quantity: quantity, updated_at: new Date().toISOString() })
+    .eq("org_id", orgId)
+    .eq("external_id", productId);
+
+  console.log(`[salla] Product low stock: ${productId} (qty: ${quantity})`);
+}
+
 function normalizePhone(phone: string): string {
   if (!phone) return "";
   let p = phone.replace(/[\s\-\(\)]/g, "");
