@@ -127,6 +127,7 @@ const AdminOverview = () => {
       balance: (wallets.data || []).reduce((s, w) => s + Number(w.balance), 0),
       revenue: (transactions.data || []).reduce((s, t) => s + Number(t.amount), 0),
     });
+    if (infraRes.data) setInfraStatus(infraRes.data as unknown as InfraStatus);
 
     setLoading(false);
   };
