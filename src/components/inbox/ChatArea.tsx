@@ -1015,6 +1015,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </div>
               </div>
             ))}
+            <button onClick={() => setShowMessageSearch(!showMessageSearch)} className={cn("p-2 rounded-lg hover:bg-secondary transition-colors", showMessageSearch ? "bg-primary/10 text-primary" : "")} title="بحث في الرسائل">
+              <SearchIcon className="w-4 h-4 text-muted-foreground" />
+            </button>
             <ExportConversation conversation={conversation} messages={messages} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
