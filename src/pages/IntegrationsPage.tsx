@@ -635,7 +635,6 @@ const IntegrationsPage = () => {
             {/* Catalog & QR */}
             {isConnected && (
               <div className="space-y-4 pt-2 border-t border-border">
-                <CatalogSection />
                 <QRCodeSection />
               </div>
             )}
