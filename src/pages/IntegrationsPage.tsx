@@ -404,20 +404,7 @@ const IntegrationsPage = () => {
     setIsLoading(false);
   };
 
-  const handleManualConnect = async () => {
-    if (!manualToken.trim() || !manualPhoneId.trim() || !manualWabaId.trim()) { toast.error("يرجى تعبئة جميع الحقول"); return; }
-    setIsLoading(true);
-    try {
-      const result = await completeSignup({ token: manualToken.trim(), phoneId: manualPhoneId.trim(), wabaId: manualWabaId.trim() });
-      if (result) {
-        setConnectedPhone(manualPhoneId);
-        setFlowStep("success");
-        setShowManual(false);
-        setManualToken(""); setManualPhoneId(""); setManualWabaId("");
-      }
-    } catch { handleError("حدث خطأ في الربط"); }
-    setIsLoading(false);
-  };
+  // handleManualConnect removed
 
   const handleDisconnect = async (configId: string) => {
     if (!confirm("هل تريد فصل هذا الرقم؟")) return;
