@@ -758,33 +758,56 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     return { header, text };
   };
 
-  const startRecording = () => {
-    setIsRecording(true);
-    setRecordingTime(0);
-    recordingIntervalRef.current = setInterval(() => {
-      setRecordingTime((prev) => prev + 1);
-    }, 1000);
-    toast.info("جاري التسجيل...");
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm" });
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        if (blob.size < 500) { toast.info("تسجيل قصير جداً"); return; }
+        // Upload to storage
+        try {
+          const path = `${conversation.id}/${Date.now()}.webm`;
+          const { error: uploadError } = await supabase.storage.from("chat-media").upload(path, blob, { contentType: "audio/webm" });
+          if (uploadError) throw uploadError;
+          const storagePath = `storage:chat-media/${path}`;
+          onSendMessage(conversation.id, `🎤 رسالة صوتية\n${storagePath}`);
+          toast.success("تم إرسال الرسالة الصوتية");
+        } catch (err: any) {
+          toast.error("فشل رفع التسجيل: " + (err?.message || ""));
+        }
+      };
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingIntervalRef.current = setInterval(() => setRecordingTime((prev) => prev + 1), 1000);
+    } catch (err) {
+      toast.error("لا يمكن الوصول للميكروفون — تأكد من صلاحيات المتصفح");
+    }
   };
 
   const stopRecording = () => {
     setIsRecording(false);
-    if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current);
-      recordingIntervalRef.current = null;
-    }
-    // Mock: send voice message
-    onSendMessage(conversation.id, `🎤 رسالة صوتية (${formatTime(recordingTime)})`);
+    if (recordingIntervalRef.current) { clearInterval(recordingIntervalRef.current); recordingIntervalRef.current = null; }
+    mediaRecorderRef.current?.stop();
     setRecordingTime(0);
-    toast.success("تم إرسال الرسالة الصوتية");
   };
 
   const cancelRecording = () => {
     setIsRecording(false);
-    if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current);
-      recordingIntervalRef.current = null;
+    if (recordingIntervalRef.current) { clearInterval(recordingIntervalRef.current); recordingIntervalRef.current = null; }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = () => {
+        mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
+      };
+      mediaRecorderRef.current.stop();
     }
+    audioChunksRef.current = [];
     setRecordingTime(0);
     toast.info("تم إلغاء التسجيل");
   };
