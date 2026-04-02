@@ -117,7 +117,7 @@ const IntegrationsPage = () => {
       supabase.from("organizations").select("plans(max_phone_numbers)").eq("id", orgId).maybeSingle(),
     ]);
 
-    const allConfigs = (allConfigsRes.data || []) as WhatsAppConfig[];
+    const allConfigs = ((allConfigsRes.data || []) as WhatsAppConfig[]).filter((config) => config.org_id === orgId);
     const officialConfigs = allConfigs.filter((config) => config.channel_type !== "evolution");
     const unofficial = allConfigs.filter((config) => config.channel_type === "evolution");
 
