@@ -699,20 +699,35 @@ const IntegrationsPage = () => {
   };
 
   const renderMetaStatus = (config: WhatsAppConfig, ms: any) => {
-    const qualityMap: Record<string, { label: string; color: string }> = {
-      GREEN: { label: "عالية", color: "text-success" }, YELLOW: { label: "متوسطة", color: "text-warning" }, RED: { label: "منخفضة", color: "text-destructive" },
+    const qualityMap: Record<string, { label: string; color: string; icon: string }> = {
+      GREEN: { label: "عالية", color: "text-success", icon: "🟢" }, YELLOW: { label: "متوسطة", color: "text-warning", icon: "🟡" }, RED: { label: "منخفضة", color: "text-destructive", icon: "🔴" },
     };
     const phoneStatusMap: Record<string, { label: string; color: string }> = {
       VERIFIED: { label: "نشط", color: "text-success" }, NOT_VERIFIED: { label: "غير مفعّل", color: "text-warning" }, PENDING: { label: "معلّق", color: "text-warning" },
       FLAGGED: { label: "مُبلَّغ عنه", color: "text-destructive" }, RESTRICTED: { label: "مقيّد", color: "text-destructive" }, CONNECTED: { label: "متصل", color: "text-success" },
     };
+    const limitMap: Record<string, { label: string; desc: string }> = {
+      TIER_1K: { label: "1,000", desc: "المستوى 1" },
+      TIER_10K: { label: "10,000", desc: "المستوى 2" },
+      TIER_100K: { label: "100,000", desc: "المستوى 3" },
+      TIER_UNLIMITED: { label: "غير محدود", desc: "أعلى مستوى" },
+      TIER_250: { label: "250", desc: "مستوى تجريبي" },
+      TIER_50: { label: "50", desc: "مستوى محدود" },
+    };
+    const verificationMap: Record<string, { label: string; color: string }> = {
+      verified: { label: "موثّق ✓", color: "text-success" },
+      not_verified: { label: "غير موثّق", color: "text-warning" },
+      failed: { label: "فشل التوثيق", color: "text-destructive" },
+    };
     const quality = ms.qualityRating ? qualityMap[ms.qualityRating] : null;
     const phoneStatus = ms.phoneStatus ? phoneStatusMap[ms.phoneStatus] : null;
+    const limit = ms.messagingLimit ? limitMap[ms.messagingLimit] : null;
+    const verification = ms.businessVerification ? verificationMap[ms.businessVerification] : null;
 
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-[11px] font-semibold text-muted-foreground">حالة Meta</p>
+          <p className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" /> حالة الرقم والجودة</p>
           <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={() => fetchMetaStatus(config, true)}>
             <RefreshCw className="w-2.5 h-2.5" /> تحديث
           </Button>
@@ -720,17 +735,59 @@ const IntegrationsPage = () => {
         <div className="grid grid-cols-2 gap-2">
           {phoneStatus && (
             <div className="bg-muted/50 rounded-lg p-2">
-              <p className="text-[10px] text-muted-foreground">الحالة</p>
+              <p className="text-[10px] text-muted-foreground">حالة الرقم</p>
               <p className={cn("text-xs font-bold", phoneStatus.color)}>{phoneStatus.label}</p>
             </div>
           )}
           {quality && (
             <div className="bg-muted/50 rounded-lg p-2">
-              <p className="text-[10px] text-muted-foreground">الجودة</p>
-              <p className={cn("text-xs font-bold", quality.color)}>{quality.label}</p>
+              <p className="text-[10px] text-muted-foreground">تقييم الجودة</p>
+              <p className={cn("text-xs font-bold", quality.color)}>{quality.icon} {quality.label}</p>
+            </div>
+          )}
+          {limit && (
+            <div className="bg-muted/50 rounded-lg p-2">
+              <p className="text-[10px] text-muted-foreground">حد الرسائل / 24 ساعة</p>
+              <p className="text-xs font-bold text-foreground">{limit.label}</p>
+              <p className="text-[9px] text-muted-foreground">{limit.desc}</p>
+            </div>
+          )}
+          {verification && (
+            <div className="bg-muted/50 rounded-lg p-2">
+              <p className="text-[10px] text-muted-foreground">توثيق النشاط التجاري</p>
+              <p className={cn("text-xs font-bold", verification.color)}>{verification.label}</p>
+            </div>
+          )}
+          {ms.nameStatus && (
+            <div className="bg-muted/50 rounded-lg p-2">
+              <p className="text-[10px] text-muted-foreground">حالة اسم العرض</p>
+              <p className={cn("text-xs font-bold", ms.nameStatus === "APPROVED" ? "text-success" : ms.nameStatus === "DECLINED" ? "text-destructive" : "text-warning")}>
+                {ms.nameStatus === "APPROVED" ? "معتمد ✓" : ms.nameStatus === "DECLINED" ? "مرفوض" : "قيد المراجعة"}
+              </p>
+            </div>
+          )}
+          {ms.accountReviewStatus && (
+            <div className="bg-muted/50 rounded-lg p-2">
+              <p className="text-[10px] text-muted-foreground">مراجعة الحساب</p>
+              <p className={cn("text-xs font-bold", ms.accountReviewStatus === "APPROVED" ? "text-success" : "text-warning")}>
+                {ms.accountReviewStatus === "APPROVED" ? "معتمد ✓" : "قيد المراجعة"}
+              </p>
             </div>
           )}
         </div>
+        {/* Quality tips */}
+        {quality && ms.qualityRating === "RED" && (
+          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-2.5">
+            <p className="text-[10px] font-semibold text-destructive">⚠️ جودة الرقم منخفضة</p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">قد يتم تخفيض حد الرسائل. تحقق من نسبة الحظر وجودة المحتوى المرسل.</p>
+          </div>
+        )}
+        {quality && ms.qualityRating === "YELLOW" && (
+          <div className="bg-warning/5 border border-warning/20 rounded-lg p-2.5">
+            <p className="text-[10px] font-semibold text-warning">تنبيه: جودة متوسطة</p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">حافظ على جودة المحتوى لتجنب تخفيض المستوى.</p>
+          </div>
+        )}
         {ms.healthIssues && ms.healthIssues.length > 0 && (
           <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
             <p className="text-[11px] font-semibold text-destructive flex items-center gap-1">
