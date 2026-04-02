@@ -9,7 +9,7 @@ import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import SallaIntegrationSection from "@/components/integrations/SallaIntegrationSection";
 import ChannelRoutingConfig from "@/components/integrations/ChannelRoutingConfig";
 import WhatsAppProfileEditor from "@/components/integrations/WhatsAppProfileEditor";
-import { CatalogSection, QRCodeSection } from "@/components/integrations/CatalogQRSection";
+import { QRCodeSection } from "@/components/integrations/CatalogQRSection";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -74,10 +74,7 @@ const IntegrationsPage = () => {
   const [accessToken, setAccessToken] = useState("");
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [showManual, setShowManual] = useState(false);
-  const [manualToken, setManualToken] = useState("");
-  const [manualPhoneId, setManualPhoneId] = useState("");
-  const [manualWabaId, setManualWabaId] = useState("");
+  // Manual connect removed
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [connectedPhone, setConnectedPhone] = useState<string>("");
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
@@ -407,20 +404,7 @@ const IntegrationsPage = () => {
     setIsLoading(false);
   };
 
-  const handleManualConnect = async () => {
-    if (!manualToken.trim() || !manualPhoneId.trim() || !manualWabaId.trim()) { toast.error("يرجى تعبئة جميع الحقول"); return; }
-    setIsLoading(true);
-    try {
-      const result = await completeSignup({ token: manualToken.trim(), phoneId: manualPhoneId.trim(), wabaId: manualWabaId.trim() });
-      if (result) {
-        setConnectedPhone(manualPhoneId);
-        setFlowStep("success");
-        setShowManual(false);
-        setManualToken(""); setManualPhoneId(""); setManualWabaId("");
-      }
-    } catch { handleError("حدث خطأ في الربط"); }
-    setIsLoading(false);
-  };
+  // handleManualConnect removed
 
   const handleDisconnect = async (configId: string) => {
     if (!confirm("هل تريد فصل هذا الرقم؟")) return;
@@ -492,7 +476,7 @@ const IntegrationsPage = () => {
     setIsLoading(false);
     setConnectedPhone("");
     setTestPhone("");
-    setShowManual(false);
+    // manual connect state removed
     setOnboardingMode("new");
     setPreviousProvider("");
     setMigrationPrereqs(null);
@@ -651,7 +635,6 @@ const IntegrationsPage = () => {
             {/* Catalog & QR */}
             {isConnected && (
               <div className="space-y-4 pt-2 border-t border-border">
-                <CatalogSection />
                 <QRCodeSection />
               </div>
             )}
@@ -966,37 +949,8 @@ const IntegrationsPage = () => {
           </div>
         </div>
 
-        {/* Manual Connect for Super Admin */}
-        {isSuperAdmin && (
-          <div className="pt-2">
-            <button
-              onClick={() => setShowManual(!showManual)}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
-            >
-              {showManual ? "إخفاء الربط اليدوي" : "ربط يدوي (متقدم)"}
-            </button>
-            {showManual && (
-              <div className="mt-3 bg-card border border-border rounded-xl p-4 space-y-3 max-w-md">
-                <div className="space-y-2">
-                  <Label className="text-xs">Access Token</Label>
-                  <Input value={manualToken} onChange={(e) => setManualToken(e.target.value)} placeholder="EAAxxxxxxx..." className="bg-secondary border-0 text-xs" dir="ltr" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Phone Number ID</Label>
-                  <Input value={manualPhoneId} onChange={(e) => setManualPhoneId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">WABA ID</Label>
-                  <Input value={manualWabaId} onChange={(e) => setManualWabaId(e.target.value)} placeholder="1234567890" className="bg-secondary border-0 text-xs" dir="ltr" />
-                </div>
-                <Button onClick={handleManualConnect} disabled={isLoading || !manualToken || !manualPhoneId || !manualWabaId} className="w-full gap-2 text-sm">
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                  ربط
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+
+        {/* Manual connect removed */}
       </>
     );
   };

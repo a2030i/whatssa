@@ -4,7 +4,7 @@ import {
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
   Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock, ClipboardList,
-  Workflow, Send, Warehouse, DollarSign
+  Workflow, Send, Warehouse, DollarSign, Package
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns" },
       { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب" },
+      { label: "الكتالوج", icon: Package, path: "/catalog", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً لإدارة الكتالوج" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages" },
     ],
   },
