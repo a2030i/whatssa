@@ -74,10 +74,7 @@ const IntegrationsPage = () => {
   const [accessToken, setAccessToken] = useState("");
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [showManual, setShowManual] = useState(false);
-  const [manualToken, setManualToken] = useState("");
-  const [manualPhoneId, setManualPhoneId] = useState("");
-  const [manualWabaId, setManualWabaId] = useState("");
+  // Manual connect removed
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [connectedPhone, setConnectedPhone] = useState<string>("");
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
