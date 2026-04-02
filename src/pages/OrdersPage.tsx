@@ -64,7 +64,7 @@ const OrdersPage = () => {
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
 
-  useEffect(() => { if (orgId) { loadOrders(); loadLamhaIntegration(); loadWarehouses(); } }, [orgId]);
+  useEffect(() => { if (orgId) { loadOrders(); loadWarehouses(); } }, [orgId]);
 
   const loadWarehouses = async () => {
     const { data } = await supabase
