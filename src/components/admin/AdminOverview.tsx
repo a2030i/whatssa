@@ -49,6 +49,21 @@ interface CapacityAlert {
   icon: any;
 }
 
+interface InfraStatus {
+  db_size_mb: number;
+  db_max_mb: number;
+  storage_size_mb: number;
+  storage_max_mb: number;
+  auth_users: number;
+  auth_max_users: number;
+  active_connections: number;
+  max_connections: number;
+  table_sizes: { table_name: string; row_count: number; size_mb: number }[];
+  total_tables: number;
+  total_indexes: number;
+  uptime_hours: number;
+}
+
 const AdminOverview = () => {
   const [sysStats, setSysStats] = useState<SystemStats | null>(null);
   const [hourlyData, setHourlyData] = useState<HourlyData[]>([]);
