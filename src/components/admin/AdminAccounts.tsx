@@ -31,14 +31,21 @@ const AdminAccounts = () => {
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    const [o, p, pl, w, c, wa] = await Promise.all([
+    const [o, p, pl, w, c, wa, roles] = await Promise.all([
       supabase.from("organizations").select("*").order("created_at", { ascending: false }),
       supabase.from("profiles").select("*"),
       supabase.from("plans").select("*").order("sort_order"),
       supabase.from("wallets").select("*"),
       supabase.from("conversations").select("org_id, last_message_at").order("last_message_at", { ascending: false }),
       supabase.from("whatsapp_config_safe").select("*"),
+      supabase.from("user_roles").select("user_id").eq("role", "super_admin"),
     ]);
+    // Find org_ids that belong to super_admin users
+    const saUserIds = new Set((roles.data || []).map((r: any) => r.user_id));
+    const saOrgIds = new Set(
+      (p.data || []).filter((pr: any) => saUserIds.has(pr.id)).map((pr: any) => pr.org_id).filter(Boolean)
+    );
+    setSuperAdminOrgIds(saOrgIds as Set<string>);
     setOrgs(o.data || []);
     setProfiles(p.data || []);
     setPlans(pl.data || []);
