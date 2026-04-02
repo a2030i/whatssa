@@ -63,10 +63,14 @@ const STORE_EVENTS = [
 const VARIABLE_HINTS: Record<string, string[]> = {
   "order.created": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{currency}}", "{{payment_method}}", "{{items_summary}}"],
   "order.created_unpaid": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{currency}}"],
-  "order.shipped": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{status}}"],
+  "order.shipped": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{tracking_number}}", "{{shipping_company}}"],
   "order.delivered": ["{{customer_name}}", "{{order_number}}"],
   "order.cancelled": ["{{customer_name}}", "{{order_number}}", "{{total}}"],
   "order.refunded": ["{{customer_name}}", "{{order_number}}", "{{total}}"],
+  "order.payment.updated": ["{{customer_name}}", "{{order_number}}", "{{total}}", "{{payment_status}}", "{{payment_method}}"],
+  "order.shipment.created": ["{{customer_name}}", "{{order_number}}", "{{tracking_number}}", "{{shipping_company}}"],
+  "order.shipment.cancelled": ["{{customer_name}}", "{{order_number}}"],
+  "order.shipment.return.created": ["{{customer_name}}", "{{order_number}}"],
   "abandoned.cart": ["{{customer_name}}", "{{total}}", "{{currency}}", "{{checkout_url}}", "{{items_summary}}"],
   "customer.created": ["{{customer_name}}"],
 };
