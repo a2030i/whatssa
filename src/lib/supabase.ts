@@ -20,3 +20,24 @@ export const supabase = createClient<Database>(EXTERNAL_URL, EXTERNAL_ANON_KEY, 
 
 // Cloud client — only for cloudSupabase.functions.invoke() calls
 export const cloudSupabase = createClient(CLOUD_URL, CLOUD_KEY);
+
+/**
+ * Helper to invoke Lovable Cloud edge functions with the external auth token.
+ * This ensures the user's JWT from the external Supabase project is forwarded
+ * so edge functions can verify identity against the external DB.
+ */
+export async function invokeCloud(
+  functionName: string,
+  options?: { body?: unknown; headers?: Record<string, string> },
+) {
+  const { data: { session } } = await supabase.auth.getSession();
+  return cloudSupabase.functions.invoke(functionName, {
+    ...options,
+    headers: {
+      ...options?.headers,
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+    },
+  });
+}
