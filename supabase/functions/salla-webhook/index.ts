@@ -313,7 +313,6 @@ function buildVariables(event: string, data: any): Record<string, string> {
   } else {
     vars.items_summary = "";
   }
-  }
 
   return vars;
 }
