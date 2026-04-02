@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Building2, Users, MessageSquare, TrendingUp, Wallet, Tag, BarChart3, Activity, Circle, DollarSign, ShoppingCart, ArrowUpRight, ArrowDownRight, AlertTriangle, Database, Zap, Server, Clock, Shield, Cpu, HardDrive } from "lucide-react";
+import { Building2, Users, MessageSquare, TrendingUp, Wallet, Tag, BarChart3, Activity, Circle, DollarSign, ShoppingCart, ArrowUpRight, ArrowDownRight, AlertTriangle, Database, Zap, Server, Clock, Shield, Cpu, HardDrive, RefreshCw, ArrowUp, Layers, Globe, Lock, FileArchive, Table2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, AreaChart, Area } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 
 interface SystemStats {
   messages_today: number;
