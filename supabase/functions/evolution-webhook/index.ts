@@ -1153,6 +1153,12 @@ serve(async (req) => {
     // ── Handle MESSAGES_UPDATE (status + edits + deletes) ──
     if (event === "MESSAGES_UPDATE" || event === "messages.update") {
       const updates = Array.isArray(body.data) ? body.data : [body.data];
+      
+      await logToSystem(supabase, "info", `معالجة تحديث حالات رسائل (${updates.length} تحديث)`, {
+        event, updates_count: updates.length,
+        sample: JSON.stringify(updates[0]).slice(0, 300),
+      }, orgId);
+
       for (const upd of updates) {
         const waMessageId = upd?.key?.id || upd?.keyId || upd?.id || upd?.messageId;
         const newStatus = pickBestUpdatedStatus(upd);
@@ -1204,6 +1210,9 @@ serve(async (req) => {
           const priority: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
           if ((priority[newStatus] || 0) > (priority[existingMsg.status || ""] || 0)) {
             await supabase.from("messages").update({ status: newStatus }).eq("id", existingMsg.id);
+            await logToSystem(supabase, "info", `تم تحديث حالة الرسالة: ${existingMsg.status} → ${newStatus}`, {
+              wa_message_id: waMessageId, old_status: existingMsg.status, new_status: newStatus,
+            }, orgId);
           }
         }
       }

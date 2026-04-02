@@ -549,13 +549,57 @@ serve(async (req) => {
         return json({ success: true }); // Nothing to mark
       }
 
+      // Resolve correct remoteJid by looking up the stored message in Evolution
+      // The frontend sends @s.whatsapp.net but the actual JID might be @lid format
+      const resolvedKeys: Array<{ remoteJid: string; fromMe: boolean; id: string }> = [];
+
+      for (const key of messageKeys) {
+        const msgId = key.id || key.messageId;
+        if (!msgId) continue;
+
+        // First try using the provided remoteJid
+        let resolvedJid = key.remoteJid || "";
+
+        // Look up the actual JID from Evolution's stored messages
+        try {
+          const findRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${instanceName}`, {
+            method: "POST",
+            headers: evoHeaders,
+            body: JSON.stringify({ where: { id: msgId }, limit: 1 }),
+          });
+
+          if (findRes.ok) {
+            const findData = await findRes.json();
+            const items = Array.isArray(findData) ? findData : findData?.messages?.records || [];
+            const found = items.find((item: any) => item?.keyId === msgId || item?.id === msgId);
+            if (found?.remoteJid) {
+              resolvedJid = found.remoteJid;
+            }
+          }
+        } catch {
+          // Use provided JID as fallback
+        }
+
+        if (resolvedJid) {
+          resolvedKeys.push({
+            remoteJid: resolvedJid,
+            fromMe: key.fromMe ?? false,
+            id: msgId,
+          });
+        }
+      }
+
+      if (resolvedKeys.length === 0) {
+        return json({ success: true });
+      }
+
       try {
         // Try POST first (v2.3.7+), then PUT as fallback
         let readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
           method: "POST",
           headers: evoHeaders,
           body: JSON.stringify({
-            readMessages: messageKeys,
+            readMessages: resolvedKeys,
           }),
         });
 
@@ -565,19 +609,28 @@ serve(async (req) => {
             method: "PUT",
             headers: evoHeaders,
             body: JSON.stringify({
-              readMessages: messageKeys,
+              readMessages: resolvedKeys,
             }),
           });
         }
 
         if (!readRes.ok) {
-          // Silent fail — not critical
+          const errText = await readRes.text().catch(() => "");
           await logToSystem(adminClient, "warn", "فشل إرسال إشعار قراءة إلى Evolution", {
-            http_status: readRes.status, count: messageKeys.length,
+            http_status: readRes.status, count: resolvedKeys.length,
+            error: errText.slice(0, 200),
+            sample_jid: resolvedKeys[0]?.remoteJid,
+          }, orgId, userId);
+        } else {
+          await logToSystem(adminClient, "info", "تم إرسال إشعار قراءة بنجاح", {
+            count: resolvedKeys.length,
+            sample_jid: resolvedKeys[0]?.remoteJid,
           }, orgId, userId);
         }
-      } catch {
-        // Silent fail
+      } catch (err) {
+        await logToSystem(adminClient, "warn", "خطأ في إرسال إشعار قراءة", {
+          error: err instanceof Error ? err.message : String(err),
+        }, orgId, userId);
       }
 
       return json({ success: true });
