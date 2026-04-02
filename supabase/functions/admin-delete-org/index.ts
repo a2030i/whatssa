@@ -74,6 +74,10 @@ Deno.serve(async (req) => {
     }
 
     // Delete org-related data
+    await adminClient.from("internal_notes").delete().eq("org_id", org_id);
+    await adminClient.from("chatbot_sessions").delete().eq("org_id", org_id);
+    await adminClient.from("bot_analytics").delete().eq("org_id", org_id);
+    await adminClient.from("automation_logs").delete().eq("org_id", org_id);
     await adminClient.from("conversations").delete().eq("org_id", org_id);
     await adminClient.from("customers").delete().eq("org_id", org_id);
     await adminClient.from("campaigns").delete().eq("org_id", org_id);
@@ -81,8 +85,19 @@ Deno.serve(async (req) => {
     await adminClient.from("products").delete().eq("org_id", org_id);
     await adminClient.from("abandoned_carts").delete().eq("org_id", org_id);
     await adminClient.from("automation_rules").delete().eq("org_id", org_id);
+    await adminClient.from("chatbot_flows").delete().eq("org_id", org_id);
     await adminClient.from("closure_reasons").delete().eq("org_id", org_id);
     await adminClient.from("customer_tag_definitions").delete().eq("org_id", org_id);
+    await adminClient.from("custom_inboxes").delete().eq("org_id", org_id);
+    await adminClient.from("blacklisted_numbers").delete().eq("org_id", org_id);
+    await adminClient.from("api_tokens").delete().eq("org_id", org_id);
+    await adminClient.from("api_request_logs").delete().eq("org_id", org_id);
+    await adminClient.from("org_webhooks").delete().eq("org_id", org_id);
+    await adminClient.from("ai_provider_configs").delete().eq("org_id", org_id);
+    await adminClient.from("notifications").delete().eq("org_id", org_id);
+    await adminClient.from("message_retry_queue").delete().eq("org_id", org_id);
+    await adminClient.from("activity_logs").delete().eq("org_id", org_id);
+    await adminClient.from("payments").delete().eq("org_id", org_id);
     await adminClient.from("teams").delete().eq("org_id", org_id);
     await adminClient.from("whatsapp_config").delete().eq("org_id", org_id);
     await adminClient.from("usage_tracking").delete().eq("org_id", org_id);
