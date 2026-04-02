@@ -217,7 +217,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-1">
+      <div className="overflow-y-auto p-4 space-y-1">
         {/* Contact Info */}
         <SectionHeader title="معلومات التواصل" icon={Phone} sectionKey="contact" />
         {sections.contact && (
