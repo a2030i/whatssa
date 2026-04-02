@@ -94,7 +94,7 @@ const scrollToMessage = (messageId?: string) => {
 };
 
 /** Component to resolve storage: URLs to signed URLs for media display */
-const ResolvedMedia = ({ url, type, isAgent = false }: { url: string; type: string; isAgent?: boolean }) => {
+const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: string; type: string; isAgent?: boolean; onImageClick?: (src: string) => void }) => {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -119,7 +119,7 @@ const ResolvedMedia = ({ url, type, isAgent = false }: { url: string; type: stri
     return <img src={resolvedUrl} alt="ملصق" className="max-w-[140px] max-h-[140px] object-contain mb-1" />;
   }
   if (isImage) {
-    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(resolvedUrl, "_blank")} />;
+    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer active:scale-95 transition-transform" onClick={() => onImageClick?.(resolvedUrl)} />;
   }
   if (type === "audio") {
     return <AudioPlayer src={resolvedUrl} isAgent={isAgent} className="mb-1" />;
