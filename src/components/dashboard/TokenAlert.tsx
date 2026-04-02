@@ -9,8 +9,8 @@ interface TokenAlertProps {
 const TokenAlert = ({ data }: TokenAlertProps) => {
   const { tokenExpiresAt, tokenRefreshError, waStatus, channelType } = data;
 
-  // Don't show for unofficial channels or if not connected
-  if (channelType === "unofficial") return null;
+  // Only show for official channels
+  if (channelType !== "official") return null;
   if (!waStatus.isConnected) return null;
 
   // Check if token refresh failed

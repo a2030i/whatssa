@@ -30,7 +30,7 @@ const SmartAlerts = ({ data }: { data: DashboardData }) => {
   const isOfficial = data.channelType === "official";
   const isConnected = data.waStatus.isConnected || data.channelType !== null;
 
-  if (!data.waStatus.phoneNumberId && !data.waStatus.isConnected) {
+  if (!isConnected) {
     alerts.push({ id: "no-connection", message: "لم يتم ربط رقم واتساب بعد. اربط رقمك الآن لبدء استقبال وإرسال الرسائل.", severity: "critical", action: { label: "ربط الرقم", path: "/integrations" }, icon: AlertTriangle });
   }
   if (isOfficial && data.waStatus.phoneNumberId && data.metaPhoneStatus && data.metaPhoneStatus !== "VERIFIED") {
