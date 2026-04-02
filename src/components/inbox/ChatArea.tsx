@@ -295,6 +295,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       )}
       <div className={cn(
         "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+        msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3",
         msg.isDeleted
           ? "bg-muted/50 border border-border/30 text-muted-foreground italic"
           : msg.type === "note"
