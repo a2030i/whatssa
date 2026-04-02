@@ -1128,6 +1128,22 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </div>
       </div>
 
+      {/* Message Search Bar */}
+      {showMessageSearch && (
+        <MessageSearch
+          messages={messages}
+          onClose={() => setShowMessageSearch(false)}
+          onNavigate={(msgId) => {
+            const el = document.querySelector(`[data-message-id="${msgId}"]`);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+              el.classList.add("ring-2", "ring-primary/60", "rounded-xl");
+              setTimeout(() => el.classList.remove("ring-2", "ring-primary/60", "rounded-xl"), 2000);
+            }
+          }}
+        />
+      )}
+
       {/* 24h Window Warning */}
       {isMetaChannel && windowExpired && (
         <div className="shrink-0 bg-warning/10 border-b border-warning/20 px-4 py-2 flex items-center gap-2">
