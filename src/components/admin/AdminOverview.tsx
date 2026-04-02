@@ -331,62 +331,133 @@ const AdminOverview = () => {
           )}
         </div>
 
-        {/* Infrastructure Health */}
+        {/* Infrastructure Health - Enhanced */}
         <div className="bg-card rounded-xl shadow-card border border-border/50 p-4 space-y-4">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-primary" />
             <h3 className="font-semibold text-sm">صحة البنية التحتية</h3>
+            <Badge variant="outline" className="text-[9px] mr-auto">
+              {infraStatus ? `تشغيل ${infraStatus.uptime_hours} ساعة` : "..."}
+            </Badge>
           </div>
 
-          <div className="space-y-3">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1"><HardDrive className="w-3 h-3" /> قاعدة البيانات</span>
-                <span className="text-[11px] font-bold">{sysStats.db_size_mb} MB</span>
+          {infraStatus ? (
+            <div className="space-y-3">
+              {/* Database */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Database className="w-3 h-3" /> قاعدة البيانات</span>
+                  <span className="text-[11px] font-bold">{infraStatus.db_size_mb} / {infraStatus.db_max_mb} MB</span>
+                </div>
+                <Progress value={(infraStatus.db_size_mb / infraStatus.db_max_mb) * 100} className="h-2" />
               </div>
-              <Progress value={dbUsagePct} className="h-2" />
-              <p className="text-[9px] text-muted-foreground mt-0.5">من 500 MB المتاح</p>
-            </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1"><MessageSquare className="w-3 h-3" /> صفوف الرسائل</span>
-                <span className="text-[11px] font-bold">{sysStats.messages_table_rows.toLocaleString()}</span>
+              {/* Storage */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><FileArchive className="w-3 h-3" /> التخزين</span>
+                  <span className="text-[11px] font-bold">{infraStatus.storage_size_mb} / {infraStatus.storage_max_mb} MB</span>
+                </div>
+                <Progress value={(infraStatus.storage_size_mb / infraStatus.storage_max_mb) * 100} className="h-2" />
+              </div>
+
+              {/* Connections */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Globe className="w-3 h-3" /> الاتصالات النشطة</span>
+                  <span className="text-[11px] font-bold">{infraStatus.active_connections} / {infraStatus.max_connections}</span>
+                </div>
+                <Progress value={(infraStatus.active_connections / infraStatus.max_connections) * 100} className="h-2" />
+              </div>
+
+              {/* Auth Users */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Lock className="w-3 h-3" /> مستخدمي المصادقة</span>
+                  <span className="text-[11px] font-bold">{infraStatus.auth_users}</span>
+                </div>
+              </div>
+
+              {/* Tables & Indexes */}
+              <div className="flex items-center gap-4">
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Table2 className="w-3 h-3" /> {infraStatus.total_tables} جدول
+                </span>
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Layers className="w-3 h-3" /> {infraStatus.total_indexes} فهرس
+                </span>
               </div>
             </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Cpu className="w-3 h-3" /> سعة يومية مُقدّرة</span>
-                <span className="text-[11px] font-bold">{estimatedDailyCapacity.toLocaleString()}</span>
-              </div>
-              <p className="text-[9px] text-muted-foreground">بناءً على المعدل الحالي</p>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Building2 className="w-3 h-3" /> المنظمات</span>
-                <span className="text-[11px] font-bold">{sysStats.orgs_active} فعّال / {sysStats.orgs_total} كلي</span>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><HardDrive className="w-3 h-3" /> قاعدة البيانات</span>
+                  <span className="text-[11px] font-bold">{sysStats.db_size_mb} MB</span>
+                </div>
+                <Progress value={dbUsagePct} className="h-2" />
+                <p className="text-[9px] text-muted-foreground mt-0.5">من 500 MB المتاح</p>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Quick scaling recommendation */}
-          <div className="bg-muted/50 rounded-lg p-2.5">
-            <p className="text-[10px] font-bold mb-1">💡 توصية التوسع</p>
+          {/* Upgrade recommendation */}
+          <div className={`rounded-lg p-2.5 ${
+            infraStatus && (infraStatus.db_size_mb / infraStatus.db_max_mb) > 0.6
+              ? "bg-amber-500/10 border border-amber-500/20"
+              : "bg-muted/50"
+          }`}>
+            <p className="text-[10px] font-bold mb-1">
+              {infraStatus && (infraStatus.db_size_mb / infraStatus.db_max_mb) > 0.8
+                ? "🔴 يجب الترقية فوراً"
+                : infraStatus && (infraStatus.db_size_mb / infraStatus.db_max_mb) > 0.6
+                  ? "🟡 خطط للترقية"
+                  : "💡 توصية التوسع"
+              }
+            </p>
             <p className="text-[9px] text-muted-foreground leading-relaxed">
-              {sysStats.messages_today > 50000
-                ? "⚠️ تحتاج Queue System + Workers مخصصة فوراً"
-                : sysStats.messages_today > 10000
-                  ? "📈 فكّر في إضافة Batch Processing للحملات"
-                  : sysStats.messages_today > 1000
-                    ? "✅ البنية الحالية كافية — راقب النمو شهرياً"
-                    : "✅ النظام يعمل بأريحية تامة"
+              {infraStatus && (infraStatus.db_size_mb / infraStatus.db_max_mb) > 0.8
+                ? `قاعدة البيانات بلغت ${Math.round((infraStatus.db_size_mb / infraStatus.db_max_mb) * 100)}% — قم بترقية الباقة لتجنب توقف الخدمة`
+                : infraStatus && (infraStatus.db_size_mb / infraStatus.db_max_mb) > 0.6
+                  ? `استهلاك ${Math.round((infraStatus.db_size_mb / infraStatus.db_max_mb) * 100)}% — يُنصح بالتخطيط للترقية خلال الشهر القادم`
+                  : sysStats.messages_today > 50000
+                    ? "⚠️ تحتاج Queue System + Workers مخصصة فوراً"
+                    : sysStats.messages_today > 10000
+                      ? "📈 فكّر في إضافة Batch Processing للحملات"
+                      : "✅ النظام يعمل بأريحية تامة"
               }
             </p>
           </div>
         </div>
       </div>
+
+      {/* Table Sizes Breakdown */}
+      {infraStatus && infraStatus.table_sizes?.length > 0 && (
+        <div className="bg-card rounded-xl shadow-card border border-border/50 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Table2 className="w-4 h-4 text-primary" />
+            <h3 className="font-semibold text-sm">حجم الجداول الأكبر</h3>
+            <span className="text-[10px] text-muted-foreground mr-auto">أكبر 15 جدول</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {infraStatus.table_sizes.filter(t => t.size_mb > 0).slice(0, 9).map((t) => (
+              <div key={t.table_name} className="flex items-center justify-between bg-secondary/30 rounded-lg px-3 py-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-medium truncate">{t.table_name}</p>
+                  <p className="text-[9px] text-muted-foreground">{t.row_count.toLocaleString()} صف</p>
+                </div>
+                <Badge variant="outline" className={`text-[9px] shrink-0 ${
+                  t.size_mb > 50 ? "border-destructive/50 text-destructive" :
+                  t.size_mb > 20 ? "border-amber-500/50 text-amber-600" :
+                  "border-border"
+                }`}>
+                  {t.size_mb} MB
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
