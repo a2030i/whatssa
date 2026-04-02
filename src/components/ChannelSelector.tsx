@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 interface Channel {
   id: string;
-  display_phone_number: string;
+  display_phone: string;
   channel_type: string;
   evolution_instance_name: string | null;
   business_name: string | null;
