@@ -196,7 +196,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       {!msg.isDeleted && (
         <div className={cn(
           "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:flex items-center gap-0.5",
-          msg.sender === "agent" ? "-left-24" : "-right-24"
+          msg.sender === "agent" ? "right-full mr-2" : "left-full ml-2"
         )}>
           {canReply && (
             <button onClick={() => onReply(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="رد">
@@ -240,8 +240,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       {/* Mobile action button (three-dot menu) */}
       {hasAnyAction && (
         <div className={cn(
-          "absolute top-1 z-10 md:hidden",
-          msg.sender === "agent" ? "-left-7" : "-right-7"
+          "absolute top-2 z-10 md:hidden",
+          msg.sender === "agent" ? "right-full mr-1" : "left-full ml-1"
         )}>
           <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <DropdownMenuTrigger asChild>
