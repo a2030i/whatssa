@@ -85,16 +85,16 @@ const AdminOverview = () => {
   const load = async () => {
     try {
       const [statsRes, hourlyRes, topOrgsRes, profiles, orgs, plans, wallets, transactions, usage, infraRes] = await Promise.all([
-        supabase.rpc("admin_get_system_stats"),
-        supabase.rpc("admin_get_hourly_messages", { _date: new Date().toISOString().slice(0, 10) }),
-        supabase.rpc("admin_get_top_orgs_usage", { _limit: 10 }),
+        supabase.rpc("admin_get_system_stats").then(r => r).catch(() => ({ data: null })),
+        supabase.rpc("admin_get_hourly_messages", { _date: new Date().toISOString().slice(0, 10) }).then(r => r).catch(() => ({ data: null })),
+        supabase.rpc("admin_get_top_orgs_usage", { _limit: 10 }).then(r => r).catch(() => ({ data: null })),
         supabase.from("profiles").select("id, full_name, is_online, last_seen_at, org_id"),
         supabase.from("organizations").select("id, is_active, subscription_status, plan_id, name, created_at"),
         supabase.from("plans").select("id, name_ar"),
         supabase.from("wallets").select("balance"),
         supabase.from("wallet_transactions").select("amount, type").eq("type", "credit"),
         supabase.from("usage_tracking").select("*").order("period", { ascending: false }).limit(12),
-        supabase.rpc("admin_get_infra_status"),
+        supabase.rpc("admin_get_infra_status").then(r => r).catch(() => ({ data: null })),
       ]);
 
       if (statsRes.data) setSysStats(statsRes.data as unknown as SystemStats);
