@@ -218,30 +218,31 @@ async function sendEventNotification(supabase: any, integration: any, event: str
   const metadata = integration.metadata || {};
   const notifConfigs = metadata.event_notifications || {};
 
-  // Map events to notification keys
+  // Map event to notification key — direct match for merchant events
   let notifKey = event;
+
+  // Partners API events: map status changes to specific keys
   if (event === "order.status.updated") {
     const statusSlug = data?.status?.slug || data?.status?.name || "";
     const mapped = mapSallaOrderStatus(statusSlug);
-    if (mapped === "shipped") notifKey = "order.shipped";
-    else if (mapped === "delivered") notifKey = "order.delivered";
-    else if (mapped === "cancelled") notifKey = "order.cancelled";
-    else if (mapped === "refunded") notifKey = "order.refunded";
+    if (mapped === "shipped") notifKey = "shipment.created";
+    else if (mapped === "delivered") notifKey = "shipment.updated";
     else return;
   }
-  // Direct cancelled/refunded events from Salla
-  if (event === "order.cancelled") notifKey = "order.cancelled";
-  if (event === "order.refunded") notifKey = "order.refunded";
-  if (event === "order.payment.updated") notifKey = "order.payment.updated";
-  // Shipment events
-  if (event === "order.shipment.created" || event === "shipment.created") notifKey = "order.shipment.created";
-  if (event === "order.shipment.cancelled" || event === "shipment.cancelled") notifKey = "order.shipment.cancelled";
-  if (event === "order.shipment.return.created") notifKey = "order.shipment.return.created";
+
+  // Normalize shipment event names (order.shipment.* → shipment.*)
+  if (event === "order.shipment.creating") notifKey = "shipment.creating";
+  if (event === "order.shipment.created") notifKey = "shipment.created";
+  if (event === "order.shipment.cancelled") notifKey = "shipment.cancelled";
+
+  // Partners-only order events → try invoice.created config as fallback
+  if ((event === "order.created" || event === "order.updated") && !notifConfigs[notifKey]?.enabled) {
+    notifKey = "invoice.created";
+  }
 
   const cfg = notifConfigs[notifKey];
   if (!cfg?.enabled || !cfg?.channel_id) return;
 
-  // Get the WhatsApp config for the channel
   const { data: waConfig } = await supabase
     .from("whatsapp_config")
     .select("*")
@@ -254,7 +255,6 @@ async function sendEventNotification(supabase: any, integration: any, event: str
     return;
   }
 
-  // Get recipient phone
   const customer = data?.customer || {};
   const phone = normalizePhone(customer.mobile || customer.phone || data?.customer_phone || "");
   if (!phone) {
@@ -262,7 +262,6 @@ async function sendEventNotification(supabase: any, integration: any, event: str
     return;
   }
 
-  // Build variables
   const vars = buildVariables(notifKey, data);
   const channelType = waConfig.channel_type || "meta_api";
 
@@ -294,8 +293,13 @@ function buildVariables(event: string, data: any): Record<string, string> {
     payment_status: data?.payment?.status || "",
     checkout_url: data?.urls?.checkout || data?.checkout_url || "",
     status: data?.status?.name || data?.status?.slug || "",
-    tracking_number: data?.shipping?.tracking_number || data?.tracking_number || "",
-    shipping_company: data?.shipping?.company || data?.shipment?.company?.name || "",
+    tracking_number: data?.shipping?.tracking_number || data?.tracking_number || data?.shipment?.tracking_number || "",
+    shipping_company: data?.shipping?.company || data?.shipment?.company?.name || data?.shipment?.courier_name || "",
+    product_name: data?.name || data?.product?.name || "",
+    price: String(data?.price?.amount || data?.price || ""),
+    quantity: String(data?.quantity || data?.stock_quantity || ""),
+    coupon_code: data?.code || data?.coupon?.code || "",
+    rating: String(data?.rating || data?.stars || ""),
   };
 
   // Build items summary
@@ -308,6 +312,7 @@ function buildVariables(event: string, data: any): Record<string, string> {
     if (items.length > 5) vars.items_summary += ` و ${items.length - 5} أخرى`;
   } else {
     vars.items_summary = "";
+  }
   }
 
   return vars;
