@@ -1395,20 +1395,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             {/* Send Product from Catalog */}
             {!isNoteMode && !windowExpired && isMetaChannel && (
               <button
-                onClick={async () => {
-                  setShowProductPicker(true);
-                  if (catalogProducts.length === 0) {
-                    setLoadingProducts(true);
-                    try {
-                      const { data: catData } = await invokeCloud("whatsapp-catalog", { body: { action: "list_catalogs" } });
-                      if (catData?.catalogs?.[0]) {
-                        const { data: prodData } = await invokeCloud("whatsapp-catalog", { body: { action: "list_products", catalog_id: catData.catalogs[0].id, limit: 50 } });
-                        if (prodData?.products) setCatalogProducts(prodData.products);
-                      }
-                    } catch {}
-                    setLoadingProducts(false);
-                  }
-                }}
+                onClick={() => setShowProductPicker(true)}
                 className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
                 title="إرسال منتج"
               >
