@@ -20,8 +20,8 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
   let body: any;
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
     }
 
     const shipperConfig = metadata.shipper || {};
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
     const callbackUrl = `${supabaseUrl}/functions/v1/lamha-webhook`;
 
     const results: any[] = [];

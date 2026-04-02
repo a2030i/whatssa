@@ -389,8 +389,8 @@ serve(async (req) => {
   }
 
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
   const url = new URL(req.url);
@@ -558,11 +558,11 @@ serve(async (req) => {
               }, orgId);
 
               try {
-                await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/auto-assign`, {
+                await fetch(`${Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")}/functions/v1/auto-assign`, {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                    Authorization: `Bearer ${Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
                   },
                   body: JSON.stringify({ conversation_id: conversation.id, org_id: orgId, message_text: messageContent }),
                 });
