@@ -1195,6 +1195,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onReply={handleReply}
                 onEdit={onEditMessage ? handleStartEdit : undefined}
                 onDelete={onDeleteMessage ? handleDeleteMsg : undefined}
+                onImageClick={(src) => setLightboxSrc(src)}
               />
             )}
           </div>
