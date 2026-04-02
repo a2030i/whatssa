@@ -83,53 +83,57 @@ const AdminOverview = () => {
   }, []);
 
   const load = async () => {
-    const [statsRes, hourlyRes, topOrgsRes, profiles, orgs, plans, wallets, transactions, usage, infraRes] = await Promise.all([
-      supabase.rpc("admin_get_system_stats"),
-      supabase.rpc("admin_get_hourly_messages", { _date: new Date().toISOString().slice(0, 10) }),
-      supabase.rpc("admin_get_top_orgs_usage", { _limit: 10 }),
-      supabase.from("profiles").select("id, full_name, is_online, last_seen_at, org_id"),
-      supabase.from("organizations").select("id, is_active, subscription_status, plan_id, name, created_at"),
-      supabase.from("plans").select("id, name_ar"),
-      supabase.from("wallets").select("balance"),
-      supabase.from("wallet_transactions").select("amount, type").eq("type", "credit"),
-      supabase.from("usage_tracking").select("*").order("period", { ascending: false }).limit(12),
-      supabase.rpc("admin_get_infra_status"),
-    ]);
+    try {
+      const [statsRes, hourlyRes, topOrgsRes, profiles, orgs, plans, wallets, transactions, usage, infraRes] = await Promise.all([
+        supabase.rpc("admin_get_system_stats"),
+        supabase.rpc("admin_get_hourly_messages", { _date: new Date().toISOString().slice(0, 10) }),
+        supabase.rpc("admin_get_top_orgs_usage", { _limit: 10 }),
+        supabase.from("profiles").select("id, full_name, is_online, last_seen_at, org_id"),
+        supabase.from("organizations").select("id, is_active, subscription_status, plan_id, name, created_at"),
+        supabase.from("plans").select("id, name_ar"),
+        supabase.from("wallets").select("balance"),
+        supabase.from("wallet_transactions").select("amount, type").eq("type", "credit"),
+        supabase.from("usage_tracking").select("*").order("period", { ascending: false }).limit(12),
+        supabase.rpc("admin_get_infra_status"),
+      ]);
 
-    if (statsRes.data) setSysStats(statsRes.data as unknown as SystemStats);
-    if (hourlyRes.data) setHourlyData(hourlyRes.data as unknown as HourlyData[]);
-    if (topOrgsRes.data) setTopOrgs(topOrgsRes.data as unknown as OrgUsage[]);
+      if (statsRes.data) setSysStats(statsRes.data as unknown as SystemStats);
+      if (hourlyRes.data) setHourlyData(hourlyRes.data as unknown as HourlyData[]);
+      if (topOrgsRes.data) setTopOrgs(topOrgsRes.data as unknown as OrgUsage[]);
 
-    const profilesData = profiles.data || [];
-    const orgsData = orgs.data || [];
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    setOnlineProfiles(profilesData.filter(p => p.is_online || (p.last_seen_at && p.last_seen_at > fiveMinAgo)));
+      const profilesData = profiles.data || [];
+      const orgsData = orgs.data || [];
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      setOnlineProfiles(profilesData.filter(p => p.is_online || (p.last_seen_at && p.last_seen_at > fiveMinAgo)));
 
-    // Plan distribution
-    const planMap: Record<string, number> = {};
-    orgsData.forEach(o => {
-      const plan = (plans.data || []).find(p => p.id === o.plan_id);
-      planMap[plan?.name_ar || "بدون باقة"] = (planMap[plan?.name_ar || "بدون باقة"] || 0) + 1;
-    });
-    setPlanDistribution(Object.entries(planMap).map(([name, value]) => ({ name, value })));
+      // Plan distribution
+      const planMap: Record<string, number> = {};
+      orgsData.forEach(o => {
+        const plan = (plans.data || []).find(p => p.id === o.plan_id);
+        planMap[plan?.name_ar || "بدون باقة"] = (planMap[plan?.name_ar || "بدون باقة"] || 0) + 1;
+      });
+      setPlanDistribution(Object.entries(planMap).map(([name, value]) => ({ name, value })));
 
-    setRecentOrgs(orgsData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5));
+      setRecentOrgs(orgsData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5));
 
-    setMonthlyMessages(
-      (usage.data || []).reverse().map((u: any) => ({
-        period: u.period,
-        sent: u.messages_sent,
-        received: u.messages_received,
-      }))
-    );
+      setMonthlyMessages(
+        (usage.data || []).reverse().map((u: any) => ({
+          period: u.period,
+          sent: u.messages_sent,
+          received: u.messages_received,
+        }))
+      );
 
-    setWalletStats({
-      balance: (wallets.data || []).reduce((s, w) => s + Number(w.balance), 0),
-      revenue: (transactions.data || []).reduce((s, t) => s + Number(t.amount), 0),
-    });
-    if (infraRes.data) setInfraStatus(infraRes.data as unknown as InfraStatus);
-
-    setLoading(false);
+      setWalletStats({
+        balance: (wallets.data || []).reduce((s, w) => s + Number(w.balance), 0),
+        revenue: (transactions.data || []).reduce((s, t) => s + Number(t.amount), 0),
+      });
+      if (infraRes.data) setInfraStatus(infraRes.data as unknown as InfraStatus);
+    } catch (err) {
+      console.error("AdminOverview load error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Capacity alerts
