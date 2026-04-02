@@ -220,7 +220,17 @@ const AdminOverview = () => {
     );
   }
 
-  if (!sysStats) {
+  const getOverallHealth = (): "critical" | "warning" | "healthy" => {
+    if (!infraStatus) return "healthy";
+    const dbPct = (infraStatus.db_size_mb / infraStatus.db_max_mb) * 100;
+    const storagePct = (infraStatus.storage_size_mb / infraStatus.storage_max_mb) * 100;
+    const connPct = (infraStatus.active_connections / infraStatus.max_connections) * 100;
+    const maxPct = Math.max(dbPct, storagePct, connPct);
+    if (maxPct > 80) return "critical";
+    if (maxPct > 60) return "warning";
+    return "healthy";
+  };
+
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center text-muted-foreground">
