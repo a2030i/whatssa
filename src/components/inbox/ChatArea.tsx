@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Conversation, Message } from "@/data/mockData";
 import type { WhatsAppTemplate } from "@/types/whatsapp";
@@ -158,7 +158,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
 
   const handleReaction = async (emoji: string) => {
     try {
-      await cloudSupabase.functions.invoke("evolution-manage", {
+      await invokeCloud("evolution-manage", {
         body: { action: "send_reaction", phone: conversation.customerPhone, message_id: msg.waMessageId, emoji },
       });
     } catch {}
@@ -166,7 +166,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
 
   const handleTranslate = async () => {
     try {
-      const { data } = await cloudSupabase.functions.invoke("ai-features", {
+      const { data } = await invokeCloud("ai-features", {
         body: { action: "translate", text: msg.text, target_language: "العربية" },
       });
       if (data?.error === "ai_not_configured") {
@@ -835,7 +835,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       if (isEvolution) {
         // Send via evolution-send with media support
-        const { data, error } = await cloudSupabase.functions.invoke("evolution-send", {
+        const { data, error } = await invokeCloud("evolution-send", {
           body: {
             to: conversation.customerPhone,
             message: caption || "",
@@ -849,7 +849,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         }
       } else {
         // Send via Meta API with media upload
-        const { data, error } = await cloudSupabase.functions.invoke("whatsapp-send", {
+        const { data, error } = await invokeCloud("whatsapp-send", {
           body: {
             to: conversation.customerPhone,
             type: "media",
@@ -1012,7 +1012,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={async () => {
                       try {
-                        await cloudSupabase.functions.invoke("evolution-manage", {
+                        await invokeCloud("evolution-manage", {
                           body: { action: "block_contact", phone: conversation.customerPhone },
                         });
                         toast.success("تم حظر جهة الاتصال");
@@ -1022,7 +1022,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={async () => {
                       try {
-                        await cloudSupabase.functions.invoke("evolution-manage", {
+                        await invokeCloud("evolution-manage", {
                           body: { action: "archive_chat", phone: conversation.customerPhone },
                         });
                         toast.success("تم أرشفة المحادثة");
@@ -1349,7 +1349,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   setAiLoading(true);
                   setAiSuggestions([]);
                   try {
-                    const { data, error } = await cloudSupabase.functions.invoke("ai-features", {
+                    const { data, error } = await invokeCloud("ai-features", {
                       body: {
                         action: "suggest_replies",
                         conversation_messages: messages.slice(-5).map(m => ({ sender: m.sender, content: m.text })),
@@ -1376,7 +1376,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               onClick={async () => {
                 setAiLoading(true);
                 try {
-                  const { data } = await cloudSupabase.functions.invoke("ai-features", {
+                  const { data } = await invokeCloud("ai-features", {
                     body: { action: "summarize", conversation_id: conversation.id },
                   });
                   if (data?.summary) {

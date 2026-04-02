@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -84,7 +84,7 @@ const AdminMeta = () => {
   const refreshAll = async () => {
     setRefreshingAll(true);
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-refresh-token");
+      const { data, error } = await invokeCloud("whatsapp-refresh-token");
       if (error) throw error;
       toast.success(`تم تجديد ${data?.processed || 0} توكن`);
       load();

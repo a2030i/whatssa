@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -103,7 +103,7 @@ const AdminAccounts = () => {
     }
     setCreating(true);
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("admin-create-user", {
+      const { data, error } = await invokeCloud("admin-create-user", {
         body: { email: newAccount.email, full_name: newAccount.full_name, org_name: newAccount.org_name },
       });
       if (error) throw error;
@@ -133,7 +133,7 @@ const AdminAccounts = () => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) throw new Error("غير مسجل الدخول");
-      const { data, error } = await cloudSupabase.functions.invoke("admin-delete-org", {
+      const { data, error } = await invokeCloud("admin-delete-org", {
         body: { org_id: deleteTarget.id },
         headers: { Authorization: `Bearer ${token}` },
       });

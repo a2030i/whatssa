@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import StoreEventNotifications from "./StoreEventNotifications";
@@ -682,7 +682,7 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
   const syncNow = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("lamha-sync-status", {
+      const { data, error } = await invokeCloud("lamha-sync-status", {
         body: { org_id: store.org_id },
       });
       if (error) throw error;

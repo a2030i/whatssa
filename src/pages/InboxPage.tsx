@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Conversation, Message } from "@/data/mockData";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import ConversationList from "@/components/inbox/ConversationList";
 import ChatArea from "@/components/inbox/ChatArea";
 import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";
@@ -68,7 +68,7 @@ const InboxPage = () => {
         return;
       }
 
-      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-templates", {
+      const { data, error } = await invokeCloud("whatsapp-templates", {
         body: { action: "list" },
       });
 
@@ -298,7 +298,7 @@ const InboxPage = () => {
     if (pendingMessages.length === 0) return;
 
     const timer = window.setTimeout(() => {
-      cloudSupabase.functions.invoke("evolution-manage", {
+      invokeCloud("evolution-manage", {
         body: {
           action: "sync_message_statuses",
           phone: conversation.customerPhone,
@@ -336,7 +336,7 @@ const InboxPage = () => {
       }));
 
     if (unreadKeys.length > 0) {
-      cloudSupabase.functions.invoke("evolution-manage", {
+      invokeCloud("evolution-manage", {
         body: { action: "read_messages", messages: unreadKeys },
       }).catch(() => {}); // fire and forget
     }
@@ -372,7 +372,7 @@ const InboxPage = () => {
 
     const sendFunction = getSendFunction(conversation.channelType);
 
-    const { data, error } = await cloudSupabase.functions.invoke(sendFunction, {
+    const { data, error } = await invokeCloud(sendFunction, {
       body: {
         to: conversation.customerPhone,
         message: text,
@@ -456,7 +456,7 @@ const InboxPage = () => {
 
           if (satEnabled && satMessage) {
             const satFunc = getSendFunction(conv.channelType);
-            await cloudSupabase.functions.invoke(satFunc, {
+            await invokeCloud(satFunc, {
               body: {
                 to: conv.customerPhone,
                 message: satMessage,
@@ -541,7 +541,7 @@ const InboxPage = () => {
   const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
     const conv = conversations.find(c => c.customerPhone === convPhone);
     const func = getSendFunction(conv?.channelType);
-    const { data, error } = await cloudSupabase.functions.invoke(func, {
+    const { data, error } = await invokeCloud(func, {
       body: { to: convPhone, type: "edit", edit_message_id: waMessageId, message: newText },
     });
     if (error || data?.error) {
@@ -554,7 +554,7 @@ const InboxPage = () => {
   const handleDeleteMessage = useCallback(async (msgId: string, waMessageId: string, convPhone: string) => {
     const conv = conversations.find(c => c.customerPhone === convPhone);
     const func = getSendFunction(conv?.channelType);
-    const { data, error } = await cloudSupabase.functions.invoke(func, {
+    const { data, error } = await invokeCloud(func, {
       body: { to: convPhone, delete_message_id: waMessageId },
     });
     if (error || data?.error) {
@@ -572,7 +572,7 @@ const InboxPage = () => {
     }
 
     const sendFunc = getSendFunction(conversation.channelType);
-    const { data, error } = await cloudSupabase.functions.invoke(sendFunc, {
+    const { data, error } = await invokeCloud(sendFunc, {
       body: {
         to: conversation.customerPhone,
         type: "template",

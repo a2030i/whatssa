@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface Props {
@@ -239,7 +239,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
     let { data } = await fetchConfig();
 
     if (data?.is_connected && data.evolution_instance_status === "connected" && !data.display_phone && data.evolution_instance_name) {
-      await cloudSupabase.functions.invoke("evolution-manage", {
+      await invokeCloud("evolution-manage", {
         body: { action: "status", instance_name: data.evolution_instance_name },
       });
       const refreshed = await fetchConfig();
@@ -284,7 +284,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
     }
     setIsCreating(true);
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("evolution-manage", {
+      const { data, error } = await invokeCloud("evolution-manage", {
         body: { action: "create" },
       });
 
@@ -342,7 +342,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
     setInstanceStatus("connecting");
     
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("evolution-manage", {
+      const { data, error } = await invokeCloud("evolution-manage", {
         body: { action: "connect", instance_name: iName },
       });
 
@@ -407,7 +407,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
       // Ensure instance exists first
       let iName = instanceName;
       if (!iName) {
-        const { data, error } = await cloudSupabase.functions.invoke("evolution-manage", {
+        const { data, error } = await invokeCloud("evolution-manage", {
           body: { action: "create" },
         });
         if (error || !data?.success) {
@@ -419,7 +419,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
         setInstanceName(iName);
       }
 
-      const { data, error } = await cloudSupabase.functions.invoke("evolution-manage", {
+      const { data, error } = await invokeCloud("evolution-manage", {
         body: { action: "pairing_code", instance_name: iName, phone_number: pairingPhone.trim() },
       });
 
@@ -462,7 +462,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
       if (attempts % 2 === 0) {
         // Refresh QR to keep it valid
         try {
-          const { data } = await cloudSupabase.functions.invoke("evolution-manage", {
+          const { data } = await invokeCloud("evolution-manage", {
             body: { action: "connect", instance_name: name },
           });
           if (data?.status === "open") {
@@ -481,7 +481,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
         } catch { /* ignore */ }
       } else {
         // Check status
-        const { data } = await cloudSupabase.functions.invoke("evolution-manage", {
+        const { data } = await invokeCloud("evolution-manage", {
           body: { action: "status", instance_name: name },
         });
         if (data?.status === "open") {
@@ -499,7 +499,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
   const checkStatus = async () => {
     if (!instanceName) return;
     setIsCheckingStatus(true);
-    const { data } = await cloudSupabase.functions.invoke("evolution-manage", {
+    const { data } = await invokeCloud("evolution-manage", {
       body: { action: "status", instance_name: instanceName },
     });
 
@@ -517,7 +517,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
 
   const logout = async () => {
     if (!instanceName || !confirm("هل تريد فصل الرقم؟")) return;
-    const { data } = await cloudSupabase.functions.invoke("evolution-manage", {
+    const { data } = await invokeCloud("evolution-manage", {
       body: { action: "logout", instance_name: instanceName },
     });
     if (data?.success) {
@@ -532,7 +532,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
   const deleteInstance = async () => {
     if (!instanceName || !confirm("هل تريد حذف الجلسة نهائياً؟")) return;
     setIsDeleting(true);
-    const { data } = await cloudSupabase.functions.invoke("evolution-manage", {
+    const { data } = await invokeCloud("evolution-manage", {
       body: { action: "delete", instance_name: instanceName },
     });
     if (data?.success) {
@@ -550,7 +550,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
     if (!testPhone.trim()) { toast.error("أدخل رقم الهاتف"); return; }
     setTestSending(true);
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("evolution-send", {
+      const { data, error } = await invokeCloud("evolution-send", {
         body: { to: testPhone.trim(), message: "✅ تم الربط بنجاح! هذه رسالة اختبار من Respondly (WhatsApp Web)." },
       });
       if (error || data?.error) {

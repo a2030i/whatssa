@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import type { WhatsAppTemplate } from "@/types/whatsapp";
@@ -265,7 +265,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       }
 
       if (isMeta && selectedTemplate) {
-        const { data, error } = await cloudSupabase.functions.invoke("whatsapp-send", {
+        const { data, error } = await invokeCloud("whatsapp-send", {
           body: {
             to: cleanPhone,
             type: "template",
@@ -278,7 +278,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         });
         if (error || data?.error) throw new Error(data?.error || "فشل إرسال القالب");
       } else if (!isMeta && messageText.trim()) {
-        const { data, error } = await cloudSupabase.functions.invoke("evolution-send", {
+        const { data, error } = await invokeCloud("evolution-send", {
           body: {
             to: cleanPhone,
             message: messageText,

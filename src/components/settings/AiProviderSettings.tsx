@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,7 +163,7 @@ const AiProviderSettings = () => {
     }
     setTesting(config.id);
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("ai-proxy", {
+      const { data, error } = await invokeCloud("ai-proxy", {
         body: {
           action: "test",
           provider: config.provider,
