@@ -137,10 +137,33 @@ const AdminOverview = () => {
     if (!sysStats) return [];
     const alerts: CapacityAlert[] = [];
 
-    // DB size alerts
-    if (sysStats.db_size_mb > 400) {
+    // Infrastructure alerts from infra status
+    if (infraStatus) {
+      const dbPct = (infraStatus.db_size_mb / infraStatus.db_max_mb) * 100;
+      const storagePct = (infraStatus.storage_size_mb / infraStatus.storage_max_mb) * 100;
+      const connPct = (infraStatus.active_connections / infraStatus.max_connections) * 100;
+
+      if (dbPct > 80) {
+        alerts.push({ level: "critical", title: "⚠️ قاعدة البيانات قاربت على الامتلاء", description: `${infraStatus.db_size_mb} MB من ${infraStatus.db_max_mb} MB (${Math.round(dbPct)}%) — يجب ترقية الباقة أو حذف البيانات القديمة فوراً`, icon: Database });
+      } else if (dbPct > 60) {
+        alerts.push({ level: "warning", title: "قاعدة البيانات تنمو بسرعة", description: `${infraStatus.db_size_mb} MB من ${infraStatus.db_max_mb} MB (${Math.round(dbPct)}%) — خطط للترقية قريباً`, icon: Database });
+      }
+
+      if (storagePct > 80) {
+        alerts.push({ level: "critical", title: "⚠️ التخزين قارب على الامتلاء", description: `${infraStatus.storage_size_mb} MB من ${infraStatus.storage_max_mb} MB — يجب ترقية التخزين`, icon: FileArchive });
+      } else if (storagePct > 50) {
+        alerts.push({ level: "warning", title: "استهلاك التخزين مرتفع", description: `${infraStatus.storage_size_mb} MB من ${infraStatus.storage_max_mb} MB (${Math.round(storagePct)}%)`, icon: FileArchive });
+      }
+
+      if (connPct > 80) {
+        alerts.push({ level: "critical", title: "⚠️ الاتصالات النشطة مرتفعة", description: `${infraStatus.active_connections} من ${infraStatus.max_connections} — قد يحدث بطء أو رفض اتصالات`, icon: Globe });
+      }
+    }
+
+    // DB size alerts (fallback from sysStats)
+    if (!infraStatus && sysStats.db_size_mb > 400) {
       alerts.push({ level: "critical", title: "حجم قاعدة البيانات مرتفع", description: `${sysStats.db_size_mb} MB — يُنصح بتفعيل أرشفة الرسائل القديمة`, icon: Database });
-    } else if (sysStats.db_size_mb > 200) {
+    } else if (!infraStatus && sysStats.db_size_mb > 200) {
       alerts.push({ level: "warning", title: "قاعدة البيانات تنمو", description: `${sysStats.db_size_mb} MB — راقب النمو الشهري`, icon: Database });
     }
 
