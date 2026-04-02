@@ -84,12 +84,16 @@ const getMessagingLimit = (data: DashboardData): StatusItem => {
 };
 
 const StatusBar = ({ data }: StatusBarProps) => {
+  const isOfficial = data.channelType === "official";
+  
   const items: StatusItem[] = [
     getConnectionStatus(data),
-    getPhoneStatus(data),
-    getBusinessStatus(data),
-    getQualityStatus(data),
-    getMessagingLimit(data),
+    ...(isOfficial ? [
+      getPhoneStatus(data),
+      getBusinessStatus(data),
+      getQualityStatus(data),
+      getMessagingLimit(data),
+    ] : []),
   ];
 
   const lastSync = data.waStatus.lastSync
