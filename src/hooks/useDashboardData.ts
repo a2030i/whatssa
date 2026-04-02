@@ -27,6 +27,7 @@ export interface MessageStats {
 export interface DashboardData {
   waStatus: WhatsAppStatus;
   messageStats: MessageStats;
+  channelType: "official" | "unofficial" | null;
   openConversations: number;
   totalConversations: number;
   templateCount: number;
