@@ -540,7 +540,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         </TabsContent>
 
         {/* Notes Tab */}
-        <TabsContent value="notes" className="flex-1 flex flex-col overflow-hidden mt-0">
+        <TabsContent value="notes" className="mt-0">
           <InternalNotes conversationId={conversation.id} />
         </TabsContent>
       </Tabs>
