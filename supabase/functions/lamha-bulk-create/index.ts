@@ -111,8 +111,9 @@ Deno.serve(async (req) => {
     }
 
     const shipperConfig = metadata.shipper || {};
-    const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
-    const callbackUrl = `${supabaseUrl}/functions/v1/lamha-webhook`;
+    // Callback URL must point to Lovable Cloud (where edge functions are hosted)
+    const cloudUrl = Deno.env.get("SUPABASE_URL")!;
+    const callbackUrl = `${cloudUrl}/functions/v1/lamha-webhook`;
 
     const results: any[] = [];
     let successCount = 0;

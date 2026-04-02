@@ -162,7 +162,9 @@ serve(async (req) => {
       // Store session in metadata of conversation
       // We'll use the chatbot_sessions table with a special pattern
       // For now, send the first question via whatsapp-send
-      const sendUrl = `${SUPABASE_URL}/functions/v1/whatsapp-send`;
+      // Internal function call must use Lovable Cloud URL
+      const CLOUD_URL = Deno.env.get("SUPABASE_URL")!;
+      const sendUrl = `${CLOUD_URL}/functions/v1/whatsapp-send`;
       const sendRes = await fetch(sendUrl, {
         method: "POST",
         headers: {
