@@ -476,7 +476,7 @@ const IntegrationsPage = () => {
     setIsLoading(false);
     setConnectedPhone("");
     setTestPhone("");
-    setShowManual(false);
+    // manual connect state removed
     setOnboardingMode("new");
     setPreviousProvider("");
     setMigrationPrereqs(null);
