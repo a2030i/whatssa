@@ -27,6 +27,7 @@ export interface MessageStats {
 export interface DashboardData {
   waStatus: WhatsAppStatus;
   messageStats: MessageStats;
+  channelType: "official" | "unofficial" | null;
   openConversations: number;
   totalConversations: number;
   templateCount: number;
@@ -55,6 +56,7 @@ export const useDashboardData = (): DashboardData => {
   const [data, setData] = useState<DashboardData>({
     waStatus: { isConnected: false, phoneNumberId: null, businessAccountId: null, displayPhone: null, businessName: null, lastSync: null },
     messageStats: { sentToday: 0, sent7Days: 0, sent30Days: 0, deliveredToday: 0, failedToday: 0, delivered7Days: 0, failed7Days: 0, delivered30Days: 0, failed30Days: 0, totalReceived: 0 },
+    channelType: null,
     openConversations: 0,
     totalConversations: 0,
     templateCount: 0,
@@ -123,6 +125,7 @@ export const useDashboardData = (): DashboardData => {
         const openConvs = (convs.data || []).filter(c => c.status === "active").length;
 
         const waData = waConfig.data;
+        const channelType: "official" | "unofficial" | null = waData?.channel_type === "official" ? "official" : waData?.channel_type === "unofficial" ? "unofficial" : null;
         const waStatus: WhatsAppStatus = {
           isConnected: waData?.is_connected || false,
           phoneNumberId: waData?.phone_number_id || null,
@@ -137,7 +140,8 @@ export const useDashboardData = (): DashboardData => {
         let metaQualityRating: string | null = null;
         let metaMessagingLimit: string | null = null;
 
-        if (waData?.is_connected && waData?.id) {
+        // Only fetch Meta status for official channels
+        if (channelType === "official" && waData?.is_connected && waData?.id) {
           try {
             const { data: statusData } = await invokeCloud("whatsapp-check-status", {
               body: { config_id: waData.id },
@@ -158,6 +162,7 @@ export const useDashboardData = (): DashboardData => {
         setData({
           waStatus,
           messageStats: { sentToday, sent7Days, sent30Days, deliveredToday, failedToday, delivered7Days, failed7Days, delivered30Days, failed30Days, totalReceived },
+          channelType,
           openConversations: openConvs,
           totalConversations: (convs.data || []).length,
           templateCount: 0,

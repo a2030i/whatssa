@@ -27,21 +27,22 @@ const severityIconBg = {
 const SmartAlerts = ({ data }: { data: DashboardData }) => {
   const navigate = useNavigate();
   const alerts: Alert[] = [];
+  const isOfficial = data.channelType === "official";
 
-  if (!data.waStatus.phoneNumberId) {
+  if (!data.waStatus.phoneNumberId && !data.waStatus.isConnected) {
     alerts.push({ id: "no-connection", message: "لم يتم ربط رقم واتساب بعد. اربط رقمك الآن لبدء استقبال وإرسال الرسائل.", severity: "critical", action: { label: "ربط الرقم", path: "/integrations" }, icon: AlertTriangle });
   }
-  if (data.waStatus.phoneNumberId && data.metaPhoneStatus && data.metaPhoneStatus !== "VERIFIED") {
+  if (isOfficial && data.waStatus.phoneNumberId && data.metaPhoneStatus && data.metaPhoneStatus !== "VERIFIED") {
     alerts.push({ id: "phone-pending", message: "رقمك ما زال معلقًا ويحتاج مراجعة إعدادات Meta أو تسجيل الرقم.", severity: "critical", action: { label: "مراجعة الإعدادات", path: "/integrations" }, icon: AlertTriangle });
   }
-  if (data.metaBusinessVerification && data.metaBusinessVerification !== "verified") {
+  if (isOfficial && data.metaBusinessVerification && data.metaBusinessVerification !== "verified") {
     const lowTier = data.metaMessagingLimit === "TIER_250" || data.metaMessagingLimit === "TIER_1K";
     alerts.push({ id: "biz-unverified", message: lowTier ? "نشاطك في نمو، لكن حد الإرسال الحالي قد يقيّدك. فعّل التوثيق الآن لتفادي تعطّل الحملات." : "حسابك غير موثق وحد الإرسال الحالي منخفض. وثّق نشاطك التجاري لرفع الحد.", severity: "warning", action: { label: "توثيق الآن", path: "/integrations" }, icon: ShieldCheck });
   }
-  if (data.metaQualityRating === "YELLOW") {
+  if (isOfficial && data.metaQualityRating === "YELLOW") {
     alerts.push({ id: "quality-yellow", message: "جودة الرقم انخفضت إلى متوسطة خلال آخر الأيام. قلل الإرسال المتكرر لنفس الشريحة.", severity: "warning", icon: AlertTriangle });
   }
-  if (data.metaQualityRating === "RED") {
+  if (isOfficial && data.metaQualityRating === "RED") {
     alerts.push({ id: "quality-red", message: "هناك تراجع حاد في جودة الرقم. راجع القوالب الأخيرة وقلل الإرسال المتكرر فورًا.", severity: "critical", action: { label: "مراجعة القوالب", path: "/templates" }, icon: AlertTriangle });
   }
   if (data.waStatus.isConnected && data.messageStats.sent30Days === 0) {
