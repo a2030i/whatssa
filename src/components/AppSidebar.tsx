@@ -52,6 +52,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns" },
       { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب" },
+      { label: "الكتالوج", icon: ShoppingCart, path: "/catalog", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً لإدارة الكتالوج" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages" },
     ],
   },
