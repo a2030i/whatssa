@@ -180,7 +180,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   );
 
   return (
-    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-hidden">
+    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-hidden max-h-full">
       <Tabs defaultValue="info" className="flex flex-col h-full">
         <TabsList className="mx-2 mt-2 mb-0 grid grid-cols-3">
           <TabsTrigger value="info" className="text-xs">معلومات</TabsTrigger>
