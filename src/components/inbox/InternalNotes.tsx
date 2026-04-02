@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { StickyNote, Send, AtSign, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Receipt, CheckCircle2, XCircle, Clock, CreditCard, Download, CalendarDays, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
