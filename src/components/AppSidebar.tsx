@@ -68,6 +68,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     section: "التحليلات",
     items: [
       { label: "التقارير", icon: BarChart3, path: "/analytics" },
+      { label: "تكاليف المحادثات", icon: DollarSign, path: "/conversation-analytics", metaOnly: true },
     ],
   },
   {
