@@ -33,6 +33,26 @@ interface StoreIntegration {
   metadata?: any;
 }
 
+const SALLA_MERCHANT_EVENTS = [
+  { key: "invoice.created", label: "فاتورة طلب جديد" },
+  { key: "abandoned.cart", label: "سلة متروكة" },
+  { key: "abandoned.cart.purchased", label: "شراء سلة متروكة" },
+  { key: "shipment.creating", label: "طلب إنشاء شحنة" },
+  { key: "shipment.created", label: "تم إنشاء شحنة" },
+  { key: "shipment.updated", label: "تحديث شحنة" },
+  { key: "shipment.cancelled", label: "إلغاء شحنة" },
+  { key: "customer.created", label: "عميل جديد" },
+  { key: "customer.updated", label: "تحديث بيانات عميل" },
+  { key: "product.created", label: "منتج جديد" },
+  { key: "product.updated", label: "تحديث منتج" },
+  { key: "product.deleted", label: "حذف منتج" },
+  { key: "product.price.updated", label: "تحديث سعر منتج" },
+  { key: "product.quantity.low", label: "قرب نفاذ المخزون" },
+  { key: "product.available", label: "المنتج متاح" },
+  { key: "coupon.applied", label: "تطبيق كوبون" },
+  { key: "review.added", label: "تقييم جديد" },
+];
+
 const STORE_PLATFORMS = [
   {
     id: "salla",
@@ -47,15 +67,7 @@ const STORE_PLATFORMS = [
       "افتح لوحة تحكم سلة → الإعدادات → Webhooks",
       "الصق الرابط واختر الأحداث المطلوبة",
     ],
-    events: [
-      { key: "order.created", label: "طلب جديد" },
-      { key: "order.status.updated", label: "تحديث حالة طلب" },
-      { key: "customer.created", label: "عميل جديد" },
-      { key: "customer.updated", label: "تحديث عميل" },
-      { key: "abandoned.cart", label: "سلة متروكة" },
-      { key: "product.created", label: "منتج جديد" },
-      { key: "product.updated", label: "تحديث منتج" },
-    ],
+    events: SALLA_MERCHANT_EVENTS,
   },
   {
     id: "zid",
@@ -210,6 +222,16 @@ const EVENT_LABELS_AR: Record<string, string> = {
   "shipment.delivery_failed": "فشل التوصيل",
   "shipment.returned": "مرتجع",
   "shipment.cancelled": "شحنة ملغية",
+  "shipment.creating": "طلب إنشاء شحنة",
+  "shipment.created": "تم إنشاء شحنة",
+  "shipment.updated": "تحديث شحنة",
+  "invoice.created": "فاتورة طلب جديد",
+  "product.deleted": "حذف منتج",
+  "product.price.updated": "تحديث سعر منتج",
+  "product.quantity.low": "قرب نفاذ المخزون",
+  "product.available": "المنتج متاح",
+  "coupon.applied": "تطبيق كوبون",
+  "review.added": "تقييم جديد",
 };
 
 const SallaIntegrationSection = () => {
@@ -255,6 +277,7 @@ const SallaIntegrationSection = () => {
       platform: selectedPlatform,
       store_name: newStoreName.trim(),
       store_url: newStoreUrl.trim() || null,
+      events_enabled: ((platformConfig?.events as { key: string }[] | undefined) || []).map((event) => event.key),
     };
     // Save API token + shipper config in metadata for Lamha
     if ((platformConfig as any)?.usesApiToken) {
@@ -753,22 +776,25 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
 
       {/* Events/Features */}
       <div className="flex flex-wrap gap-1.5">
-        {isLamha ? (
-          platform.events.map((evt) => (
-            <span key={evt.key} className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600">
-              {evt.label}
-            </span>
-          ))
-        ) : (
-          store.events_enabled.map((evt) => {
-            const label = platform.events.find(e => e.key === evt)?.label || EVENT_LABELS_AR[evt] || evt;
-            return (
-              <span key={evt} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
-                {label}
-              </span>
-            );
-          })
-        )}
+        {(isLamha
+          ? platform.events
+          : store.platform === "salla"
+            ? platform.events
+            : store.events_enabled.map((evt) => ({
+                key: evt,
+                label: platform.events.find((event) => event.key === evt)?.label || EVENT_LABELS_AR[evt] || evt,
+              }))
+        ).map((evt) => (
+          <span
+            key={evt.key}
+            className={cn(
+              "text-[10px] px-2 py-0.5 rounded-full",
+              isLamha ? "bg-orange-500/10 text-orange-600" : "bg-secondary text-muted-foreground"
+            )}
+          >
+            {evt.label}
+          </span>
+        ))}
       </div>
     </div>
   );
