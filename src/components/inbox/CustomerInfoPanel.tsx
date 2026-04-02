@@ -194,7 +194,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         </TabsList>
 
         {/* Info Tab */}
-        <TabsContent value="info" className="flex-1 flex flex-col overflow-hidden mt-0">
+        <TabsContent value="info" className="flex-1 flex flex-col overflow-hidden mt-0 min-h-0">
       <div className="p-4 border-b border-border text-center">
         <div className="relative inline-block">
           {conversation.profilePic ? (
