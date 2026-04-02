@@ -31,8 +31,8 @@ const tierIsLow = (tier: string | null) => tier === "TIER_250" || tier === "TIER
 const VerificationCard = ({ data }: { data: DashboardData }) => {
   const state = getState(data);
 
-  // Don't show for unofficial channels or if not connected
-  if (data.channelType === "unofficial") return null;
+  // Only show for official channels
+  if (data.channelType !== "official") return null;
   if (state === "not_connected") return null;
 
   const openMetaVerification = () => {
