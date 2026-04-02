@@ -76,7 +76,7 @@ const WhatsAppProfileEditor = ({ configId, channelType }: Props) => {
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-profile", {
+      const { data, error } = await invokeCloud("whatsapp-profile", {
         body: { action: "get", config_id: configId },
       });
       if (error || !data?.success) {
@@ -129,7 +129,7 @@ const WhatsAppProfileEditor = ({ configId, channelType }: Props) => {
         profileData.name = displayName;
       }
 
-      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-profile", {
+      const { data, error } = await invokeCloud("whatsapp-profile", {
         body: { action: "update", config_id: configId, profile_data: profileData },
       });
       if (error || !data?.success) {

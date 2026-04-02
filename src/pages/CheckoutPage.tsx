@@ -72,7 +72,7 @@ const CheckoutPage = () => {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await cloudSupabase.functions.invoke("moyasar-checkout", {
+      const res = await invokeCloud("moyasar-checkout", {
         body: {
           org_id: orgId,
           plan_id: planId,

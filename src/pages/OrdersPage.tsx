@@ -95,7 +95,7 @@ const OrdersPage = () => {
   const loadLamhaCarriers = async () => {
     setLoadingCarriers(true);
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("lamha-carriers", {
+      const { data, error } = await invokeCloud("lamha-carriers", {
         body: { org_id: orgId },
       });
       if (!error && data?.carriers) {
@@ -180,7 +180,7 @@ const OrdersPage = () => {
     }
     setSendingToLamha(orderId);
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("lamha-create-shipment", {
+      const { data, error } = await invokeCloud("lamha-create-shipment", {
         body: {
           order_id: orderId,
           org_id: orgId,
@@ -211,7 +211,7 @@ const OrdersPage = () => {
 
   const printLamhaLabel = async (orderId: string) => {
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("lamha-label", {
+      const { data, error } = await invokeCloud("lamha-label", {
         body: { order_id: orderId, org_id: orgId },
       });
       if (error) throw error;

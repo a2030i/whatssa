@@ -139,7 +139,7 @@ const TemplateAnalytics = () => {
   useEffect(() => {
     (async () => {
       setIsLoading(true);
-      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-catalog", {
+      const { data, error } = await invokeCloud("whatsapp-catalog", {
         body: { action: "template_analytics" },
       });
       if (!error && data?.analytics) setAnalytics(data.analytics);
@@ -233,7 +233,7 @@ const TemplatesPage = () => {
     if (showRefreshState) setIsRefreshing(true);
     else setIsLoading(true);
 
-    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-templates", {
+    const { data, error } = await invokeCloud("whatsapp-templates", {
       body: { action: "list" },
     });
 
@@ -305,7 +305,7 @@ const TemplatesPage = () => {
     setIsSubmitting(true);
     const action = editingTemplate ? "edit" : "create";
 
-    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-templates", {
+    const { data, error } = await invokeCloud("whatsapp-templates", {
       body: {
         action,
         name: formData.name.trim(),
@@ -339,7 +339,7 @@ const TemplatesPage = () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
 
-    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-templates", {
+    const { data, error } = await invokeCloud("whatsapp-templates", {
       body: { action: "delete", name: deleteTarget.name },
     });
 

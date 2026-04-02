@@ -98,7 +98,7 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const res = await cloudSupabase.functions.invoke("whatsapp-templates", {
+      const res = await invokeCloud("whatsapp-templates", {
         body: { action: "list" },
       });
       if (res.data?.templates) {

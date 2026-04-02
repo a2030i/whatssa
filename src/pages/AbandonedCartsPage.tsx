@@ -39,7 +39,7 @@ const AbandonedCartsPage = () => {
     // Send WhatsApp reminder
     const message = `مرحباً ${cart.customer_name || ""}! 🛒\n\nلاحظنا أنك تركت منتجات في سلة التسوق بقيمة ${Number(cart.total).toFixed(2)} ر.س\n\nأكمل طلبك الآن${cart.checkout_url ? `: ${cart.checkout_url}` : ""}`;
     
-    await cloudSupabase.functions.invoke("whatsapp-send", {
+    await invokeCloud("whatsapp-send", {
       body: { to: cart.customer_phone, message }
     }).catch(() => {});
 

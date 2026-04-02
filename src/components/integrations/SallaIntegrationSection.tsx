@@ -682,7 +682,7 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
   const syncNow = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await cloudSupabase.functions.invoke("lamha-sync-status", {
+      const { data, error } = await invokeCloud("lamha-sync-status", {
         body: { org_id: store.org_id },
       });
       if (error) throw error;

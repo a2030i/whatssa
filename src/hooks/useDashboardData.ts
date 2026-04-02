@@ -139,7 +139,7 @@ export const useDashboardData = (): DashboardData => {
 
         if (waData?.is_connected && waData?.id) {
           try {
-            const { data: statusData } = await cloudSupabase.functions.invoke("whatsapp-check-status", {
+            const { data: statusData } = await invokeCloud("whatsapp-check-status", {
               body: { config_id: waData.id },
             });
             if (statusData?.phone) {

@@ -371,7 +371,7 @@ const CampaignsPage = () => {
     }
 
     // Trigger send
-    const { error } = await cloudSupabase.functions.invoke("send-campaign", {
+    const { error } = await invokeCloud("send-campaign", {
       body: { campaign_id: detailCampaign.id },
     });
     if (error) {
@@ -1131,7 +1131,7 @@ const CampaignsPage = () => {
               exportReport={exportReport}
               onResendFailed={resendFailed}
               onSend={async () => {
-                const { error } = await cloudSupabase.functions.invoke("send-campaign", {
+                const { error } = await invokeCloud("send-campaign", {
                   body: { campaign_id: detailCampaign.id },
                 });
                 if (error) {
