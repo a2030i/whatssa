@@ -130,8 +130,12 @@ const AdminAccounts = () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("غير مسجل الدخول");
       const { data, error } = await cloudSupabase.functions.invoke("admin-delete-org", {
         body: { org_id: deleteTarget.id },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

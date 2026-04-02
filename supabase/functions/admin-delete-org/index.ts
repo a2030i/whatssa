@@ -16,12 +16,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Cloud URL/key for token verification (token is issued by Lovable Cloud auth)
-    const cloudUrl = Deno.env.get("SUPABASE_URL")!;
-    const cloudServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
+    const externalServiceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     // Verify caller is authenticated
     const authHeader = req.headers.get("authorization") || "";
@@ -31,15 +27,14 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
 
-    // Verify token against Lovable Cloud (where auth lives)
-    const cloudClient = createClient(cloudUrl, cloudServiceKey);
-    const { data: { user: caller }, error: userError } = await cloudClient.auth.getUser(token);
+    // Admin client for external DB (where auth + data live)
+    const adminClient = createClient(externalUrl, externalServiceKey);
+
+    // Verify token against external project (where the user is authenticated)
+    const { data: { user: caller }, error: userError } = await adminClient.auth.getUser(token);
     if (userError || !caller) {
       return jsonRes({ error: "Unauthorized" }, 401);
     }
-
-    // Admin client for external DB operations
-    const adminClient = createClient(supabaseUrl, serviceKey);
 
     // Check super_admin role
     const { data: roleData } = await adminClient
