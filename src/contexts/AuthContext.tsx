@@ -129,6 +129,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  // Presence tracking — update is_online & last_seen_at
+  useEffect(() => {
+    if (!user) return;
+
+    const updatePresence = () => {
+      supabase
+        .from("profiles")
+        .update({ is_online: true, last_seen_at: new Date().toISOString() })
+        .eq("id", user.id)
+        .then(() => {});
+    };
+
+    // Set online immediately
+    updatePresence();
+
+    // Update every 2 minutes
+    const interval = setInterval(updatePresence, 2 * 60 * 1000);
+
+    // Set offline on tab close / navigate away
+    const handleOffline = () => {
+      navigator.sendBeacon?.(
+        `${(supabase as any).supabaseUrl}/rest/v1/profiles?id=eq.${user.id}`,
+        // sendBeacon doesn't support PATCH, so we use the interval approach as primary
+      );
+      // Fallback: just update via supabase
+      supabase
+        .from("profiles")
+        .update({ is_online: false, last_seen_at: new Date().toISOString() })
+        .eq("id", user.id)
+        .then(() => {});
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        handleOffline();
+      } else {
+        updatePresence();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleOffline);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("beforeunload", handleOffline);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      // Mark offline on cleanup
+      supabase
+        .from("profiles")
+        .update({ is_online: false, last_seen_at: new Date().toISOString() })
+        .eq("id", user.id)
+        .then(() => {});
+    };
+  }, [user]);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
