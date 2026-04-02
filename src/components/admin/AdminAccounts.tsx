@@ -159,7 +159,7 @@ const AdminAccounts = () => {
     return m[s] || m.trial;
   };
 
-  const filtered = orgs.filter((o) => o.name?.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search));
+  const filtered = orgs.filter((o) => !superAdminOrgIds.has(o.id) && (o.name?.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search)));
 
   return (
     <div className="space-y-4">
