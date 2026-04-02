@@ -52,6 +52,10 @@ const STORE_EVENTS = [
   { key: "order.delivered", label: "تم التوصيل", icon: "✅", description: "عند توصيل الطلب للعميل" },
   { key: "order.cancelled", label: "طلب ملغي", icon: "❌", description: "عند إلغاء الطلب" },
   { key: "order.refunded", label: "تم الاسترجاع", icon: "💰", description: "عند استرجاع المبلغ" },
+  { key: "order.payment.updated", label: "تحديث الدفع", icon: "💳", description: "عند تحديث حالة الدفع للطلب" },
+  { key: "order.shipment.created", label: "تم إنشاء الشحنة", icon: "🚚", description: "عند إنشاء شحنة جديدة للطلب" },
+  { key: "order.shipment.cancelled", label: "إلغاء الشحنة", icon: "🚫", description: "عند إلغاء شحنة الطلب" },
+  { key: "order.shipment.return.created", label: "طلب إرجاع شحنة", icon: "↩️", description: "عند إنشاء طلب إرجاع للشحنة" },
   { key: "abandoned.cart", label: "سلة متروكة", icon: "🛒", description: "تذكير العميل بالسلة المتروكة" },
   { key: "customer.created", label: "عميل جديد", icon: "👤", description: "رسالة ترحيب لعميل جديد سجّل بالمتجر" },
 ];
