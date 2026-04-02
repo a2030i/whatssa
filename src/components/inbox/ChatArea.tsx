@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
+import ImageLightbox from "./ImageLightbox";
+import MessageSearch from "./MessageSearch";
 import { supabase, invokeCloud } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Conversation, Message } from "@/data/mockData";
@@ -92,7 +94,7 @@ const scrollToMessage = (messageId?: string) => {
 };
 
 /** Component to resolve storage: URLs to signed URLs for media display */
-const ResolvedMedia = ({ url, type, isAgent = false }: { url: string; type: string; isAgent?: boolean }) => {
+const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: string; type: string; isAgent?: boolean; onImageClick?: (src: string) => void }) => {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -117,7 +119,7 @@ const ResolvedMedia = ({ url, type, isAgent = false }: { url: string; type: stri
     return <img src={resolvedUrl} alt="ملصق" className="max-w-[140px] max-h-[140px] object-contain mb-1" />;
   }
   if (isImage) {
-    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer" onClick={() => window.open(resolvedUrl, "_blank")} />;
+    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer active:scale-95 transition-transform" onClick={() => onImageClick?.(resolvedUrl)} />;
   }
   if (type === "audio") {
     return <AudioPlayer src={resolvedUrl} isAgent={isAgent} className="mb-1" />;
@@ -140,7 +142,7 @@ const ResolvedMedia = ({ url, type, isAgent = false }: { url: string; type: stri
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
@@ -412,7 +414,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete }
               const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
               return (
                 <>
-                  {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} isAgent={msg.sender === "agent"} />}
+                  {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} isAgent={msg.sender === "agent"} onImageClick={onImageClick} />}
                   {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
                     <p className="whitespace-pre-wrap">
                       {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
@@ -482,12 +484,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [showMessageSearch, setShowMessageSearch] = useState(false);
+  const [showProductPicker, setShowProductPicker] = useState(false);
+  const [catalogProducts, setCatalogProducts] = useState<Array<{ id: string; name: string; price?: string; currency?: string; image_url?: string; retailer_id?: string }>>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Real-time typing presence
   useEffect(() => {
@@ -752,33 +762,56 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     return { header, text };
   };
 
-  const startRecording = () => {
-    setIsRecording(true);
-    setRecordingTime(0);
-    recordingIntervalRef.current = setInterval(() => {
-      setRecordingTime((prev) => prev + 1);
-    }, 1000);
-    toast.info("جاري التسجيل...");
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm" });
+      audioChunksRef.current = [];
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        if (blob.size < 500) { toast.info("تسجيل قصير جداً"); return; }
+        // Upload to storage
+        try {
+          const path = `${conversation.id}/${Date.now()}.webm`;
+          const { error: uploadError } = await supabase.storage.from("chat-media").upload(path, blob, { contentType: "audio/webm" });
+          if (uploadError) throw uploadError;
+          const storagePath = `storage:chat-media/${path}`;
+          onSendMessage(conversation.id, `🎤 رسالة صوتية\n${storagePath}`);
+          toast.success("تم إرسال الرسالة الصوتية");
+        } catch (err: any) {
+          toast.error("فشل رفع التسجيل: " + (err?.message || ""));
+        }
+      };
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingIntervalRef.current = setInterval(() => setRecordingTime((prev) => prev + 1), 1000);
+    } catch (err) {
+      toast.error("لا يمكن الوصول للميكروفون — تأكد من صلاحيات المتصفح");
+    }
   };
 
   const stopRecording = () => {
     setIsRecording(false);
-    if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current);
-      recordingIntervalRef.current = null;
-    }
-    // Mock: send voice message
-    onSendMessage(conversation.id, `🎤 رسالة صوتية (${formatTime(recordingTime)})`);
+    if (recordingIntervalRef.current) { clearInterval(recordingIntervalRef.current); recordingIntervalRef.current = null; }
+    mediaRecorderRef.current?.stop();
     setRecordingTime(0);
-    toast.success("تم إرسال الرسالة الصوتية");
   };
 
   const cancelRecording = () => {
     setIsRecording(false);
-    if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current);
-      recordingIntervalRef.current = null;
+    if (recordingIntervalRef.current) { clearInterval(recordingIntervalRef.current); recordingIntervalRef.current = null; }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = () => {
+        mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
+      };
+      mediaRecorderRef.current.stop();
     }
+    audioChunksRef.current = [];
     setRecordingTime(0);
     toast.info("تم إلغاء التسجيل");
   };
@@ -986,6 +1019,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </div>
               </div>
             ))}
+            <button onClick={() => setShowMessageSearch(!showMessageSearch)} className={cn("p-2 rounded-lg hover:bg-secondary transition-colors", showMessageSearch ? "bg-primary/10 text-primary" : "")} title="بحث في الرسائل">
+              <SearchIcon className="w-4 h-4 text-muted-foreground" />
+            </button>
             <ExportConversation conversation={conversation} messages={messages} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1096,6 +1132,22 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </div>
       </div>
 
+      {/* Message Search Bar */}
+      {showMessageSearch && (
+        <MessageSearch
+          messages={messages}
+          onClose={() => setShowMessageSearch(false)}
+          onNavigate={(msgId) => {
+            const el = document.querySelector(`[data-message-id="${msgId}"]`);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+              el.classList.add("ring-2", "ring-primary/60", "rounded-xl");
+              setTimeout(() => el.classList.remove("ring-2", "ring-primary/60", "rounded-xl"), 2000);
+            }
+          }}
+        />
+      )}
+
       {/* 24h Window Warning */}
       {isMetaChannel && windowExpired && (
         <div className="shrink-0 bg-warning/10 border-b border-warning/20 px-4 py-2 flex items-center gap-2">
@@ -1147,6 +1199,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onReply={handleReply}
                 onEdit={onEditMessage ? handleStartEdit : undefined}
                 onDelete={onDeleteMessage ? handleDeleteMsg : undefined}
+                onImageClick={(src) => setLightboxSrc(src)}
               />
             )}
           </div>
@@ -1340,6 +1393,29 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             {!isNoteMode && (
               <button onClick={() => setShowTemplates(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال قالب">
                 <FileText className="w-4 h-4" />
+              </button>
+            )}
+            {/* Send Product from Catalog */}
+            {!isNoteMode && !windowExpired && isMetaChannel && (
+              <button
+                onClick={async () => {
+                  setShowProductPicker(true);
+                  if (catalogProducts.length === 0) {
+                    setLoadingProducts(true);
+                    try {
+                      const { data: catData } = await invokeCloud("whatsapp-catalog", { body: { action: "list_catalogs" } });
+                      if (catData?.catalogs?.[0]) {
+                        const { data: prodData } = await invokeCloud("whatsapp-catalog", { body: { action: "list_products", catalog_id: catData.catalogs[0].id, limit: 50 } });
+                        if (prodData?.products) setCatalogProducts(prodData.products);
+                      }
+                    } catch {}
+                    setLoadingProducts(false);
+                  }
+                }}
+                className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+                title="إرسال منتج"
+              >
+                <ShoppingBag className="w-4 h-4" />
               </button>
             )}
             {/* AI Suggest Replies */}
@@ -1593,6 +1669,70 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         conversationId={conversation.id}
         onClose={onStatusChange}
       />
+
+      {/* Product Picker Dialog */}
+      <Dialog open={showProductPicker} onOpenChange={setShowProductPicker}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col" dir="rtl">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><ShoppingBag className="w-4 h-4 text-primary" /> إرسال منتج</DialogTitle></DialogHeader>
+          <Input
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+            placeholder="بحث في المنتجات..."
+            className="bg-secondary border-0 text-sm"
+          />
+          <div className="flex-1 overflow-y-auto space-y-2 mt-2">
+            {loadingProducts ? (
+              <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+            ) : catalogProducts.filter(p => !productSearch || p.name?.toLowerCase().includes(productSearch.toLowerCase())).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">لا توجد منتجات في الكتالوج</p>
+            ) : (
+              catalogProducts.filter(p => !productSearch || p.name?.toLowerCase().includes(productSearch.toLowerCase())).map((product) => (
+                <button
+                  key={product.id}
+                  onClick={async () => {
+                    try {
+                      await invokeCloud("whatsapp-send", {
+                        body: {
+                          phone: conversation.customerPhone,
+                          type: "product",
+                          catalog_id: product.id,
+                          product_retailer_id: product.retailer_id,
+                        },
+                      });
+                      toast.success(`تم إرسال المنتج: ${product.name}`);
+                      setShowProductPicker(false);
+                    } catch {
+                      toast.error("فشل إرسال المنتج");
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 bg-secondary/50 hover:bg-secondary rounded-xl p-3 transition-colors text-right"
+                >
+                  {product.image_url ? (
+                    <img src={product.image_url} alt={product.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                      <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{product.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {product.price && <span className="text-xs font-bold text-primary">{product.price} {product.currency || "SAR"}</span>}
+                      {product.retailer_id && <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">SKU: {product.retailer_id}</span>}
+                    </div>
+                  </div>
+                  <Send className="w-4 h-4 text-primary shrink-0" style={{ transform: "scaleX(-1)" }} />
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Lightbox */}
+      {lightboxSrc && (
+        <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+      )}
     </div>
   );
 };
