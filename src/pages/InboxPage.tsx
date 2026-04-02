@@ -436,7 +436,7 @@ const InboxPage = () => {
 
           // Check channel-level settings first
           if (conv.channelId) {
-            const { data: chData } = await supabase.from("whatsapp_config" as any).select("settings").eq("id", conv.channelId).single();
+            const { data: chData } = await supabase.from("whatsapp_config_safe").select("settings").eq("id", conv.channelId).single();
             const chSettings = ((chData as any)?.settings as Record<string, any>) || {};
             if (chSettings.sat?.enabled && chSettings.sat?.message) {
               satEnabled = true;
