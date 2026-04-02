@@ -231,6 +231,7 @@ const AdminOverview = () => {
     return "healthy";
   };
 
+  if (!sysStats) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center text-muted-foreground">
