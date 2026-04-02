@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
 
   try {
     switch (event) {
-      // ── Order lifecycle ──
+      // ── Order lifecycle (Partners API only) ──
       case "order.created":
       case "order.updated":
         await handleOrder(supabase, orgId, integrationId, data, event);
@@ -115,6 +115,11 @@ Deno.serve(async (req) => {
       case "order.coupon.updated":
       case "order.total.price.updated":
         await handleOrderFinancialUpdate(supabase, orgId, data, event);
+        break;
+
+      // ── Invoice (Merchant dashboard — best alternative for order tracking) ──
+      case "invoice.created":
+        await handleInvoiceCreated(supabase, orgId, integrationId, data);
         break;
 
       // ── Shipment events ──
@@ -143,11 +148,13 @@ Deno.serve(async (req) => {
       // ── Customer ──
       case "customer.created":
       case "customer.updated":
+      case "customer.login":
         await handleCustomer(supabase, orgId, data, event);
         break;
 
       // ── Cart ──
       case "abandoned.cart":
+      case "abandoned.cart.updated":
         await handleAbandonedCart(supabase, orgId, integrationId, data);
         break;
       case "abandoned.cart.purchased":
@@ -160,10 +167,23 @@ Deno.serve(async (req) => {
       case "product.price.updated":
       case "product.status.updated":
       case "product.image.updated":
+      case "product.option.updated":
+      case "product.variant.updated":
+      case "product.available":
         await handleProduct(supabase, orgId, integrationId, data, event);
         break;
       case "product.deleted":
         await handleProductDeleted(supabase, orgId, data);
+        break;
+      case "product.quantity.low":
+        await handleProductLowStock(supabase, orgId, data);
+        break;
+
+      // ── Other merchant events ──
+      case "coupon.applied":
+      case "review.added":
+        // These are tracked for notifications only, no DB action needed
+        console.log(`[salla-webhook] Event tracked for notifications: ${event}`);
         break;
 
       default:
