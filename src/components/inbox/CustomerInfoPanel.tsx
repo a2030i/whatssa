@@ -180,9 +180,9 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   );
 
   return (
-    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-hidden">
-      <Tabs defaultValue="info" className="flex flex-col h-full">
-        <TabsList className={`mx-2 mt-2 mb-0 grid ${isEcommerce ? "grid-cols-3" : "grid-cols-2"}`}>
+    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-y-auto">
+      <Tabs defaultValue="info" className="flex flex-col">
+        <TabsList className={`mx-2 mt-2 mb-0 grid shrink-0 ${isEcommerce ? "grid-cols-3" : "grid-cols-2"}`}>
           <TabsTrigger value="info" className="text-xs">معلومات</TabsTrigger>
           {isEcommerce && (
             <TabsTrigger value="orders" className="text-xs gap-1">
@@ -196,7 +196,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         </TabsList>
 
         {/* Info Tab */}
-        <TabsContent value="info" className="flex-1 flex flex-col overflow-y-auto mt-0">
+        <TabsContent value="info" className="mt-0">
       <div className="p-4 border-b border-border text-center">
         <div className="relative inline-block">
           {conversation.profilePic ? (
@@ -382,8 +382,8 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         </TabsContent>
 
         {/* Orders Tab */}
-        <TabsContent value="orders" className="flex-1 flex flex-col overflow-hidden mt-0">
-          <div className="flex-1 overflow-y-auto">
+        <TabsContent value="orders" className="mt-0">
+          <div>
             {/* Orders Summary Header */}
             {orders.length > 0 && (
               <div className="p-3 border-b border-border bg-secondary/30">
@@ -540,7 +540,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         </TabsContent>
 
         {/* Notes Tab */}
-        <TabsContent value="notes" className="flex-1 flex flex-col overflow-hidden mt-0">
+        <TabsContent value="notes" className="mt-0">
           <InternalNotes conversationId={conversation.id} />
         </TabsContent>
       </Tabs>
