@@ -38,6 +38,7 @@ import WhatsAppFlowsPage from "./pages/WhatsAppFlowsPage";
 import TrackingPage from "./pages/TrackingPage";
 import StoreAnalyticsPage from "./pages/StoreAnalyticsPage";
 import ConversationAnalyticsPage from "./pages/ConversationAnalyticsPage";
+import CatalogPage from "./pages/CatalogPage";
 import WarehousesPage from "./pages/WarehousesPage";
 import { Loader2 } from "lucide-react";
 
