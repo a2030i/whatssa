@@ -89,6 +89,7 @@ Deno.serve(async (req) => {
 
   try {
     switch (event) {
+      // ── Order lifecycle ──
       case "order.created":
       case "order.updated":
         await handleOrder(supabase, orgId, integrationId, data, event);
@@ -96,23 +97,75 @@ Deno.serve(async (req) => {
       case "order.status.updated":
         await handleOrderStatus(supabase, orgId, data);
         break;
+      case "order.cancelled":
+        await handleOrderCancelled(supabase, orgId, data);
+        break;
+      case "order.refunded":
+        await handleOrderRefunded(supabase, orgId, data);
+        break;
+      case "order.deleted":
+        await handleOrderDeleted(supabase, orgId, data);
+        break;
+      case "order.payment.updated":
+        await handleOrderPaymentUpdated(supabase, orgId, data);
+        break;
+      case "order.products.updated":
+        await handleOrderProductsUpdated(supabase, orgId, integrationId, data);
+        break;
+      case "order.coupon.updated":
+      case "order.total.price.updated":
+        await handleOrderFinancialUpdate(supabase, orgId, data, event);
+        break;
+
+      // ── Shipment events ──
+      case "order.shipment.creating":
+      case "order.shipment.created":
+      case "shipment.creating":
+      case "shipment.created":
+        await handleShipmentCreated(supabase, orgId, data, event);
+        break;
+      case "order.shipment.cancelled":
+      case "shipment.cancelled":
+        await handleShipmentCancelled(supabase, orgId, data);
+        break;
+      case "shipment.updated":
+        await handleShipmentUpdated(supabase, orgId, data);
+        break;
+      case "order.shipment.return.creating":
+      case "order.shipment.return.created":
+      case "order.shipment.return.cancelled":
+        await handleShipmentReturn(supabase, orgId, data, event);
+        break;
+      case "order.shipping.address.updated":
+        await handleShippingAddressUpdated(supabase, orgId, data);
+        break;
+
+      // ── Customer ──
       case "customer.created":
       case "customer.updated":
         await handleCustomer(supabase, orgId, data, event);
         break;
+
+      // ── Cart ──
       case "abandoned.cart":
         await handleAbandonedCart(supabase, orgId, integrationId, data);
         break;
       case "abandoned.cart.purchased":
         await handleCartPurchased(supabase, orgId, data);
         break;
+
+      // ── Product ──
       case "product.created":
       case "product.updated":
+      case "product.price.updated":
+      case "product.status.updated":
+      case "product.image.updated":
         await handleProduct(supabase, orgId, integrationId, data, event);
         break;
       case "product.deleted":
         await handleProductDeleted(supabase, orgId, data);
         break;
+
       default:
         console.log(`[salla-webhook] Unhandled event: ${event}`);
     }
@@ -145,7 +198,7 @@ async function sendEventNotification(supabase: any, integration: any, event: str
   const metadata = integration.metadata || {};
   const notifConfigs = metadata.event_notifications || {};
 
-  // Map order.status.updated to specific sub-events
+  // Map events to notification keys
   let notifKey = event;
   if (event === "order.status.updated") {
     const statusSlug = data?.status?.slug || data?.status?.name || "";
@@ -154,8 +207,16 @@ async function sendEventNotification(supabase: any, integration: any, event: str
     else if (mapped === "delivered") notifKey = "order.delivered";
     else if (mapped === "cancelled") notifKey = "order.cancelled";
     else if (mapped === "refunded") notifKey = "order.refunded";
-    else return; // No notification for other statuses
+    else return;
   }
+  // Direct cancelled/refunded events from Salla
+  if (event === "order.cancelled") notifKey = "order.cancelled";
+  if (event === "order.refunded") notifKey = "order.refunded";
+  if (event === "order.payment.updated") notifKey = "order.payment.updated";
+  // Shipment events
+  if (event === "order.shipment.created" || event === "shipment.created") notifKey = "order.shipment.created";
+  if (event === "order.shipment.cancelled" || event === "shipment.cancelled") notifKey = "order.shipment.cancelled";
+  if (event === "order.shipment.return.created") notifKey = "order.shipment.return.created";
 
   const cfg = notifConfigs[notifKey];
   if (!cfg?.enabled || !cfg?.channel_id) return;
@@ -187,11 +248,9 @@ async function sendEventNotification(supabase: any, integration: any, event: str
 
   try {
     if (channelType === "meta_api" && cfg.template_name) {
-      // Send via Meta template
       await sendMetaTemplate(waConfig, phone, cfg.template_name, cfg.template_language || "ar", vars);
       console.log(`[salla-notif] Meta template sent: ${cfg.template_name} → ${phone}`);
     } else if (channelType === "evolution" && cfg.message_text) {
-      // Send via Evolution with variable replacement
       const message = replaceVariables(cfg.message_text, vars);
       await sendEvolutionMessage(waConfig, phone, message);
       console.log(`[salla-notif] Evolution message sent → ${phone}`);
@@ -212,7 +271,11 @@ function buildVariables(event: string, data: any): Record<string, string> {
     total: String(amounts?.total?.amount || amounts?.amount || data?.total?.amount || data?.total || 0),
     currency: amounts?.total?.currency || amounts?.currency || data?.currency || "SAR",
     payment_method: data?.payment?.method || data?.payment?.slug || "",
-    checkout_url: data?.checkout_url || "",
+    payment_status: data?.payment?.status || "",
+    checkout_url: data?.urls?.checkout || data?.checkout_url || "",
+    status: data?.status?.name || data?.status?.slug || "",
+    tracking_number: data?.shipping?.tracking_number || data?.tracking_number || "",
+    shipping_company: data?.shipping?.company || data?.shipment?.company?.name || "",
   };
 
   // Build items summary
@@ -246,7 +309,6 @@ async function sendMetaTemplate(
   vars: Record<string, string>
 ) {
   const components: any[] = [];
-  // Build body parameters from variables in order
   const bodyParams = Object.values(vars).filter(Boolean).map((v) => ({
     type: "text",
     text: v,
@@ -311,7 +373,7 @@ async function sendEvolutionMessage(config: any, phone: string, message: string)
 }
 
 // ─────────────────────────────────────────────
-// Existing handlers (unchanged)
+// Order Handlers
 // ─────────────────────────────────────────────
 async function handleOrder(supabase: any, orgId: string, integrationId: string, data: any, event: string) {
   const orderId = String(data.id);
@@ -445,6 +507,206 @@ async function handleOrderStatus(supabase: any, orgId: string, data: any) {
   console.log(`[salla] Order status updated: ${orderId} → ${newStatus}`);
 }
 
+async function handleOrderCancelled(supabase: any, orgId: string, data: any) {
+  const orderId = String(data.id);
+  await supabase.from("orders").update({
+    status: "cancelled",
+    cancelled_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }).eq("org_id", orgId).eq("external_id", orderId);
+  console.log(`[salla] Order cancelled: ${orderId}`);
+}
+
+async function handleOrderRefunded(supabase: any, orgId: string, data: any) {
+  const orderId = String(data.id);
+  await supabase.from("orders").update({
+    status: "refunded",
+    refunded_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }).eq("org_id", orgId).eq("external_id", orderId);
+  console.log(`[salla] Order refunded: ${orderId}`);
+}
+
+async function handleOrderDeleted(supabase: any, orgId: string, data: any) {
+  const orderId = String(data.id);
+  // Soft delete - mark as cancelled rather than removing data
+  await supabase.from("orders").update({
+    status: "cancelled",
+    cancelled_at: new Date().toISOString(),
+    notes: "تم حذف الطلب من المتجر",
+    updated_at: new Date().toISOString(),
+  }).eq("org_id", orgId).eq("external_id", orderId);
+  console.log(`[salla] Order deleted (soft): ${orderId}`);
+}
+
+async function handleOrderPaymentUpdated(supabase: any, orgId: string, data: any) {
+  const orderId = String(data.id);
+  const payment = data.payment || {};
+  await supabase.from("orders").update({
+    payment_status: payment.status || undefined,
+    payment_method: payment.method || payment.slug || undefined,
+    updated_at: new Date().toISOString(),
+  }).eq("org_id", orgId).eq("external_id", orderId);
+  console.log(`[salla] Order payment updated: ${orderId} → ${payment.status}`);
+}
+
+async function handleOrderProductsUpdated(supabase: any, orgId: string, integrationId: string, data: any) {
+  const orderId = String(data.id);
+  const { data: existingOrder } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("external_id", orderId)
+    .maybeSingle();
+
+  if (!existingOrder) {
+    console.log(`[salla] Order not found for products update: ${orderId}`);
+    return;
+  }
+
+  // Update amounts if provided
+  const amounts = data.amounts || data.total || {};
+  if (amounts) {
+    await supabase.from("orders").update({
+      subtotal: amounts.sub_total?.amount || amounts.subtotal || undefined,
+      total: amounts.total?.amount || amounts.amount || undefined,
+      discount_amount: amounts.discount?.amount || undefined,
+      updated_at: new Date().toISOString(),
+    }).eq("id", existingOrder.id);
+  }
+
+  // Re-sync items if provided
+  if (data.items && Array.isArray(data.items)) {
+    await supabase.from("order_items").delete().eq("order_id", existingOrder.id);
+    const items = data.items.map((item: any) => ({
+      order_id: existingOrder.id,
+      product_name: item.name || item.product?.name || "منتج",
+      product_sku: item.sku || item.product?.sku || null,
+      product_id: null,
+      quantity: item.quantity || 1,
+      unit_price: item.price?.amount || item.price || 0,
+      total_price: (item.price?.amount || item.price || 0) * (item.quantity || 1),
+      metadata: {
+        salla_product_id: item.product_id || item.id,
+        thumbnail: item.thumbnail || item.image?.url || null,
+        options: item.options || [],
+      },
+    }));
+
+    if (items.length > 0) {
+      for (const item of items) {
+        if (item.metadata.salla_product_id) {
+          const { data: prod } = await supabase
+            .from("products")
+            .select("id")
+            .eq("org_id", orgId)
+            .eq("external_id", String(item.metadata.salla_product_id))
+            .maybeSingle();
+          if (prod) item.product_id = prod.id;
+        }
+      }
+      await supabase.from("order_items").insert(items);
+    }
+  }
+
+  console.log(`[salla] Order products updated: ${orderId}`);
+}
+
+async function handleOrderFinancialUpdate(supabase: any, orgId: string, data: any, event: string) {
+  const orderId = String(data.id);
+  const amounts = data.amounts || data.total || {};
+  const updateData: any = { updated_at: new Date().toISOString() };
+
+  if (event === "order.coupon.updated") {
+    updateData.discount_amount = amounts.discount?.amount || amounts.discount || undefined;
+  }
+  if (amounts.total?.amount || amounts.amount) {
+    updateData.total = amounts.total?.amount || amounts.amount;
+  }
+  if (amounts.sub_total?.amount || amounts.subtotal) {
+    updateData.subtotal = amounts.sub_total?.amount || amounts.subtotal;
+  }
+
+  await supabase.from("orders").update(updateData).eq("org_id", orgId).eq("external_id", orderId);
+  console.log(`[salla] Order financial update (${event}): ${orderId}`);
+}
+
+// ─────────────────────────────────────────────
+// Shipment Handlers
+// ─────────────────────────────────────────────
+async function handleShipmentCreated(supabase: any, orgId: string, data: any, event: string) {
+  const orderId = String(data.order_id || data.id);
+  const shipment = data.shipment || data;
+  const trackingNumber = shipment.tracking_number || shipment.tracking_link || null;
+  const carrier = shipment.company?.name || shipment.shipping_company || null;
+
+  await supabase.from("orders").update({
+    shipment_tracking_number: trackingNumber,
+    shipment_carrier: carrier,
+    shipment_status: event.includes("creating") ? "processing" : "shipped",
+    shipped_at: event.includes("creating") ? undefined : new Date().toISOString(),
+    status: event.includes("creating") ? undefined : "shipped",
+    updated_at: new Date().toISOString(),
+  }).eq("org_id", orgId).eq("external_id", orderId);
+
+  console.log(`[salla] Shipment ${event}: order ${orderId}, tracking: ${trackingNumber}`);
+}
+
+async function handleShipmentCancelled(supabase: any, orgId: string, data: any) {
+  const orderId = String(data.order_id || data.id);
+  await supabase.from("orders").update({
+    shipment_status: "cancelled",
+    updated_at: new Date().toISOString(),
+  }).eq("org_id", orgId).eq("external_id", orderId);
+  console.log(`[salla] Shipment cancelled: order ${orderId}`);
+}
+
+async function handleShipmentUpdated(supabase: any, orgId: string, data: any) {
+  const orderId = String(data.order_id || data.id);
+  const shipment = data.shipment || data;
+  const trackingNumber = shipment.tracking_number || null;
+
+  await supabase.from("orders").update({
+    shipment_tracking_number: trackingNumber || undefined,
+    shipment_status: shipment.status || undefined,
+    updated_at: new Date().toISOString(),
+  }).eq("org_id", orgId).eq("external_id", orderId);
+  console.log(`[salla] Shipment updated: order ${orderId}`);
+}
+
+async function handleShipmentReturn(supabase: any, orgId: string, data: any, event: string) {
+  const orderId = String(data.order_id || data.id);
+  const isCancel = event.includes("cancelled");
+
+  if (isCancel) {
+    await supabase.from("orders").update({
+      shipment_status: "shipped",
+      updated_at: new Date().toISOString(),
+    }).eq("org_id", orgId).eq("external_id", orderId);
+  } else {
+    await supabase.from("orders").update({
+      shipment_status: "return_requested",
+      updated_at: new Date().toISOString(),
+    }).eq("org_id", orgId).eq("external_id", orderId);
+  }
+  console.log(`[salla] Shipment return ${event}: order ${orderId}`);
+}
+
+async function handleShippingAddressUpdated(supabase: any, orgId: string, data: any) {
+  const orderId = String(data.id);
+  const address = data.shipping?.address || data.address || {};
+  await supabase.from("orders").update({
+    customer_city: address.city || undefined,
+    customer_region: address.region || address.state || undefined,
+    customer_address: [address.street_number, address.block, address.district, address.zipcode].filter(Boolean).join(", ") || undefined,
+    updated_at: new Date().toISOString(),
+  }).eq("org_id", orgId).eq("external_id", orderId);
+  console.log(`[salla] Shipping address updated: order ${orderId}`);
+}
+
+// ─────────────────────────────────────────────
+// Customer, Cart, Product Handlers
+// ─────────────────────────────────────────────
 async function handleCustomer(supabase: any, orgId: string, data: any, event: string) {
   const phone = normalizePhone(data.mobile || data.phone || "");
   if (!phone) return;
@@ -488,7 +750,7 @@ async function handleAbandonedCart(supabase: any, orgId: string, integrationId: 
     customer_email: customer.email || null,
     total: total.amount || 0,
     currency: total.currency || "SAR",
-    checkout_url: data.checkout_url || null,
+    checkout_url: data.urls?.checkout || data.checkout_url || null,
     items: data.cart?.items || data.items || [],
     recovery_status: "pending",
     abandoned_at: data.created_at || new Date().toISOString(),
@@ -563,6 +825,9 @@ async function handleProductDeleted(supabase: any, orgId: string, data: any) {
   console.log(`[salla] Product deleted: ${productId}`);
 }
 
+// ─────────────────────────────────────────────
+// Utilities
+// ─────────────────────────────────────────────
 function normalizePhone(phone: string): string {
   if (!phone) return "";
   let p = phone.replace(/[\s\-\(\)]/g, "");
