@@ -3,6 +3,7 @@ import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckChec
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
+import ProductPicker from "./ProductPicker";
 import { supabase, invokeCloud } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Conversation, Message } from "@/data/mockData";
@@ -487,9 +488,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
-  const [catalogProducts, setCatalogProducts] = useState<Array<{ id: string; name: string; price?: string; currency?: string; image_url?: string; retailer_id?: string }>>([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
-  const [productSearch, setProductSearch] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1398,20 +1396,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             {/* Send Product from Catalog */}
             {!isNoteMode && !windowExpired && isMetaChannel && (
               <button
-                onClick={async () => {
-                  setShowProductPicker(true);
-                  if (catalogProducts.length === 0) {
-                    setLoadingProducts(true);
-                    try {
-                      const { data: catData } = await invokeCloud("whatsapp-catalog", { body: { action: "list_catalogs" } });
-                      if (catData?.catalogs?.[0]) {
-                        const { data: prodData } = await invokeCloud("whatsapp-catalog", { body: { action: "list_products", catalog_id: catData.catalogs[0].id, limit: 50 } });
-                        if (prodData?.products) setCatalogProducts(prodData.products);
-                      }
-                    } catch {}
-                    setLoadingProducts(false);
-                  }
-                }}
+                onClick={() => setShowProductPicker(true)}
                 className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
                 title="إرسال منتج"
               >
@@ -1670,64 +1655,22 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         onClose={onStatusChange}
       />
 
-      {/* Product Picker Dialog */}
-      <Dialog open={showProductPicker} onOpenChange={setShowProductPicker}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col" dir="rtl">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><ShoppingBag className="w-4 h-4 text-primary" /> إرسال منتج</DialogTitle></DialogHeader>
-          <Input
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            placeholder="بحث في المنتجات..."
-            className="bg-secondary border-0 text-sm"
-          />
-          <div className="flex-1 overflow-y-auto space-y-2 mt-2">
-            {loadingProducts ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-            ) : catalogProducts.filter(p => !productSearch || p.name?.toLowerCase().includes(productSearch.toLowerCase())).length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">لا توجد منتجات في الكتالوج</p>
-            ) : (
-              catalogProducts.filter(p => !productSearch || p.name?.toLowerCase().includes(productSearch.toLowerCase())).map((product) => (
-                <button
-                  key={product.id}
-                  onClick={async () => {
-                    try {
-                      await invokeCloud("whatsapp-send", {
-                        body: {
-                          phone: conversation.customerPhone,
-                          type: "product",
-                          catalog_id: product.id,
-                          product_retailer_id: product.retailer_id,
-                        },
-                      });
-                      toast.success(`تم إرسال المنتج: ${product.name}`);
-                      setShowProductPicker(false);
-                    } catch {
-                      toast.error("فشل إرسال المنتج");
-                    }
-                  }}
-                  className="w-full flex items-center gap-3 bg-secondary/50 hover:bg-secondary rounded-xl p-3 transition-colors text-right"
-                >
-                  {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                      <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{product.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {product.price && <span className="text-xs font-bold text-primary">{product.price} {product.currency || "SAR"}</span>}
-                      {product.retailer_id && <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">SKU: {product.retailer_id}</span>}
-                    </div>
-                  </div>
-                  <Send className="w-4 h-4 text-primary shrink-0" style={{ transform: "scaleX(-1)" }} />
-                </button>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Product Picker */}
+      <ProductPicker
+        open={showProductPicker}
+        onOpenChange={setShowProductPicker}
+        invokeCloud={invokeCloud}
+        onSendProduct={async (payload) => {
+          await invokeCloud("whatsapp-send", {
+            body: {
+              to: conversation.customerPhone,
+              conversation_id: conversation.id,
+              ...payload,
+            },
+          });
+          toast.success("تم إرسال المنتج بنجاح");
+        }}
+      />
 
       {/* Image Lightbox */}
       {lightboxSrc && (
