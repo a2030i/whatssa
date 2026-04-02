@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
 
@@ -139,7 +139,7 @@ const TemplateAnalytics = () => {
   useEffect(() => {
     (async () => {
       setIsLoading(true);
-      const { data, error } = await supabase.functions.invoke("whatsapp-catalog", {
+      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-catalog", {
         body: { action: "template_analytics" },
       });
       if (!error && data?.analytics) setAnalytics(data.analytics);
@@ -233,7 +233,7 @@ const TemplatesPage = () => {
     if (showRefreshState) setIsRefreshing(true);
     else setIsLoading(true);
 
-    const { data, error } = await supabase.functions.invoke("whatsapp-templates", {
+    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-templates", {
       body: { action: "list" },
     });
 
@@ -305,7 +305,7 @@ const TemplatesPage = () => {
     setIsSubmitting(true);
     const action = editingTemplate ? "edit" : "create";
 
-    const { data, error } = await supabase.functions.invoke("whatsapp-templates", {
+    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-templates", {
       body: {
         action,
         name: formData.name.trim(),
@@ -339,7 +339,7 @@ const TemplatesPage = () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
 
-    const { data, error } = await supabase.functions.invoke("whatsapp-templates", {
+    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-templates", {
       body: { action: "delete", name: deleteTarget.name },
     });
 

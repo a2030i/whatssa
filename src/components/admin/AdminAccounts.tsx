@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudSupabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -95,7 +95,7 @@ const AdminAccounts = () => {
     }
     setCreating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-create-user", {
+      const { data, error } = await cloudSupabase.functions.invoke("admin-create-user", {
         body: { email: newAccount.email, full_name: newAccount.full_name, org_name: newAccount.org_name },
       });
       if (error) throw error;
@@ -122,7 +122,7 @@ const AdminAccounts = () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-delete-org", {
+      const { data, error } = await cloudSupabase.functions.invoke("admin-delete-org", {
         body: { org_id: deleteTarget.id },
       });
       if (error) throw error;

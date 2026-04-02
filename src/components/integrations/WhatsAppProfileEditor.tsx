@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface Props {
@@ -76,7 +76,7 @@ const WhatsAppProfileEditor = ({ configId, channelType }: Props) => {
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-profile", {
+      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-profile", {
         body: { action: "get", config_id: configId },
       });
       if (error || !data?.success) {
@@ -129,7 +129,7 @@ const WhatsAppProfileEditor = ({ configId, channelType }: Props) => {
         profileData.name = displayName;
       }
 
-      const { data, error } = await supabase.functions.invoke("whatsapp-profile", {
+      const { data, error } = await cloudSupabase.functions.invoke("whatsapp-profile", {
         body: { action: "update", config_id: configId, profile_data: profileData },
       });
       if (error || !data?.success) {

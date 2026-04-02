@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudSupabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -95,7 +95,7 @@ const OrdersPage = () => {
   const loadLamhaCarriers = async () => {
     setLoadingCarriers(true);
     try {
-      const { data, error } = await supabase.functions.invoke("lamha-carriers", {
+      const { data, error } = await cloudSupabase.functions.invoke("lamha-carriers", {
         body: { org_id: orgId },
       });
       if (!error && data?.carriers) {
@@ -180,7 +180,7 @@ const OrdersPage = () => {
     }
     setSendingToLamha(orderId);
     try {
-      const { data, error } = await supabase.functions.invoke("lamha-create-shipment", {
+      const { data, error } = await cloudSupabase.functions.invoke("lamha-create-shipment", {
         body: {
           order_id: orderId,
           org_id: orgId,
@@ -211,7 +211,7 @@ const OrdersPage = () => {
 
   const printLamhaLabel = async (orderId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke("lamha-label", {
+      const { data, error } = await cloudSupabase.functions.invoke("lamha-label", {
         body: { order_id: orderId, org_id: orgId },
       });
       if (error) throw error;

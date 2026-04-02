@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ShoppingBag, Loader2, RefreshCw, Eye, ShoppingCart, Package, ExternalLink, QrCode, Plus, Trash2, Copy, Link } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudSupabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,11 +43,11 @@ export const CatalogSection = () => {
 
   const loadCatalogs = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase.functions.invoke("whatsapp-catalog", { body: { action: "list_catalogs" } });
+    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-catalog", { body: { action: "list_catalogs" } });
     if (!error && data?.catalogs) setCatalogs(data.catalogs);
     else if (data?.error) toast.error(data.error);
     
-    const { data: settings } = await supabase.functions.invoke("whatsapp-catalog", { body: { action: "get_commerce_settings" } });
+    const { data: settings } = await cloudSupabase.functions.invoke("whatsapp-catalog", { body: { action: "get_commerce_settings" } });
     if (settings?.settings) setCommerceSettings(settings.settings);
     setIsLoading(false);
   };
@@ -57,13 +57,13 @@ export const CatalogSection = () => {
   const loadProducts = async (catalog: Catalog) => {
     setSelectedCatalog(catalog);
     setShowProducts(true);
-    const { data, error } = await supabase.functions.invoke("whatsapp-catalog", { body: { action: "list_products", catalog_id: catalog.id } });
+    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-catalog", { body: { action: "list_products", catalog_id: catalog.id } });
     if (!error && data?.products) setProducts(data.products);
     else toast.error(data?.error || "تعذر جلب المنتجات");
   };
 
   const enableCatalog = async (catalogId: string) => {
-    const { data, error } = await supabase.functions.invoke("whatsapp-catalog", {
+    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-catalog", {
       body: { action: "update_commerce_settings", catalog_id: catalogId, is_cart_enabled: true, is_catalog_visible: true },
     });
     if (!error && data?.success) {
@@ -162,7 +162,7 @@ export const QRCodeSection = () => {
 
   const loadQR = async () => {
     setIsLoading(true);
-    const { data } = await supabase.functions.invoke("whatsapp-catalog", { body: { action: "list_qr" } });
+    const { data } = await cloudSupabase.functions.invoke("whatsapp-catalog", { body: { action: "list_qr" } });
     if (data?.qr_codes) setQrCodes(data.qr_codes);
     setIsLoading(false);
   };
@@ -171,7 +171,7 @@ export const QRCodeSection = () => {
 
   const createQR = async () => {
     setIsCreating(true);
-    const { data, error } = await supabase.functions.invoke("whatsapp-catalog", {
+    const { data, error } = await cloudSupabase.functions.invoke("whatsapp-catalog", {
       body: { action: "create_qr", prefill_message: newMessage },
     });
     if (!error && data?.qr) {
@@ -183,7 +183,7 @@ export const QRCodeSection = () => {
   };
 
   const deleteQR = async (qrId: string) => {
-    const { data } = await supabase.functions.invoke("whatsapp-catalog", { body: { action: "delete_qr", qr_id: qrId } });
+    const { data } = await cloudSupabase.functions.invoke("whatsapp-catalog", { body: { action: "delete_qr", qr_id: qrId } });
     if (data?.success) { toast.success("تم حذف QR"); loadQR(); }
     else toast.error(data?.error || "تعذر الحذف");
   };

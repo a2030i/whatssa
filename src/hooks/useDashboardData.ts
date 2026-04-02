@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudSupabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface WhatsAppStatus {
@@ -141,7 +141,7 @@ export const useDashboardData = (): DashboardData => {
 
       if (waData?.is_connected && waData?.id) {
         try {
-          const { data: statusData } = await supabase.functions.invoke("whatsapp-check-status", {
+          const { data: statusData } = await cloudSupabase.functions.invoke("whatsapp-check-status", {
             body: { config_id: waData.id },
           });
           if (statusData?.phone) {
