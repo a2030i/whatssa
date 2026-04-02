@@ -73,6 +73,7 @@ const AdminOverview = () => {
   const [recentOrgs, setRecentOrgs] = useState<any[]>([]);
   const [monthlyMessages, setMonthlyMessages] = useState<any[]>([]);
   const [walletStats, setWalletStats] = useState({ balance: 0, revenue: 0 });
+  const [infraStatus, setInfraStatus] = useState<InfraStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
