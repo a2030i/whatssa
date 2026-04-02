@@ -1415,7 +1415,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
                 title="إرسال منتج"
               >
-                <ShoppingCart className="w-4 h-4" />
+                <ShoppingBag className="w-4 h-4" />
               </button>
             )}
             {/* AI Suggest Replies */}
