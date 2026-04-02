@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
 
   try {
     switch (event) {
-      // ── Order lifecycle ──
+      // ── Order lifecycle (Partners API only) ──
       case "order.created":
       case "order.updated":
         await handleOrder(supabase, orgId, integrationId, data, event);
@@ -115,6 +115,11 @@ Deno.serve(async (req) => {
       case "order.coupon.updated":
       case "order.total.price.updated":
         await handleOrderFinancialUpdate(supabase, orgId, data, event);
+        break;
+
+      // ── Invoice (Merchant dashboard — best alternative for order tracking) ──
+      case "invoice.created":
+        await handleInvoiceCreated(supabase, orgId, integrationId, data);
         break;
 
       // ── Shipment events ──
@@ -143,11 +148,13 @@ Deno.serve(async (req) => {
       // ── Customer ──
       case "customer.created":
       case "customer.updated":
+      case "customer.login":
         await handleCustomer(supabase, orgId, data, event);
         break;
 
       // ── Cart ──
       case "abandoned.cart":
+      case "abandoned.cart.updated":
         await handleAbandonedCart(supabase, orgId, integrationId, data);
         break;
       case "abandoned.cart.purchased":
@@ -160,10 +167,23 @@ Deno.serve(async (req) => {
       case "product.price.updated":
       case "product.status.updated":
       case "product.image.updated":
+      case "product.option.updated":
+      case "product.variant.updated":
+      case "product.available":
         await handleProduct(supabase, orgId, integrationId, data, event);
         break;
       case "product.deleted":
         await handleProductDeleted(supabase, orgId, data);
+        break;
+      case "product.quantity.low":
+        await handleProductLowStock(supabase, orgId, data);
+        break;
+
+      // ── Other merchant events ──
+      case "coupon.applied":
+      case "review.added":
+        // These are tracked for notifications only, no DB action needed
+        console.log(`[salla-webhook] Event tracked for notifications: ${event}`);
         break;
 
       default:
@@ -198,30 +218,31 @@ async function sendEventNotification(supabase: any, integration: any, event: str
   const metadata = integration.metadata || {};
   const notifConfigs = metadata.event_notifications || {};
 
-  // Map events to notification keys
+  // Map event to notification key — direct match for merchant events
   let notifKey = event;
+
+  // Partners API events: map status changes to specific keys
   if (event === "order.status.updated") {
     const statusSlug = data?.status?.slug || data?.status?.name || "";
     const mapped = mapSallaOrderStatus(statusSlug);
-    if (mapped === "shipped") notifKey = "order.shipped";
-    else if (mapped === "delivered") notifKey = "order.delivered";
-    else if (mapped === "cancelled") notifKey = "order.cancelled";
-    else if (mapped === "refunded") notifKey = "order.refunded";
+    if (mapped === "shipped") notifKey = "shipment.created";
+    else if (mapped === "delivered") notifKey = "shipment.updated";
     else return;
   }
-  // Direct cancelled/refunded events from Salla
-  if (event === "order.cancelled") notifKey = "order.cancelled";
-  if (event === "order.refunded") notifKey = "order.refunded";
-  if (event === "order.payment.updated") notifKey = "order.payment.updated";
-  // Shipment events
-  if (event === "order.shipment.created" || event === "shipment.created") notifKey = "order.shipment.created";
-  if (event === "order.shipment.cancelled" || event === "shipment.cancelled") notifKey = "order.shipment.cancelled";
-  if (event === "order.shipment.return.created") notifKey = "order.shipment.return.created";
+
+  // Normalize shipment event names (order.shipment.* → shipment.*)
+  if (event === "order.shipment.creating") notifKey = "shipment.creating";
+  if (event === "order.shipment.created") notifKey = "shipment.created";
+  if (event === "order.shipment.cancelled") notifKey = "shipment.cancelled";
+
+  // Partners-only order events → try invoice.created config as fallback
+  if ((event === "order.created" || event === "order.updated") && !notifConfigs[notifKey]?.enabled) {
+    notifKey = "invoice.created";
+  }
 
   const cfg = notifConfigs[notifKey];
   if (!cfg?.enabled || !cfg?.channel_id) return;
 
-  // Get the WhatsApp config for the channel
   const { data: waConfig } = await supabase
     .from("whatsapp_config")
     .select("*")
@@ -234,7 +255,6 @@ async function sendEventNotification(supabase: any, integration: any, event: str
     return;
   }
 
-  // Get recipient phone
   const customer = data?.customer || {};
   const phone = normalizePhone(customer.mobile || customer.phone || data?.customer_phone || "");
   if (!phone) {
@@ -242,7 +262,6 @@ async function sendEventNotification(supabase: any, integration: any, event: str
     return;
   }
 
-  // Build variables
   const vars = buildVariables(notifKey, data);
   const channelType = waConfig.channel_type || "meta_api";
 
@@ -274,8 +293,13 @@ function buildVariables(event: string, data: any): Record<string, string> {
     payment_status: data?.payment?.status || "",
     checkout_url: data?.urls?.checkout || data?.checkout_url || "",
     status: data?.status?.name || data?.status?.slug || "",
-    tracking_number: data?.shipping?.tracking_number || data?.tracking_number || "",
-    shipping_company: data?.shipping?.company || data?.shipment?.company?.name || "",
+    tracking_number: data?.shipping?.tracking_number || data?.tracking_number || data?.shipment?.tracking_number || "",
+    shipping_company: data?.shipping?.company || data?.shipment?.company?.name || data?.shipment?.courier_name || "",
+    product_name: data?.name || data?.product?.name || "",
+    price: String(data?.price?.amount || data?.price || ""),
+    quantity: String(data?.quantity || data?.stock_quantity || ""),
+    coupon_code: data?.code || data?.coupon?.code || "",
+    rating: String(data?.rating || data?.stars || ""),
   };
 
   // Build items summary
@@ -288,6 +312,7 @@ function buildVariables(event: string, data: any): Record<string, string> {
     if (items.length > 5) vars.items_summary += ` و ${items.length - 5} أخرى`;
   } else {
     vars.items_summary = "";
+  }
   }
 
   return vars;
@@ -826,8 +851,99 @@ async function handleProductDeleted(supabase: any, orgId: string, data: any) {
 }
 
 // ─────────────────────────────────────────────
-// Utilities
+// Invoice Handler (Merchant dashboard alternative for order tracking)
 // ─────────────────────────────────────────────
+async function handleInvoiceCreated(supabase: any, orgId: string, integrationId: string, data: any) {
+  // invoice.created contains order data — use it to create/update the order
+  const orderId = String(data.order_id || data.id);
+  const customer = data.customer || {};
+  const amounts = data.amounts || data.total || {};
+
+  let customerId: string | null = null;
+  const customerName = customer.first_name ? `${customer.first_name} ${customer.last_name || ""}`.trim() : customer.name || null;
+
+  if (customer.mobile || customer.phone) {
+    const phone = normalizePhone(customer.mobile || customer.phone);
+    const { data: existing } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("phone", phone)
+      .maybeSingle();
+
+    if (existing) {
+      customerId = existing.id;
+      await supabase.from("customers").update({
+        name: customerName || undefined,
+        email: customer.email || undefined,
+        lifecycle_stage: "customer",
+        updated_at: new Date().toISOString(),
+      }).eq("id", existing.id);
+    } else {
+      const { data: created } = await supabase
+        .from("customers")
+        .insert({
+          org_id: orgId,
+          phone,
+          name: customerName,
+          email: customer.email || null,
+          source: "salla",
+          lifecycle_stage: "customer",
+        })
+        .select("id")
+        .single();
+      if (created) customerId = created.id;
+    }
+  }
+
+  const orderData: any = {
+    org_id: orgId,
+    external_id: orderId,
+    order_number: data.reference_id ? String(data.reference_id) : orderId,
+    customer_id: customerId,
+    customer_name: customerName,
+    customer_phone: normalizePhone(customer.mobile || customer.phone || ""),
+    customer_email: customer.email || null,
+    total: amounts.total?.amount || amounts.amount || data.total || 0,
+    currency: amounts.total?.currency || amounts.currency || "SAR",
+    status: "pending",
+    payment_status: data.payment?.status || "unpaid",
+    source: "salla",
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: existingOrder } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("external_id", orderId)
+    .maybeSingle();
+
+  if (existingOrder) {
+    await supabase.from("orders").update(orderData).eq("id", existingOrder.id);
+  } else {
+    await supabase.from("orders").insert(orderData);
+  }
+
+  console.log(`[salla] Invoice created (order tracked): ${orderId}`);
+}
+
+// ─────────────────────────────────────────────
+// Product Low Stock Handler
+// ─────────────────────────────────────────────
+async function handleProductLowStock(supabase: any, orgId: string, data: any) {
+  const productId = String(data.id);
+  const quantity = data.quantity || data.stock_quantity || 0;
+
+  await supabase
+    .from("products")
+    .update({ stock_quantity: quantity, updated_at: new Date().toISOString() })
+    .eq("org_id", orgId)
+    .eq("external_id", productId);
+
+  console.log(`[salla] Product low stock: ${productId} (qty: ${quantity})`);
+}
+
 function normalizePhone(phone: string): string {
   if (!phone) return "";
   let p = phone.replace(/[\s\-\(\)]/g, "");
