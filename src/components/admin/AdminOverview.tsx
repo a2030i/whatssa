@@ -208,12 +208,27 @@ const AdminOverview = () => {
   const estimatedDailyCapacity = sysStats ? Math.round(sysStats.avg_messages_per_hour_today * 24) : 0;
   const dbUsagePct = sysStats ? Math.min((sysStats.db_size_mb / 500) * 100, 100) : 0;
 
-  if (loading || !sysStats) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center text-muted-foreground">
           <Activity className="w-8 h-8 mx-auto mb-2 animate-pulse" />
           <p className="text-sm">جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!sysStats) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center text-muted-foreground">
+          <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-amber-500" />
+          <p className="text-sm">تعذّر تحميل إحصائيات النظام</p>
+          <p className="text-xs mt-1">تأكد من وجود دوال RPC في القاعدة الخارجية</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => { setLoading(true); load(); }}>
+            <RefreshCw className="w-3 h-3 ml-1" /> إعادة المحاولة
+          </Button>
         </div>
       </div>
     );
