@@ -38,7 +38,7 @@ const SHIPMENT_STATUS_MAP: Record<string, string> = {
 };
 
 const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssignTeam }: CustomerInfoPanelProps) => {
-  const { orgId } = useAuth();
+  const { orgId, isEcommerce } = useAuth();
   const [notes, setNotes] = useState(conversation.notes || "");
   const [editingNotes, setEditingNotes] = useState(false);
   const [customer, setCustomer] = useState<any>(null);
@@ -180,21 +180,23 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   );
 
   return (
-    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-hidden max-h-full">
+    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-hidden">
       <Tabs defaultValue="info" className="flex flex-col h-full">
-        <TabsList className="mx-2 mt-2 mb-0 grid grid-cols-3">
+        <TabsList className={`mx-2 mt-2 mb-0 grid ${isEcommerce ? "grid-cols-3" : "grid-cols-2"}`}>
           <TabsTrigger value="info" className="text-xs">معلومات</TabsTrigger>
-          <TabsTrigger value="orders" className="text-xs gap-1">
-            طلبات
-            {orders.length > 0 && (
-              <span className="bg-primary/15 text-primary text-[9px] px-1 rounded-full font-bold">{orders.length}</span>
-            )}
-          </TabsTrigger>
+          {isEcommerce && (
+            <TabsTrigger value="orders" className="text-xs gap-1">
+              طلبات
+              {orders.length > 0 && (
+                <span className="bg-primary/15 text-primary text-[9px] px-1 rounded-full font-bold">{orders.length}</span>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="notes" className="text-xs">ملاحظات</TabsTrigger>
         </TabsList>
 
         {/* Info Tab */}
-        <TabsContent value="info" className="flex-1 flex flex-col overflow-hidden mt-0 min-h-0">
+        <TabsContent value="info" className="flex-1 flex flex-col overflow-y-auto mt-0">
       <div className="p-4 border-b border-border text-center">
         <div className="relative inline-block">
           {conversation.profilePic ? (
@@ -217,7 +219,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         )}
       </div>
 
-      <div className="overflow-y-auto p-4 space-y-1">
+      <div className="p-4 space-y-1">
         {/* Contact Info */}
         <SectionHeader title="معلومات التواصل" icon={Phone} sectionKey="contact" />
         {sections.contact && (
