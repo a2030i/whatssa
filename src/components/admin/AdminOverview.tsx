@@ -356,55 +356,78 @@ const AdminOverview = () => {
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-primary" />
             <h3 className="font-semibold text-sm">صحة البنية التحتية</h3>
-            <Badge variant="outline" className="text-[9px] mr-auto">
-              {infraStatus ? `تشغيل ${infraStatus.uptime_hours} ساعة` : "..."}
-            </Badge>
+            {infraStatus && (
+              <Badge variant="outline" className={`text-[9px] mr-auto ${
+                getOverallHealth() === "critical" ? "border-destructive/50 text-destructive" :
+                getOverallHealth() === "warning" ? "border-amber-500/50 text-amber-600" :
+                "border-emerald-500/50 text-emerald-600"
+              }`}>
+                {getOverallHealth() === "critical" ? "⚠️ يحتاج انتباه" :
+                 getOverallHealth() === "warning" ? "🟡 مراقبة" :
+                 "✅ سليم"}
+              </Badge>
+            )}
           </div>
 
           {infraStatus ? (
             <div className="space-y-3">
-              {/* Database */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Database className="w-3 h-3" /> قاعدة البيانات</span>
-                  <span className="text-[11px] font-bold">{infraStatus.db_size_mb} / {infraStatus.db_max_mb} MB</span>
-                </div>
-                <Progress value={(infraStatus.db_size_mb / infraStatus.db_max_mb) * 100} className="h-2" />
-              </div>
+              {/* Resource bars with color-coded status */}
+              {[
+                { label: "قاعدة البيانات", icon: Database, used: infraStatus.db_size_mb, max: infraStatus.db_max_mb, unit: "MB", upgradeHint: "ترقية باقة Supabase أو أرشفة الرسائل القديمة" },
+                { label: "التخزين", icon: FileArchive, used: infraStatus.storage_size_mb, max: infraStatus.storage_max_mb, unit: "MB", upgradeHint: "ترقية مساحة التخزين أو ضغط الوسائط" },
+                { label: "الاتصالات النشطة", icon: Globe, used: infraStatus.active_connections, max: infraStatus.max_connections, unit: "", upgradeHint: "ترقية باقة Supabase لزيادة عدد الاتصالات المتزامنة" },
+              ].map((res) => {
+                const pct = (res.used / res.max) * 100;
+                const status = pct > 80 ? "critical" : pct > 60 ? "warning" : "healthy";
+                return (
+                  <div key={res.label}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        <res.icon className="w-3 h-3" /> {res.label}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold">
+                          {typeof res.used === 'number' && res.used % 1 !== 0 ? res.used.toFixed(1) : res.used} / {res.max} {res.unit}
+                        </span>
+                        <span className={`text-[9px] font-bold ${
+                          status === "critical" ? "text-destructive" :
+                          status === "warning" ? "text-amber-600" :
+                          "text-emerald-600"
+                        }`}>
+                          {Math.round(pct)}%
+                        </span>
+                      </div>
+                    </div>
+                    <Progress value={pct} className={`h-2 ${
+                      status === "critical" ? "[&>div]:bg-destructive" :
+                      status === "warning" ? "[&>div]:bg-amber-500" : ""
+                    }`} />
+                    {status !== "healthy" && (
+                      <p className={`text-[9px] mt-0.5 ${
+                        status === "critical" ? "text-destructive" : "text-amber-600"
+                      }`}>
+                        💡 {res.upgradeHint}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
 
-              {/* Storage */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><FileArchive className="w-3 h-3" /> التخزين</span>
-                  <span className="text-[11px] font-bold">{infraStatus.storage_size_mb} / {infraStatus.storage_max_mb} MB</span>
+              {/* Quick stats row */}
+              <div className="flex items-center justify-between bg-secondary/30 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-4">
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> {infraStatus.auth_users} مستخدم
+                  </span>
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Table2 className="w-3 h-3" /> {infraStatus.total_tables} جدول
+                  </span>
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Layers className="w-3 h-3" /> {infraStatus.total_indexes} فهرس
+                  </span>
                 </div>
-                <Progress value={(infraStatus.storage_size_mb / infraStatus.storage_max_mb) * 100} className="h-2" />
-              </div>
-
-              {/* Connections */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Globe className="w-3 h-3" /> الاتصالات النشطة</span>
-                  <span className="text-[11px] font-bold">{infraStatus.active_connections} / {infraStatus.max_connections}</span>
-                </div>
-                <Progress value={(infraStatus.active_connections / infraStatus.max_connections) * 100} className="h-2" />
-              </div>
-
-              {/* Auth Users */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Lock className="w-3 h-3" /> مستخدمي المصادقة</span>
-                  <span className="text-[11px] font-bold">{infraStatus.auth_users}</span>
-                </div>
-              </div>
-
-              {/* Tables & Indexes */}
-              <div className="flex items-center gap-4">
                 <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <Table2 className="w-3 h-3" /> {infraStatus.total_tables} جدول
-                </span>
-                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <Layers className="w-3 h-3" /> {infraStatus.total_indexes} فهرس
+                  <Clock className="w-3 h-3" /> {infraStatus.uptime_hours} ساعة تشغيل
                 </span>
               </div>
             </div>
@@ -421,33 +444,70 @@ const AdminOverview = () => {
             </div>
           )}
 
-          {/* Upgrade recommendation */}
-          <div className={`rounded-lg p-2.5 ${
-            infraStatus && (infraStatus.db_size_mb / infraStatus.db_max_mb) > 0.6
-              ? "bg-amber-500/10 border border-amber-500/20"
-              : "bg-muted/50"
-          }`}>
-            <p className="text-[10px] font-bold mb-1">
-              {infraStatus && (infraStatus.db_size_mb / infraStatus.db_max_mb) > 0.8
-                ? "🔴 يجب الترقية فوراً"
-                : infraStatus && (infraStatus.db_size_mb / infraStatus.db_max_mb) > 0.6
-                  ? "🟡 خطط للترقية"
-                  : "💡 توصية التوسع"
-              }
-            </p>
-            <p className="text-[9px] text-muted-foreground leading-relaxed">
-              {infraStatus && (infraStatus.db_size_mb / infraStatus.db_max_mb) > 0.8
-                ? `قاعدة البيانات بلغت ${Math.round((infraStatus.db_size_mb / infraStatus.db_max_mb) * 100)}% — قم بترقية الباقة لتجنب توقف الخدمة`
-                : infraStatus && (infraStatus.db_size_mb / infraStatus.db_max_mb) > 0.6
-                  ? `استهلاك ${Math.round((infraStatus.db_size_mb / infraStatus.db_max_mb) * 100)}% — يُنصح بالتخطيط للترقية خلال الشهر القادم`
-                  : sysStats.messages_today > 50000
-                    ? "⚠️ تحتاج Queue System + Workers مخصصة فوراً"
-                    : sysStats.messages_today > 10000
-                      ? "📈 فكّر في إضافة Batch Processing للحملات"
-                      : "✅ النظام يعمل بأريحية تامة"
-              }
-            </p>
-          </div>
+          {/* Upgrade Action Card */}
+          {infraStatus && (() => {
+            const dbPct = (infraStatus.db_size_mb / infraStatus.db_max_mb) * 100;
+            const storagePct = (infraStatus.storage_size_mb / infraStatus.storage_max_mb) * 100;
+            const connPct = (infraStatus.active_connections / infraStatus.max_connections) * 100;
+            const maxPct = Math.max(dbPct, storagePct, connPct);
+            const isCritical = maxPct > 80;
+            const isWarning = maxPct > 60;
+
+            return (
+              <div className={`rounded-lg p-3 border ${
+                isCritical
+                  ? "bg-destructive/5 border-destructive/30"
+                  : isWarning
+                    ? "bg-amber-500/5 border-amber-500/20"
+                    : "bg-emerald-500/5 border-emerald-500/20"
+              }`}>
+                <div className="flex items-start gap-2">
+                  {isCritical ? (
+                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                  ) : isWarning ? (
+                    <ArrowUp className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <Shield className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p className={`text-[11px] font-bold ${
+                      isCritical ? "text-destructive" : isWarning ? "text-amber-700" : "text-emerald-700"
+                    }`}>
+                      {isCritical
+                        ? "يجب ترقية الباقة فوراً"
+                        : isWarning
+                          ? "خطط للترقية قريباً"
+                          : "النظام يعمل بأريحية"
+                      }
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                      {isCritical
+                        ? `أعلى استهلاك: ${Math.round(maxPct)}% — ${dbPct > 80 ? "قاعدة البيانات" : storagePct > 80 ? "التخزين" : "الاتصالات"} تحتاج ترقية عاجلة. ادخل لوحة تحكم Supabase → Settings → Add-ons لترقية الموارد.`
+                        : isWarning
+                          ? `أعلى استهلاك: ${Math.round(maxPct)}% — يُنصح بمراقبة النمو وترقية الباقة خلال الشهر القادم.`
+                          : sysStats.messages_today > 10000
+                            ? "حجم الرسائل كبير. فكّر في إضافة أرشفة تلقائية للرسائل القديمة."
+                            : "جميع الموارد ضمن الحدود الآمنة. لا حاجة لترقية حالياً."
+                      }
+                    </p>
+                    {isCritical && (
+                      <div className="mt-2 p-2 bg-background/50 rounded text-[9px] text-muted-foreground">
+                        <p className="font-bold mb-1">خطوات الترقية:</p>
+                        <ol className="list-decimal list-inside space-y-0.5">
+                          <li>ادخل على <span className="font-bold">supabase.com/dashboard</span></li>
+                          <li>اختر المشروع → <span className="font-bold">Settings → Billing</span></li>
+                          <li>اضغط <span className="font-bold">Change plan</span> أو أضف Add-ons</li>
+                          {dbPct > 80 && <li>ارفع حجم قاعدة البيانات (Database Size)</li>}
+                          {storagePct > 80 && <li>ارفع مساحة التخزين (Storage)</li>}
+                          {connPct > 80 && <li>ارفع عدد الاتصالات (Connection Pooling)</li>}
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
