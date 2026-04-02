@@ -37,6 +37,7 @@ import CustomPlanPage from "./pages/CustomPlanPage";
 import WhatsAppFlowsPage from "./pages/WhatsAppFlowsPage";
 import TrackingPage from "./pages/TrackingPage";
 import StoreAnalyticsPage from "./pages/StoreAnalyticsPage";
+import ConversationAnalyticsPage from "./pages/ConversationAnalyticsPage";
 import WarehousesPage from "./pages/WarehousesPage";
 import { Loader2 } from "lucide-react";
 
@@ -114,6 +115,7 @@ const AppRoutes = () => {
       <Route path="/abandoned-carts" element={<ProtectedRoute><AppLayout><AbandonedCartsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/store-analytics" element={<ProtectedRoute><AppLayout><StoreAnalyticsPage /></AppLayout></ProtectedRoute>} />
       {/* <Route path="/warehouses" element={<ProtectedRoute><AppLayout><WarehousesPage /></AppLayout></ProtectedRoute>} /> */}{/* Hidden until Lamha integration is complete */}
+      <Route path="/conversation-analytics" element={<MetaApiRoute><AppLayout><ConversationAnalyticsPage /></AppLayout></MetaApiRoute>} />
       <Route path="/reports" element={<ProtectedRoute><AppLayout><ReportsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/api-docs" element={<ProtectedRoute><AppLayout><ApiDocsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/checkout" element={<ProtectedRoute><AppLayout><CheckoutPage /></AppLayout></ProtectedRoute>} />
