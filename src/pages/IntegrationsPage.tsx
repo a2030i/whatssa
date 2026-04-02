@@ -786,9 +786,32 @@ const IntegrationsPage = () => {
                     <QrCode className="w-7 h-7 text-warning" />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-bold text-sm">{config.channel_label || config.business_name || "واتساب ويب"}</h3>
+                    {editingLabelId === config.id ? (
+                      <div className="flex items-center gap-1 justify-center">
+                        <Input
+                          value={editingLabelText}
+                          onChange={(e) => setEditingLabelText(e.target.value)}
+                          className="h-7 text-sm text-center w-32"
+                          placeholder="اسم القناة"
+                          autoFocus
+                          onKeyDown={(e) => { if (e.key === "Enter") saveChannelLabel(config.id); if (e.key === "Escape") setEditingLabelId(null); }}
+                        />
+                        <button onClick={() => saveChannelLabel(config.id)} className="text-success hover:text-success/80"><Check className="w-4 h-4" /></button>
+                        <button onClick={() => setEditingLabelId(null)} className="text-destructive hover:text-destructive/80"><X className="w-4 h-4" /></button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 justify-center group">
+                        <h3 className="font-bold text-sm">{config.channel_label || config.business_name || "واتساب ويب"}</h3>
+                        <button
+                          onClick={() => { setEditingLabelId(config.id); setEditingLabelText(config.channel_label || ""); }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground font-mono" dir="ltr">
-                      {config.display_phone || config.business_name || config.evolution_instance_name || "الرقم قيد المزامنة"}
+                      {config.display_phone || "الرقم قيد المزامنة"}
                     </p>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
