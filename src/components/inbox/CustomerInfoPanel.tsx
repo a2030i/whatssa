@@ -180,7 +180,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   );
 
   return (
-    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-hidden">
+    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-hidden max-h-full">
       <Tabs defaultValue="info" className="flex flex-col h-full">
         <TabsList className="mx-2 mt-2 mb-0 grid grid-cols-3">
           <TabsTrigger value="info" className="text-xs">معلومات</TabsTrigger>
@@ -194,7 +194,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         </TabsList>
 
         {/* Info Tab */}
-        <TabsContent value="info" className="flex-1 flex flex-col overflow-hidden mt-0">
+        <TabsContent value="info" className="flex-1 flex flex-col overflow-hidden mt-0 min-h-0">
       <div className="p-4 border-b border-border text-center">
         <div className="relative inline-block">
           {conversation.profilePic ? (
@@ -217,7 +217,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-1">
+      <div className="overflow-y-auto p-4 space-y-1">
         {/* Contact Info */}
         <SectionHeader title="معلومات التواصل" icon={Phone} sectionKey="contact" />
         {sections.contact && (
