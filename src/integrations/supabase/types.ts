@@ -3242,6 +3242,7 @@ export type Database = {
     }
     Functions: {
       admin_get_hourly_messages: { Args: { _date?: string }; Returns: Json }
+      admin_get_infra_status: { Args: never; Returns: Json }
       admin_get_system_stats: { Args: never; Returns: Json }
       admin_get_top_orgs_usage: { Args: { _limit?: number }; Returns: Json }
       check_channel_rate_limit: { Args: { _channel_id: string }; Returns: Json }
