@@ -1260,8 +1260,55 @@ serve(async (req) => {
       }
     }
 
+    // ── Handle MESSAGES_EDITED (customer edited their message) ──
+    if (event === "MESSAGES_EDITED" || event === "messages.edited") {
+      const editData = body.data || body;
+      const editKey = editData?.key || {};
+      const waMessageId = editKey?.id || editData?.messageId;
+      const editedContent =
+        editData?.editedMessage?.conversation ||
+        editData?.editedMessage?.extendedTextMessage?.text ||
+        editData?.message?.conversation ||
+        editData?.message?.extendedTextMessage?.text ||
+        editData?.newBody ||
+        editData?.editedMessage ||
+        "";
+
+      const editedText = typeof editedContent === "string" ? editedContent : JSON.stringify(editedContent);
+
+      if (waMessageId && editedText) {
+        const { data: existingMsg } = await supabase
+          .from("messages")
+          .select("id, content, metadata")
+          .eq("wa_message_id", waMessageId)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingMsg) {
+          const meta = (existingMsg.metadata as Record<string, any>) || {};
+          await supabase.from("messages").update({
+            content: editedText,
+            metadata: {
+              ...meta,
+              edited: true,
+              edited_at: new Date().toISOString(),
+              original_content: meta.original_content || existingMsg.content,
+            },
+          }).eq("id", existingMsg.id);
+
+          await logToSystem(supabase, "info", `رسالة معدلة من العميل`, {
+            wa_message_id: waMessageId, new_text: editedText.slice(0, 100),
+          }, orgId);
+        } else {
+          await logToSystem(supabase, "warn", `رسالة معدلة لم يتم العثور عليها`, {
+            wa_message_id: waMessageId,
+          }, orgId);
+        }
+      }
+    }
+
     // ── Handle Reactions (v2.3.7: reactions come inside MESSAGES_UPSERT, no separate event) ──
-    if (event === "MESSAGES_REACTION" || event === "messages.reaction" || event === "MESSAGES_EDITED") {
+    if (event === "MESSAGES_REACTION" || event === "messages.reaction") {
       const reactionData = body.data || body;
       const reactionKey = reactionData?.key || {};
       const waMessageId = reactionKey?.id || reactionData?.messageId;
@@ -1282,7 +1329,6 @@ serve(async (req) => {
           let reactions: Array<{ emoji: string; fromMe: boolean; timestamp?: string }> = meta.reactions || [];
 
           if (emoji) {
-            // Add or update reaction
             const existingIdx = reactions.findIndex(r => r.fromMe === fromMe);
             if (existingIdx >= 0) {
               reactions[existingIdx] = { emoji, fromMe, timestamp: new Date().toISOString() };
@@ -1290,7 +1336,6 @@ serve(async (req) => {
               reactions.push({ emoji, fromMe, timestamp: new Date().toISOString() });
             }
           } else {
-            // Empty emoji = remove reaction
             reactions = reactions.filter(r => r.fromMe !== fromMe);
           }
 
