@@ -223,16 +223,27 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             </button>
           )}
           {msg.waMessageId && conversation.channelType === "evolution" && (
-            <Popover>
+            <Popover open={reactionPickerOpen} onOpenChange={setReactionPickerOpen}>
               <PopoverTrigger asChild>
-                <button className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="تفاعل">
+                <button
+                  type="button"
+                  className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent"
+                  title="تفاعل"
+                >
                   <Smile className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" side="top">
-                <div className="flex gap-1">
+              <PopoverContent className="w-auto p-2" side="top" align="center" style={{ pointerEvents: "auto" }}>
+                <div className="flex items-center gap-1">
                   {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
-                    <button key={emoji} className="text-lg hover:scale-125 transition-transform" onClick={() => handleReaction(emoji)}>{emoji}</button>
+                    <button
+                      key={emoji}
+                      type="button"
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-lg transition-transform hover:scale-110 hover:bg-accent active:scale-100"
+                      onClick={() => handleReaction(emoji)}
+                    >
+                      {emoji}
+                    </button>
                   ))}
                 </div>
               </PopoverContent>
