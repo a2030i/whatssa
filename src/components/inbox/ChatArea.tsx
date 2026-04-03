@@ -455,7 +455,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 <>
                   {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} isAgent={msg.sender === "agent"} onImageClick={onImageClick} />}
                   {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
-                    <p className="whitespace-pre-wrap">
+                    <p className="whitespace-pre-wrap leading-[1.65]">
                       {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
                         part.startsWith("@") ? (
                           <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{part}</span>
