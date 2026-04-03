@@ -1071,6 +1071,66 @@ serve(async (req) => {
                     }
                   }
                 }
+
+                // ── AI Auto-Reply (only if no automation rule matched) ──
+                if (!matchedRule) {
+                  try {
+                    const aiResp = await supabase.functions.invoke("ai-auto-reply", {
+                      body: {
+                        conversation_id: conversation.id,
+                        customer_message: content,
+                        org_id: orgId,
+                      },
+                    });
+                    const aiData = aiResp.data;
+                    if (aiData?.reply && !aiData?.skip) {
+                      const { data: waConfig } = await supabase
+                        .from("whatsapp_config")
+                        .select("phone_number_id, access_token")
+                        .eq("org_id", orgId)
+                        .eq("is_connected", true)
+                        .limit(1)
+                        .maybeSingle();
+
+                      if (waConfig) {
+                        const sendResp = await fetch(`https://graph.facebook.com/v21.0/${waConfig.phone_number_id}/messages`, {
+                          method: "POST",
+                          headers: {
+                            Authorization: `Bearer ${waConfig.access_token}`,
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            messaging_product: "whatsapp",
+                            to: customerPhone,
+                            type: "text",
+                            text: { body: aiData.reply },
+                          }),
+                        });
+                        const sendResult = await sendResp.json();
+                        if (sendResp.ok) {
+                          await supabase.from("messages").insert({
+                            conversation_id: conversation.id,
+                            wa_message_id: sendResult.messages?.[0]?.id || null,
+                            sender: "agent", message_type: "text",
+                            content: aiData.reply, status: "sent",
+                            metadata: { ai_generated: true },
+                          });
+                          await supabase.from("conversations").update({
+                            last_message: aiData.reply,
+                            last_message_at: new Date().toISOString(),
+                          }).eq("id", conversation.id);
+                          await logToSystem(supabase, "info", "رد AI تلقائي مرسل (Meta)", {
+                            conversation_id: conversation.id,
+                          }, orgId);
+                        }
+                      }
+                    }
+                  } catch (aiErr) {
+                    await logToSystem(supabase, "warn", "فشل AI auto-reply (Meta)", {
+                      error: (aiErr as Error).message,
+                    }, orgId);
+                  }
+                }
               }
             }
           }
