@@ -143,6 +143,50 @@ export type Database = {
           },
         ]
       }
+      ai_knowledge_base: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          org_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          org_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          org_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_knowledge_base_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_provider_configs: {
         Row: {
           api_key: string
@@ -183,6 +227,64 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ai_provider_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_reply_feedback: {
+        Row: {
+          ai_response: string
+          conversation_id: string | null
+          corrected_response: string | null
+          created_at: string | null
+          feedback_by: string | null
+          feedback_type: string
+          id: string
+          message_id: string | null
+          org_id: string
+        }
+        Insert: {
+          ai_response: string
+          conversation_id?: string | null
+          corrected_response?: string | null
+          created_at?: string | null
+          feedback_by?: string | null
+          feedback_type?: string
+          id?: string
+          message_id?: string | null
+          org_id: string
+        }
+        Update: {
+          ai_response?: string
+          conversation_id?: string | null
+          corrected_response?: string | null
+          created_at?: string | null
+          feedback_by?: string | null
+          feedback_type?: string
+          id?: string
+          message_id?: string | null
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_reply_feedback_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_reply_feedback_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_reply_feedback_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
