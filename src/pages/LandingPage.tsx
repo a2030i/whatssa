@@ -87,10 +87,9 @@ const LandingPage = () => {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
-              <a href="#showcase">
+              <a href="#features">
                 <Button variant="outline" size="lg" className="gap-2 text-base px-8 h-13 rounded-xl">
-                  <Play className="w-4 h-4" />
-                  شاهد المنصة
+                  تعرّف على المميزات
                 </Button>
               </a>
             </div>
