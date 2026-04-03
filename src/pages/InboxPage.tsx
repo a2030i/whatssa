@@ -40,6 +40,7 @@ const InboxPage = () => {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [newConvOpen, setNewConvOpen] = useState(false);
+  const [mobileCustomerInfoOpen, setMobileCustomerInfoOpen] = useState(false);
   const selectedIdRef = useRef<string | null>(null);
 
   const isMobile = useIsMobile();
