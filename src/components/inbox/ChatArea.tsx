@@ -451,7 +451,9 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             {msg.type !== "location" && msg.type !== "contacts" && msg.type !== "sticker" && msg.type !== "poll" && (() => {
               const textMediaUrl = getStorageUrlFromText(msg.text);
               const mediaUrl = msg.mediaUrl || textMediaUrl;
-              const textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
+              let textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
+              // Hide placeholder content like [audio], [image], [video], [document]
+              if (/^\[(audio|image|video|document|sticker)\]$/i.test(textWithoutUrl)) textWithoutUrl = "";
               return (
                 <>
                   {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} isAgent={msg.sender === "agent"} onImageClick={onImageClick} />}
