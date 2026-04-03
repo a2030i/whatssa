@@ -402,6 +402,14 @@ serve(async (req) => {
     const challenge = url.searchParams.get("hub.challenge");
 
     if (mode === "subscribe" && token) {
+      // Check against env fallback first (for new app setup)
+      const envVerifyToken = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN");
+      if (envVerifyToken && token === envVerifyToken) {
+        await logToSystem(supabase, "info", "تم التحقق من Webhook بنجاح (env)", { mode });
+        return new Response(challenge, { status: 200 });
+      }
+
+      // Then check against stored channel tokens
       const { data: config } = await supabase
         .from("whatsapp_config")
         .select("webhook_verify_token")
