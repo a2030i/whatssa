@@ -1596,39 +1596,61 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </DialogContent>
       </Dialog>
 
-      {/* Template Variable Fill Dialog */}
+      {/* Template Variable Fill Dialog - WhatsApp Style Preview */}
       <Dialog open={!!selectedTemplate} onOpenChange={() => setSelectedTemplate(null)}>
         <DialogContent className="max-w-md" dir="rtl">
-          <DialogHeader><DialogTitle>تعبئة بيانات القالب</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>معاينة وإرسال القالب</DialogTitle></DialogHeader>
           {selectedTemplate && (
             <div className="space-y-4 mt-2">
-              <div className="bg-secondary rounded-xl p-4 space-y-2">
+              {/* WhatsApp-style preview card */}
+              <div className="bg-[#e7fed6] dark:bg-[#025c4c] rounded-xl p-4 shadow-sm space-y-2 relative">
+                <div className="absolute top-2 left-2">
+                  <Badge variant="outline" className="text-[9px] border-0 bg-black/10 text-black/60 dark:bg-white/10 dark:text-white/60">معاينة</Badge>
+                </div>
                 {(() => { const { header, text } = fillTemplateBody(selectedTemplate, templateVars); return (
                   <>
-                    {header && <p className="font-bold text-sm">{header}</p>}
-                    <p className="text-sm whitespace-pre-wrap">{text}</p>
-                    {selectedTemplate.footer && <p className="text-[11px] text-muted-foreground">{selectedTemplate.footer}</p>}
+                    {header && <p className="font-bold text-sm text-black dark:text-white">{header}</p>}
+                    <p className="text-sm whitespace-pre-wrap text-black/90 dark:text-white/90 leading-relaxed">{text}</p>
+                    {selectedTemplate.footer && <p className="text-[11px] text-black/50 dark:text-white/50">{selectedTemplate.footer}</p>}
                     {selectedTemplate.buttons && selectedTemplate.buttons.length > 0 && (
-                      <div className="space-y-1.5 pt-2 border-t border-border">
+                      <div className="space-y-1.5 pt-2 border-t border-black/10 dark:border-white/10">
                         {selectedTemplate.buttons.map((btn, i) => (
-                          <div key={i} className="text-center text-xs text-primary font-medium py-1.5 bg-card rounded-lg">{btn.text}</div>
+                          <div key={i} className="text-center text-xs text-[#00a884] font-medium py-2 bg-white/60 dark:bg-white/10 rounded-lg cursor-default">{btn.text}</div>
                         ))}
                       </div>
                     )}
                   </>
                 ); })()}
-              </div>
-              {selectedTemplate.variableCount > 0 && Array.from({ length: selectedTemplate.variableCount }, (_, i) => (
-                <div key={i} className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">{`{{${i + 1}}}`}</label>
-                  <Input
-                    value={templateVars[i] || ""}
-                    onChange={(e) => { const nv = [...templateVars]; nv[i] = e.target.value; setTemplateVars(nv); }}
-                    placeholder={`متغير ${i + 1}`}
-                    className="text-sm bg-secondary border-0"
-                  />
+                <div className="flex items-center justify-end gap-1 pt-1">
+                  <span className="text-[10px] text-black/40 dark:text-white/40">الآن</span>
+                  <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
                 </div>
-              ))}
+              </div>
+
+              {/* Variables input */}
+              {selectedTemplate.variableCount > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">المتغيرات:</p>
+                  {Array.from({ length: selectedTemplate.variableCount }, (_, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px] shrink-0 w-12 justify-center">{`{{${i + 1}}}`}</Badge>
+                      <Input
+                        value={templateVars[i] || ""}
+                        onChange={(e) => { const nv = [...templateVars]; nv[i] = e.target.value; setTemplateVars(nv); }}
+                        placeholder={`متغير ${i + 1}`}
+                        className="text-sm bg-secondary border-0 h-9"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Recipient info */}
+              <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg text-xs text-muted-foreground">
+                <Send className="w-3.5 h-3.5" style={{ transform: "scaleX(-1)" }} />
+                <span>سيُرسل إلى: <strong className="text-foreground">{conversation.customerName || conversation.customerPhone}</strong></span>
+              </div>
+
               <Button onClick={handleSendTemplate} className="w-full gradient-whatsapp text-whatsapp-foreground gap-2">
                 <Send className="w-4 h-4" style={{ transform: "scaleX(-1)" }} /> إرسال القالب
               </Button>
