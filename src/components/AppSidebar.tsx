@@ -179,7 +179,7 @@ const AppSidebar = () => {
           "group flex items-center gap-3 rounded-xl text-[13px] font-medium transition-all duration-200 relative px-3 py-2",
           active
             ? "bg-gradient-to-l from-sidebar-primary/15 to-sidebar-primary/5 text-sidebar-primary shadow-sm"
-            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+            : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
         )}
       >
         {active && (
