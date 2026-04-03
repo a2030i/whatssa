@@ -117,55 +117,6 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Showcase / Screenshots */}
-      <section id="showcase" className="py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold">شاهد المنصة من الداخل</h2>
-            <p className="text-muted-foreground mt-3">واجهة احترافية مصممة لفرق العمل العربية</p>
-          </div>
-
-          <div className="relative">
-            {/* Screenshot */}
-            <div className="rounded-2xl overflow-hidden border-2 border-border/50 shadow-2xl bg-card">
-              <img
-                src={showcaseSlides[currentSlide].img}
-                alt={showcaseSlides[currentSlide].title}
-                className="w-full aspect-video object-cover"
-                loading="lazy"
-                width={1280}
-                height={720}
-              />
-            </div>
-
-            {/* Caption */}
-            <div className="text-center mt-6">
-              <h3 className="text-xl font-bold">{showcaseSlides[currentSlide].title}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{showcaseSlides[currentSlide].desc}</p>
-            </div>
-
-            {/* Nav */}
-            <div className="flex items-center justify-center gap-4 mt-5">
-              <Button variant="outline" size="icon" className="rounded-full h-10 w-10" onClick={prevSlide}>
-                <ChevronRight className="w-5 h-5" />
-              </Button>
-              <div className="flex gap-2">
-                {showcaseSlides.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentSlide(i)}
-                    className={`w-2.5 h-2.5 rounded-full transition-all ${i === currentSlide ? "bg-primary w-7" : "bg-muted-foreground/30"}`}
-                  />
-                ))}
-              </div>
-              <Button variant="outline" size="icon" className="rounded-full h-10 w-10" onClick={nextSlide}>
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Features */}
       <section id="features" className="py-20 px-4 bg-muted/20">
         <div className="max-w-6xl mx-auto">
