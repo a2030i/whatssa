@@ -218,15 +218,13 @@ serve(async (req) => {
 
     // Create conversation if none exists (uses service_role to bypass RLS)
     if (!conversation) {
-      const channelId = (await req.json().catch(() => ({})) as any).channel_id || config.id;
-      const customerName = to;
       const { data: newConv } = await adminClient
         .from("conversations")
         .insert({
           org_id: orgId,
           customer_phone: to,
-          customer_name: customerName,
-          channel_id: channelId || config.id,
+          customer_name: reqCustomerName || to,
+          channel_id: channel_id || config.id,
           status: "active",
           last_message: sentContent,
           last_message_at: new Date().toISOString(),
