@@ -1447,7 +1447,7 @@ async function uploadMediaFromEvolution(params: {
       },
       body: JSON.stringify({
         message: { key },
-        convertToMp4: messageType === "audio",
+        ...(messageType === "video" ? { convertToMp4: true } : {}),
       }),
     });
 
@@ -1463,9 +1463,20 @@ async function uploadMediaFromEvolution(params: {
     const base64 = media?.base64 || media?.data?.base64;
     if (!base64) return null;
 
-    const mimeType = media?.mimetype || media?.mimeType || media?.data?.mimetype || media?.data?.mimeType ||
-      (messageType === "audio" ? "audio/mp4" : messageType === "image" ? "image/jpeg" : messageType === "video" ? "video/mp4" : "application/octet-stream");
-    const extension = mimeType.split("/")[1]?.split(";")[0] || (messageType === "audio" ? "mp4" : "bin");
+    const rawMimeType = media?.mimetype || media?.mimeType || media?.data?.mimetype || media?.data?.mimeType ||
+      (messageType === "audio" ? "audio/ogg" : messageType === "image" ? "image/jpeg" : messageType === "video" ? "video/mp4" : "application/octet-stream");
+    const mimeType = String(rawMimeType).split(";")[0].trim().toLowerCase();
+    const extension = messageType === "audio"
+      ? mimeType.includes("ogg") || mimeType.includes("opus")
+        ? "ogg"
+        : mimeType.includes("webm")
+          ? "webm"
+          : mimeType.includes("mpeg")
+            ? "mp3"
+            : mimeType.includes("mp4")
+              ? "mp4"
+              : "bin"
+      : mimeType.split("/")[1]?.split(";")[0] || "bin";
     const fileName = `${conversationId}/${crypto.randomUUID()}.${extension}`;
 
     const adminStorage = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
