@@ -132,6 +132,10 @@ const ScheduleMessagePopover = ({
 
     setLoading(true);
     try {
+      const tplComponents = selectedTpl && selectedTpl.variableCount > 0
+        ? buildTemplateComponents(selectedTpl, templateVariables)
+        : null;
+
       const insertData: Record<string, unknown> = {
         org_id: orgId,
         conversation_id: conversationId,
@@ -140,6 +144,7 @@ const ScheduleMessagePopover = ({
         content: selectedTpl ? null : messageText.trim(),
         template_name: selectedTpl?.name || null,
         template_language: selectedTpl?.language || null,
+        template_components: tplComponents ? JSON.stringify(tplComponents) : null,
         scheduled_at: scheduledAt.toISOString(),
         created_by: user.id,
       };
