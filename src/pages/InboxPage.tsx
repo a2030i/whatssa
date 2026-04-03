@@ -597,12 +597,16 @@ const InboxPage = () => {
 
   const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
     const conv = conversations.find(c => c.customerPhone === convPhone);
-    const func = getSendFunction(conv?.channelType);
-    const { data, error } = await invokeCloud(func, {
-      body: { to: convPhone, type: "edit", edit_message_id: waMessageId, message: newText },
+    const isEvolution = conv?.channelType === "evolution" || !conv?.channelType;
+
+    const { data, error } = await invokeCloud(isEvolution ? "evolution-manage" : "whatsapp-send", {
+      body: isEvolution
+        ? { action: "edit_message", phone: convPhone, message_id: waMessageId, new_text: newText }
+        : { to: convPhone, type: "edit", edit_message_id: waMessageId, message: newText },
     });
-    if (error || data?.error) {
-      toast.error(data?.error || "فشل تعديل الرسالة");
+
+    if (error || data?.error || data?.success === false) {
+      toast.error(data?.error || data?.message || "فشل تعديل الرسالة");
     } else {
       toast.success("تم تعديل الرسالة");
     }
