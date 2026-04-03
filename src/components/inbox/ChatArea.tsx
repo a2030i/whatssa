@@ -469,8 +469,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               );
             })()}
             {/* Timestamp + status */}
-            <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-white/60")}>
-              <span className="text-[10px]">{msg.timestamp}</span>
+            <div className={cn("flex items-center gap-1 mt-1.5", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground/70" : "text-white/55")}>
+              <span className="text-[10px] font-medium">{msg.timestamp}</span>
               {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
               {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
             </div>
