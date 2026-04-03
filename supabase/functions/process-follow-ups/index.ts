@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
         }
 
         // 2. Auto-send message if configured
-        if (reminder.auto_send_message) {
+        if (reminder.auto_send_message || reminder.auto_send_template_name) {
           // Determine channel type from conversation
           const { data: conv } = await supabase
             .from("conversations")
@@ -79,6 +79,23 @@ Deno.serve(async (req) => {
 
             const sendFunc = channelType === "meta_api" ? "whatsapp-send" : "evolution-send";
 
+            // Build request body based on channel type
+            const sendBody: Record<string, unknown> = {
+              to: reminder.customer_phone,
+              conversation_id: reminder.conversation_id,
+            };
+
+            if (channelType === "meta_api" && reminder.auto_send_template_name) {
+              // Send as template for Meta API
+              sendBody.type = "template";
+              sendBody.template = {
+                name: reminder.auto_send_template_name,
+                language: { code: reminder.auto_send_template_language || "ar" },
+              };
+            } else if (reminder.auto_send_message) {
+              sendBody.message = reminder.auto_send_message;
+            }
+
             // Call send function internally
             const sendRes = await fetch(`${internalUrl}/functions/v1/${sendFunc}`, {
               method: "POST",
@@ -87,11 +104,7 @@ Deno.serve(async (req) => {
                 Authorization: `Bearer ${serviceKey}`,
                 apikey: serviceKey,
               },
-              body: JSON.stringify({
-                to: reminder.customer_phone,
-                message: reminder.auto_send_message,
-                conversation_id: reminder.conversation_id,
-              }),
+              body: JSON.stringify(sendBody),
             });
 
             if (sendRes.ok) {
