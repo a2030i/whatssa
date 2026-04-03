@@ -279,10 +279,13 @@ const InboxPage = () => {
           ...prev,
           [selectedId]: (prev[selectedId] || []).some((m) => m.id === newMessage.id)
             ? (prev[selectedId] || []).map((m) => m.id === newMessage.id ? newMessage : m)
-            : // Also replace optimistic message if wa_message_id matches
+            : // Replace matching optimistic message (text match or audio type match)
               (() => {
                 const withoutOptimistic = (prev[selectedId] || []).filter((m) =>
-                  !(m.id.startsWith("optimistic-") && m.sender === "agent" && m.text === newMessage.text)
+                  !(m.id.startsWith("optimistic-") && m.sender === "agent" && (
+                    m.text === newMessage.text ||
+                    (m.type === "audio" && newMessage.type === "audio")
+                  ))
                 );
                 return [...withoutOptimistic, newMessage];
               })(),
