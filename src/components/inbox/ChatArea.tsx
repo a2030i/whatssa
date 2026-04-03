@@ -551,9 +551,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     const newBlocked = !isBlocked;
     try {
       if (conversation.channelType === "evolution") {
-        await invokeCloud("evolution-manage", {
-          body: { action, phone: conversation.customerPhone },
+        const { data, error } = await invokeCloud("evolution-manage", {
+          body: { action, phone: conversation.customerPhone, channel_id: conversation.channelId },
         });
+        if (error || data?.error) {
+          throw new Error(data?.error || "فشل تنفيذ الحظر على واتساب");
+        }
       }
       // Update blacklisted_numbers table
       if (newBlocked) {
