@@ -72,6 +72,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       </main>
 
       {isMobile && !hideBottomNav && <MobileBottomNav />}
+      <OnboardingWizard />
     </div>
   );
 };
