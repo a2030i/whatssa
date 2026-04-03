@@ -892,24 +892,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       const isEvolution = conversation.channelType === "evolution" || !conversation.channelType;
       const sendFn = isEvolution ? "evolution-send" : "whatsapp-send";
 
-      // Optimistic UI — show audio message immediately
-      const optimisticId = `optimistic-voice-${Date.now()}`;
-      const optimisticMsg: Message = {
-        id: optimisticId,
-        conversationId: conversation.id,
-        text: "🎤 رسالة صوتية",
-        sender: "agent",
-        timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
-        status: "sent",
-        type: "audio",
-        mediaUrl: storagePath,
-        createdAt: new Date().toISOString(),
-      };
-      toast.success("تم إرسال الرسالة الصوتية");
-    } catch (err: any) {
-      toast.error("فشل رفع التسجيل: " + (err?.message || err?.context?.error || ""));
-    }
-  };
+      const { data, error } = await invokeCloud(sendFn, {
         body: {
           to: conversation.customerPhone,
           message: "",
