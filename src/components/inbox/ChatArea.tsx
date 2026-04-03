@@ -162,6 +162,16 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
 
   const handleReaction = async (emoji: string) => {
     try {
+      // Optimistic update: show reaction immediately
+      const msgEl = document.querySelector(`[data-message-id="${msg.id}"]`);
+      if (msgEl) {
+        // We can't directly update state here since msg comes from props,
+        // but we dispatch a custom event that InboxPage listens to
+        window.dispatchEvent(new CustomEvent("optimistic-reaction", {
+          detail: { messageId: msg.id, waMessageId: msg.waMessageId, emoji },
+        }));
+      }
+
       const { error } = await invokeCloud("evolution-manage", {
         body: {
           action: "send_reaction",

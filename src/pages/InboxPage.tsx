@@ -257,7 +257,15 @@ const InboxPage = () => {
         };
         setAllMessages((prev) => ({
           ...prev,
-          [selectedId]: [...(prev[selectedId] || []), newMessage],
+          [selectedId]: (prev[selectedId] || []).some((m) => m.id === newMessage.id)
+            ? (prev[selectedId] || []).map((m) => m.id === newMessage.id ? newMessage : m)
+            : // Also replace optimistic message if wa_message_id matches
+              (() => {
+                const withoutOptimistic = (prev[selectedId] || []).filter((m) =>
+                  !(m.id.startsWith("optimistic-") && m.sender === "agent" && m.text === newMessage.text)
+                );
+                return [...withoutOptimistic, newMessage];
+              })(),
         }));
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${selectedId}` }, (payload) => {
@@ -284,6 +292,32 @@ const InboxPage = () => {
       supabase.removeChannel(channel);
     };
   }, [selectedId]);
+
+  // Listen for optimistic reaction updates from ChatArea
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { messageId, emoji } = (e as CustomEvent).detail;
+      setAllMessages((prev) => {
+        const updated: Record<string, Message[]> = {};
+        for (const [convId, msgs] of Object.entries(prev)) {
+          updated[convId] = msgs.map((m) => {
+            if (m.id !== messageId) return m;
+            const reactions = [...(m.reactions || [])];
+            const idx = reactions.findIndex((r) => r.fromMe === true);
+            if (idx >= 0) {
+              reactions[idx] = { emoji, fromMe: true, timestamp: new Date().toISOString() };
+            } else {
+              reactions.push({ emoji, fromMe: true, timestamp: new Date().toISOString() });
+            }
+            return { ...m, reactions };
+          });
+        }
+        return updated;
+      });
+    };
+    window.addEventListener("optimistic-reaction", handler);
+    return () => window.removeEventListener("optimistic-reaction", handler);
+  }, []);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -372,6 +406,24 @@ const InboxPage = () => {
 
     const sendFunction = getSendFunction(conversation.channelType);
 
+    // Optimistic: add message to UI immediately
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticMsg: Message = {
+      id: optimisticId,
+      conversationId: convId,
+      text,
+      sender: "agent",
+      timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+      status: "sent",
+      type: "text",
+      createdAt: new Date().toISOString(),
+      quoted: replyTo ? { message_id: replyTo.id, sender_name: replyTo.senderName || "أنت", text: replyTo.text } : undefined,
+    };
+    setAllMessages((prev) => ({
+      ...prev,
+      [convId]: [...(prev[convId] || []), optimisticMsg],
+    }));
+
     const { data, error } = await invokeCloud(sendFunction, {
       body: {
         to: conversation.customerPhone,
@@ -383,6 +435,11 @@ const InboxPage = () => {
 
     if (error || data?.error) {
       toast.error(data?.error || "فشل إرسال الرسالة");
+      // Remove optimistic message on failure
+      setAllMessages((prev) => ({
+        ...prev,
+        [convId]: (prev[convId] || []).filter((m) => m.id !== optimisticId),
+      }));
     }
   }, [conversations, templates]);
 
