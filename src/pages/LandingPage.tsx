@@ -1,20 +1,30 @@
 import { Link } from "react-router-dom";
-import { MessageSquare, Bot, BarChart3, Users, Zap, Shield, Globe, ArrowLeft, CheckCircle2, Star } from "lucide-react";
+import {
+  MessageSquare, Bot, BarChart3, Users, Zap, Shield, Globe, ArrowLeft,
+  CheckCircle2, Star, ClipboardCheck, Mail, Truck, FileText, Workflow,
+  ShoppingCart, Package, Headphones, Clock, Send
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const features = [
   { icon: MessageSquare, title: "صندوق وارد موحد", desc: "إدارة جميع محادثات واتساب من مكان واحد مع دعم متعدد الأرقام والقنوات" },
-  { icon: Bot, title: "شات بوت ذكي", desc: "ردود تلقائية بالذكاء الاصطناعي مع قاعدة معرفة خاصة بمؤسستك" },
-  { icon: Users, title: "إدارة الفريق", desc: "توزيع المحادثات تلقائياً بين أعضاء الفريق مع تتبع الأداء" },
-  { icon: BarChart3, title: "تحليلات متقدمة", desc: "تقارير مفصلة عن الأداء والمبيعات ورضا العملاء" },
-  { icon: Zap, title: "أتمتة كاملة", desc: "قواعد ذكية لتصنيف وتوجيه المحادثات وإرسال الحملات" },
-  { icon: Shield, title: "أمان عالي", desc: "تشفير كامل للبيانات مع صلاحيات متعددة المستويات" },
+  { icon: Bot, title: "شات بوت ذكي", desc: "ردود تلقائية بالذكاء الاصطناعي مع قاعدة معرفة خاصة بمؤسستك وتصحيح الردود من الفريق" },
+  { icon: Users, title: "إدارة الفريق", desc: "توزيع المحادثات تلقائياً بين أعضاء الفريق مع تتبع الأداء والشفتات" },
+  { icon: BarChart3, title: "تحليلات متقدمة", desc: "تقارير مفصلة عن الأداء والمبيعات ورضا العملاء مع مقارنة الفترات" },
+  { icon: Workflow, title: "أتمتة كاملة", desc: "قواعد ذكية لتصنيف وتوجيه المحادثات والردود التلقائية والكلمات المفتاحية" },
+  { icon: Shield, title: "أمان عالي", desc: "تشفير كامل للبيانات مع صلاحيات متعددة المستويات وسجل تدقيق" },
+  { icon: ClipboardCheck, title: "نظام المهام", desc: "إدارة المهام الداخلية وتوجيه الملاحظات لشركات الشحن تلقائياً عبر واتساب أو إيميل" },
+  { icon: Truck, title: "ربط شركات الشحن", desc: "توجيه تلقائي للملاحظات والطلبات لقروبات واتساب أو إيميل شركات الشحن" },
+  { icon: ShoppingCart, title: "ربط المتاجر", desc: "دعم سلة، زد، Shopify، WooCommerce مع إشعارات الطلبات والسلات المتروكة" },
+  { icon: FileText, title: "نماذج واتساب", desc: "فورمات تفاعلية داخل واتساب لجمع البيانات والتعديلات بدون روابط خارجية" },
+  { icon: Send, title: "حملات تسويقية", desc: "حملات جماعية مع دعم التكرار وتتبع التسليم والقراءة والاستجابة" },
+  { icon: Headphones, title: "رضا العملاء (CSAT)", desc: "استبيانات رضا تلقائية بعد إغلاق المحادثات مع تقارير مفصلة" },
 ];
 
 const plans = [
-  { name: "أساسي", price: "199", period: "/شهر", features: ["رقم واحد", "عضو واحد", "1,000 رسالة", "شات بوت أساسي"] },
-  { name: "احترافي", price: "499", period: "/شهر", popular: true, features: ["3 أرقام", "5 أعضاء", "10,000 رسالة", "AI ذكي", "حملات", "ربط متجر"] },
-  { name: "مؤسسي", price: "999", period: "/شهر", features: ["أرقام لا محدودة", "أعضاء لا محدود", "رسائل لا محدودة", "API كامل", "دعم مخصص"] },
+  { name: "أساسي", price: "199", period: "/شهر", features: ["رقم واحد", "عضو واحد", "1,000 رسالة", "شات بوت أساسي", "نظام المهام"] },
+  { name: "احترافي", price: "499", period: "/شهر", popular: true, features: ["3 أرقام", "5 أعضاء", "10,000 رسالة", "AI ذكي + قاعدة معرفة", "حملات + أتمتة", "ربط متجر + شحن", "توجيه تلقائي", "CSAT"] },
+  { name: "مؤسسي", price: "999", period: "/شهر", features: ["أرقام لا محدودة", "أعضاء لا محدود", "رسائل لا محدودة", "API كامل", "نماذج واتساب", "ربط إيميل", "دعم مخصص"] },
 ];
 
 const LandingPage = () => {
@@ -31,6 +41,7 @@ const LandingPage = () => {
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">المميزات</a>
+            <a href="#use-cases" className="text-muted-foreground hover:text-foreground transition-colors">حالات الاستخدام</a>
             <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">الأسعار</a>
           </div>
           <Link to="/auth">
@@ -55,7 +66,7 @@ const LandingPage = () => {
             لعملك
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            صندوق وارد موحد، شات بوت ذكي بالذكاء الاصطناعي، أتمتة كاملة، وتحليلات متقدمة — كل ما تحتاجه لإدارة تواصلك مع العملاء باحترافية
+            صندوق وارد موحد، شات بوت ذكي بالذكاء الاصطناعي، نظام مهام متكامل، توجيه تلقائي لشركات الشحن — كل ما تحتاجه لإدارة تواصلك مع العملاء باحترافية
           </p>
           <div className="flex items-center justify-center gap-3 pt-4">
             <Link to="/auth">
@@ -80,16 +91,16 @@ const LandingPage = () => {
             <h2 className="text-3xl font-bold">كل ما تحتاجه في منصة واحدة</h2>
             <p className="text-muted-foreground mt-2">أدوات احترافية لإدارة تواصلك مع العملاء عبر واتساب</p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {features.map((f, i) => {
               const Icon = f.icon;
               return (
-                <div key={i} className="bg-card rounded-2xl p-6 border border-border hover:border-primary/30 hover:shadow-lg transition-all duration-300 group">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                    <Icon className="w-6 h-6 text-primary" />
+                <div key={i} className="bg-card rounded-2xl p-5 border border-border hover:border-primary/30 hover:shadow-lg transition-all duration-300 group">
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+                    <Icon className="w-5 h-5 text-primary" />
                   </div>
-                  <h3 className="text-lg font-bold mb-2">{f.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+                  <h3 className="text-base font-bold mb-1.5">{f.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
                 </div>
               );
             })}
@@ -97,8 +108,43 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Use Cases */}
+      <section id="use-cases" className="py-20 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold">حالات استخدام حقيقية</h2>
+            <p className="text-muted-foreground mt-2">كيف يخدم Respondly أعمالك</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            {[
+              {
+                title: "🚚 شركات الشحن والتوصيل",
+                desc: "استقبل ملاحظات العملاء تلقائياً، وجّهها لقروب شركة الشحن أو إيميلها مباشرة، وأغلق المحادثة — بدون تدخل بشري. التعديلات البسيطة (تغيير جوال أو عنوان) تُجمع عبر فورم واتساب وتنزل كتاسك للموظف.",
+              },
+              {
+                title: "🛍️ المتاجر الإلكترونية",
+                desc: "ربط مباشر مع سلة وزد وShopify. إشعارات فورية للطلبات الجديدة والسلات المتروكة. تتبع الشحنات وإرسال التحديثات للعملاء تلقائياً عبر واتساب.",
+              },
+              {
+                title: "🏢 خدمة العملاء",
+                desc: "شات بوت ذكي يرد من قاعدة معرفة مؤسستك. الاستفسارات المعقدة تُحوّل تلقائياً لموظف بشري. تقييم رضا العملاء بعد كل محادثة.",
+              },
+              {
+                title: "📢 الحملات التسويقية",
+                desc: "حملات جماعية مع تخصيص المتغيرات لكل عميل. جدولة وتكرار تلقائي. تتبع معدلات التسليم والقراءة والردود مع تقارير تفصيلية.",
+              },
+            ].map((uc, i) => (
+              <div key={i} className="bg-card rounded-2xl p-6 border border-border">
+                <h3 className="text-lg font-bold mb-3">{uc.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{uc.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* AI Section */}
-      <section className="py-20 px-4">
+      <section className="py-20 px-4 bg-muted/30">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <div className="inline-flex items-center gap-2 bg-accent text-accent-foreground rounded-full px-4 py-1.5 text-sm font-medium">
             <Bot className="w-4 h-4" />
@@ -128,7 +174,7 @@ const LandingPage = () => {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 px-4 bg-muted/30">
+      <section id="pricing" className="py-20 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold">خطط تناسب عملك</h2>
