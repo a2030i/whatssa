@@ -231,7 +231,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         );
       }
 
-      // Find or create conversation first so the sent message is saved and appears immediately in chat
+      // Find existing conversation (read-only, no RLS issue)
       const { data: existingConv } = await supabase
         .from("conversations")
         .select("id")
@@ -244,26 +244,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 
       let conversationId = existingConv?.id;
 
-      if (!conversationId) {
-        const { data: newConv, error: newConvError } = await supabase
-          .from("conversations")
-          .insert({
-            org_id: orgId!,
-            customer_phone: cleanPhone,
-            customer_name: customerName || cleanPhone,
-            channel_id: selectedChannel.id,
-            status: "active",
-          })
-          .select("id")
-          .single();
-
-        if (newConvError || !newConv) {
-          throw new Error(newConvError?.message || "تعذر إنشاء المحادثة");
-        }
-
-        conversationId = newConv.id;
-      }
-
       if (isMeta && selectedTemplate) {
         const { data, error } = await invokeCloud("whatsapp-send", {
           body: {
@@ -274,9 +254,12 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             template_components: buildTemplateComponents(selectedTemplate, templateVars),
             conversation_id: conversationId,
             channel_id: selectedChannel.id,
+            customer_name: customerName || cleanPhone,
           },
         });
         if (error || data?.error) throw new Error(data?.error || "فشل إرسال القالب");
+        // Edge function may return conversation_id if it created one
+        if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (!isMeta && messageText.trim()) {
         const { data, error } = await invokeCloud("evolution-send", {
           body: {
@@ -284,9 +267,12 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             message: messageText,
             conversation_id: conversationId,
             channel_id: selectedChannel.id,
+            customer_name: customerName || cleanPhone,
           },
         });
         if (error || data?.error) throw new Error(data?.error || "فشل إرسال الرسالة");
+        // Edge function creates conversation if needed — get its ID
+        if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (isMeta && !selectedTemplate) {
         toast.error("يجب اختيار قالب للقناة الرسمية");
         setSending(false);
@@ -297,7 +283,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         return;
       }
 
-      if (!existingConv && messagePreview) {
+      if (conversationId && !existingConv && messagePreview) {
         await supabase
           .from("conversations")
           .update({
@@ -308,7 +294,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           .eq("id", conversationId);
       }
 
-      onConversationCreated(conversationId);
+      if (conversationId) {
+        onConversationCreated(conversationId);
+      }
 
       toast.success("تم إرسال الرسالة بنجاح");
       onOpenChange(false);

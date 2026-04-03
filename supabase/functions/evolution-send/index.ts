@@ -90,7 +90,7 @@ serve(async (req) => {
       return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
     }
 
-    const { to, message, conversation_id, reply_to, media_url, media_type } = await req.json();
+    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName } = await req.json();
     if (!to || (!message && !media_url)) return json({ error: "الرقم والرسالة أو الوسائط مطلوبة" }, 400);
 
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
@@ -216,6 +216,27 @@ serve(async (req) => {
       conversation = data;
     }
 
+    // Create conversation if none exists (uses service_role to bypass RLS)
+    if (!conversation) {
+      const { data: newConv } = await adminClient
+        .from("conversations")
+        .insert({
+          org_id: orgId,
+          customer_phone: to,
+          customer_name: reqCustomerName || to,
+          channel_id: channel_id || config.id,
+          status: "active",
+          last_message: sentContent,
+          last_message_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      conversation = newConv;
+      await logToSystem(adminClient, "info", `تم إنشاء محادثة جديدة (Evolution Send) للرقم ${to}`, {
+        conversation_id: newConv?.id,
+      }, orgId, user.id);
+    }
+
     if (conversation) {
       const msgMetadata: Record<string, unknown> = {};
       if (reply_to) {
@@ -244,7 +265,7 @@ serve(async (req) => {
       }).eq("id", conversation.id);
     }
 
-    return json({ success: true, message_id: waMessageId });
+    return json({ success: true, message_id: waMessageId, conversation_id: conversation?.id || null });
   } catch (err: any) {
     await logToSystem(adminClient, "critical", "خطأ غير متوقع في إرسال رسالة Evolution", {
       error: err.message,
