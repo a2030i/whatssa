@@ -25,7 +25,8 @@ async function logToSystem(
   userId?: string | null,
 ) {
   try {
-    await client.from("system_logs").insert({
+    // Fire-and-forget: don't block the main flow
+    client.from("system_logs").insert({
       level,
       source: "edge_function",
       function_name: "evolution-send",
@@ -33,7 +34,7 @@ async function logToSystem(
       metadata,
       org_id: orgId || null,
       user_id: userId || null,
-    });
+    }).then(() => {}).catch((e) => console.error("Log write failed:", e));
   } catch (e) {
     console.error("Failed to write system log:", e);
   }
@@ -49,7 +50,7 @@ serve(async (req) => {
   try {
     const authorization = req.headers.get("Authorization") || "";
     if (!authorization) {
-      await logToSystem(adminClient, "warn", "طلب إرسال Evolution بدون توثيق");
+      logToSystem(adminClient, "warn", "طلب إرسال Evolution بدون توثيق");
       return json({ error: "Unauthorized" }, 401);
     }
 
@@ -59,47 +60,49 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await authClient.auth.getUser();
     if (userError || !user) {
-      await logToSystem(adminClient, "warn", "فشل التحقق من المستخدم (Evolution Send)", { error: userError?.message });
+      logToSystem(adminClient, "warn", "فشل التحقق من المستخدم (Evolution Send)", { error: userError?.message });
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("org_id")
-      .eq("id", user.id)
-      .maybeSingle();
+    // Parallel: fetch profile and parse body simultaneously
+    const [profileResult, body] = await Promise.all([
+      adminClient.from("profiles").select("org_id").eq("id", user.id).maybeSingle(),
+      req.json(),
+    ]);
+    const profile = profileResult.data;
 
     if (!profile?.org_id) {
-      await logToSystem(adminClient, "warn", "مستخدم بدون مؤسسة حاول إرسال رسالة Evolution", {}, null, user.id);
+      logToSystem(adminClient, "warn", "مستخدم بدون مؤسسة حاول إرسال رسالة Evolution", {}, null, user.id);
       return json({ error: "لا توجد مؤسسة مرتبطة" }, 400);
     }
 
     const orgId = profile.org_id;
 
-    const { data: config } = await adminClient
-      .from("whatsapp_config")
-      .select("*")
-      .eq("org_id", orgId)
-      .eq("channel_type", "evolution")
-      .eq("is_connected", true)
-      .limit(1)
-      .maybeSingle();
-
-    if (!config || !config.evolution_instance_name) {
-      await logToSystem(adminClient, "error", "واتساب ويب غير مربوط - فشل الإرسال", {}, orgId, user.id);
-      return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
-    }
-
-    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName } = await req.json();
+    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName } = body;
     if (!to || (!message && !media_url)) return json({ error: "الرقم والرسالة أو الوسائط مطلوبة" }, 400);
 
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
-
     if (!EVOLUTION_URL || !EVOLUTION_KEY) {
-      await logToSystem(adminClient, "error", "إعدادات Evolution API غير مكتملة", {}, orgId, user.id);
+      logToSystem(adminClient, "error", "إعدادات Evolution API غير مكتملة", {}, orgId, user.id);
       return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
     }
+
+    // Parallel: fetch config + resolve conversation simultaneously
+    const [configResult, convResult] = await Promise.all([
+      adminClient.from("whatsapp_config").select("*").eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true).limit(1).maybeSingle(),
+      conversation_id
+        ? adminClient.from("conversations").select("id").eq("id", conversation_id).eq("org_id", orgId).maybeSingle()
+        : adminClient.from("conversations").select("id").eq("customer_phone", to).eq("org_id", orgId).neq("status", "closed").limit(1).maybeSingle(),
+    ]);
+
+    const config = configResult.data;
+    if (!config || !config.evolution_instance_name) {
+      logToSystem(adminClient, "error", "واتساب ويب غير مربوط - فشل الإرسال", {}, orgId, user.id);
+      return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
+    }
+
+    let conversation = convResult.data;
 
     const instanceName = config.evolution_instance_name;
     const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
@@ -140,7 +143,7 @@ serve(async (req) => {
         };
       }
 
-      await logToSystem(adminClient, "info", `إرسال وسائط Evolution (${sentMessageType}) إلى ${to}`, {
+      logToSystem(adminClient, "info", `إرسال وسائط Evolution (${sentMessageType}) إلى ${to}`, {
         to, instance: instanceName, media_type: sentMessageType,
       }, orgId, user.id);
 
@@ -150,7 +153,7 @@ serve(async (req) => {
 
       const result = await response.json();
       if (!response.ok) {
-        await logToSystem(adminClient, "error", `فشل إرسال وسائط Evolution إلى ${to}`, {
+        logToSystem(adminClient, "error", `فشل إرسال وسائط Evolution إلى ${to}`, {
           to, http_status: response.status, error: result?.message || "unknown",
         }, orgId, user.id);
         return json({ error: result?.message || "فشل إرسال الوسائط عبر Evolution" }, response.status);
@@ -169,7 +172,7 @@ serve(async (req) => {
         };
       }
 
-      await logToSystem(adminClient, "info", `إرسال رسالة Evolution إلى ${to}`, {
+      logToSystem(adminClient, "info", `إرسال رسالة Evolution إلى ${to}`, {
         to, instance: instanceName, has_reply: !!reply_to,
       }, orgId, user.id);
 
@@ -179,7 +182,7 @@ serve(async (req) => {
 
       const result = await response.json();
       if (!response.ok) {
-        await logToSystem(adminClient, "error", `فشل إرسال رسالة Evolution إلى ${to}`, {
+        logToSystem(adminClient, "error", `فشل إرسال رسالة Evolution إلى ${to}`, {
           to, http_status: response.status, error: result?.message || "unknown", instance: instanceName,
         }, orgId, user.id);
         return json({ error: result?.message || "فشل إرسال الرسالة عبر Evolution" }, response.status);
@@ -188,35 +191,11 @@ serve(async (req) => {
       waMessageId = result.key?.id || null;
     }
 
-    await logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
+    logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
       wa_message_id: waMessageId, type: sentMessageType,
     }, orgId, user.id);
 
-    // Save message to DB
-    let conversation = null;
-    if (conversation_id) {
-      const { data } = await adminClient
-        .from("conversations")
-        .select("id")
-        .eq("id", conversation_id)
-        .eq("org_id", orgId)
-        .maybeSingle();
-      conversation = data;
-    }
-
-    if (!conversation) {
-      const { data } = await adminClient
-        .from("conversations")
-        .select("id")
-        .eq("customer_phone", to)
-        .eq("org_id", orgId)
-        .neq("status", "closed")
-        .limit(1)
-        .maybeSingle();
-      conversation = data;
-    }
-
-    // Create conversation if none exists (uses service_role to bypass RLS)
+    // Create conversation if none exists
     if (!conversation) {
       const { data: newConv } = await adminClient
         .from("conversations")
@@ -232,7 +211,7 @@ serve(async (req) => {
         .select("id")
         .single();
       conversation = newConv;
-      await logToSystem(adminClient, "info", `تم إنشاء محادثة جديدة (Evolution Send) للرقم ${to}`, {
+      logToSystem(adminClient, "info", `تم إنشاء محادثة جديدة (Evolution Send) للرقم ${to}`, {
         conversation_id: newConv?.id,
       }, orgId, user.id);
     }
@@ -247,27 +226,29 @@ serve(async (req) => {
         };
       }
 
-      await adminClient.from("messages").insert({
-        conversation_id: conversation.id,
-        wa_message_id: waMessageId,
-        sender: "agent",
-        message_type: sentMessageType,
-        content: sentContent,
-        media_url: sentMediaUrl,
-        status: "sent",
-        metadata: Object.keys(msgMetadata).length > 0 ? msgMetadata : {},
-      });
-
-      await adminClient.from("conversations").update({
-        last_message: sentContent,
-        last_message_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }).eq("id", conversation.id);
+      // Parallel: insert message + update conversation simultaneously
+      await Promise.all([
+        adminClient.from("messages").insert({
+          conversation_id: conversation.id,
+          wa_message_id: waMessageId,
+          sender: "agent",
+          message_type: sentMessageType,
+          content: sentContent,
+          media_url: sentMediaUrl,
+          status: "sent",
+          metadata: Object.keys(msgMetadata).length > 0 ? msgMetadata : {},
+        }),
+        adminClient.from("conversations").update({
+          last_message: sentContent,
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("id", conversation.id),
+      ]);
     }
 
     return json({ success: true, message_id: waMessageId, conversation_id: conversation?.id || null });
   } catch (err: any) {
-    await logToSystem(adminClient, "critical", "خطأ غير متوقع في إرسال رسالة Evolution", {
+    logToSystem(adminClient, "critical", "خطأ غير متوقع في إرسال رسالة Evolution", {
       error: err.message,
     });
     console.error("Evolution send error:", err);
