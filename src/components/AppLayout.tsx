@@ -24,6 +24,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   const hideBottomNav = location.pathname === "/inbox";
 
+  // Notification sound + tab counter
+  useNotificationSound();
+
   useEffect(() => {
     if (impersonatedOrgId) {
       supabase.from("organizations").select("name").eq("id", impersonatedOrgId).maybeSingle().then(({ data }) => {
