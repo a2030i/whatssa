@@ -848,13 +848,64 @@ serve(async (req) => {
         return json({ error: "بيانات التفاعل ناقصة" }, 400);
       }
 
-      let remoteJid: string;
-      if (reactPhone.includes("@")) {
-        remoteJid = reactPhone;
-      } else if (isGroup) {
-        remoteJid = `${reactPhone.replace(/\D/g, "")}@g.us`;
-      } else {
-        remoteJid = `${reactPhone.replace(/\D/g, "")}@s.whatsapp.net`;
+      let remoteJid = "";
+      let fromMe = false;
+
+      try {
+        const statusEndpoints = [
+          `${EVOLUTION_URL}/chat/findStatusMessage/${targetInstanceName}`,
+          `${EVOLUTION_URL}/chat/findMessages/${targetInstanceName}`,
+        ];
+
+        for (const endpoint of statusEndpoints) {
+          const findRes = await fetch(endpoint, {
+            method: "POST",
+            headers: evoHeaders,
+            body: JSON.stringify({ where: { id: message_id }, limit: 1 }),
+          });
+
+          if (!findRes.ok) continue;
+
+          const findData = await findRes.json().catch(() => ({}));
+          const rawItems = Array.isArray(findData)
+            ? findData
+            : Array.isArray(findData?.messages?.records)
+              ? findData.messages.records
+              : Array.isArray(findData?.messages)
+                ? findData.messages
+                : Array.isArray(findData?.data)
+                  ? findData.data
+                  : Array.isArray(findData?.response)
+                    ? findData.response
+                    : findData?.data
+                      ? [findData.data]
+                      : [];
+
+          const found = rawItems.find((item: any) => (
+            item?.key?.id === message_id ||
+            item?.keyId === message_id ||
+            item?.id === message_id ||
+            item?.messageId === message_id
+          ));
+
+          const foundJid = found?.key?.remoteJid || found?.remoteJid || found?.jid || "";
+          if (foundJid) {
+            remoteJid = foundJid;
+            fromMe = Boolean(found?.key?.fromMe ?? found?.fromMe);
+            break;
+          }
+        }
+      } catch {
+      }
+
+      if (!remoteJid) {
+        if (reactPhone.includes("@")) {
+          remoteJid = reactPhone;
+        } else if (isGroup) {
+          remoteJid = `${reactPhone.replace(/\D/g, "")}@g.us`;
+        } else {
+          remoteJid = `${reactPhone.replace(/\D/g, "")}@s.whatsapp.net`;
+        }
       }
 
       const reactRes = await fetch(`${EVOLUTION_URL}/message/sendReaction/${targetInstanceName}`, {
@@ -864,6 +915,7 @@ serve(async (req) => {
           key: {
             remoteJid,
             id: message_id,
+            fromMe,
           },
           reaction: emoji,
         }),
