@@ -295,7 +295,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   <FileText className="w-3.5 h-3.5" /> نسخ الرسالة
                 </DropdownMenuItem>
               )}
-              {msg.sender === "customer" && msg.type === "text" && (
+              {hasAiConfig && msg.sender === "customer" && msg.type === "text" && (
                 <DropdownMenuItem onClick={handleTranslate} className="text-xs gap-2">
                   <Languages className="w-3.5 h-3.5" /> ترجمة
                 </DropdownMenuItem>
