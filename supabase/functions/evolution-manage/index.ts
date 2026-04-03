@@ -940,8 +940,6 @@ serve(async (req) => {
         emoji,
       }, orgId, userId);
 
-      return json({ success: true, data: reactData });
-
       // Persist the reaction in the message metadata so it shows in the UI via realtime
       try {
         const { data: targetMsg } = await adminClient
