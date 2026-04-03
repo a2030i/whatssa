@@ -372,6 +372,24 @@ const InboxPage = () => {
 
     const sendFunction = getSendFunction(conversation.channelType);
 
+    // Optimistic: add message to UI immediately
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticMsg: Message = {
+      id: optimisticId,
+      conversationId: convId,
+      text,
+      sender: "agent",
+      timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+      status: "sent",
+      type: "text",
+      createdAt: new Date().toISOString(),
+      quoted: replyTo ? { message_id: replyTo.id, sender_name: replyTo.senderName || "أنت", text: replyTo.text } : undefined,
+    };
+    setAllMessages((prev) => ({
+      ...prev,
+      [convId]: [...(prev[convId] || []), optimisticMsg],
+    }));
+
     const { data, error } = await invokeCloud(sendFunction, {
       body: {
         to: conversation.customerPhone,
@@ -383,6 +401,11 @@ const InboxPage = () => {
 
     if (error || data?.error) {
       toast.error(data?.error || "فشل إرسال الرسالة");
+      // Remove optimistic message on failure
+      setAllMessages((prev) => ({
+        ...prev,
+        [convId]: (prev[convId] || []).filter((m) => m.id !== optimisticId),
+      }));
     }
   }, [conversations, templates]);
 
