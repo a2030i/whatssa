@@ -437,14 +437,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 </>
               );
             })()}
-            {/* Reactions display */}
-            {msg.reactions && msg.reactions.length > 0 && (
-              <div className="flex flex-wrap gap-0.5 mt-1">
-                {msg.reactions.map((r, i) => (
-                  <span key={i} className="text-sm bg-background/40 rounded-full px-1.5 py-0.5 border border-border/30">{r.emoji}</span>
-                ))}
-              </div>
-            )}
+            {/* Timestamp + status */}
             <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-white/60")}>
               <span className="text-[10px]">{msg.timestamp}</span>
               {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
