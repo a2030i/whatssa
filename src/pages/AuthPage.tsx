@@ -388,9 +388,14 @@ const AuthPage = () => {
           </div>
 
           {/* Footer */}
-          <p className="text-center text-[11px] text-muted-foreground/60">
-            © {new Date().getFullYear()} Respondly — جميع الحقوق محفوظة
-          </p>
+          <div className="text-center space-y-2">
+            <Link to="/landing" className="text-xs text-primary hover:underline">
+              ← العودة للصفحة الرئيسية
+            </Link>
+            <p className="text-[11px] text-muted-foreground/60">
+              © {new Date().getFullYear()} Respondly — جميع الحقوق محفوظة
+            </p>
+          </div>
         </div>
       </div>
     </div>
