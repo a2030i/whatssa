@@ -214,7 +214,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       onTouchStart={canReply ? swipe.onTouchStart : undefined}
       onTouchMove={canReply ? swipe.onTouchMove : undefined}
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
-      className="group relative max-w-[88%] md:max-w-[70%]"
+      className="group relative max-w-[85%] md:max-w-[65%]"
       data-message-id={msg.id}
       data-wa-message-id={msg.waMessageId || undefined}
     >
@@ -331,15 +331,15 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         </div>
       )}
       <div className={cn(
-        "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+        "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
         msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3",
         msg.isDeleted
           ? "bg-muted/50 border border-border/30 text-muted-foreground italic"
           : msg.type === "note"
             ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
             : msg.sender === "agent"
-              ? "bg-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] text-foreground rounded-bl-sm"
-              : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-md"
+              ? "bg-card border border-border/10 shadow-[0_1px_4px_rgba(0,0,0,0.06)] text-foreground rounded-bl-sm"
+              : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
       )}>
         {msg.isDeleted ? (
           <div className="flex items-center gap-1.5 text-xs">
@@ -355,11 +355,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               <div
                 onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
                 className={cn(
-                  "rounded-lg px-3 py-2 mb-2 border-r-4 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity",
+                  "rounded-xl px-3 py-2 mb-2 border-r-4 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity",
                   msg.sender === "customer"
                     ? "bg-white/15 border-white/50"
-                    : "bg-secondary border-primary/40"
-              )}>
+                    : "bg-secondary/80 border-primary/40"
+                )}>
                 {msg.quoted.sender_name && (
                   <p className={cn(
                     "text-[11px] font-bold mb-0.5",
@@ -455,7 +455,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 <>
                   {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} isAgent={msg.sender === "agent"} onImageClick={onImageClick} />}
                   {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
-                    <p className="whitespace-pre-wrap">
+                    <p className="whitespace-pre-wrap leading-[1.65]">
                       {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
                         part.startsWith("@") ? (
                           <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{part}</span>
@@ -469,8 +469,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               );
             })()}
             {/* Timestamp + status */}
-            <div className={cn("flex items-center gap-0.5 mt-1", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground" : "text-white/60")}>
-              <span className="text-[10px]">{msg.timestamp}</span>
+            <div className={cn("flex items-center gap-1 mt-1.5", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground/70" : "text-white/55")}>
+              <span className="text-[10px] font-medium">{msg.timestamp}</span>
               {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
               {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
             </div>
@@ -551,9 +551,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     const newBlocked = !isBlocked;
     try {
       if (conversation.channelType === "evolution") {
-        await invokeCloud("evolution-manage", {
-          body: { action, phone: conversation.customerPhone },
+        const { data, error } = await invokeCloud("evolution-manage", {
+          body: { action, phone: conversation.customerPhone, channel_id: conversation.channelId },
         });
+        if (error || data?.error) {
+          throw new Error(data?.error || "فشل تنفيذ الحظر على واتساب");
+        }
       }
       // Update blacklisted_numbers table
       if (newBlocked) {
@@ -575,9 +578,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           .eq("phone", conversation.customerPhone);
       }
       setIsBlocked(newBlocked);
-      toast.success(newBlocked ? "✅ تم حظر الرقم بنجاح" : "✅ تم إلغاء حظر الرقم");
-    } catch {
-      toast.error(newBlocked ? "فشل حظر الرقم" : "فشل إلغاء الحظر");
+      toast.success(newBlocked ? "✅ تم حظر الرقم في واتساب بنجاح" : "✅ تم إلغاء حظر الرقم في واتساب");
+    } catch (err: any) {
+      toast.error(newBlocked ? `فشل حظر الرقم: ${err?.message || ""}` : `فشل إلغاء الحظر: ${err?.message || ""}`);
     }
   };
 
@@ -1304,14 +1307,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-2 md:space-y-3 bg-gradient-to-b from-secondary/20 to-secondary/40">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4 bg-gradient-to-b from-secondary/15 to-secondary/30">
         {messages.map((msg) => (
           <div key={msg.id} className={cn(
             "flex",
             msg.sender === "agent" ? "justify-start" : msg.sender === "system" ? "justify-center" : "justify-end"
           )}>
             {msg.sender === "system" ? (
-              <div className="bg-muted/50 text-muted-foreground text-[11px] px-3 py-1 rounded-full">
+              <div className="bg-muted/60 text-muted-foreground text-[11px] px-4 py-1.5 rounded-full font-medium shadow-sm">
                 {msg.text}
               </div>
             ) : (
