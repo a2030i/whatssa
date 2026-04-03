@@ -38,6 +38,7 @@ interface ChatAreaProps {
   onTagsChange?: (convId: string, tags: string[]) => void;
   onEditMessage?: (msgId: string, waMessageId: string, newText: string, convPhone: string) => void;
   onDeleteMessage?: (msgId: string, waMessageId: string, convPhone: string) => void;
+  onShowCustomerInfo?: () => void;
 }
 
 const MessageStatus = ({ status }: { status?: string }) => {
@@ -530,7 +531,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   );
 };
 
-const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage }: ChatAreaProps) => {
+const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo }: ChatAreaProps) => {
   const { orgId, user, profile } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -1140,24 +1141,35 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           <div className="flex items-center gap-1">
             {/* 24h Window Timer - Meta API only */}
             {/* Mobile quick actions */}
-            {conversation.status !== "closed" && (
-              <div className="flex md:hidden items-center gap-0.5">
+            <div className="flex md:hidden items-center gap-0.5">
+              {onShowCustomerInfo && (
                 <button
-                  onClick={() => setShowTransfer(true)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-secondary/80 transition-colors"
-                  title="تحويل"
+                  onClick={onShowCustomerInfo}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-primary/10 transition-colors"
+                  title="معلومات العميل"
                 >
-                  <UserPlus className="w-4 h-4 text-primary" />
+                  <Contact className="w-4 h-4 text-muted-foreground" />
                 </button>
-                <button
-                  onClick={() => setShowClosureReason(true)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-destructive/10 transition-colors"
-                  title="إغلاق"
-                >
-                  <XCircle className="w-4 h-4 text-destructive" />
-                </button>
-              </div>
-            )}
+              )}
+              {conversation.status !== "closed" && (
+                <>
+                  <button
+                    onClick={() => setShowTransfer(true)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-secondary/80 transition-colors"
+                    title="تحويل"
+                  >
+                    <UserPlus className="w-4 h-4 text-primary" />
+                  </button>
+                  <button
+                    onClick={() => setShowClosureReason(true)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-destructive/10 transition-colors"
+                    title="إغلاق"
+                  >
+                    <XCircle className="w-4 h-4 text-destructive" />
+                  </button>
+                </>
+              )}
+            </div>
             {conversation.status === "closed" && (
               <button
                 onClick={() => { onStatusChange(conversation.id, "active"); toast.success("تم إعادة فتح المحادثة"); }}

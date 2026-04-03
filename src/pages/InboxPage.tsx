@@ -8,6 +8,7 @@ import ConversationList from "@/components/inbox/ConversationList";
 import ChatArea from "@/components/inbox/ChatArea";
 import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";
 import NewConversationDialog from "@/components/inbox/NewConversationDialog";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
 
@@ -39,6 +40,7 @@ const InboxPage = () => {
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [newConvOpen, setNewConvOpen] = useState(false);
+  const [mobileCustomerInfoOpen, setMobileCustomerInfoOpen] = useState(false);
   const selectedIdRef = useRef<string | null>(null);
 
   const isMobile = useIsMobile();
@@ -763,7 +765,22 @@ const InboxPage = () => {
            onTagsChange={handleTagsChange}
            onEditMessage={handleEditMessage}
            onDeleteMessage={handleDeleteMessage}
+           onShowCustomerInfo={() => setMobileCustomerInfoOpen(true)}
          />
+
+        {/* Mobile Customer Info Sheet */}
+        <Sheet open={mobileCustomerInfoOpen} onOpenChange={setMobileCustomerInfoOpen}>
+          <SheetContent side="bottom" className="h-[85dvh] rounded-t-2xl p-0 overflow-hidden" dir="rtl">
+            <div className="h-full overflow-y-auto p-4 pt-6">
+              <CustomerInfoPanel
+                conversation={selected}
+                onUpdateNotes={handleUpdateNotes}
+                onAssignAgent={handleAssignAgent}
+                onAssignTeam={handleAssignTeam}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     );
   }
