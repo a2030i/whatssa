@@ -524,6 +524,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [hasAiConfig, setHasAiConfig] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
