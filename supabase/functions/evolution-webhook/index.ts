@@ -553,6 +553,48 @@ serve(async (req) => {
         }
         if (!phone || phone.includes("status")) continue;
 
+        // ── Handle reactionMessage inside MESSAGES_UPSERT (v2.3.7 has no separate event) ──
+        if (messageContent.reactionMessage) {
+          const reactionKey = messageContent.reactionMessage.key || {};
+          const targetWaId = reactionKey.id;
+          const emoji = messageContent.reactionMessage.text || "";
+          const reactionFromMe = !!isFromMe;
+
+          if (targetWaId) {
+            const { data: targetMsg } = await supabase
+              .from("messages")
+              .select("id, metadata")
+              .eq("wa_message_id", targetWaId)
+              .limit(1)
+              .maybeSingle();
+
+            if (targetMsg) {
+              const meta = (targetMsg.metadata as Record<string, any>) || {};
+              let reactions: Array<{ emoji: string; fromMe: boolean; timestamp?: string }> = meta.reactions || [];
+
+              if (emoji) {
+                const existingIdx = reactions.findIndex(r => r.fromMe === reactionFromMe);
+                if (existingIdx >= 0) {
+                  reactions[existingIdx] = { emoji, fromMe: reactionFromMe, timestamp: new Date().toISOString() };
+                } else {
+                  reactions.push({ emoji, fromMe: reactionFromMe, timestamp: new Date().toISOString() });
+                }
+              } else {
+                reactions = reactions.filter(r => r.fromMe !== reactionFromMe);
+              }
+
+              await supabase.from("messages").update({
+                metadata: { ...meta, reactions },
+              }).eq("id", targetMsg.id);
+
+              await logToSystem(supabase, "info", `تفاعل ${emoji || '(إزالة)'} على رسالة`, {
+                wa_message_id: targetWaId, fromMe: reactionFromMe,
+              }, orgId);
+            }
+          }
+          continue;
+        }
+
         const text =
           messageContent.conversation ||
           messageContent.extendedTextMessage?.text ||
@@ -596,7 +638,6 @@ serve(async (req) => {
             })),
           };
         } else if (messageContent.pollUpdateMessage) {
-          // Poll vote update — skip for now, handled separately
           continue;
         }
 

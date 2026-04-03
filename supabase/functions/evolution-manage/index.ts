@@ -829,16 +829,28 @@ serve(async (req) => {
       const reactPhone = asString(payload.phone);
       const message_id = asString(payload.message_id);
       const emoji = asString(payload.emoji);
+      const isGroup = typeof payload.is_group === "boolean" ? payload.is_group : reactPhone.includes("@g.us");
       if (!reactPhone || !message_id) return json({ error: "البيانات ناقصة" }, 400);
+
+      // Determine correct remoteJid based on conversation type
+      let remoteJid: string;
+      if (reactPhone.includes("@")) {
+        remoteJid = reactPhone;
+      } else if (isGroup) {
+        remoteJid = `${reactPhone.replace(/\D/g, "")}@g.us`;
+      } else {
+        remoteJid = `${reactPhone.replace(/\D/g, "")}@s.whatsapp.net`;
+      }
+
       const reactRes = await fetch(`${EVOLUTION_URL}/message/sendReaction/${instanceName}`, {
         method: "POST",
         headers: evoHeaders,
         body: JSON.stringify({
           key: {
-            remoteJid: `${reactPhone.replace(/\D/g, "")}@s.whatsapp.net`,
+            remoteJid,
             id: message_id,
           },
-          reaction: emoji || "", // empty = remove reaction
+          reaction: emoji || "",
         }),
       });
       return json({ success: reactRes.ok });
