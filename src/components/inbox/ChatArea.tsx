@@ -227,7 +227,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               <Reply className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
-          {msg.sender === "customer" && msg.type === "text" && (
+          {hasAiConfig && msg.sender === "customer" && msg.type === "text" && (
             <button onClick={handleTranslate} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="ترجمة">
               <Languages className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
