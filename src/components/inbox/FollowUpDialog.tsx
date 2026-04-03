@@ -41,6 +41,7 @@ const FollowUpDialog = ({
   const [autoMessage, setAutoMessage] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [templateVariables, setTemplateVariables] = useState<string[]>([]);
 
   const isMetaChannel = channelType === "meta_api";
   const approvedTemplates = templates.filter((t) => t.status === "approved");
