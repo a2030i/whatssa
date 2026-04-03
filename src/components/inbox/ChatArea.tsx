@@ -877,7 +877,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     if (blob.size < 500) { toast.info("تسجيل قصير جداً"); return; }
     try {
       const base64 = await blobToBase64(blob);
-      const { data, error } = await invokeCloud("upload-chat-media", {
+      const { data: uploadData, error: uploadError } = await invokeCloud("upload-chat-media", {
         body: {
           conversation_id: conversation.id,
           file_name: `${Date.now()}.webm`,
@@ -885,9 +885,25 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           base64,
         },
       });
-      if (error) throw error;
-      if (!data?.storage_path) throw new Error("تعذر حفظ التسجيل");
-      onSendMessage(conversation.id, `🎤 رسالة صوتية\n${data.storage_path}`);
+      if (uploadError) throw uploadError;
+      if (!uploadData?.storage_path) throw new Error("تعذر حفظ التسجيل");
+
+      const storagePath = uploadData.storage_path as string;
+      const isEvolution = conversation.channelType === "evolution" || !conversation.channelType;
+      const sendFn = isEvolution ? "evolution-send" : "whatsapp-send";
+
+      const { data, error } = await invokeCloud(sendFn, {
+        body: {
+          to: conversation.customerPhone,
+          message: "",
+          conversation_id: conversation.id,
+          media_url: storagePath,
+          media_type: "audio",
+        },
+      });
+      if (error || data?.error) {
+        throw new Error(data?.error || "فشل إرسال الرسالة الصوتية");
+      }
       toast.success("تم إرسال الرسالة الصوتية");
     } catch (err: any) {
       toast.error("فشل رفع التسجيل: " + (err?.message || err?.context?.error || ""));
