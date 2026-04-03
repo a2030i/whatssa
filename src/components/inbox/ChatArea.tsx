@@ -557,12 +557,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       }
       // Update blacklisted_numbers table
       if (newBlocked) {
-        await supabase.from("blacklisted_numbers").upsert({
+        // Delete first to avoid conflicts, then insert
+        await supabase.from("blacklisted_numbers")
+          .delete()
+          .eq("org_id", orgId)
+          .eq("phone", conversation.customerPhone);
+        await supabase.from("blacklisted_numbers").insert({
           org_id: orgId,
           phone: conversation.customerPhone,
           blocked_by: user?.id || null,
           reason: "حظر يدوي من صندوق الوارد",
-        }, { onConflict: "org_id,phone" });
+        });
       } else {
         await supabase.from("blacklisted_numbers")
           .delete()
