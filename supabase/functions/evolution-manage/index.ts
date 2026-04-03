@@ -147,11 +147,12 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await authClient.auth.getUser();
     if (userError || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("org_id")
-      .eq("id", user.id)
-      .maybeSingle();
+    // Parallel: fetch profile + parse body simultaneously
+    const [profileResult, rawBody] = await Promise.all([
+      adminClient.from("profiles").select("org_id").eq("id", user.id).maybeSingle(),
+      req.json().catch(() => ({} as Record<string, unknown>)),
+    ]);
+    const profile = profileResult.data;
 
     if (!profile?.org_id) return json({ error: "لا توجد مؤسسة مرتبطة" }, 400);
 
@@ -161,12 +162,9 @@ serve(async (req) => {
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
 
-    if (!EVOLUTION_URL || !EVOLUTION_KEY) {
-      await logToSystem(adminClient, "error", "إعدادات Evolution API غير مكتملة", {}, orgId, userId);
-      return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
-    }
+    if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
 
-    const body = await req.json().catch(() => ({} as Record<string, unknown>));
+    const body = rawBody;
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return json({ error: "بيانات الطلب غير صالحة" }, 400);
     }
@@ -196,7 +194,7 @@ serve(async (req) => {
     const CLOUD_URL = Deno.env.get("SUPABASE_URL")!;
     const webhookUrl = `${CLOUD_URL}/functions/v1/evolution-webhook`;
 
-    await logToSystem(adminClient, "info", `طلب إدارة Evolution: ${action}`, {
+    logToSystem(adminClient, "info", `طلب إدارة Evolution: ${action}`, {
       action, instance: instanceName,
     }, orgId, userId);
 
