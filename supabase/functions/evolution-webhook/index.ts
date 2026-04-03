@@ -1187,6 +1187,45 @@ serve(async (req) => {
                 }
               }
             }
+
+            // ── AI Auto-Reply (only if no chatbot and no automation rule matched) ──
+            if (!matchedRule) {
+              try {
+                const aiResp = await supabase.functions.invoke("ai-auto-reply", {
+                  body: {
+                    conversation_id: conversation.id,
+                    customer_message: content,
+                    org_id: orgId,
+                  },
+                });
+                const aiData = aiResp.data;
+                if (aiData?.reply && !aiData?.skip) {
+                  // Send the AI reply via Evolution
+                  const sendResp = await fetch(`${EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+                    body: JSON.stringify({ number: phone, text: aiData.reply }),
+                  });
+                  if (sendResp.ok) {
+                    await supabase.from("messages").insert({
+                      conversation_id: conversation.id, sender: "agent", message_type: "text",
+                      content: aiData.reply, status: "sent",
+                      metadata: { ai_generated: true },
+                    });
+                    await supabase.from("conversations").update({
+                      last_message: aiData.reply, last_message_at: new Date().toISOString(),
+                    }).eq("id", conversation.id);
+                    await logToSystem(supabase, "info", "رد AI تلقائي مرسل", {
+                      conversation_id: conversation.id, reply_length: aiData.reply.length,
+                    }, orgId);
+                  }
+                }
+              } catch (aiErr) {
+                await logToSystem(supabase, "warn", "فشل استدعاء AI auto-reply", {
+                  error: (aiErr as Error).message,
+                }, orgId);
+              }
+            }
           }
         }
       }
