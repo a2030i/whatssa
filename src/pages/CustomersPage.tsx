@@ -264,7 +264,7 @@ const CustomersPage = () => {
 
   if (selectedCustomerId) {
     return (
-      <div className="p-3 md:p-6 max-w-[1000px]">
+      <div className="p-3 md:p-6 max-w-[1000px] mx-auto">
         <CustomerProfile customerId={selectedCustomerId} onBack={() => setSelectedCustomerId(null)} />
       </div>
     );
