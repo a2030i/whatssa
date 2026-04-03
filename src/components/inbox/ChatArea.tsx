@@ -911,6 +911,28 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const handleVoiceSend = async (blob: Blob) => {
     setIsRecording(false);
     if (blob.size < 500) { toast.info("تسجيل قصير جداً"); return; }
+
+    // ── Optimistic: show voice message immediately with local blob URL ──
+    const localUrl = URL.createObjectURL(blob);
+    const optimisticId = `optimistic-voice-${Date.now()}`;
+    window.dispatchEvent(new CustomEvent("optimistic-message", {
+      detail: {
+        conversationId: conversation.id,
+        message: {
+          id: optimisticId,
+          conversationId: conversation.id,
+          text: "[audio]",
+          sender: "agent",
+          timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+          status: "sent",
+          type: "audio",
+          mediaUrl: localUrl,
+          createdAt: new Date().toISOString(),
+        },
+      },
+    }));
+
+    // ── Background: upload then send ──
     try {
       const base64 = await blobToBase64(blob);
       const { data: uploadData, error: uploadError } = await invokeCloud("upload-chat-media", {
@@ -940,9 +962,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       if (error || data?.error) {
         throw new Error(data?.error || "فشل إرسال الرسالة الصوتية");
       }
-      toast.success("تم إرسال الرسالة الصوتية");
     } catch (err: any) {
-      toast.error("فشل رفع التسجيل: " + (err?.message || err?.context?.error || ""));
+      toast.error("فشل إرسال الصوتية: " + (err?.message || err?.context?.error || ""));
+      // Mark optimistic message as failed
+      window.dispatchEvent(new CustomEvent("optimistic-message-failed", {
+        detail: { conversationId: conversation.id, messageId: optimisticId },
+      }));
     }
   };
 
