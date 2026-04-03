@@ -706,10 +706,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     loadOrgTags();
   }, []);
 
-  useEffect(() => {
-    return () => { if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current); };
-  }, []);
-
   const handleSend = () => {
     if (!inputText.trim()) return;
     if (isNoteMode) {
