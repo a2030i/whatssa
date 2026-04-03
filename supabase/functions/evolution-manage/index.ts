@@ -662,12 +662,15 @@ serve(async (req) => {
         return json({ error: "لا توجد قناة واتساب ويب مرتبطة لهذه المحادثة", success: false }, 400);
       }
 
-      const providerResponse = await fetch(`${EVOLUTION_URL}/message/updateBlockStatus/${targetInstance}`, {
-        method: "POST",
-        headers: evoHeaders,
-        body: JSON.stringify({ number: sanitizedPhone, status: desiredStatus }),
-      });
-      const providerData = await parseJsonSafe(providerResponse);
+      const providerAttempt = await updateEvolutionBlockStatus(
+        EVOLUTION_URL,
+        evoHeaders,
+        targetInstance,
+        sanitizedPhone,
+        desiredStatus,
+      );
+      const providerResponse = providerAttempt.response;
+      const providerData = providerAttempt.data;
 
       const providerMessage = extractProviderError(providerData);
       const providerText = `${providerMessage} ${JSON.stringify(providerData ?? "")}`.toLowerCase();
@@ -687,6 +690,7 @@ serve(async (req) => {
           phone: sanitizedPhone,
           channel_id: channel_id || null,
           http_status: providerResponse.status,
+          route: providerAttempt.route,
           response: providerData,
         }, orgId, userId);
         return json({ error: providerMessage || `فشل ${actionLabel}`, success: false }, 400);
@@ -697,11 +701,12 @@ serve(async (req) => {
         phone: sanitizedPhone,
         channel_id: channel_id || null,
         provider_status: providerResponse.status,
+        route: providerAttempt.route,
         provider_response: providerData,
         idempotent: isIdempotentUnblock,
       }, orgId, userId);
 
-      return json({ success: true, data: providerData, instance_name: targetInstance, idempotent: isIdempotentUnblock });
+      return json({ success: true, data: providerData, instance_name: targetInstance, idempotent: isIdempotentUnblock, route: providerAttempt.route });
     }
 
     // ── ARCHIVE CHAT ──
@@ -1498,4 +1503,66 @@ async function resolveEvolutionInstanceName(
     .maybeSingle();
 
   return fallbackChannel?.evolution_instance_name || null;
+}
+
+async function updateEvolutionBlockStatus(
+  evolutionUrl: string,
+  headers: Record<string, string>,
+  instanceName: string,
+  phone: string,
+  status: "block" | "unblock",
+) {
+  const attempts = [
+    {
+      route: `/message/updateBlockStatus/${instanceName}`,
+      method: "POST",
+      body: { number: phone, status },
+    },
+    {
+      route: `/chat/updateBlockStatus/${instanceName}`,
+      method: "PUT",
+      body: { number: phone, status },
+    },
+    {
+      route: `/chat/updateBlockStatus/${instanceName}`,
+      method: "POST",
+      body: { number: phone, status },
+    },
+    {
+      route: `/chat/updateBlockStatus/${instanceName}`,
+      method: "PUT",
+      body: { jid: `${phone}@s.whatsapp.net`, block: status === "block" },
+    },
+    {
+      route: `/chat/updateBlockStatus/${instanceName}`,
+      method: "POST",
+      body: { jid: `${phone}@s.whatsapp.net`, block: status === "block" },
+    },
+  ];
+
+  let lastResult: { response: Response; data: unknown; route: string } | null = null;
+
+  for (const attempt of attempts) {
+    const response = await fetch(`${evolutionUrl}${attempt.route}`, {
+      method: attempt.method,
+      headers,
+      body: JSON.stringify(attempt.body),
+    });
+    const data = await parseJsonSafe(response);
+
+    lastResult = {
+      response,
+      data,
+      route: `${attempt.method} ${attempt.route}`,
+    };
+
+    const text = `${extractProviderError(data)} ${JSON.stringify(data ?? "")}`.toLowerCase();
+    const routeMissing = text.includes("cannot post") || text.includes("cannot put") || text.includes("not found");
+
+    if (response.ok || !routeMissing) {
+      return lastResult;
+    }
+  }
+
+  return lastResult!;
 }
