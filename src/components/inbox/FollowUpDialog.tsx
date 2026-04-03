@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { WhatsAppTemplate } from "@/types/whatsapp";
+import TemplateVariableInputs from "./TemplateVariableInputs";
 
 interface FollowUpDialogProps {
   open: boolean;
