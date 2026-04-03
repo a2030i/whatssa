@@ -3,6 +3,8 @@ import AppSidebar from "./AppSidebar";
 import NotificationBell from "./NotificationBell";
 import MobileBottomNav from "./MobileBottomNav";
 import OnboardingWizard from "./onboarding/OnboardingWizard";
+import GlobalSearch from "./GlobalSearch";
+import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
