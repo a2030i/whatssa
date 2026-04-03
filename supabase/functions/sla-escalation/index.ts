@@ -66,18 +66,22 @@ Deno.serve(async (req) => {
           const onlineMembers = (teamMembers || []).filter((m: any) => m.is_online);
 
           if (onlineMembers.length > 0) {
-            // Get loads
-            const loadsPromises = onlineMembers.map(async (m: any) => {
-              const { count } = await supabase
-                .from("conversations")
-                .select("*", { count: "exact", head: true })
-                .eq("org_id", team.org_id)
-                .eq("assigned_to", m.full_name)
-                .eq("status", "active");
-              return { ...m, load: count || 0 };
-            });
-            const withLoads = await Promise.all(loadsPromises);
-            withLoads.sort((a, b) => a.load - b.load);
+            // Get loads in a single query instead of N+1
+            const memberNames = onlineMembers.map((m: any) => m.full_name);
+            const { data: loadData } = await supabase
+              .from("conversations")
+              .select("assigned_to")
+              .eq("org_id", team.org_id)
+              .in("assigned_to", memberNames)
+              .eq("status", "active");
+            
+            const loadMap: Record<string, number> = {};
+            for (const m of onlineMembers) loadMap[m.full_name] = 0;
+            for (const r of (loadData || [])) {
+              if (r.assigned_to) loadMap[r.assigned_to] = (loadMap[r.assigned_to] || 0) + 1;
+            }
+            const withLoads = onlineMembers.map((m: any) => ({ ...m, load: loadMap[m.full_name] || 0 }));
+            withLoads.sort((a: any, b: any) => a.load - b.load);
             const chosen = withLoads[0];
 
             await supabase.from("conversations").update({
