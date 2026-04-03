@@ -237,7 +237,7 @@ const AppSidebar = () => {
             {/* Section Label */}
             <div className="px-4 pt-4 pb-1.5">
               {!collapsed ? (
-                <span className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/30">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/50">
                   {section.section}
                 </span>
               ) : (
