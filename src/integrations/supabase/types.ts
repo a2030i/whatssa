@@ -3504,6 +3504,15 @@ export type Database = {
         Args: { _check_type: string; _org_id: string }
         Returns: Json
       }
+      count_org_messages: {
+        Args: {
+          _from: string
+          _org_id: string
+          _sender?: string
+          _status?: string
+        }
+        Returns: number
+      }
       create_api_token_secure: {
         Args: {
           _created_by: string

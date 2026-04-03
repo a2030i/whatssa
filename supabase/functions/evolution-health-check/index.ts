@@ -133,12 +133,14 @@ Deno.serve(async (req) => {
 
           results.push({ instance: instanceName, status: "disconnected", action: "restart_requested" });
         } else {
-          // Instance is healthy — ensure DB reflects that
-          await supabase.from("whatsapp_config").update({
-            is_connected: true,
-            registration_status: "connected",
-            registration_error: null,
-          }).eq("id", channel.id);
+          // Instance is healthy — skip DB write if already connected (reduces IO)
+          if (!channel.is_connected) {
+            await supabase.from("whatsapp_config").update({
+              is_connected: true,
+              registration_status: "connected",
+              registration_error: null,
+            }).eq("id", channel.id);
+          }
 
           results.push({ instance: instanceName, status: "connected" });
         }
