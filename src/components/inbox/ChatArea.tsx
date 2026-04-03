@@ -21,6 +21,7 @@ import ClosureReasonDialog from "./ClosureReasonDialog";
 import ExportConversation from "./ExportConversation";
 import { useAuth } from "@/contexts/AuthContext";
 import FollowUpDialog from "./FollowUpDialog";
+import ScheduleMessagePopover from "./ScheduleMessagePopover";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
