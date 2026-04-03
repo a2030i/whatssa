@@ -1,15 +1,10 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
 import {
   MessageSquare, Bot, BarChart3, Users, Zap, Shield, Globe, ArrowLeft,
   CheckCircle2, Star, ClipboardCheck, FileText, Workflow,
-  ShoppingCart, Headphones, Send, Play, ChevronLeft, ChevronRight
+  ShoppingCart, Headphones, Send
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import inboxImg from "@/assets/landing-inbox.jpg";
-import analyticsImg from "@/assets/landing-analytics.jpg";
-import chatbotImg from "@/assets/landing-chatbot.jpg";
-
 const features = [
   { icon: MessageSquare, title: "صندوق وارد موحد", desc: "إدارة جميع محادثات واتساب من مكان واحد مع دعم أرقام متعددة وقنوات رسمية وغير رسمية" },
   { icon: Bot, title: "ذكاء اصطناعي متقدم", desc: "رد تلقائي ذكي من قاعدة معرفة مؤسستك مع تصحيح مستمر من الفريق" },
@@ -21,12 +16,6 @@ const features = [
   { icon: FileText, title: "نماذج واتساب", desc: "فورمات تفاعلية داخل واتساب لجمع البيانات بدون روابط خارجية" },
   { icon: BarChart3, title: "تحليلات شاملة", desc: "تقارير أداء الفريق والمحادثات والمبيعات مع مقارنة الفترات الزمنية" },
   { icon: Headphones, title: "رضا العملاء", desc: "استبيانات CSAT تلقائية بعد إغلاق المحادثات مع تقارير تفصيلية" },
-];
-
-const showcaseSlides = [
-  { img: inboxImg, title: "صندوق الوارد الذكي", desc: "واجهة احترافية لإدارة كل محادثاتك مع عرض معلومات العميل والطلبات" },
-  { img: analyticsImg, title: "تحليلات وتقارير", desc: "لوحة تحكم شاملة مع رسوم بيانية ومؤشرات أداء لحظية" },
-  { img: chatbotImg, title: "الشات بوت والأتمتة", desc: "محرر بصري لبناء تدفقات الشات بوت مع معاينة حية" },
 ];
 
 const plans = [
@@ -43,11 +32,6 @@ const stats = [
 ];
 
 const LandingPage = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  const nextSlide = () => setCurrentSlide((p) => (p + 1) % showcaseSlides.length);
-  const prevSlide = () => setCurrentSlide((p) => (p - 1 + showcaseSlides.length) % showcaseSlides.length);
-
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       {/* Navbar */}
@@ -103,10 +87,9 @@ const LandingPage = () => {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
               </Link>
-              <a href="#showcase">
+              <a href="#features">
                 <Button variant="outline" size="lg" className="gap-2 text-base px-8 h-13 rounded-xl">
-                  <Play className="w-4 h-4" />
-                  شاهد المنصة
+                  تعرّف على المميزات
                 </Button>
               </a>
             </div>
@@ -129,55 +112,6 @@ const LandingPage = () => {
                 <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Showcase / Screenshots */}
-      <section id="showcase" className="py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold">شاهد المنصة من الداخل</h2>
-            <p className="text-muted-foreground mt-3">واجهة احترافية مصممة لفرق العمل العربية</p>
-          </div>
-
-          <div className="relative">
-            {/* Screenshot */}
-            <div className="rounded-2xl overflow-hidden border-2 border-border/50 shadow-2xl bg-card">
-              <img
-                src={showcaseSlides[currentSlide].img}
-                alt={showcaseSlides[currentSlide].title}
-                className="w-full aspect-video object-cover"
-                loading="lazy"
-                width={1280}
-                height={720}
-              />
-            </div>
-
-            {/* Caption */}
-            <div className="text-center mt-6">
-              <h3 className="text-xl font-bold">{showcaseSlides[currentSlide].title}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{showcaseSlides[currentSlide].desc}</p>
-            </div>
-
-            {/* Nav */}
-            <div className="flex items-center justify-center gap-4 mt-5">
-              <Button variant="outline" size="icon" className="rounded-full h-10 w-10" onClick={prevSlide}>
-                <ChevronRight className="w-5 h-5" />
-              </Button>
-              <div className="flex gap-2">
-                {showcaseSlides.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentSlide(i)}
-                    className={`w-2.5 h-2.5 rounded-full transition-all ${i === currentSlide ? "bg-primary w-7" : "bg-muted-foreground/30"}`}
-                  />
-                ))}
-              </div>
-              <Button variant="outline" size="icon" className="rounded-full h-10 w-10" onClick={nextSlide}>
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-            </div>
           </div>
         </div>
       </section>
