@@ -339,6 +339,36 @@ const InboxPage = () => {
     return () => window.removeEventListener("optimistic-reaction", handler);
   }, []);
 
+  // Listen for optimistic messages (voice, etc.) from ChatArea
+  useEffect(() => {
+    const addHandler = (e: Event) => {
+      const { conversationId, message } = (e as CustomEvent).detail;
+      setAllMessages((prev) => ({
+        ...prev,
+        [conversationId]: [...(prev[conversationId] || []), message as Message],
+      }));
+      // Update conversation list preview
+      setConversations((prev) => prev.map((c) =>
+        c.id === conversationId ? { ...c, lastMessage: "🎤 رسالة صوتية", lastMessageTime: "الآن" } : c
+      ));
+    };
+    const failHandler = (e: Event) => {
+      const { conversationId, messageId } = (e as CustomEvent).detail;
+      setAllMessages((prev) => ({
+        ...prev,
+        [conversationId]: (prev[conversationId] || []).map((m) =>
+          m.id === messageId ? { ...m, status: "failed" as any } : m
+        ),
+      }));
+    };
+    window.addEventListener("optimistic-message", addHandler);
+    window.addEventListener("optimistic-message-failed", failHandler);
+    return () => {
+      window.removeEventListener("optimistic-message", addHandler);
+      window.removeEventListener("optimistic-message-failed", failHandler);
+    };
+  }, []);
+
   useEffect(() => {
     if (!selectedId) return;
 
