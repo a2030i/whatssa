@@ -279,10 +279,13 @@ const InboxPage = () => {
           ...prev,
           [selectedId]: (prev[selectedId] || []).some((m) => m.id === newMessage.id)
             ? (prev[selectedId] || []).map((m) => m.id === newMessage.id ? newMessage : m)
-            : // Also replace optimistic message if wa_message_id matches
+            : // Replace matching optimistic message (text match or audio type match)
               (() => {
                 const withoutOptimistic = (prev[selectedId] || []).filter((m) =>
-                  !(m.id.startsWith("optimistic-") && m.sender === "agent" && m.text === newMessage.text)
+                  !(m.id.startsWith("optimistic-") && m.sender === "agent" && (
+                    m.text === newMessage.text ||
+                    (m.type === "audio" && newMessage.type === "audio")
+                  ))
                 );
                 return [...withoutOptimistic, newMessage];
               })(),
@@ -337,6 +340,36 @@ const InboxPage = () => {
     };
     window.addEventListener("optimistic-reaction", handler);
     return () => window.removeEventListener("optimistic-reaction", handler);
+  }, []);
+
+  // Listen for optimistic messages (voice, etc.) from ChatArea
+  useEffect(() => {
+    const addHandler = (e: Event) => {
+      const { conversationId, message } = (e as CustomEvent).detail;
+      setAllMessages((prev) => ({
+        ...prev,
+        [conversationId]: [...(prev[conversationId] || []), message as Message],
+      }));
+      // Update conversation list preview
+      setConversations((prev) => prev.map((c) =>
+        c.id === conversationId ? { ...c, lastMessage: "🎤 رسالة صوتية", lastMessageTime: "الآن" } : c
+      ));
+    };
+    const failHandler = (e: Event) => {
+      const { conversationId, messageId } = (e as CustomEvent).detail;
+      setAllMessages((prev) => ({
+        ...prev,
+        [conversationId]: (prev[conversationId] || []).map((m) =>
+          m.id === messageId ? { ...m, status: "failed" as any } : m
+        ),
+      }));
+    };
+    window.addEventListener("optimistic-message", addHandler);
+    window.addEventListener("optimistic-message-failed", failHandler);
+    return () => {
+      window.removeEventListener("optimistic-message", addHandler);
+      window.removeEventListener("optimistic-message-failed", failHandler);
+    };
   }, []);
 
   useEffect(() => {
@@ -663,6 +696,24 @@ const InboxPage = () => {
       return;
     }
 
+    // Optimistic: show template in chat immediately
+    let previewBody = template.body;
+    variables.forEach((v, i) => { previewBody = previewBody.replace(`{{${i + 1}}}`, v || `{{${i + 1}}}`); });
+    const optimisticId = `optimistic-tpl-${Date.now()}`;
+    setAllMessages((prev) => ({
+      ...prev,
+      [convId]: [...(prev[convId] || []), {
+        id: optimisticId,
+        conversationId: convId,
+        text: previewBody,
+        sender: "agent" as const,
+        timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+        status: "sent" as const,
+        type: "template" as const,
+        createdAt: new Date().toISOString(),
+      }],
+    }));
+
     const sendFunc = getSendFunction(conversation.channelType);
     const { data, error } = await invokeCloud(sendFunc, {
       body: {
@@ -677,10 +728,12 @@ const InboxPage = () => {
 
     if (error || data?.error) {
       toast.error(data?.error || "فشل إرسال القالب");
+      setAllMessages((prev) => ({
+        ...prev,
+        [convId]: (prev[convId] || []).filter((m) => m.id !== optimisticId),
+      }));
       return;
     }
-
-    toast.success("تم إرسال القالب الحقيقي");
   }, [conversations]);
 
   if (loading) {
