@@ -274,12 +274,14 @@ const FollowUpDialog = ({
                   </SelectContent>
                 </Select>
               )}
-              {selectedTemplate && (
+              {selectedTemplate && selectedTemplate.variableCount > 0 ? (
+                <TemplateVariableInputs template={selectedTemplate} variables={templateVariables} onChange={setTemplateVariables} />
+              ) : selectedTemplate ? (
                 <div className="p-3 rounded-lg border bg-muted/20 text-sm space-y-1">
                   <p className="font-medium text-xs text-muted-foreground">معاينة القالب:</p>
                   <p className="whitespace-pre-wrap">{selectedTemplate.body}</p>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
 
