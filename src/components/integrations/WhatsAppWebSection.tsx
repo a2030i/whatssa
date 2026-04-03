@@ -595,7 +595,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
                 <div className="flex items-center gap-1 group">
                   <h2 className="font-semibold text-sm">{existingConfig?.channel_label || "واتساب ويب"}</h2>
                   {existingConfig && (
-                    <button onClick={() => { setEditingLabel(true); setLabelText(existingConfig?.channel_label || ""); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary">
+                    <button onClick={() => { setEditingLabel(true); setLabelText(existingConfig?.channel_label || ""); }} className="text-muted-foreground/50 hover:text-primary transition-colors" title="تعديل اسم القناة">
                       <Pencil className="w-2.5 h-2.5" />
                     </button>
                   )}
