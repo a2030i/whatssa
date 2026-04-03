@@ -4,7 +4,7 @@ import {
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
   Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock, ClipboardList,
-  Workflow, Send, Warehouse, DollarSign, Package
+  Workflow, Send, Warehouse, DollarSign, Package, ClipboardCheck
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
