@@ -257,7 +257,15 @@ const InboxPage = () => {
         };
         setAllMessages((prev) => ({
           ...prev,
-          [selectedId]: [...(prev[selectedId] || []), newMessage],
+          [selectedId]: (prev[selectedId] || []).some((m) => m.id === newMessage.id)
+            ? (prev[selectedId] || []).map((m) => m.id === newMessage.id ? newMessage : m)
+            : // Also replace optimistic message if wa_message_id matches
+              (() => {
+                const withoutOptimistic = (prev[selectedId] || []).filter((m) =>
+                  !(m.id.startsWith("optimistic-") && m.sender === "agent" && m.text === newMessage.text)
+                );
+                return [...withoutOptimistic, newMessage];
+              })(),
         }));
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${selectedId}` }, (payload) => {
