@@ -714,6 +714,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       toast.success("تم إضافة الملاحظة الداخلية");
       return;
     }
+    if (isBlocked) {
+      toast.error("⚠️ هذا الرقم محظور. هل تريد إلغاء الحظر أولاً؟", {
+        action: {
+          label: "إلغاء الحظر",
+          onClick: () => handleToggleBlock(),
+        },
+        duration: 5000,
+      });
+      return;
+    }
     if (windowExpired) {
       toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
       setShowTemplates(true);
