@@ -64,7 +64,8 @@ const providers = [
 ];
 
 const capabilities = [
-  { key: "chat_reply", label: "رد ذكي على المحادثات", icon: MessageSquare, description: "AI يرد على العملاء تلقائياً أو يقترح ردود" },
+  { key: "chat_reply", label: "رد ذكي على المحادثات", icon: MessageSquare, description: "AI يقترح ردود ذكية بناءً على سياق المحادثة" },
+  { key: "auto_reply", label: "رد تلقائي بالمعرفة", icon: Zap, description: "AI يرد تلقائياً من قاعدة معرفة المؤسسة" },
   { key: "conversation_summary", label: "تلخيص المحادثات", icon: FileText, description: "ملخص آلي لكل محادثة عند إغلاقها" },
   { key: "smart_analysis", label: "تحليل ذكي", icon: BarChart3, description: "تحليل الطلبات والمبيعات والأداء" },
 ];

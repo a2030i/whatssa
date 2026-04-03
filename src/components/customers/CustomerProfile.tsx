@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import CustomerTimeline from "./CustomerTimeline";
 import {
   ArrowRight, Package, CreditCard, MapPin, Calendar, TrendingUp,
   ShoppingCart, Clock, Phone, Mail, Building, Tag,
@@ -260,6 +261,11 @@ const CustomerProfile = ({ customerId, onBack }: CustomerProfileProps) => {
           </div>
         </>
       )}
+
+      {/* Customer Timeline */}
+      <div className="bg-card rounded-xl shadow-card border border-border p-4">
+        <CustomerTimeline customerId={customerId} customerPhone={customer.phone} />
+      </div>
 
       {/* Orders List */}
       <div className="bg-card rounded-xl shadow-card border border-border overflow-hidden">
