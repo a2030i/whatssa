@@ -7,6 +7,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, CalendarIcon, Send, Trash2, Pencil, X, AlertTriangle, FileText, Loader2 } from "lucide-react";
+import TemplateVariableInputs from "./TemplateVariableInputs";
+import { buildTemplateComponents } from "@/types/whatsapp";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -59,6 +61,7 @@ const ScheduleMessagePopover = ({
   const [editDate, setEditDate] = useState("");
   const [useTemplate, setUseTemplate] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templateVariables, setTemplateVariables] = useState<string[]>([]);
 
   const isMetaChannel = channelType === "meta_api";
   const approvedTemplates = templates.filter((t) => t.status === "approved");
@@ -114,6 +117,14 @@ const ScheduleMessagePopover = ({
 
     const selectedTpl = approvedTemplates.find((t) => `${t.name}__${t.language}` === selectedTemplateId);
 
+    if (selectedTpl && selectedTpl.variableCount > 0) {
+      const filled = templateVariables.filter(v => v?.trim());
+      if (filled.length < selectedTpl.variableCount) {
+        toast.error(`يرجى تعبئة جميع المتغيرات (${selectedTpl.variableCount})`);
+        return;
+      }
+    }
+
     if (!messageText.trim() && !selectedTpl) {
       toast.error("اكتب رسالة أو اختر قالب أولاً");
       return;
@@ -121,6 +132,10 @@ const ScheduleMessagePopover = ({
 
     setLoading(true);
     try {
+      const tplComponents = selectedTpl && selectedTpl.variableCount > 0
+        ? buildTemplateComponents(selectedTpl, templateVariables)
+        : null;
+
       const insertData: Record<string, unknown> = {
         org_id: orgId,
         conversation_id: conversationId,
@@ -129,6 +144,7 @@ const ScheduleMessagePopover = ({
         content: selectedTpl ? null : messageText.trim(),
         template_name: selectedTpl?.name || null,
         template_language: selectedTpl?.language || null,
+        template_components: tplComponents ? JSON.stringify(tplComponents) : null,
         scheduled_at: scheduledAt.toISOString(),
         created_by: user.id,
       };
@@ -143,6 +159,7 @@ const ScheduleMessagePopover = ({
       setTime("10:00");
       setUseTemplate(false);
       setSelectedTemplateId("");
+      setTemplateVariables([]);
       onScheduled();
     } catch (err: any) {
       toast.error(err.message || "فشل جدولة الرسالة");
@@ -222,7 +239,11 @@ const ScheduleMessagePopover = ({
           )}
 
           {useTemplate && (
-            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+            <Select value={selectedTemplateId} onValueChange={(v) => {
+              setSelectedTemplateId(v);
+              const tpl = approvedTemplates.find((t) => `${t.name}__${t.language}` === v);
+              setTemplateVariables(new Array(tpl?.variableCount || 0).fill(""));
+            }}>
               <SelectTrigger className="text-xs h-8">
                 <SelectValue placeholder="اختر قالب..." />
               </SelectTrigger>
@@ -235,6 +256,14 @@ const ScheduleMessagePopover = ({
               </SelectContent>
             </Select>
           )}
+
+          {/* Template variable inputs */}
+          {useTemplate && (() => {
+            const tpl = approvedTemplates.find((t) => `${t.name}__${t.language}` === selectedTemplateId);
+            return tpl && tpl.variableCount > 0 ? (
+              <TemplateVariableInputs template={tpl} variables={templateVariables} onChange={setTemplateVariables} compact />
+            ) : null;
+          })()}
 
           {/* Quick options */}
           <div className="flex flex-wrap gap-1.5">

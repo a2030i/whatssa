@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { WhatsAppTemplate } from "@/types/whatsapp";
+import TemplateVariableInputs from "./TemplateVariableInputs";
 
 interface FollowUpDialogProps {
   open: boolean;
@@ -40,6 +41,7 @@ const FollowUpDialog = ({
   const [autoMessage, setAutoMessage] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [templateVariables, setTemplateVariables] = useState<string[]>([]);
 
   const isMetaChannel = channelType === "meta_api";
   const approvedTemplates = templates.filter((t) => t.status === "approved");
@@ -256,7 +258,11 @@ const FollowUpDialog = ({
                   لا توجد قوالب معتمدة — أضف قوالب من صفحة القوالب أولاً
                 </p>
               ) : (
-                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                <Select value={selectedTemplateId} onValueChange={(v) => {
+                  setSelectedTemplateId(v);
+                  const tpl = approvedTemplates.find((t) => `${t.name}__${t.language}` === v);
+                  setTemplateVariables(new Array(tpl?.variableCount || 0).fill(""));
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="اختر قالب..." />
                   </SelectTrigger>
@@ -272,12 +278,14 @@ const FollowUpDialog = ({
                   </SelectContent>
                 </Select>
               )}
-              {selectedTemplate && (
+              {selectedTemplate && selectedTemplate.variableCount > 0 ? (
+                <TemplateVariableInputs template={selectedTemplate} variables={templateVariables} onChange={setTemplateVariables} />
+              ) : selectedTemplate ? (
                 <div className="p-3 rounded-lg border bg-muted/20 text-sm space-y-1">
                   <p className="font-medium text-xs text-muted-foreground">معاينة القالب:</p>
                   <p className="whitespace-pre-wrap">{selectedTemplate.body}</p>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
 
