@@ -1,0 +1,543 @@
+import { useState, useEffect } from "react";
+import {
+  ClipboardCheck, Plus, Filter, Clock, CheckCircle2, AlertCircle,
+  User, MessageSquare, ArrowUpDown, MoreHorizontal, Send, Loader2,
+  Bot, UserCircle, Truck, Phone, Mail, RefreshCw
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { ar } from "date-fns/locale";
+
+interface Task {
+  id: string;
+  title: string;
+  description: string | null;
+  task_type: string;
+  status: string;
+  priority: string;
+  assigned_to: string | null;
+  created_by_type: string;
+  source_data: any;
+  customer_phone: string | null;
+  customer_name: string | null;
+  conversation_id: string | null;
+  forward_target: string | null;
+  forward_status: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+interface ForwardConfig {
+  id: string;
+  name: string;
+  forward_type: string;
+  target_phone: string | null;
+  target_email: string | null;
+  target_group_jid: string | null;
+  channel_id: string | null;
+  message_template: string;
+  is_active: boolean;
+}
+
+const TASK_TYPES = [
+  { value: "modification", label: "تعديل بيانات", icon: "✏️" },
+  { value: "complaint", label: "شكوى / ملاحظة", icon: "⚠️" },
+  { value: "inquiry", label: "استفسار", icon: "❓" },
+  { value: "forward_shipping", label: "توجيه لشركة شحن", icon: "🚚" },
+  { value: "general", label: "عام", icon: "📋" },
+];
+
+const PRIORITIES = [
+  { value: "low", label: "منخفضة", color: "bg-muted text-muted-foreground" },
+  { value: "medium", label: "متوسطة", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
+  { value: "high", label: "عالية", color: "bg-destructive/10 text-destructive" },
+  { value: "urgent", label: "عاجلة", color: "bg-destructive text-destructive-foreground" },
+];
+
+const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
+  pending: { label: "قيد الانتظار", icon: Clock, color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
+  in_progress: { label: "قيد التنفيذ", icon: RefreshCw, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+  forwarded: { label: "تم التوجيه", icon: Send, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+  completed: { label: "مكتملة", icon: CheckCircle2, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+  cancelled: { label: "ملغية", icon: AlertCircle, color: "bg-muted text-muted-foreground" },
+};
+
+const TasksPage = () => {
+  const { profile } = useAuth();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [configs, setConfigs] = useState<ForwardConfig[]>([]);
+  const [agents, setAgents] = useState<{ id: string; full_name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("tasks");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [showNewTask, setShowNewTask] = useState(false);
+  const [showNewConfig, setShowNewConfig] = useState(false);
+
+  // New task form
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newType, setNewType] = useState("general");
+  const [newPriority, setNewPriority] = useState("medium");
+  const [newAssignee, setNewAssignee] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newCustomerName, setNewCustomerName] = useState("");
+
+  // New config form
+  const [cfgName, setCfgName] = useState("");
+  const [cfgType, setCfgType] = useState("whatsapp_group");
+  const [cfgPhone, setCfgPhone] = useState("");
+  const [cfgEmail, setCfgEmail] = useState("");
+  const [cfgTemplate, setCfgTemplate] = useState("📦 طلب رقم: {{order_number}}\n👤 العميل: {{customer_name}}\n📝 الملاحظة: {{note}}");
+
+  useEffect(() => {
+    if (profile?.org_id) {
+      fetchTasks();
+      fetchConfigs();
+      fetchAgents();
+    }
+  }, [profile?.org_id]);
+
+  const fetchTasks = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("org_id", profile!.org_id!)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    setTasks((data as unknown as Task[]) || []);
+    setLoading(false);
+  };
+
+  const fetchConfigs = async () => {
+    const { data } = await supabase
+      .from("forward_configs")
+      .select("*")
+      .eq("org_id", profile!.org_id!)
+      .order("created_at", { ascending: false });
+    setConfigs((data as unknown as ForwardConfig[]) || []);
+  };
+
+  const fetchAgents = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .eq("org_id", profile!.org_id!)
+      .eq("is_active", true);
+    setAgents(data || []);
+  };
+
+  const createTask = async () => {
+    if (!newTitle.trim()) return toast.error("أدخل عنوان المهمة");
+    const { error } = await supabase.from("tasks").insert({
+      org_id: profile!.org_id!,
+      title: newTitle.trim(),
+      description: newDesc.trim() || null,
+      task_type: newType,
+      priority: newPriority,
+      assigned_to: newAssignee || null,
+      customer_phone: newPhone || null,
+      customer_name: newCustomerName || null,
+      created_by_type: "agent",
+    } as any);
+    if (error) return toast.error("فشل إنشاء المهمة");
+    toast.success("تم إنشاء المهمة");
+    setShowNewTask(false);
+    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setNewPhone(""); setNewCustomerName("");
+    fetchTasks();
+  };
+
+  const updateTaskStatus = async (taskId: string, status: string) => {
+    const updates: any = { status };
+    if (status === "completed") updates.completed_at = new Date().toISOString();
+    const { error } = await supabase.from("tasks").update(updates).eq("id", taskId);
+    if (error) return toast.error("فشل التحديث");
+    toast.success("تم تحديث الحالة");
+    fetchTasks();
+  };
+
+  const createConfig = async () => {
+    if (!cfgName.trim()) return toast.error("أدخل اسم الوجهة");
+    if (cfgType === "whatsapp_group" && !cfgPhone.trim()) return toast.error("أدخل رقم القروب");
+    if (cfgType === "email" && !cfgEmail.trim()) return toast.error("أدخل البريد الإلكتروني");
+    const { error } = await supabase.from("forward_configs").insert({
+      org_id: profile!.org_id!,
+      name: cfgName.trim(),
+      forward_type: cfgType,
+      target_phone: cfgPhone || null,
+      target_email: cfgEmail || null,
+      message_template: cfgTemplate,
+    } as any);
+    if (error) return toast.error("فشل الحفظ");
+    toast.success("تم إضافة وجهة التوجيه");
+    setShowNewConfig(false);
+    setCfgName(""); setCfgPhone(""); setCfgEmail("");
+    fetchConfigs();
+  };
+
+  const toggleConfig = async (id: string, active: boolean) => {
+    await supabase.from("forward_configs").update({ is_active: !active } as any).eq("id", id);
+    fetchConfigs();
+  };
+
+  const deleteConfig = async (id: string) => {
+    await supabase.from("forward_configs").delete().eq("id", id);
+    toast.success("تم الحذف");
+    fetchConfigs();
+  };
+
+  const filteredTasks = tasks.filter(t => {
+    if (statusFilter !== "all" && t.status !== statusFilter) return false;
+    if (typeFilter !== "all" && t.task_type !== typeFilter) return false;
+    return true;
+  });
+
+  const stats = {
+    total: tasks.length,
+    pending: tasks.filter(t => t.status === "pending").length,
+    in_progress: tasks.filter(t => t.status === "in_progress").length,
+    completed: tasks.filter(t => t.status === "completed").length,
+  };
+
+  return (
+    <div className="p-4 md:p-6 space-y-6" dir="rtl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">المهام</h1>
+          <p className="text-sm text-muted-foreground">إدارة المهام والتوجيه لشركات الشحن</p>
+        </div>
+        <Button onClick={() => setShowNewTask(true)}>
+          <Plus className="w-4 h-4 ml-2" /> مهمة جديدة
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card><CardContent className="p-4 text-center">
+          <div className="text-2xl font-bold text-foreground">{stats.total}</div>
+          <div className="text-xs text-muted-foreground">إجمالي المهام</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+          <div className="text-xs text-muted-foreground">قيد الانتظار</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <div className="text-2xl font-bold text-blue-600">{stats.in_progress}</div>
+          <div className="text-xs text-muted-foreground">قيد التنفيذ</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+          <div className="text-xs text-muted-foreground">مكتملة</div>
+        </CardContent></Card>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="tasks">المهام</TabsTrigger>
+          <TabsTrigger value="forwarding">وجهات التوجيه</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tasks" className="space-y-4">
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="الحالة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="النوع" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {TASK_TYPES.map(t => (
+                  <SelectItem key={t.value} value={t.value}>{t.icon} {t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>
+          ) : filteredTasks.length === 0 ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">
+              <ClipboardCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>لا توجد مهام</p>
+            </CardContent></Card>
+          ) : (
+            <div className="space-y-3">
+              {filteredTasks.map(task => {
+                const statusCfg = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
+                const StatusIcon = statusCfg.icon;
+                const typeInfo = TASK_TYPES.find(t => t.value === task.task_type);
+                const priorityInfo = PRIORITIES.find(p => p.value === task.priority);
+                const agent = agents.find(a => a.id === task.assigned_to);
+
+                return (
+                  <Card key={task.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="text-base">{typeInfo?.icon}</span>
+                            <h3 className="font-semibold text-foreground truncate">{task.title}</h3>
+                            {task.created_by_type === "bot" && (
+                              <Badge variant="outline" className="text-xs gap-1">
+                                <Bot className="w-3 h-3" /> شات بوت
+                              </Badge>
+                            )}
+                          </div>
+                          {task.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{task.description}</p>
+                          )}
+                          <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                            {task.customer_name && (
+                              <span className="flex items-center gap-1">
+                                <UserCircle className="w-3 h-3" /> {task.customer_name}
+                              </span>
+                            )}
+                            {task.customer_phone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="w-3 h-3" /> {task.customer_phone}
+                              </span>
+                            )}
+                            {agent && (
+                              <span className="flex items-center gap-1">
+                                <User className="w-3 h-3" /> {agent.full_name}
+                              </span>
+                            )}
+                            <span>{format(new Date(task.created_at), "d MMM HH:mm", { locale: ar })}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge className={priorityInfo?.color || ""}>{priorityInfo?.label}</Badge>
+                          <Badge className={statusCfg.color}>
+                            <StatusIcon className="w-3 h-3 ml-1" /> {statusCfg.label}
+                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {task.status !== "in_progress" && (
+                                <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "in_progress")}>
+                                  <RefreshCw className="w-4 h-4 ml-2" /> بدء التنفيذ
+                                </DropdownMenuItem>
+                              )}
+                              {task.status !== "completed" && (
+                                <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "completed")}>
+                                  <CheckCircle2 className="w-4 h-4 ml-2" /> إكمال
+                                </DropdownMenuItem>
+                              )}
+                              {task.status !== "forwarded" && (
+                                <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "forwarded")}>
+                                  <Send className="w-4 h-4 ml-2" /> تم التوجيه
+                                </DropdownMenuItem>
+                              )}
+                              {task.status !== "cancelled" && (
+                                <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "cancelled")}>
+                                  <AlertCircle className="w-4 h-4 ml-2" /> إلغاء
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                      {/* Source data preview */}
+                      {task.source_data && Object.keys(task.source_data).length > 0 && (
+                        <div className="mt-3 p-2 bg-muted/50 rounded text-xs space-y-1">
+                          {task.source_data.order_number && <div>📦 رقم الطلب: <strong>{task.source_data.order_number}</strong></div>}
+                          {task.source_data.modification_type && <div>✏️ نوع التعديل: {task.source_data.modification_type}</div>}
+                          {task.source_data.new_value && <div>📝 القيمة الجديدة: {task.source_data.new_value}</div>}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="forwarding" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">إعداد وجهات توجيه الملاحظات لشركات الشحن</p>
+            <Button onClick={() => setShowNewConfig(true)} size="sm">
+              <Plus className="w-4 h-4 ml-2" /> وجهة جديدة
+            </Button>
+          </div>
+
+          {configs.length === 0 ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">
+              <Truck className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>لا توجد وجهات توجيه</p>
+              <p className="text-xs mt-1">أضف رقم قروب واتساب أو إيميل شركة الشحن</p>
+            </CardContent></Card>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {configs.map(cfg => (
+                <Card key={cfg.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          {cfg.forward_type === "email" ? <Mail className="w-4 h-4 text-primary" /> : <MessageSquare className="w-4 h-4 text-green-600" />}
+                          <h3 className="font-semibold text-foreground">{cfg.name}</h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {cfg.forward_type === "email" ? cfg.target_email : cfg.target_phone}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={cfg.is_active ? "default" : "secondary"}>
+                          {cfg.is_active ? "مفعّل" : "معطّل"}
+                        </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => toggleConfig(cfg.id, cfg.is_active)}>
+                              {cfg.is_active ? "تعطيل" : "تفعيل"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => deleteConfig(cfg.id)}>
+                              حذف
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                    <div className="mt-2 p-2 bg-muted/50 rounded text-xs font-mono whitespace-pre-wrap">
+                      {cfg.message_template}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* New Task Dialog */}
+      <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader><DialogTitle>مهمة جديدة</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>العنوان *</Label>
+              <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="مثال: تغيير عنوان الشحن" />
+            </div>
+            <div>
+              <Label>الوصف</Label>
+              <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="تفاصيل المهمة..." rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>النوع</Label>
+                <Select value={newType} onValueChange={setNewType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TASK_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.icon} {t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>الأولوية</Label>
+                <Select value={newPriority} onValueChange={setNewPriority}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PRIORITIES.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>إسناد إلى</Label>
+              <Select value={newAssignee} onValueChange={setNewAssignee}>
+                <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">بدون إسناد</SelectItem>
+                  {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>اسم العميل</Label>
+                <Input value={newCustomerName} onChange={e => setNewCustomerName(e.target.value)} />
+              </div>
+              <div>
+                <Label>رقم العميل</Label>
+                <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} dir="ltr" />
+              </div>
+            </div>
+            <Button onClick={createTask} className="w-full">إنشاء المهمة</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Config Dialog */}
+      <Dialog open={showNewConfig} onOpenChange={setShowNewConfig}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader><DialogTitle>وجهة توجيه جديدة</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>اسم الوجهة *</Label>
+              <Input value={cfgName} onChange={e => setCfgName(e.target.value)} placeholder="مثال: قروب أرامكس" />
+            </div>
+            <div>
+              <Label>نوع التوجيه</Label>
+              <Select value={cfgType} onValueChange={setCfgType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="whatsapp_group">قروب واتساب</SelectItem>
+                  <SelectItem value="whatsapp_direct">رسالة واتساب مباشرة</SelectItem>
+                  <SelectItem value="email">بريد إلكتروني</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {cfgType !== "email" ? (
+              <div>
+                <Label>رقم الهاتف / JID القروب</Label>
+                <Input value={cfgPhone} onChange={e => setCfgPhone(e.target.value)} dir="ltr" placeholder="966500000000 أو group-jid" />
+              </div>
+            ) : (
+              <div>
+                <Label>البريد الإلكتروني</Label>
+                <Input value={cfgEmail} onChange={e => setCfgEmail(e.target.value)} dir="ltr" placeholder="shipping@company.com" type="email" />
+              </div>
+            )}
+            <div>
+              <Label>قالب الرسالة</Label>
+              <Textarea value={cfgTemplate} onChange={e => setCfgTemplate(e.target.value)} rows={4} className="font-mono text-xs" />
+              <p className="text-xs text-muted-foreground mt-1">
+                متغيرات متاحة: {"{{order_number}}"} {"{{customer_name}}"} {"{{customer_phone}}"} {"{{note}}"}
+              </p>
+            </div>
+            <Button onClick={createConfig} className="w-full">حفظ</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default TasksPage;
