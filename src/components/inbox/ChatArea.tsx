@@ -143,7 +143,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
