@@ -1457,7 +1457,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </button>
             )}
             {/* AI Suggest Replies */}
-            {!isNoteMode && !windowExpired && (
+            {hasAiConfig && !isNoteMode && !windowExpired && (
               <button
                 onClick={async () => {
                   setAiLoading(true);
@@ -1486,6 +1486,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </button>
             )}
             {/* AI Summarize */}
+            {hasAiConfig && (
             <button
               onClick={async () => {
                 setAiLoading(true);
@@ -1508,6 +1509,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             >
               <Brain className="w-4 h-4" />
             </button>
+            )}
           </div>
 
           {/* AI Suggestions Row */}
