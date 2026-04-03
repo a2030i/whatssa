@@ -696,6 +696,24 @@ const InboxPage = () => {
       return;
     }
 
+    // Optimistic: show template in chat immediately
+    let previewBody = template.body;
+    variables.forEach((v, i) => { previewBody = previewBody.replace(`{{${i + 1}}}`, v || `{{${i + 1}}}`); });
+    const optimisticId = `optimistic-tpl-${Date.now()}`;
+    setAllMessages((prev) => ({
+      ...prev,
+      [convId]: [...(prev[convId] || []), {
+        id: optimisticId,
+        conversationId: convId,
+        text: previewBody,
+        sender: "agent" as const,
+        timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+        status: "sent" as const,
+        type: "template" as const,
+        createdAt: new Date().toISOString(),
+      }],
+    }));
+
     const sendFunc = getSendFunction(conversation.channelType);
     const { data, error } = await invokeCloud(sendFunc, {
       body: {
@@ -710,10 +728,12 @@ const InboxPage = () => {
 
     if (error || data?.error) {
       toast.error(data?.error || "فشل إرسال القالب");
+      setAllMessages((prev) => ({
+        ...prev,
+        [convId]: (prev[convId] || []).filter((m) => m.id !== optimisticId),
+      }));
       return;
     }
-
-    toast.success("تم إرسال القالب الحقيقي");
   }, [conversations]);
 
   if (loading) {
