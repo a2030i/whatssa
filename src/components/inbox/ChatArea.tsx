@@ -1314,7 +1314,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             msg.sender === "agent" ? "justify-start" : msg.sender === "system" ? "justify-center" : "justify-end"
           )}>
             {msg.sender === "system" ? (
-              <div className="bg-muted/50 text-muted-foreground text-[11px] px-3 py-1 rounded-full">
+              <div className="bg-muted/60 text-muted-foreground text-[11px] px-4 py-1.5 rounded-full font-medium shadow-sm">
                 {msg.text}
               </div>
             ) : (
