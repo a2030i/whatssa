@@ -79,14 +79,16 @@ const getStorageUrlFromText = (text: string) => {
 /** Resolve a media URL: if it's a storage path, create a signed URL; otherwise return as-is */
 const resolveMediaUrl = async (url: string | null | undefined): Promise<string | null> => {
   if (!url) return null;
+  // Blob URLs (optimistic) – pass through directly
+  if (url.startsWith("blob:")) return url;
   if (url.startsWith("storage:chat-media/")) {
     const path = url.replace("storage:chat-media/", "");
     try {
-      const { data, error } = await supabase.storage.from("chat-media").createSignedUrl(path, 3600);
+      // Files are stored in Lovable Cloud storage, use cloudSupabase
+      const { data, error } = await cloudSupabase.storage.from("chat-media").createSignedUrl(path, 3600);
       if (error) {
         console.error("[resolveMediaUrl] Signed URL error:", error.message, "path:", path);
-        // Fallback: try public URL
-        const { data: publicData } = supabase.storage.from("chat-media").getPublicUrl(path);
+        const { data: publicData } = cloudSupabase.storage.from("chat-media").getPublicUrl(path);
         return publicData?.publicUrl || null;
       }
       return data?.signedUrl || null;
