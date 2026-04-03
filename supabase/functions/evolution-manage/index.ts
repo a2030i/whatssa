@@ -662,12 +662,15 @@ serve(async (req) => {
         return json({ error: "لا توجد قناة واتساب ويب مرتبطة لهذه المحادثة", success: false }, 400);
       }
 
-      const providerResponse = await fetch(`${EVOLUTION_URL}/message/updateBlockStatus/${targetInstance}`, {
-        method: "POST",
-        headers: evoHeaders,
-        body: JSON.stringify({ number: sanitizedPhone, status: desiredStatus }),
-      });
-      const providerData = await parseJsonSafe(providerResponse);
+      const providerAttempt = await updateEvolutionBlockStatus(
+        EVOLUTION_URL,
+        evoHeaders,
+        targetInstance,
+        sanitizedPhone,
+        desiredStatus,
+      );
+      const providerResponse = providerAttempt.response;
+      const providerData = providerAttempt.data;
 
       const providerMessage = extractProviderError(providerData);
       const providerText = `${providerMessage} ${JSON.stringify(providerData ?? "")}`.toLowerCase();
@@ -687,6 +690,7 @@ serve(async (req) => {
           phone: sanitizedPhone,
           channel_id: channel_id || null,
           http_status: providerResponse.status,
+          route: providerAttempt.route,
           response: providerData,
         }, orgId, userId);
         return json({ error: providerMessage || `فشل ${actionLabel}`, success: false }, 400);
@@ -697,11 +701,12 @@ serve(async (req) => {
         phone: sanitizedPhone,
         channel_id: channel_id || null,
         provider_status: providerResponse.status,
+        route: providerAttempt.route,
         provider_response: providerData,
         idempotent: isIdempotentUnblock,
       }, orgId, userId);
 
-      return json({ success: true, data: providerData, instance_name: targetInstance, idempotent: isIdempotentUnblock });
+      return json({ success: true, data: providerData, instance_name: targetInstance, idempotent: isIdempotentUnblock, route: providerAttempt.route });
     }
 
     // ── ARCHIVE CHAT ──
