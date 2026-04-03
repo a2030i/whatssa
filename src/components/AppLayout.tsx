@@ -25,8 +25,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   const hideBottomNav = location.pathname === "/inbox";
 
-  // Notification sound + tab counter
+  // Global hooks
   useNotificationSound();
+  useKeyboardShortcuts();
 
   useEffect(() => {
     if (impersonatedOrgId) {
