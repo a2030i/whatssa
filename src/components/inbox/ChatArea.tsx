@@ -4,7 +4,7 @@ import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
 import ProductPicker from "./ProductPicker";
-import { supabase, invokeCloud } from "@/lib/supabase";
+import { supabase, cloudSupabase, invokeCloud } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Conversation, Message } from "@/data/mockData";
 import type { WhatsAppTemplate } from "@/types/whatsapp";
