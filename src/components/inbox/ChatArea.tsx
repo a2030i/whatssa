@@ -505,6 +505,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [recordingTime, setRecordingTime] = useState(0);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showClosureReason, setShowClosureReason] = useState(false);
+  const [showFollowUp, setShowFollowUp] = useState(false);
   const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
