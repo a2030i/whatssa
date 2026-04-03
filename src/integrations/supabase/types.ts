@@ -1415,6 +1415,81 @@ export type Database = {
           },
         ]
       }
+      follow_up_reminders: {
+        Row: {
+          assigned_to: string | null
+          auto_send_message: string | null
+          auto_send_template_language: string | null
+          auto_send_template_name: string | null
+          cancelled_at: string | null
+          conversation_id: string
+          created_at: string
+          created_by: string
+          customer_name: string | null
+          customer_phone: string
+          id: string
+          org_id: string
+          reminder_note: string | null
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          auto_send_message?: string | null
+          auto_send_template_language?: string | null
+          auto_send_template_name?: string | null
+          cancelled_at?: string | null
+          conversation_id: string
+          created_at?: string
+          created_by: string
+          customer_name?: string | null
+          customer_phone: string
+          id?: string
+          org_id: string
+          reminder_note?: string | null
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          auto_send_message?: string | null
+          auto_send_template_language?: string | null
+          auto_send_template_name?: string | null
+          cancelled_at?: string | null
+          conversation_id?: string
+          created_at?: string
+          created_by?: string
+          customer_name?: string | null
+          customer_phone?: string
+          id?: string
+          org_id?: string
+          reminder_note?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follow_up_reminders_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_reminders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forward_configs: {
         Row: {
           channel_id: string | null
