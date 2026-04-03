@@ -446,6 +446,16 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           </>
         )}
       </div>
+      {/* Reactions badge - WhatsApp style floating below bubble */}
+      {msg.reactions && msg.reactions.length > 0 && (
+        <div className={cn("flex -mt-2 mb-1", msg.sender === "agent" ? "justify-end mr-2" : "justify-start ml-2")}>
+          <div className="flex items-center gap-0.5 bg-card border border-border/40 rounded-full px-1.5 py-0.5 shadow-sm">
+            {msg.reactions.map((r, i) => (
+              <span key={i} className="text-sm">{r.emoji}</span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
