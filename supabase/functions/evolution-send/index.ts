@@ -135,21 +135,31 @@ serve(async (req) => {
         .limit(1).maybeSingle();
       if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
 
-      const remoteJid = to.includes("@") ? to : `${to}@s.whatsapp.net`;
-      const editRes = await fetch(`${EVOLUTION_URL}/chat/editMessage/${config.evolution_instance_name}`, {
+      const cleanPhone = to.replace(/\D/g, "");
+      const remoteJid = to.includes("@") ? to : `${cleanPhone}@s.whatsapp.net`;
+      const editRes = await fetch(`${EVOLUTION_URL}/message/editMessage/${config.evolution_instance_name}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY },
         body: JSON.stringify({
-          id: edit_message_id,
-          remoteJid,
+          number: cleanPhone,
+          key: {
+            id: edit_message_id,
+            fromMe: true,
+            remoteJid,
+          },
           text: message,
         }),
       });
 
       if (!editRes.ok) {
         const errData = await editRes.json().catch(() => ({}));
-        logToSystem(adminClient, "error", `فشل تعديل رسالة Evolution`, { error: errData, to, id: edit_message_id }, orgId, user.id);
-        return json({ error: errData?.message || "فشل تعديل الرسالة" }, editRes.status);
+        logToSystem(adminClient, "error", "فشل تعديل رسالة Evolution", {
+          error: errData,
+          to,
+          id: edit_message_id,
+          endpoint: "/message/editMessage",
+        }, orgId, user.id);
+        return json({ error: errData?.message || errData?.response?.message || "فشل تعديل الرسالة" }, editRes.status);
       }
 
       // Update in DB
