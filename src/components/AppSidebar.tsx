@@ -179,7 +179,7 @@ const AppSidebar = () => {
           "group flex items-center gap-3 rounded-xl text-[13px] font-medium transition-all duration-200 relative px-3 py-2",
           active
             ? "bg-gradient-to-l from-sidebar-primary/15 to-sidebar-primary/5 text-sidebar-primary shadow-sm"
-            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+            : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
         )}
       >
         {active && (
@@ -237,7 +237,7 @@ const AppSidebar = () => {
             {/* Section Label */}
             <div className="px-4 pt-4 pb-1.5">
               {!collapsed ? (
-                <span className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/30">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/50">
                   {section.section}
                 </span>
               ) : (
