@@ -53,6 +53,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
       { label: "الشات بوت", icon: Bot, path: "/chatbot" },
       { label: "قواعد الأتمتة", icon: Workflow, path: "/automation" },
       { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows" },
+      { label: "المهام", icon: ClipboardCheck, path: "/tasks" },
     ],
   },
   {
