@@ -162,7 +162,13 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   const handleReaction = async (emoji: string) => {
     try {
       await invokeCloud("evolution-manage", {
-        body: { action: "send_reaction", phone: conversation.customerPhone, message_id: msg.waMessageId, emoji },
+        body: {
+          action: "send_reaction",
+          phone: conversation.customerPhone,
+          message_id: msg.waMessageId,
+          emoji,
+          is_group: conversation.conversationType === "group",
+        },
       });
     } catch {}
   };
