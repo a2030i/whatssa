@@ -905,9 +905,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         mediaUrl: storagePath,
         createdAt: new Date().toISOString(),
       };
-      onSendMessage.__optimisticVoice?.(optimisticMsg);
-
-      const { data, error } = await invokeCloud(sendFn, {
+      toast.success("تم إرسال الرسالة الصوتية");
+    } catch (err: any) {
+      toast.error("فشل رفع التسجيل: " + (err?.message || err?.context?.error || ""));
+    }
+  };
         body: {
           to: conversation.customerPhone,
           message: "",
