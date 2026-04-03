@@ -610,7 +610,13 @@ const InboxPage = () => {
 
   const handleDeleteMessage = useCallback(async (msgId: string, waMessageId: string, convPhone: string) => {
     // Optimistic: update UI immediately
-    setAllMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "تم حذف هذه الرسالة", metadata: { ...(m.metadata || {}), is_deleted: true } } : m));
+    setAllMessages(prev => {
+      const updated: Record<string, Message[]> = {};
+      for (const [convId, msgs] of Object.entries(prev)) {
+        updated[convId] = msgs.map(m => m.id === msgId ? { ...m, content: "تم حذف هذه الرسالة", metadata: { ...(m.metadata || {}), is_deleted: true } } : m);
+      }
+      return updated;
+    });
     toast.success("تم حذف الرسالة");
 
     // Background: call the edge function
