@@ -2,12 +2,15 @@ import { ReactNode, useEffect, useState } from "react";
 import AppSidebar from "./AppSidebar";
 import NotificationBell from "./NotificationBell";
 import MobileBottomNav from "./MobileBottomNav";
+import OnboardingWizard from "./onboarding/OnboardingWizard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Shield, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/use-mobile";
+import useNotificationSound from "@/hooks/useNotificationSound";
+import useKeyboardShortcuts from "@/hooks/useKeyboardShortcuts";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -21,6 +24,10 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const [orgName, setOrgName] = useState("");
 
   const hideBottomNav = location.pathname === "/inbox";
+
+  // Global hooks
+  useNotificationSound();
+  useKeyboardShortcuts();
 
   useEffect(() => {
     if (impersonatedOrgId) {
@@ -67,6 +74,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       </main>
 
       {isMobile && !hideBottomNav && <MobileBottomNav />}
+      <OnboardingWizard />
     </div>
   );
 };
