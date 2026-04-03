@@ -239,7 +239,11 @@ const ScheduleMessagePopover = ({
           )}
 
           {useTemplate && (
-            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+            <Select value={selectedTemplateId} onValueChange={(v) => {
+              setSelectedTemplateId(v);
+              const tpl = approvedTemplates.find((t) => `${t.name}__${t.language}` === v);
+              setTemplateVariables(new Array(tpl?.variableCount || 0).fill(""));
+            }}>
               <SelectTrigger className="text-xs h-8">
                 <SelectValue placeholder="اختر قالب..." />
               </SelectTrigger>
@@ -252,6 +256,14 @@ const ScheduleMessagePopover = ({
               </SelectContent>
             </Select>
           )}
+
+          {/* Template variable inputs */}
+          {useTemplate && (() => {
+            const tpl = approvedTemplates.find((t) => `${t.name}__${t.language}` === selectedTemplateId);
+            return tpl && tpl.variableCount > 0 ? (
+              <TemplateVariableInputs template={tpl} variables={templateVariables} onChange={setTemplateVariables} compact />
+            ) : null;
+          })()}
 
           {/* Quick options */}
           <div className="flex flex-wrap gap-1.5">
