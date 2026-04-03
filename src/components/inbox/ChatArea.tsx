@@ -1092,6 +1092,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   <XCircle className="w-4 h-4 ml-2 text-destructive" /> إغلاق المحادثة
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowFollowUp(true)}>
+                  <Clock className="w-4 h-4 ml-2 text-primary" /> جدولة متابعة
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowTransfer(true)}>
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
