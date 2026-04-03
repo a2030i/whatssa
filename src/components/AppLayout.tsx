@@ -10,6 +10,7 @@ import { Shield, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/use-mobile";
 import useNotificationSound from "@/hooks/useNotificationSound";
+import useKeyboardShortcuts from "@/hooks/useKeyboardShortcuts";
 
 interface AppLayoutProps {
   children: ReactNode;
