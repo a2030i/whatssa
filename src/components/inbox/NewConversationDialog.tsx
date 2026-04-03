@@ -254,9 +254,12 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             template_components: buildTemplateComponents(selectedTemplate, templateVars),
             conversation_id: conversationId,
             channel_id: selectedChannel.id,
+            customer_name: customerName || cleanPhone,
           },
         });
         if (error || data?.error) throw new Error(data?.error || "فشل إرسال القالب");
+        // Edge function may return conversation_id if it created one
+        if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (!isMeta && messageText.trim()) {
         const { data, error } = await invokeCloud("evolution-send", {
           body: {
@@ -264,9 +267,12 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             message: messageText,
             conversation_id: conversationId,
             channel_id: selectedChannel.id,
+            customer_name: customerName || cleanPhone,
           },
         });
         if (error || data?.error) throw new Error(data?.error || "فشل إرسال الرسالة");
+        // Edge function creates conversation if needed — get its ID
+        if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (isMeta && !selectedTemplate) {
         toast.error("يجب اختيار قالب للقناة الرسمية");
         setSending(false);
