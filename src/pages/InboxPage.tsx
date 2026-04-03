@@ -149,6 +149,16 @@ const InboxPage = () => {
         };
       });
 
+      // Load blocked numbers for this org
+      const { data: blockedNumbers } = await supabase
+        .from("blacklisted_numbers")
+        .select("phone")
+        .eq("org_id", currentOrgId);
+      const blockedSet = new Set((blockedNumbers || []).map((b: any) => b.phone));
+      mapped.forEach(conv => {
+        if (blockedSet.has(conv.customerPhone)) conv.isBlocked = true;
+      });
+
       // Team-based visibility filtering
       const isAdmin = userRole === "admin" || isSuperAdmin;
       const filtered = isAdmin ? mapped : mapped.filter(conv => {

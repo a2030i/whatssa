@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
@@ -531,6 +531,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(conversation.isBlocked || false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -539,6 +540,46 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Sync blocked state when conversation changes
+  useEffect(() => {
+    setIsBlocked(conversation.isBlocked || false);
+  }, [conversation.id, conversation.isBlocked]);
+
+  const handleToggleBlock = async () => {
+    const action = isBlocked ? "unblock_contact" : "block_contact";
+    const newBlocked = !isBlocked;
+    try {
+      if (conversation.channelType === "evolution") {
+        await invokeCloud("evolution-manage", {
+          body: { action, phone: conversation.customerPhone },
+        });
+      }
+      // Update blacklisted_numbers table
+      if (newBlocked) {
+        // Delete first to avoid conflicts, then insert
+        await supabase.from("blacklisted_numbers")
+          .delete()
+          .eq("org_id", orgId)
+          .eq("phone", conversation.customerPhone);
+        await supabase.from("blacklisted_numbers").insert({
+          org_id: orgId,
+          phone: conversation.customerPhone,
+          blocked_by: user?.id || null,
+          reason: "حظر يدوي من صندوق الوارد",
+        });
+      } else {
+        await supabase.from("blacklisted_numbers")
+          .delete()
+          .eq("org_id", orgId)
+          .eq("phone", conversation.customerPhone);
+      }
+      setIsBlocked(newBlocked);
+      toast.success(newBlocked ? "✅ تم حظر الرقم بنجاح" : "✅ تم إلغاء حظر الرقم");
+    } catch {
+      toast.error(newBlocked ? "فشل حظر الرقم" : "فشل إلغاء الحظر");
+    }
+  };
 
   // Check if AI is configured for this org
   useEffect(() => {
@@ -676,6 +717,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       setInputText("");
       setIsNoteMode(false);
       toast.success("تم إضافة الملاحظة الداخلية");
+      return;
+    }
+    if (isBlocked) {
+      toast.error("⚠️ هذا الرقم محظور. هل تريد إلغاء الحظر أولاً؟", {
+        action: {
+          label: "إلغاء الحظر",
+          onClick: () => handleToggleBlock(),
+        },
+        duration: 5000,
+      });
       return;
     }
     if (windowExpired) {
@@ -1018,6 +1069,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     غير رسمي
                   </span>
                 )}
+                {isBlocked && (
+                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive font-semibold shrink-0">
+                    <Ban className="w-2.5 h-2.5" />
+                    محظور
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{conversation.lastSeen || conversation.customerPhone}</p>
             </div>
@@ -1114,15 +1171,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {conversation.channelType === "evolution" && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={async () => {
-                      try {
-                        await invokeCloud("evolution-manage", {
-                          body: { action: "block_contact", phone: conversation.customerPhone },
-                        });
-                        toast.success("تم حظر جهة الاتصال");
-                      } catch { toast.error("فشل الحظر"); }
-                    }}>
-                      <XCircle className="w-4 h-4 ml-2 text-destructive" /> حظر الرقم
+                    <DropdownMenuItem onClick={handleToggleBlock}>
+                      {isBlocked ? (
+                        <><ShieldOff className="w-4 h-4 ml-2 text-success" /> إلغاء حظر الرقم</>
+                      ) : (
+                        <><Ban className="w-4 h-4 ml-2 text-destructive" /> حظر الرقم</>
+                      )}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={async () => {
                       try {
@@ -1388,9 +1442,25 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </div>
       )}
 
+      {/* Blocked Warning Banner */}
+      {isBlocked && !isRecording && conversation.status !== "closed" && (
+        <div className="shrink-0 border-t border-destructive/20 bg-destructive/5 px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-destructive">
+            <Ban className="w-4 h-4 shrink-0" />
+            <span className="text-xs font-medium">هذا الرقم محظور — الرسائل لن تصل إليه</span>
+          </div>
+          <button
+            onClick={handleToggleBlock}
+            className="text-[11px] font-medium text-primary hover:underline shrink-0"
+          >
+            إلغاء الحظر
+          </button>
+        </div>
+      )}
+
       {/* Input Area */}
       {!isRecording && conversation.status !== "closed" && (
-        <div className={cn("shrink-0 border-t bg-card/80 backdrop-blur-sm p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border/30")}>
+        <div className={cn("shrink-0 border-t bg-card/80 backdrop-blur-sm p-2 md:p-3", isNoteMode ? "border-amber-500/30" : isBlocked ? "border-destructive/30 opacity-60" : "border-border/30")}>
           {/* Reply Preview Bar */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
