@@ -283,7 +283,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         return;
       }
 
-      if (!existingConv && messagePreview) {
+      if (conversationId && !existingConv && messagePreview) {
         await supabase
           .from("conversations")
           .update({
@@ -294,7 +294,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           .eq("id", conversationId);
       }
 
-      onConversationCreated(conversationId);
+      if (conversationId) {
+        onConversationCreated(conversationId);
+      }
 
       toast.success("تم إرسال الرسالة بنجاح");
       onOpenChange(false);
