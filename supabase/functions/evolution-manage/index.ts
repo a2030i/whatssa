@@ -941,6 +941,36 @@ serve(async (req) => {
       }, orgId, userId);
 
       return json({ success: true, data: reactData });
+
+      // Persist the reaction in the message metadata so it shows in the UI via realtime
+      try {
+        const { data: targetMsg } = await adminClient
+          .from("messages")
+          .select("id, metadata")
+          .eq("wa_message_id", message_id)
+          .maybeSingle();
+
+        if (targetMsg) {
+          const meta = (targetMsg.metadata as Record<string, any>) || {};
+          let reactions: Array<{ emoji: string; fromMe: boolean; timestamp?: string }> = meta.reactions || [];
+
+          // Add or update our (agent) reaction
+          const existingIdx = reactions.findIndex(r => r.fromMe === true);
+          if (existingIdx >= 0) {
+            reactions[existingIdx] = { emoji, fromMe: true, timestamp: new Date().toISOString() };
+          } else {
+            reactions.push({ emoji, fromMe: true, timestamp: new Date().toISOString() });
+          }
+
+          await adminClient.from("messages").update({
+            metadata: { ...meta, reactions },
+          }).eq("id", targetMsg.id);
+        }
+      } catch {
+        // Non-critical — reaction was already sent to WhatsApp
+      }
+
+      return json({ success: true, data: reactData });
     }
 
     // ── POST STATUS/STORY ──
