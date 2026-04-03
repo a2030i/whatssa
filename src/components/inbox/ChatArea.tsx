@@ -1763,6 +1763,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         customerName={conversation.customerName}
         channelType={conversation.channelType}
         templates={templates}
+        lastCustomerMessageAt={conversation.lastCustomerMessageAt}
       />
 
       <ProductPicker
