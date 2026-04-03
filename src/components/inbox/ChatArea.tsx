@@ -1156,15 +1156,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {conversation.channelType === "evolution" && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={async () => {
-                      try {
-                        await invokeCloud("evolution-manage", {
-                          body: { action: "block_contact", phone: conversation.customerPhone },
-                        });
-                        toast.success("تم حظر جهة الاتصال");
-                      } catch { toast.error("فشل الحظر"); }
-                    }}>
-                      <XCircle className="w-4 h-4 ml-2 text-destructive" /> حظر الرقم
+                    <DropdownMenuItem onClick={handleToggleBlock}>
+                      {isBlocked ? (
+                        <><ShieldOff className="w-4 h-4 ml-2 text-success" /> إلغاء حظر الرقم</>
+                      ) : (
+                        <><Ban className="w-4 h-4 ml-2 text-destructive" /> حظر الرقم</>
+                      )}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={async () => {
                       try {
