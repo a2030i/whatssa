@@ -1744,6 +1744,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         conversationId={conversation.id}
         customerPhone={conversation.customerPhone}
         customerName={conversation.customerName}
+        channelType={conversation.channelType}
+        templates={templates}
       />
 
       <ProductPicker
