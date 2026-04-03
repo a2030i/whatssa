@@ -830,9 +830,24 @@ serve(async (req) => {
       const message_id = asString(payload.message_id);
       const emoji = asString(payload.emoji);
       const isGroup = typeof payload.is_group === "boolean" ? payload.is_group : reactPhone.includes("@g.us");
-      if (!reactPhone || !message_id) return json({ error: "البيانات ناقصة" }, 400);
+      let targetInstanceName = instance_name;
 
-      // Determine correct remoteJid based on conversation type
+      if (!targetInstanceName && channel_id) {
+        const { data: channelConfig } = await adminClient
+          .from("whatsapp_config")
+          .select("evolution_instance_name")
+          .eq("id", channel_id)
+          .eq("org_id", orgId)
+          .eq("channel_type", "evolution")
+          .maybeSingle();
+
+        targetInstanceName = channelConfig?.evolution_instance_name || undefined;
+      }
+
+      if (!reactPhone || !message_id || !emoji || !targetInstanceName) {
+        return json({ error: "بيانات التفاعل ناقصة" }, 400);
+      }
+
       let remoteJid: string;
       if (reactPhone.includes("@")) {
         remoteJid = reactPhone;
@@ -842,7 +857,7 @@ serve(async (req) => {
         remoteJid = `${reactPhone.replace(/\D/g, "")}@s.whatsapp.net`;
       }
 
-      const reactRes = await fetch(`${EVOLUTION_URL}/message/sendReaction/${instanceName}`, {
+      const reactRes = await fetch(`${EVOLUTION_URL}/message/sendReaction/${targetInstanceName}`, {
         method: "POST",
         headers: evoHeaders,
         body: JSON.stringify({
@@ -850,10 +865,30 @@ serve(async (req) => {
             remoteJid,
             id: message_id,
           },
-          reaction: emoji || "",
+          reaction: emoji,
         }),
       });
-      return json({ success: reactRes.ok });
+
+      const reactData = await reactRes.json().catch(() => ({}));
+      if (!reactRes.ok) {
+        await logToSystem(adminClient, "error", "فشل إرسال التفاعل", {
+          http_status: reactRes.status,
+          instance: targetInstanceName,
+          remoteJid,
+          message_id,
+          error: JSON.stringify(reactData).slice(0, 300),
+        }, orgId, userId);
+        return json({ error: reactData?.message || "فشل إرسال التفاعل" }, 400);
+      }
+
+      await logToSystem(adminClient, "info", "تم إرسال التفاعل", {
+        instance: targetInstanceName,
+        remoteJid,
+        message_id,
+        emoji,
+      }, orgId, userId);
+
+      return json({ success: true, data: reactData });
     }
 
     // ── POST STATUS/STORY ──
