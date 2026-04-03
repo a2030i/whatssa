@@ -258,7 +258,11 @@ const FollowUpDialog = ({
                   لا توجد قوالب معتمدة — أضف قوالب من صفحة القوالب أولاً
                 </p>
               ) : (
-                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                <Select value={selectedTemplateId} onValueChange={(v) => {
+                  setSelectedTemplateId(v);
+                  const tpl = approvedTemplates.find((t) => `${t.name}__${t.language}` === v);
+                  setTemplateVariables(new Array(tpl?.variableCount || 0).fill(""));
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="اختر قالب..." />
                   </SelectTrigger>
