@@ -39,22 +39,20 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     ],
   },
   {
-    section: "الأتمتة والذكاء",
-    items: [
-      { label: "الشات بوت", icon: Bot, path: "/chatbot" },
-      { label: "قواعد الأتمتة", icon: Workflow, path: "/automation" },
-      { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows" },
-      { label: "مزود الذكاء", icon: Zap, path: "/ai-settings" },
-      { label: "الخصائص والتكاملات", icon: Lock, path: "/locked-features" },
-    ],
-  },
-  {
     section: "التسويق والتواصل",
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns" },
       { label: "القوالب", icon: FileText, path: "/templates", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب" },
       { label: "الكتالوج", icon: Package, path: "/catalog", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً لإدارة الكتالوج" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages" },
+    ],
+  },
+  {
+    section: "الأتمتة",
+    items: [
+      { label: "الشات بوت", icon: Bot, path: "/chatbot" },
+      { label: "قواعد الأتمتة", icon: Workflow, path: "/automation" },
+      { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows" },
     ],
   },
   {
@@ -74,22 +72,29 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     ],
   },
   {
+    section: "الربط والإعدادات",
+    items: [
+      { label: "الربط والتكامل", icon: Plug, path: "/integrations" },
+      { label: "الخصائص المتاحة", icon: Lock, path: "/locked-features" },
+      { label: "مزود الذكاء", icon: Zap, path: "/ai-settings" },
+      { label: "إعدادات المحادثات", icon: Headphones, path: "/conversation-settings" },
+      { label: "الفريق", icon: Users, path: "/team" },
+      { label: "الإعدادات العامة", icon: Settings, path: "/settings" },
+    ],
+  },
+  {
+    section: "الاشتراك",
+    items: [
+      { label: "الباقات", icon: CreditCard, path: "/plans" },
+      { label: "المحفظة", icon: Wallet, path: "/wallet" },
+      { label: "الفواتير", icon: FileText, path: "/billing" },
+    ],
+  },
+  {
     section: "المطورين",
     items: [
       { label: "توكنات API", icon: Code2, path: "/api-tokens" },
       { label: "مستندات API", icon: FileText, path: "/api-docs" },
-    ],
-  },
-  {
-    section: "الإعدادات والإدارة",
-    items: [
-      { label: "الفريق", icon: Users, path: "/team" },
-      { label: "الربط والتكامل", icon: Plug, path: "/integrations" },
-      { label: "إعدادات المحادثات", icon: Headphones, path: "/conversation-settings" },
-      { label: "الباقات", icon: CreditCard, path: "/plans" },
-      { label: "المحفظة", icon: Wallet, path: "/wallet" },
-      { label: "الفواتير", icon: FileText, path: "/billing" },
-      { label: "الإعدادات العامة", icon: Settings, path: "/settings" },
     ],
   },
 ];
