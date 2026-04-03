@@ -1737,7 +1737,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         onClose={onStatusChange}
       />
 
-      {/* Product Picker */}
+      {/* Follow-Up Dialog */}
+      <FollowUpDialog
+        open={showFollowUp}
+        onOpenChange={setShowFollowUp}
+        conversationId={conversation.id}
+        customerPhone={conversation.customerPhone}
+        customerName={conversation.customerName}
+      />
+
       <ProductPicker
         open={showProductPicker}
         onOpenChange={setShowProductPicker}
