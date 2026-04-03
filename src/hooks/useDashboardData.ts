@@ -85,27 +85,28 @@ export const useDashboardData = (): DashboardData => {
         const days7 = getDateRange(7);
         const days30 = getDateRange(30);
 
-        const [waConfig, convs, automations, wallet, org] = await Promise.all([
+        const [waConfig, openConvsCount, totalConvsCount, automations, wallet, org] = await Promise.all([
           supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).maybeSingle(),
-          supabase.from("conversations").select("id, status").eq("org_id", orgId),
-          supabase.from("automation_rules").select("id").eq("org_id", orgId),
+          supabase.from("conversations").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "active"),
+          supabase.from("conversations").select("id", { count: "exact", head: true }).eq("org_id", orgId),
+          supabase.from("automation_rules").select("id", { count: "exact", head: true }).eq("org_id", orgId),
           supabase.from("wallets").select("balance").eq("org_id", orgId).maybeSingle(),
           supabase.from("organizations").select("name, subscription_status, plans(name_ar)").eq("id", orgId).maybeSingle(),
         ]);
 
-        const orgConvIds = (convs.data || []).map(c => c.id);
-        
-        let orgMsgs: any[] = [];
-        if (orgConvIds.length > 0) {
-          const { data: msgsData } = await supabase
-            .from("messages")
-            .select("id, sender, status, created_at, conversation_id")
-            .in("conversation_id", orgConvIds.slice(0, 100))
-            .gte("created_at", days30)
-            .order("created_at", { ascending: false })
-            .limit(1000);
-          orgMsgs = msgsData || [];
-        }
+        // Fetch message stats using count queries instead of loading all messages
+        const [sentTodayQ, sent7Q, sent30Q, deliveredTodayQ, failedTodayQ, delivered7Q, failed7Q, delivered30Q, failed30Q, receivedQ] = await Promise.all([
+          supabase.rpc("count_org_messages", { _org_id: orgId, _from: today, _sender: "agent", _status: null }),
+          supabase.rpc("count_org_messages", { _org_id: orgId, _from: days7, _sender: "agent", _status: null }),
+          supabase.rpc("count_org_messages", { _org_id: orgId, _from: days30, _sender: "agent", _status: null }),
+          supabase.rpc("count_org_messages", { _org_id: orgId, _from: today, _sender: "agent", _status: "delivered" }),
+          supabase.rpc("count_org_messages", { _org_id: orgId, _from: today, _sender: "agent", _status: "failed" }),
+          supabase.rpc("count_org_messages", { _org_id: orgId, _from: days7, _sender: "agent", _status: "delivered" }),
+          supabase.rpc("count_org_messages", { _org_id: orgId, _from: days7, _sender: "agent", _status: "failed" }),
+          supabase.rpc("count_org_messages", { _org_id: orgId, _from: days30, _sender: "agent", _status: "delivered" }),
+          supabase.rpc("count_org_messages", { _org_id: orgId, _from: days30, _sender: "agent", _status: "failed" }),
+          supabase.rpc("count_org_messages", { _org_id: orgId, _from: days30, _sender: "customer", _status: null }),
+        ]);
 
         const agentMsgs = orgMsgs.filter(m => m.sender === "agent");
         const countByRange = (items: any[], from: string, statusFilter?: string) =>
