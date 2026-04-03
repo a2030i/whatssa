@@ -1427,9 +1427,25 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </div>
       )}
 
+      {/* Blocked Warning Banner */}
+      {isBlocked && !isRecording && conversation.status !== "closed" && (
+        <div className="shrink-0 border-t border-destructive/20 bg-destructive/5 px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-destructive">
+            <Ban className="w-4 h-4 shrink-0" />
+            <span className="text-xs font-medium">هذا الرقم محظور — الرسائل لن تصل إليه</span>
+          </div>
+          <button
+            onClick={handleToggleBlock}
+            className="text-[11px] font-medium text-primary hover:underline shrink-0"
+          >
+            إلغاء الحظر
+          </button>
+        </div>
+      )}
+
       {/* Input Area */}
       {!isRecording && conversation.status !== "closed" && (
-        <div className={cn("shrink-0 border-t bg-card/80 backdrop-blur-sm p-2 md:p-3", isNoteMode ? "border-amber-500/30" : "border-border/30")}>
+        <div className={cn("shrink-0 border-t bg-card/80 backdrop-blur-sm p-2 md:p-3", isNoteMode ? "border-amber-500/30" : isBlocked ? "border-destructive/30 opacity-60" : "border-border/30")}>
           {/* Reply Preview Bar */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
