@@ -40,6 +40,7 @@ import StoreAnalyticsPage from "./pages/StoreAnalyticsPage";
 import ConversationAnalyticsPage from "./pages/ConversationAnalyticsPage";
 import CatalogPage from "./pages/CatalogPage";
 import WarehousesPage from "./pages/WarehousesPage";
+import LockedFeaturesPage from "./pages/LockedFeaturesPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
