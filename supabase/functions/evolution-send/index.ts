@@ -78,7 +78,84 @@ serve(async (req) => {
 
     const orgId = profile.org_id;
 
-    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName } = body;
+    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id } = body;
+
+    // ── Delete message (Evolution API) ──
+    if (delete_message_id && to) {
+      const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
+      const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
+      if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
+
+      const { data: config } = await adminClient.from("whatsapp_config")
+        .select("evolution_instance_name")
+        .eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true)
+        .limit(1).maybeSingle();
+      if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
+
+      const remoteJid = to.includes("@") ? to : `${to}@s.whatsapp.net`;
+      const deleteRes = await fetch(`${EVOLUTION_URL}/chat/deleteMessageForEveryone/${config.evolution_instance_name}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY },
+        body: JSON.stringify({
+          id: delete_message_id,
+          remoteJid,
+          fromMe: true,
+        }),
+      });
+
+      if (!deleteRes.ok) {
+        const errData = await deleteRes.json().catch(() => ({}));
+        logToSystem(adminClient, "error", `فشل حذف رسالة Evolution`, { error: errData, to, id: delete_message_id }, orgId, user.id);
+        return json({ error: errData?.message || "فشل حذف الرسالة" }, deleteRes.status);
+      }
+
+      // Mark as deleted in DB
+      await adminClient.from("messages").update({
+        content: "تم حذف هذه الرسالة",
+        metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
+      }).eq("wa_message_id", delete_message_id);
+
+      return json({ success: true, deleted: true });
+    }
+
+    // ── Edit message (Evolution API) ──
+    if (type === "edit" && edit_message_id && message && to) {
+      const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
+      const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
+      if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
+
+      const { data: config } = await adminClient.from("whatsapp_config")
+        .select("evolution_instance_name")
+        .eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true)
+        .limit(1).maybeSingle();
+      if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
+
+      const remoteJid = to.includes("@") ? to : `${to}@s.whatsapp.net`;
+      const editRes = await fetch(`${EVOLUTION_URL}/chat/editMessage/${config.evolution_instance_name}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY },
+        body: JSON.stringify({
+          id: edit_message_id,
+          remoteJid,
+          text: message,
+        }),
+      });
+
+      if (!editRes.ok) {
+        const errData = await editRes.json().catch(() => ({}));
+        logToSystem(adminClient, "error", `فشل تعديل رسالة Evolution`, { error: errData, to, id: edit_message_id }, orgId, user.id);
+        return json({ error: errData?.message || "فشل تعديل الرسالة" }, editRes.status);
+      }
+
+      // Update in DB
+      await adminClient.from("messages").update({
+        content: message,
+        metadata: { is_edited: true, edited_at: new Date().toISOString() },
+      }).eq("wa_message_id", edit_message_id);
+
+      return json({ success: true, edited: true });
+    }
+
     if (!to || (!message && !media_url)) return json({ error: "الرقم والرسالة أو الوسائط مطلوبة" }, 400);
 
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
