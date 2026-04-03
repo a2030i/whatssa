@@ -179,14 +179,29 @@ const ScheduleMessagePopover = ({
   };
 
   const handleEdit = async (id: string) => {
-    if (!editContent.trim() && !editDate) return;
     const updates: Record<string, unknown> = {};
     if (editContent.trim()) updates.content = editContent.trim();
-    if (editDate) updates.scheduled_at = new Date(editDate).toISOString();
+    if (editDate) {
+      try {
+        updates.scheduled_at = new Date(editDate).toISOString();
+      } catch {
+        // keep existing date
+      }
+    }
 
-    const { error } = await supabase.from("scheduled_messages").update(updates).eq("id", id);
+    if (Object.keys(updates).length === 0) {
+      toast.error("لم يتم تغيير أي بيانات");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("scheduled_messages")
+      .update(updates)
+      .eq("id", id)
+      .eq("status", "pending");
     if (error) {
-      toast.error("فشل تعديل الرسالة");
+      console.error("Edit error:", error);
+      toast.error("فشل تعديل الرسالة: " + (error.message || "خطأ غير معروف"));
     } else {
       toast.success("تم تعديل الرسالة المجدولة");
       setEditingId(null);
