@@ -578,9 +578,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           .eq("phone", conversation.customerPhone);
       }
       setIsBlocked(newBlocked);
-      toast.success(newBlocked ? "✅ تم حظر الرقم بنجاح" : "✅ تم إلغاء حظر الرقم");
-    } catch {
-      toast.error(newBlocked ? "فشل حظر الرقم" : "فشل إلغاء الحظر");
+      toast.success(newBlocked ? "✅ تم حظر الرقم في واتساب بنجاح" : "✅ تم إلغاء حظر الرقم في واتساب");
+    } catch (err: any) {
+      toast.error(newBlocked ? `فشل حظر الرقم: ${err?.message || ""}` : `فشل إلغاء الحظر: ${err?.message || ""}`);
     }
   };
 
