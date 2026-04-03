@@ -1415,6 +1415,73 @@ export type Database = {
           },
         ]
       }
+      forward_configs: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          forward_type: string
+          id: string
+          is_active: boolean
+          message_template: string | null
+          name: string
+          org_id: string
+          target_email: string | null
+          target_group_jid: string | null
+          target_phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          forward_type?: string
+          id?: string
+          is_active?: boolean
+          message_template?: string | null
+          name: string
+          org_id: string
+          target_email?: string | null
+          target_group_jid?: string | null
+          target_phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          forward_type?: string
+          id?: string
+          is_active?: boolean
+          message_template?: string | null
+          name?: string
+          org_id?: string
+          target_email?: string | null
+          target_group_jid?: string | null
+          target_phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forward_configs_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forward_configs_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_config_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forward_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_notes: {
         Row: {
           author_id: string
@@ -2621,6 +2688,91 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          conversation_id: string | null
+          created_at: string
+          created_by_type: string
+          customer_name: string | null
+          customer_phone: string | null
+          description: string | null
+          forward_status: string | null
+          forward_target: string | null
+          id: string
+          org_id: string
+          priority: string
+          source_data: Json | null
+          status: string
+          task_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          created_by_type?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          description?: string | null
+          forward_status?: string | null
+          forward_target?: string | null
+          id?: string
+          org_id: string
+          priority?: string
+          source_data?: Json | null
+          status?: string
+          task_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          created_by_type?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          description?: string | null
+          forward_status?: string | null
+          forward_target?: string | null
+          id?: string
+          org_id?: string
+          priority?: string
+          source_data?: Json | null
+          status?: string
+          task_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       teams: {
         Row: {

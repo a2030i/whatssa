@@ -4,7 +4,7 @@ import {
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
   Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock, ClipboardList,
-  Workflow, Send, Warehouse, DollarSign, Package
+  Workflow, Send, Warehouse, DollarSign, Package, ClipboardCheck
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -53,6 +53,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
       { label: "الشات بوت", icon: Bot, path: "/chatbot" },
       { label: "قواعد الأتمتة", icon: Workflow, path: "/automation" },
       { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows" },
+      { label: "المهام", icon: ClipboardCheck, path: "/tasks" },
     ],
   },
   {
