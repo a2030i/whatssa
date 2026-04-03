@@ -40,6 +40,7 @@ import StoreAnalyticsPage from "./pages/StoreAnalyticsPage";
 import ConversationAnalyticsPage from "./pages/ConversationAnalyticsPage";
 import CatalogPage from "./pages/CatalogPage";
 import WarehousesPage from "./pages/WarehousesPage";
+import LockedFeaturesPage from "./pages/LockedFeaturesPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -126,6 +127,7 @@ const AppRoutes = () => {
       <Route path="/scheduled-messages" element={<ProtectedRoute><AppLayout><ScheduledMessagesPage /></AppLayout></ProtectedRoute>} />
       <Route path="/custom-plan" element={<ProtectedRoute><AppLayout><CustomPlanPage /></AppLayout></ProtectedRoute>} />
       <Route path="/wa-flows" element={<ProtectedRoute><AppLayout><WhatsAppFlowsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/locked-features" element={<ProtectedRoute><AppLayout><LockedFeaturesPage /></AppLayout></ProtectedRoute>} />
       <Route path="/tracking" element={<TrackingPage />} />
       <Route path="*" element={<NotFound />} />
       <Route path="*" element={<NotFound />} />

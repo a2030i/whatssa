@@ -143,7 +143,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
@@ -227,7 +227,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               <Reply className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
-          {msg.sender === "customer" && msg.type === "text" && (
+          {hasAiConfig && msg.sender === "customer" && msg.type === "text" && (
             <button onClick={handleTranslate} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="ترجمة">
               <Languages className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
@@ -295,7 +295,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   <FileText className="w-3.5 h-3.5" /> نسخ الرسالة
                 </DropdownMenuItem>
               )}
-              {msg.sender === "customer" && msg.type === "text" && (
+              {hasAiConfig && msg.sender === "customer" && msg.type === "text" && (
                 <DropdownMenuItem onClick={handleTranslate} className="text-xs gap-2">
                   <Languages className="w-3.5 h-3.5" /> ترجمة
                 </DropdownMenuItem>
@@ -524,6 +524,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [hasAiConfig, setHasAiConfig] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
@@ -535,6 +536,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Check if AI is configured for this org
+  useEffect(() => {
+    if (!orgId) return;
+    supabase
+      .from("ai_provider_configs" as any)
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("is_active", true)
+      .limit(1)
+      .then(({ data }) => setHasAiConfig(!!(data && data.length > 0)));
+  }, [orgId]);
 
   // Real-time typing presence
   useEffect(() => {
@@ -1237,6 +1250,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onEdit={onEditMessage ? handleStartEdit : undefined}
                 onDelete={onDeleteMessage ? handleDeleteMsg : undefined}
                 onImageClick={(src) => setLightboxSrc(src)}
+                hasAiConfig={hasAiConfig}
               />
             )}
           </div>
@@ -1443,7 +1457,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </button>
             )}
             {/* AI Suggest Replies */}
-            {!isNoteMode && !windowExpired && (
+            {hasAiConfig && !isNoteMode && !windowExpired && (
               <button
                 onClick={async () => {
                   setAiLoading(true);
@@ -1472,6 +1486,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </button>
             )}
             {/* AI Summarize */}
+            {hasAiConfig && (
             <button
               onClick={async () => {
                 setAiLoading(true);
@@ -1494,6 +1509,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             >
               <Brain className="w-4 h-4" />
             </button>
+            )}
           </div>
 
           {/* AI Suggestions Row */}
