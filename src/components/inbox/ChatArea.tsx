@@ -101,6 +101,7 @@ const scrollToMessage = (messageId?: string) => {
 const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: string; type: string; isAgent?: boolean; onImageClick?: (src: string) => void }) => {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,13 +109,29 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
       if (!cancelled) {
         setResolvedUrl(resolved);
         setLoading(false);
+        if (!resolved) {
+          setFailed(true);
+          console.warn("[ResolvedMedia] Failed to resolve URL:", url, "type:", type);
+        }
       }
     });
     return () => { cancelled = true; };
   }, [url]);
 
   if (loading) return <div className="w-[120px] h-[80px] rounded-lg bg-muted animate-pulse mb-1" />;
-  if (!resolvedUrl) return null;
+
+  // Show fallback for audio when URL can't be resolved
+  if (!resolvedUrl) {
+    if (type === "audio") {
+      return (
+        <div className="flex items-center gap-2 text-xs py-1 mb-1">
+          <Mic className="w-3.5 h-3.5" />
+          <span>رسالة صوتية</span>
+        </div>
+      );
+    }
+    return null;
+  }
 
   const isImage = type === "image" || isImageUrl(resolvedUrl) || isImageUrl(url);
   const isSticker = type === "sticker";
