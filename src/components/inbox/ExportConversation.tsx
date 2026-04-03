@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { Download, FileText, Table } from "lucide-react";
 import { Message, Conversation } from "@/data/mockData";
 import { toast } from "sonner";
@@ -8,9 +8,10 @@ import { toast } from "sonner";
 interface ExportConversationProps {
   conversation: Conversation;
   messages: Message[];
+  asMenuItem?: boolean;
 }
 
-const ExportConversation = ({ conversation, messages }: ExportConversationProps) => {
+const ExportConversation = ({ conversation, messages, asMenuItem }: ExportConversationProps) => {
   const exportAsCSV = () => {
     const headers = ["الوقت", "المرسل", "النوع", "المحتوى"];
     const rows = messages.map((m) => [
@@ -86,6 +87,27 @@ const ExportConversation = ({ conversation, messages }: ExportConversationProps)
     }
     toast.success("تم فتح المحادثة للطباعة كـ PDF");
   };
+
+  if (asMenuItem) {
+    return (
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger className="gap-2">
+          <Download className="w-4 h-4 ml-2" />
+          تصدير المحادثة
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
+          <DropdownMenuItem onClick={exportAsPDF} className="gap-2">
+            <FileText className="w-4 h-4" />
+            تصدير كـ PDF
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={exportAsCSV} className="gap-2">
+            <Table className="w-4 h-4" />
+            تصدير كـ CSV
+          </DropdownMenuItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+    );
+  }
 
   return (
     <DropdownMenu>
