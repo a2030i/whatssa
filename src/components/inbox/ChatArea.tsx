@@ -158,19 +158,27 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   const canDelete = msg.sender === "agent" && msg.waMessageId && !msg.isDeleted;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
 
   const handleReaction = async (emoji: string) => {
     try {
-      await invokeCloud("evolution-manage", {
+      const { error } = await invokeCloud("evolution-manage", {
         body: {
           action: "send_reaction",
           phone: conversation.customerPhone,
+          channel_id: conversation.channelId,
           message_id: msg.waMessageId,
           emoji,
           is_group: conversation.conversationType === "group",
         },
       });
-    } catch {}
+
+      if (error) throw error;
+      setReactionPickerOpen(false);
+      toast.success("تم إرسال التفاعل");
+    } catch {
+      toast.error("فشل إرسال التفاعل");
+    }
   };
 
   const handleTranslate = async () => {
