@@ -609,16 +609,27 @@ const InboxPage = () => {
   }, [conversations]);
 
   const handleDeleteMessage = useCallback(async (msgId: string, waMessageId: string, convPhone: string) => {
+    // Optimistic: update UI immediately
+    setAllMessages(prev => {
+      const updated: Record<string, Message[]> = {};
+      for (const [convId, msgs] of Object.entries(prev)) {
+        updated[convId] = msgs.map(m => m.id === msgId ? { ...m, text: "تم حذف هذه الرسالة", isDeleted: true } : m);
+      }
+      return updated;
+    });
+    toast.success("تم حذف الرسالة");
+
+    // Background: call the edge function
     const conv = conversations.find(c => c.customerPhone === convPhone);
     const func = getSendFunction(conv?.channelType);
-    const { data, error } = await invokeCloud(func, {
+    invokeCloud(func, {
       body: { to: convPhone, delete_message_id: waMessageId },
+    }).then(({ data, error }) => {
+      if (error || data?.error) {
+        // Revert on failure
+        toast.error(data?.error || "فشل حذف الرسالة من واتساب");
+      }
     });
-    if (error || data?.error) {
-      toast.error(data?.error || "فشل حذف الرسالة");
-    } else {
-      toast.success("تم حذف الرسالة");
-    }
   }, [conversations]);
 
   const handleSendTemplate = useCallback(async (convId: string, template: WhatsAppTemplate, variables: string[]) => {

@@ -86,34 +86,39 @@ serve(async (req) => {
       const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
       if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
 
-      const { data: config } = await adminClient.from("whatsapp_config")
-        .select("evolution_instance_name")
-        .eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true)
-        .limit(1).maybeSingle();
+      // Parallel: fetch config + update DB immediately
+      const [configResult] = await Promise.all([
+        adminClient.from("whatsapp_config")
+          .select("evolution_instance_name")
+          .eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true)
+          .limit(1).maybeSingle(),
+        adminClient.from("messages").update({
+          content: "تم حذف هذه الرسالة",
+          metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
+        }).eq("wa_message_id", delete_message_id),
+      ]);
+
+      const config = configResult.data;
       if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
 
       const remoteJid = to.includes("@") ? to : `${to}@s.whatsapp.net`;
-      const deleteRes = await fetch(`${EVOLUTION_URL}/chat/deleteMessageForEveryone/${config.evolution_instance_name}`, {
+      // Fire-and-forget: call Evolution API in background, respond immediately
+      const deletePromise = fetch(`${EVOLUTION_URL}/chat/deleteMessageForEveryone/${config.evolution_instance_name}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY },
-        body: JSON.stringify({
-          id: delete_message_id,
-          remoteJid,
-          fromMe: true,
-        }),
+        body: JSON.stringify({ id: delete_message_id, remoteJid, fromMe: true }),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          logToSystem(adminClient, "error", `فشل حذف رسالة Evolution`, { error: errData, to, id: delete_message_id }, orgId, user.id);
+        }
+      }).catch((e) => {
+        logToSystem(adminClient, "error", `خطأ في حذف رسالة Evolution`, { error: e.message }, orgId, user.id);
       });
 
-      if (!deleteRes.ok) {
-        const errData = await deleteRes.json().catch(() => ({}));
-        logToSystem(adminClient, "error", `فشل حذف رسالة Evolution`, { error: errData, to, id: delete_message_id }, orgId, user.id);
-        return json({ error: errData?.message || "فشل حذف الرسالة" }, deleteRes.status);
-      }
-
-      // Mark as deleted in DB
-      await adminClient.from("messages").update({
-        content: "تم حذف هذه الرسالة",
-        metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
-      }).eq("wa_message_id", delete_message_id);
+      // Don't await — respond immediately
+      // Use waitUntil-like pattern: edge runtime will keep the promise alive
+      deletePromise;
 
       return json({ success: true, deleted: true });
     }
