@@ -14,7 +14,7 @@ serve(async (req) => {
     const body = await req.json();
     const { code, access_token: directToken, redirect_uri: redirectUri } = body;
 
-    const appId = "1239578701681497";
+    const appId = Deno.env.get("META_APP_ID") || "1239578701681497";
     const appSecret = Deno.env.get("META_APP_SECRET");
 
     if (!appSecret) {
