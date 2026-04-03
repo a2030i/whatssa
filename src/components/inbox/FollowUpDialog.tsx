@@ -250,7 +250,7 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
               {selectedTemplate && (
                 <div className="p-3 rounded-lg border bg-muted/20 text-sm space-y-1">
                   <p className="font-medium text-xs text-muted-foreground">معاينة القالب:</p>
-                  <p className="whitespace-pre-wrap">{selectedTemplate.body || selectedTemplate.content}</p>
+                  <p className="whitespace-pre-wrap">{selectedTemplate.body}</p>
                 </div>
               )}
             </div>
