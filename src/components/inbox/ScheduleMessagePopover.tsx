@@ -117,6 +117,14 @@ const ScheduleMessagePopover = ({
 
     const selectedTpl = approvedTemplates.find((t) => `${t.name}__${t.language}` === selectedTemplateId);
 
+    if (selectedTpl && selectedTpl.variableCount > 0) {
+      const filled = templateVariables.filter(v => v?.trim());
+      if (filled.length < selectedTpl.variableCount) {
+        toast.error(`يرجى تعبئة جميع المتغيرات (${selectedTpl.variableCount})`);
+        return;
+      }
+    }
+
     if (!messageText.trim() && !selectedTpl) {
       toast.error("اكتب رسالة أو اختر قالب أولاً");
       return;
