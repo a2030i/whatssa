@@ -108,22 +108,18 @@ export const useDashboardData = (): DashboardData => {
           supabase.rpc("count_org_messages", { _org_id: orgId, _from: days30, _sender: "customer", _status: null }),
         ]);
 
-        const agentMsgs = orgMsgs.filter(m => m.sender === "agent");
-        const countByRange = (items: any[], from: string, statusFilter?: string) =>
-          items.filter(m => m.created_at && m.created_at >= from && (!statusFilter || m.status === statusFilter)).length;
+        const sentToday = (sentTodayQ.data as number) || 0;
+        const sent7Days = (sent7Q.data as number) || 0;
+        const sent30Days = (sent30Q.data as number) || 0;
+        const deliveredToday = (deliveredTodayQ.data as number) || 0;
+        const failedToday = (failedTodayQ.data as number) || 0;
+        const delivered7Days = (delivered7Q.data as number) || 0;
+        const failed7Days = (failed7Q.data as number) || 0;
+        const delivered30Days = (delivered30Q.data as number) || 0;
+        const failed30Days = (failed30Q.data as number) || 0;
+        const totalReceived = (receivedQ.data as number) || 0;
 
-        const sentToday = countByRange(agentMsgs, today);
-        const sent7Days = countByRange(agentMsgs, days7);
-        const sent30Days = countByRange(agentMsgs, days30);
-        const deliveredToday = countByRange(agentMsgs, today, "delivered");
-        const failedToday = countByRange(agentMsgs, today, "failed");
-        const delivered7Days = countByRange(agentMsgs, days7, "delivered");
-        const failed7Days = countByRange(agentMsgs, days7, "failed");
-        const delivered30Days = countByRange(agentMsgs, days30, "delivered");
-        const failed30Days = countByRange(agentMsgs, days30, "failed");
-        const totalReceived = orgMsgs.filter(m => m.sender === "customer").length;
-
-        const openConvs = (convs.data || []).filter(c => c.status === "active").length;
+        const openConvs = openConvsCount.count || 0;
 
         const waData = waConfig.data;
         const channelType: "official" | "unofficial" | null = waData?.channel_type === "official" ? "official" : waData?.channel_type === "unofficial" ? "unofficial" : null;
@@ -165,9 +161,9 @@ export const useDashboardData = (): DashboardData => {
           messageStats: { sentToday, sent7Days, sent30Days, deliveredToday, failedToday, delivered7Days, failed7Days, delivered30Days, failed30Days, totalReceived },
           channelType,
           openConversations: openConvs,
-          totalConversations: (convs.data || []).length,
+          totalConversations: totalConvsCount.count || 0,
           templateCount: 0,
-          automationCount: (automations.data || []).length,
+          automationCount: automations.count || 0,
           walletBalance: wallet.data?.balance || 0,
           orgName: org.data?.name || "",
           planName: planData?.plans?.name_ar || "غير محدد",
