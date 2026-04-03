@@ -1031,10 +1031,57 @@ serve(async (req) => {
       const editMsgId = asString(payload.message_id);
       const new_text = asString(payload.new_text);
       const sanitizedPhone = editPhone.replace(/\D/g, "");
-      const remoteJid = sanitizedPhone.includes("@") ? sanitizedPhone : `${sanitizedPhone}@s.whatsapp.net`;
 
       if (!sanitizedPhone || !editMsgId || !new_text) {
         return json({ error: "البيانات ناقصة" }, 400);
+      }
+
+      let remoteJid = `${sanitizedPhone}@s.whatsapp.net`;
+
+      try {
+        const statusEndpoints = [
+          `${EVOLUTION_URL}/chat/findStatusMessage/${instanceName}`,
+          `${EVOLUTION_URL}/chat/findMessages/${instanceName}`,
+        ];
+
+        for (const endpoint of statusEndpoints) {
+          const findRes = await fetch(endpoint, {
+            method: "POST",
+            headers: evoHeaders,
+            body: JSON.stringify({ where: { id: editMsgId }, limit: 1 }),
+          });
+
+          if (!findRes.ok) continue;
+
+          const findData = await findRes.json().catch(() => ({}));
+          const rawItems = Array.isArray(findData)
+            ? findData
+            : Array.isArray(findData?.messages?.records)
+              ? findData.messages.records
+              : Array.isArray(findData?.messages)
+                ? findData.messages
+                : Array.isArray(findData?.data)
+                  ? findData.data
+                  : Array.isArray(findData?.response)
+                    ? findData.response
+                    : findData?.data
+                      ? [findData.data]
+                      : [];
+
+          const found = rawItems.find((item: any) => (
+            item?.key?.id === editMsgId ||
+            item?.keyId === editMsgId ||
+            item?.id === editMsgId ||
+            item?.messageId === editMsgId
+          ));
+
+          const foundJid = found?.key?.remoteJid || found?.remoteJid || found?.jid || "";
+          if (foundJid) {
+            remoteJid = foundJid;
+            break;
+          }
+        }
+      } catch {
       }
 
       const editRes = await fetch(`${EVOLUTION_URL}/chat/updateMessage/${instanceName}`, {
@@ -1077,6 +1124,7 @@ serve(async (req) => {
           instance: instanceName,
           message_id: editMsgId,
           phone: sanitizedPhone,
+          remote_jid: remoteJid,
           status: editRes.status,
           response: editData,
         }, orgId, userId);
