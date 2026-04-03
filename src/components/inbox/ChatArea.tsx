@@ -38,6 +38,7 @@ interface ChatAreaProps {
   onTagsChange?: (convId: string, tags: string[]) => void;
   onEditMessage?: (msgId: string, waMessageId: string, newText: string, convPhone: string) => void;
   onDeleteMessage?: (msgId: string, waMessageId: string, convPhone: string) => void;
+  onShowCustomerInfo?: () => void;
 }
 
 const MessageStatus = ({ status }: { status?: string }) => {
