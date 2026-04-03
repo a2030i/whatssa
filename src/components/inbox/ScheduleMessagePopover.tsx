@@ -61,6 +61,7 @@ const ScheduleMessagePopover = ({
   const [editDate, setEditDate] = useState("");
   const [useTemplate, setUseTemplate] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templateVariables, setTemplateVariables] = useState<string[]>([]);
 
   const isMetaChannel = channelType === "meta_api";
   const approvedTemplates = templates.filter((t) => t.status === "approved");
