@@ -94,7 +94,7 @@ const WalletPage = () => {
   ];
 
   return (
-    <div className="p-3 md:p-6 space-y-6 max-w-[800px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[800px] mx-auto" dir="rtl">
       <div>
         <h1 className="text-xl font-bold">المحفظة والاستخدام</h1>
         <p className="text-sm text-muted-foreground mt-1">رصيدك وحدود استخدامك الحالية</p>

@@ -85,7 +85,7 @@ const BillingPage = () => {
     .reduce((sum, p) => sum + Number(p.amount), 0);
 
   return (
-    <div className="p-3 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[900px] mx-auto" dir="rtl">
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
