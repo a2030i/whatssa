@@ -67,6 +67,65 @@
     --gradient-start: 142 70% 42%;
     --gradient-end: 160 72% 34%;
   }
+
+  .dark {
+    --background: 222 30% 8%;
+    --foreground: 220 14% 92%;
+
+    --card: 222 25% 12%;
+    --card-foreground: 220 14% 92%;
+
+    --popover: 222 25% 12%;
+    --popover-foreground: 220 14% 92%;
+
+    --primary: 142 64% 48%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 142 70% 55%;
+
+    --secondary: 222 20% 16%;
+    --secondary-foreground: 220 14% 88%;
+
+    --muted: 222 20% 16%;
+    --muted-foreground: 220 12% 55%;
+
+    --accent: 142 40% 15%;
+    --accent-foreground: 142 64% 70%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 18% 20%;
+    --input: 222 18% 20%;
+    --ring: 142 64% 48%;
+
+    /* Sidebar */
+    --sidebar-background: 222 35% 6%;
+    --sidebar-foreground: 220 14% 85%;
+    --sidebar-primary: 142 64% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 25% 12%;
+    --sidebar-accent-foreground: 220 14% 92%;
+    --sidebar-border: 222 22% 14%;
+    --sidebar-ring: 142 64% 48%;
+
+    /* Custom tokens */
+    --whatsapp: 142 64% 48%;
+    --whatsapp-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --success: 152 69% 48%;
+    --success-foreground: 0 0% 100%;
+    --info: 217 91% 65%;
+    --info-foreground: 0 0% 100%;
+
+    --kpi-1: 152 69% 48%;
+    --kpi-2: 217 91% 65%;
+    --kpi-3: 280 67% 60%;
+    --kpi-4: 30 95% 60%;
+
+    --gradient-start: 142 70% 48%;
+    --gradient-end: 160 72% 40%;
+  }
 }
 
 @layer base {
