@@ -159,6 +159,7 @@ const ScheduleMessagePopover = ({
       setTime("10:00");
       setUseTemplate(false);
       setSelectedTemplateId("");
+      setTemplateVariables([]);
       onScheduled();
     } catch (err: any) {
       toast.error(err.message || "فشل جدولة الرسالة");
