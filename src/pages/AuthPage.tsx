@@ -389,7 +389,7 @@ const AuthPage = () => {
 
           {/* Footer */}
           <div className="text-center space-y-2">
-            <Link to="/landing" className="text-xs text-primary hover:underline">
+            <Link to="/" className="text-xs text-primary hover:underline">
               ← العودة للصفحة الرئيسية
             </Link>
             <p className="text-[11px] text-muted-foreground/60">
