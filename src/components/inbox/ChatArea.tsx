@@ -1075,7 +1075,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             <button onClick={() => setShowMessageSearch(!showMessageSearch)} className={cn("p-2 rounded-lg hover:bg-secondary transition-colors", showMessageSearch ? "bg-primary/10 text-primary" : "")} title="بحث في الرسائل">
               <SearchIcon className="w-4 h-4 text-muted-foreground" />
             </button>
-            <ExportConversation conversation={conversation} messages={messages} />
+            {/* Desktop: Transfer button directly visible */}
+            {conversation.status !== "closed" && (
+              <button
+                onClick={() => setShowTransfer(true)}
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition-colors text-primary"
+                title="تحويل لموظف آخر"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span className="text-[11px] font-medium">تحويل</span>
+              </button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
@@ -1096,9 +1106,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <DropdownMenuItem onClick={() => setShowFollowUp(true)}>
                   <Clock className="w-4 h-4 ml-2 text-primary" /> جدولة متابعة
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowTransfer(true)}>
+                <DropdownMenuItem onClick={() => setShowTransfer(true)} className="md:hidden">
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <ExportConversation conversation={conversation} messages={messages} asMenuItem />
                 {conversation.channelType === "evolution" && (
                   <>
                     <DropdownMenuSeparator />
