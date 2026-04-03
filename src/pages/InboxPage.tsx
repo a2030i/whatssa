@@ -177,6 +177,16 @@ const InboxPage = () => {
         return false;
       });
 
+      // Zero out unread for the currently viewed conversation
+      const activeId = selectedIdRef.current;
+      if (activeId) {
+        const activeConv = filtered.find(c => c.id === activeId);
+        if (activeConv && activeConv.unread > 0) {
+          activeConv.unread = 0;
+          supabase.from("conversations").update({ unread_count: 0 }).eq("id", activeId).then();
+        }
+      }
+
       setConversations(filtered);
       if (!isMobile && mapped.length > 0) {
         setSelectedId((prev) => (prev && mapped.some((item) => item.id === prev) ? prev : mapped[0].id));
