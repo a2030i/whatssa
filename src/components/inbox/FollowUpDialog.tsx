@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Clock, Send, Bell, FileText } from "lucide-react";
+import { CalendarIcon, Clock, Send, Bell, FileText, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -25,9 +25,13 @@ interface FollowUpDialogProps {
   customerName?: string;
   channelType?: string;
   templates?: WhatsAppTemplate[];
+  lastCustomerMessageAt?: string;
 }
 
-const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, customerName, channelType, templates = [] }: FollowUpDialogProps) => {
+const FollowUpDialog = ({
+  open, onOpenChange, conversationId, customerPhone, customerName,
+  channelType, templates = [], lastCustomerMessageAt,
+}: FollowUpDialogProps) => {
   const { orgId, user } = useAuth();
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState("10:00");
@@ -40,6 +44,24 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
   const isMetaChannel = channelType === "meta_api";
   const approvedTemplates = templates.filter((t) => t.status === "approved");
   const selectedTemplate = approvedTemplates.find((t) => `${t.name}__${t.language}` === selectedTemplateId);
+
+  // Smart 24h window detection: will the window still be open at scheduled time?
+  const getWindowStatusAtSchedule = (): "within_window" | "outside_window" | "unknown" => {
+    if (!isMetaChannel || !date) return "unknown";
+    if (!lastCustomerMessageAt) return "outside_window"; // no customer message = assume outside
+
+    const [hours, minutes] = time.split(":").map(Number);
+    const scheduledAt = new Date(date);
+    scheduledAt.setHours(hours, minutes, 0, 0);
+
+    const windowEnd = new Date(lastCustomerMessageAt).getTime() + 24 * 60 * 60 * 1000;
+    return scheduledAt.getTime() < windowEnd ? "within_window" : "outside_window";
+  };
+
+  const windowStatus = getWindowStatusAtSchedule();
+  // For Meta: if within window → free text OK, if outside → must use template
+  const requiresTemplate = isMetaChannel && autoSend && windowStatus === "outside_window";
+  const canUseFreeText = !isMetaChannel || (isMetaChannel && windowStatus === "within_window");
 
   const handleSubmit = async () => {
     if (!date || !orgId || !user) {
@@ -56,18 +78,20 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
       return;
     }
 
-    if (autoSend && isMetaChannel && !selectedTemplate) {
-      toast.error("يرجى اختيار قالب للإرسال التلقائي");
+    if (autoSend && requiresTemplate && !selectedTemplate) {
+      toast.error("يرجى اختيار قالب — وقت الجدولة خارج نافذة الـ 24 ساعة");
       return;
     }
 
-    if (autoSend && !isMetaChannel && !autoMessage) {
-      toast.error("يرجى كتابة نص الرسالة التلقائية");
+    if (autoSend && canUseFreeText && !autoMessage && !selectedTemplate) {
+      toast.error("يرجى كتابة نص الرسالة أو اختيار قالب");
       return;
     }
 
     setLoading(true);
     try {
+      const useTemplate = selectedTemplate && (requiresTemplate || selectedTemplateId);
+
       const insertData: Record<string, unknown> = {
         org_id: orgId,
         conversation_id: conversationId,
@@ -78,25 +102,22 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
         scheduled_at: scheduledAt.toISOString(),
         reminder_note: note || null,
         auto_send_message: autoSend
-          ? isMetaChannel
-            ? `[قالب] ${selectedTemplate?.name}`
+          ? useTemplate
+            ? `[قالب] ${selectedTemplate!.name}`
             : autoMessage
           : null,
-        auto_send_template_name: autoSend && isMetaChannel && selectedTemplate ? selectedTemplate.name : null,
-        auto_send_template_language: autoSend && isMetaChannel && selectedTemplate ? selectedTemplate.language : null,
+        auto_send_template_name: autoSend && useTemplate ? selectedTemplate!.name : null,
+        auto_send_template_language: autoSend && useTemplate ? selectedTemplate!.language : null,
       };
 
       const { error } = await supabase.from("follow_up_reminders").insert(insertData as any);
-
       if (error) throw error;
 
-      const templateLabel = selectedTemplate
-        ? `${selectedTemplate.name} (${selectedTemplate.language})`
-        : "";
+      const templateLabel = useTemplate ? `${selectedTemplate!.name} (${selectedTemplate!.language})` : "";
 
       await supabase.from("messages").insert({
         conversation_id: conversationId,
-        content: `📅 تم جدولة متابعة في ${format(scheduledAt, "dd/MM/yyyy HH:mm", { locale: ar })}${note ? ` — ${note}` : ""}${autoSend ? (isMetaChannel ? ` (قالب: ${templateLabel})` : " (مع رسالة تلقائية)") : ""}`,
+        content: `📅 تم جدولة متابعة في ${format(scheduledAt, "dd/MM/yyyy HH:mm", { locale: ar })}${note ? ` — ${note}` : ""}${autoSend ? (useTemplate ? ` (قالب: ${templateLabel})` : " (مع رسالة تلقائية)") : ""}`,
         sender: "system",
         message_type: "text",
       });
@@ -147,17 +168,11 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[65vh] overflow-y-auto px-0.5">
           {/* Quick options */}
           <div className="flex flex-wrap gap-2">
             {quickOptions.map((opt) => (
-              <Button
-                key={opt.label}
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={() => handleQuickOption(opt)}
-              >
+              <Button key={opt.label} variant="outline" size="sm" className="text-xs" onClick={() => handleQuickOption(opt)}>
                 {opt.label}
               </Button>
             ))}
@@ -168,22 +183,13 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
             <Label>التاريخ</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn("w-full justify-start text-right font-normal", !date && "text-muted-foreground")}
-                >
+                <Button variant="outline" className={cn("w-full justify-start text-right font-normal", !date && "text-muted-foreground")}>
                   <CalendarIcon className="ml-2 h-4 w-4" />
                   {date ? format(date, "dd/MM/yyyy", { locale: ar }) : "اختر التاريخ"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
-                  className="p-3 pointer-events-auto"
-                />
+                <Calendar mode="single" selected={date} onSelect={setDate} disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))} className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
           </div>
@@ -194,14 +200,32 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
             <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
 
+          {/* Smart window indicator for Meta channels */}
+          {isMetaChannel && date && (
+            <div className={cn(
+              "p-2.5 rounded-lg text-xs flex items-center gap-2 border",
+              windowStatus === "within_window"
+                ? "bg-success/5 border-success/20 text-success"
+                : "bg-warning/5 border-warning/20 text-warning"
+            )}>
+              {windowStatus === "within_window" ? (
+                <>
+                  <Clock className="w-4 h-4 shrink-0" />
+                  <span>وقت الجدولة <strong>داخل</strong> نافذة الـ 24 ساعة — يمكنك إرسال رسالة حرة أو قالب</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>وقت الجدولة <strong>خارج</strong> نافذة الـ 24 ساعة — يجب استخدام قالب معتمد</span>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Note */}
           <div className="space-y-2">
             <Label>ملاحظة (اختياري)</Label>
-            <Input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="مثال: متابعة الشحنة مع العميل"
-            />
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="مثال: متابعة الشحنة مع العميل" />
           </div>
 
           {/* Auto-send toggle */}
@@ -211,8 +235,8 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
               <div>
                 <p className="text-sm font-medium">إرسال رسالة تلقائية</p>
                 <p className="text-xs text-muted-foreground">
-                  {isMetaChannel
-                    ? "إرسال قالب واتساب معتمد للعميل تلقائياً في الموعد"
+                  {requiresTemplate
+                    ? "سيُرسل قالب معتمد تلقائياً في الموعد"
                     : "إرسال رسالة واتساب للعميل تلقائياً في الموعد"}
                 </p>
               </div>
@@ -220,11 +244,12 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
             <Switch checked={autoSend} onCheckedChange={setAutoSend} />
           </div>
 
-          {autoSend && isMetaChannel && (
+          {/* Template selector - shown when required OR when user wants */}
+          {autoSend && (requiresTemplate || isMetaChannel) && (
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
                 <FileText className="w-4 h-4" />
-                اختر القالب المعتمد
+                {requiresTemplate ? "اختر القالب المعتمد (مطلوب)" : "اختر قالب (اختياري)"}
               </Label>
               {approvedTemplates.length === 0 ? (
                 <p className="text-sm text-muted-foreground p-3 rounded-lg border bg-muted/20 text-center">
@@ -256,7 +281,8 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
             </div>
           )}
 
-          {autoSend && !isMetaChannel && (
+          {/* Free text - shown when within window or non-meta */}
+          {autoSend && canUseFreeText && !selectedTemplateId && (
             <div className="space-y-2">
               <Label>نص الرسالة التلقائية</Label>
               <Textarea
@@ -277,10 +303,10 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
               </div>
               <p>📅 {format(date, "EEEE dd MMMM yyyy", { locale: ar })} — الساعة {time}</p>
               <p>👤 {customerName || customerPhone}</p>
-              {autoSend && isMetaChannel && selectedTemplate && (
+              {autoSend && selectedTemplate && (
                 <p>📋 قالب: {selectedTemplate.name} ({selectedTemplate.language})</p>
               )}
-              {autoSend && !isMetaChannel && autoMessage && <p>✉️ سيتم إرسال رسالة تلقائية</p>}
+              {autoSend && !selectedTemplateId && autoMessage && <p>✉️ سيتم إرسال رسالة تلقائية</p>}
             </div>
           )}
         </div>
