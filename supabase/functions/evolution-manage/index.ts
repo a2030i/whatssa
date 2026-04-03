@@ -1030,25 +1030,58 @@ serve(async (req) => {
       const editPhone = asString(payload.phone);
       const editMsgId = asString(payload.message_id);
       const new_text = asString(payload.new_text);
-      if (!editPhone || !editMsgId || !new_text) return json({ error: "البيانات ناقصة" }, 400);
-      const editRes = await fetch(`${EVOLUTION_URL}/message/editMessage/${instanceName}`, {
-        method: "PUT",
+      const sanitizedPhone = editPhone.replace(/\D/g, "");
+      const remoteJid = sanitizedPhone.includes("@") ? sanitizedPhone : `${sanitizedPhone}@s.whatsapp.net`;
+
+      if (!sanitizedPhone || !editMsgId || !new_text) {
+        return json({ error: "البيانات ناقصة" }, 400);
+      }
+
+      const editRes = await fetch(`${EVOLUTION_URL}/chat/updateMessage/${instanceName}`, {
+        method: "POST",
         headers: evoHeaders,
         body: JSON.stringify({
-          number: editPhone.replace(/\D/g, ""),
-          key: { id: editMsgId, fromMe: true, remoteJid: `${editPhone.replace(/\D/g, "")}@s.whatsapp.net` },
+          number: Number(sanitizedPhone),
           text: new_text,
+          key: {
+            id: editMsgId,
+            fromMe: true,
+            remoteJid,
+          },
         }),
       });
-      const editData = await editRes.json();
+
+      const rawEditResponse = await editRes.text();
+      let editData: unknown = null;
+      if (rawEditResponse) {
+        try {
+          editData = JSON.parse(rawEditResponse);
+        } catch {
+          editData = rawEditResponse;
+        }
+      }
+
       if (editRes.ok) {
-        // Update in DB
         await adminClient.from("messages").update({
           content: new_text,
           metadata: { edited_at: new Date().toISOString() },
         }).eq("wa_message_id", editMsgId);
-        await logToSystem(adminClient, "info", `تم تعديل رسالة`, { message_id: editMsgId }, orgId, userId);
+
+        await logToSystem(adminClient, "info", "تم تعديل رسالة", {
+          instance: instanceName,
+          message_id: editMsgId,
+          remote_jid: remoteJid,
+        }, orgId, userId);
+      } else {
+        await logToSystem(adminClient, "error", "فشل تعديل رسالة عبر Evolution", {
+          instance: instanceName,
+          message_id: editMsgId,
+          phone: sanitizedPhone,
+          status: editRes.status,
+          response: editData,
+        }, orgId, userId);
       }
+
       return json({ success: editRes.ok, data: editData });
     }
 
