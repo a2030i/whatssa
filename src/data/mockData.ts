@@ -22,6 +22,7 @@ export interface Conversation {
   channelId?: string;
   channelName?: string;
   profilePic?: string;
+  isBlocked?: boolean;
 }
 
 export interface MessageTemplate {
