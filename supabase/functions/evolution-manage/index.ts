@@ -1504,3 +1504,65 @@ async function resolveEvolutionInstanceName(
 
   return fallbackChannel?.evolution_instance_name || null;
 }
+
+async function updateEvolutionBlockStatus(
+  evolutionUrl: string,
+  headers: Record<string, string>,
+  instanceName: string,
+  phone: string,
+  status: "block" | "unblock",
+) {
+  const attempts = [
+    {
+      route: `/message/updateBlockStatus/${instanceName}`,
+      method: "POST",
+      body: { number: phone, status },
+    },
+    {
+      route: `/chat/updateBlockStatus/${instanceName}`,
+      method: "PUT",
+      body: { number: phone, status },
+    },
+    {
+      route: `/chat/updateBlockStatus/${instanceName}`,
+      method: "POST",
+      body: { number: phone, status },
+    },
+    {
+      route: `/chat/updateBlockStatus/${instanceName}`,
+      method: "PUT",
+      body: { jid: `${phone}@s.whatsapp.net`, block: status === "block" },
+    },
+    {
+      route: `/chat/updateBlockStatus/${instanceName}`,
+      method: "POST",
+      body: { jid: `${phone}@s.whatsapp.net`, block: status === "block" },
+    },
+  ];
+
+  let lastResult: { response: Response; data: unknown; route: string } | null = null;
+
+  for (const attempt of attempts) {
+    const response = await fetch(`${evolutionUrl}${attempt.route}`, {
+      method: attempt.method,
+      headers,
+      body: JSON.stringify(attempt.body),
+    });
+    const data = await parseJsonSafe(response);
+
+    lastResult = {
+      response,
+      data,
+      route: `${attempt.method} ${attempt.route}`,
+    };
+
+    const text = `${extractProviderError(data)} ${JSON.stringify(data ?? "")}`.toLowerCase();
+    const routeMissing = text.includes("cannot post") || text.includes("cannot put") || text.includes("not found");
+
+    if (response.ok || !routeMissing) {
+      return lastResult;
+    }
+  }
+
+  return lastResult!;
+}
