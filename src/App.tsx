@@ -130,6 +130,7 @@ const AppRoutes = () => {
       <Route path="/wa-flows" element={<ProtectedRoute><AppLayout><WhatsAppFlowsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/locked-features" element={<ProtectedRoute><AppLayout><LockedFeaturesPage /></AppLayout></ProtectedRoute>} />
       <Route path="/tracking" element={<TrackingPage />} />
+      <Route path="/landing" element={<LandingPage />} />
       <Route path="*" element={<NotFound />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
