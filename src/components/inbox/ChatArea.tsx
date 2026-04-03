@@ -541,6 +541,41 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
+  // Sync blocked state when conversation changes
+  useEffect(() => {
+    setIsBlocked(conversation.isBlocked || false);
+  }, [conversation.id, conversation.isBlocked]);
+
+  const handleToggleBlock = async () => {
+    const action = isBlocked ? "unblock_contact" : "block_contact";
+    const newBlocked = !isBlocked;
+    try {
+      if (conversation.channelType === "evolution") {
+        await invokeCloud("evolution-manage", {
+          body: { action, phone: conversation.customerPhone },
+        });
+      }
+      // Update blacklisted_numbers table
+      if (newBlocked) {
+        await supabase.from("blacklisted_numbers").upsert({
+          org_id: orgId,
+          phone: conversation.customerPhone,
+          blocked_by: user?.id || null,
+          reason: "حظر يدوي من صندوق الوارد",
+        }, { onConflict: "org_id,phone" });
+      } else {
+        await supabase.from("blacklisted_numbers")
+          .delete()
+          .eq("org_id", orgId)
+          .eq("phone", conversation.customerPhone);
+      }
+      setIsBlocked(newBlocked);
+      toast.success(newBlocked ? "✅ تم حظر الرقم بنجاح" : "✅ تم إلغاء حظر الرقم");
+    } catch {
+      toast.error(newBlocked ? "فشل حظر الرقم" : "فشل إلغاء الحظر");
+    }
+  };
+
   // Check if AI is configured for this org
   useEffect(() => {
     if (!orgId) return;
