@@ -370,14 +370,14 @@ async function logToSystem(
   orgId?: string | null,
 ) {
   try {
-    await client.from("system_logs").insert({
+    client.from("system_logs").insert({
       level,
       source: "edge_function",
       function_name: "whatsapp-webhook",
       message,
       metadata,
       org_id: orgId || null,
-    });
+    }).then(() => {}).catch((e) => console.error("Log write failed:", e));
   } catch (e) {
     console.error("Failed to write system log:", e);
   }
