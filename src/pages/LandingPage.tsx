@@ -33,11 +33,6 @@ const stats = [
 ];
 
 const LandingPage = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  const nextSlide = () => setCurrentSlide((p) => (p + 1) % showcaseSlides.length);
-  const prevSlide = () => setCurrentSlide((p) => (p - 1 + showcaseSlides.length) % showcaseSlides.length);
-
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       {/* Navbar */}
