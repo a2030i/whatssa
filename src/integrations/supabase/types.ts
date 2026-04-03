@@ -3579,6 +3579,7 @@ export type Database = {
         Args: { _check_type: string; _org_id: string }
         Returns: Json
       }
+      cleanup_old_logs: { Args: { _days?: number }; Returns: Json }
       count_org_messages: {
         Args: {
           _from: string
