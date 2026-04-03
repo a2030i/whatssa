@@ -201,7 +201,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       {/* Desktop action buttons */}
       {!msg.isDeleted && (
         <div className={cn(
-          "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 hidden md:flex items-center gap-0.5",
+          "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-10 hidden md:flex items-center gap-0.5",
           msg.sender === "agent" ? "right-full mr-2" : "left-full ml-2"
         )}>
           {canReply && (
