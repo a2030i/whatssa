@@ -39,32 +39,68 @@ const VoiceRecorder = ({ onSend, onCancel }: VoiceRecorderProps) => {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
+            channelCount: 1,
+            sampleRate: 16000,
+            sampleSize: 16,
           },
         });
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
+        stream.getAudioTracks().forEach((track) => {
+          track.applyConstraints({
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1,
+          }).catch(() => {});
+        });
 
-        // Audio analysis for waveform
-        const ctx = new AudioContext();
+        // Audio analysis + cleanup filters
+        const ctx = new AudioContext({ sampleRate: 16000 });
         audioContextRef.current = ctx;
         const source = ctx.createMediaStreamSource(stream);
+        const highPass = ctx.createBiquadFilter();
+        highPass.type = "highpass";
+        highPass.frequency.value = 120;
+        highPass.Q.value = 0.7;
+
+        const lowPass = ctx.createBiquadFilter();
+        lowPass.type = "lowpass";
+        lowPass.frequency.value = 3800;
+        lowPass.Q.value = 0.7;
+
+        const compressor = ctx.createDynamicsCompressor();
+        compressor.threshold.value = -30;
+        compressor.knee.value = 20;
+        compressor.ratio.value = 12;
+        compressor.attack.value = 0.003;
+        compressor.release.value = 0.18;
+
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 128;
-        analyser.smoothingTimeConstant = 0.4;
-        source.connect(analyser);
+        analyser.smoothingTimeConstant = 0.55;
+
+        const destination = ctx.createMediaStreamDestination();
+
+        source.connect(highPass);
+        highPass.connect(lowPass);
+        lowPass.connect(compressor);
+        compressor.connect(analyser);
+        compressor.connect(destination);
         analyserRef.current = analyser;
 
-        // MediaRecorder
+        // MediaRecorder on processed stream
         const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
           ? "audio/webm;codecs=opus"
           : "audio/webm";
-        const recorder = new MediaRecorder(stream, { mimeType });
         audioChunksRef.current = [];
+        recordedBarsRef.current = [];
+        const recorder = new MediaRecorder(destination.stream, { mimeType });
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0) audioChunksRef.current.push(e.data);
         };
         recorder.onstop = () => {
-          const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
           blobRef.current = blob;
           stream.getTracks().forEach(t => t.stop());
           setPreviewBars([...recordedBarsRef.current]);

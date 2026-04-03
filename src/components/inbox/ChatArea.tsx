@@ -862,18 +862,35 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     return { header, text };
   };
 
+  const blobToBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      resolve(result.split(",")[1] || "");
+    };
+    reader.onerror = () => reject(new Error("تعذر قراءة التسجيل"));
+    reader.readAsDataURL(blob);
+  });
+
   const handleVoiceSend = async (blob: Blob) => {
     setIsRecording(false);
     if (blob.size < 500) { toast.info("تسجيل قصير جداً"); return; }
     try {
-      const path = `${conversation.id}/${Date.now()}.webm`;
-      const { error: uploadError } = await supabase.storage.from("chat-media").upload(path, blob, { contentType: "audio/webm" });
-      if (uploadError) throw uploadError;
-      const storagePath = `storage:chat-media/${path}`;
-      onSendMessage(conversation.id, `🎤 رسالة صوتية\n${storagePath}`);
+      const base64 = await blobToBase64(blob);
+      const { data, error } = await invokeCloud("upload-chat-media", {
+        body: {
+          conversation_id: conversation.id,
+          file_name: `${Date.now()}.webm`,
+          content_type: blob.type || "audio/webm",
+          base64,
+        },
+      });
+      if (error) throw error;
+      if (!data?.storage_path) throw new Error("تعذر حفظ التسجيل");
+      onSendMessage(conversation.id, `🎤 رسالة صوتية\n${data.storage_path}`);
       toast.success("تم إرسال الرسالة الصوتية");
     } catch (err: any) {
-      toast.error("فشل رفع التسجيل: " + (err?.message || ""));
+      toast.error("فشل رفع التسجيل: " + (err?.message || err?.context?.error || ""));
     }
   };
 
