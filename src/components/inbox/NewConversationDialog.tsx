@@ -311,7 +311,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden" dir="rtl">
+      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden max-h-[90dvh] overflow-y-auto" dir="rtl">
         {/* Header */}
         <DialogHeader className="p-4 pb-3 border-b border-border/40 bg-card">
           <DialogTitle className="flex items-center gap-2 text-base">
