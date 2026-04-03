@@ -7,13 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Clock, Send, Bell } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CalendarIcon, Clock, Send, Bell, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import type { WhatsAppTemplate } from "@/types/whatsapp";
 
 interface FollowUpDialogProps {
   open: boolean;
@@ -21,16 +23,23 @@ interface FollowUpDialogProps {
   conversationId: string;
   customerPhone: string;
   customerName?: string;
+  channelType?: string;
+  templates?: WhatsAppTemplate[];
 }
 
-const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, customerName }: FollowUpDialogProps) => {
+const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, customerName, channelType, templates = [] }: FollowUpDialogProps) => {
   const { orgId, user } = useAuth();
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState("10:00");
   const [note, setNote] = useState("");
   const [autoSend, setAutoSend] = useState(false);
   const [autoMessage, setAutoMessage] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [loading, setLoading] = useState(false);
+
+  const isMetaChannel = channelType === "meta_api";
+  const approvedTemplates = templates.filter((t) => t.status === "approved");
+  const selectedTemplate = approvedTemplates.find((t) => `${t.name}__${t.language}` === selectedTemplateId);
 
   const handleSubmit = async () => {
     if (!date || !orgId || !user) {
@@ -47,9 +56,19 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
       return;
     }
 
+    if (autoSend && isMetaChannel && !selectedTemplate) {
+      toast.error("يرجى اختيار قالب للإرسال التلقائي");
+      return;
+    }
+
+    if (autoSend && !isMetaChannel && !autoMessage) {
+      toast.error("يرجى كتابة نص الرسالة التلقائية");
+      return;
+    }
+
     setLoading(true);
     try {
-      const { error } = await supabase.from("follow_up_reminders").insert({
+      const insertData: Record<string, unknown> = {
         org_id: orgId,
         conversation_id: conversationId,
         created_by: user.id,
@@ -58,27 +77,38 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
         customer_name: customerName || customerPhone,
         scheduled_at: scheduledAt.toISOString(),
         reminder_note: note || null,
-        auto_send_message: autoSend && autoMessage ? autoMessage : null,
-      });
+        auto_send_message: autoSend
+          ? isMetaChannel
+            ? `[قالب] ${selectedTemplate?.name}`
+            : autoMessage
+          : null,
+        auto_send_template_name: autoSend && isMetaChannel && selectedTemplate ? selectedTemplate.name : null,
+        auto_send_template_language: autoSend && isMetaChannel && selectedTemplate ? selectedTemplate.language : null,
+      };
+
+      const { error } = await supabase.from("follow_up_reminders").insert(insertData);
 
       if (error) throw error;
 
-      // Add system message to conversation
+      const templateLabel = selectedTemplate
+        ? `${selectedTemplate.name} (${selectedTemplate.language})`
+        : "";
+
       await supabase.from("messages").insert({
         conversation_id: conversationId,
-        content: `📅 تم جدولة متابعة في ${format(scheduledAt, "dd/MM/yyyy HH:mm", { locale: ar })}${note ? ` — ${note}` : ""}${autoSend && autoMessage ? " (مع رسالة تلقائية)" : ""}`,
+        content: `📅 تم جدولة متابعة في ${format(scheduledAt, "dd/MM/yyyy HH:mm", { locale: ar })}${note ? ` — ${note}` : ""}${autoSend ? (isMetaChannel ? ` (قالب: ${templateLabel})` : " (مع رسالة تلقائية)") : ""}`,
         sender: "system",
         message_type: "text",
       });
 
       toast.success("تم جدولة المتابعة بنجاح");
       onOpenChange(false);
-      // Reset
       setDate(undefined);
       setTime("10:00");
       setNote("");
       setAutoSend(false);
       setAutoMessage("");
+      setSelectedTemplateId("");
     } catch (err: any) {
       toast.error(err.message || "فشل جدولة المتابعة");
     } finally {
@@ -180,13 +210,53 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
               <Send className="w-4 h-4 text-primary" />
               <div>
                 <p className="text-sm font-medium">إرسال رسالة تلقائية</p>
-                <p className="text-xs text-muted-foreground">إرسال رسالة واتساب للعميل تلقائياً في الموعد</p>
+                <p className="text-xs text-muted-foreground">
+                  {isMetaChannel
+                    ? "إرسال قالب واتساب معتمد للعميل تلقائياً في الموعد"
+                    : "إرسال رسالة واتساب للعميل تلقائياً في الموعد"}
+                </p>
               </div>
             </div>
             <Switch checked={autoSend} onCheckedChange={setAutoSend} />
           </div>
 
-          {autoSend && (
+          {autoSend && isMetaChannel && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <FileText className="w-4 h-4" />
+                اختر القالب المعتمد
+              </Label>
+              {approvedTemplates.length === 0 ? (
+                <p className="text-sm text-muted-foreground p-3 rounded-lg border bg-muted/20 text-center">
+                  لا توجد قوالب معتمدة — أضف قوالب من صفحة القوالب أولاً
+                </p>
+              ) : (
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر قالب..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {approvedTemplates.map((t) => (
+                      <SelectItem key={`${t.name}__${t.language}`} value={`${t.name}__${t.language}`}>
+                        <span className="flex items-center gap-2">
+                          <span>{t.name}</span>
+                          <span className="text-xs text-muted-foreground">({t.language})</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {selectedTemplate && (
+                <div className="p-3 rounded-lg border bg-muted/20 text-sm space-y-1">
+                  <p className="font-medium text-xs text-muted-foreground">معاينة القالب:</p>
+                  <p className="whitespace-pre-wrap">{selectedTemplate.body || selectedTemplate.content}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {autoSend && !isMetaChannel && (
             <div className="space-y-2">
               <Label>نص الرسالة التلقائية</Label>
               <Textarea
@@ -207,7 +277,10 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
               </div>
               <p>📅 {format(date, "EEEE dd MMMM yyyy", { locale: ar })} — الساعة {time}</p>
               <p>👤 {customerName || customerPhone}</p>
-              {autoSend && autoMessage && <p>✉️ سيتم إرسال رسالة تلقائية</p>}
+              {autoSend && isMetaChannel && selectedTemplate && (
+                <p>📋 قالب: {selectedTemplate.name} ({selectedTemplate.language})</p>
+              )}
+              {autoSend && !isMetaChannel && autoMessage && <p>✉️ سيتم إرسال رسالة تلقائية</p>}
             </div>
           )}
         </div>
