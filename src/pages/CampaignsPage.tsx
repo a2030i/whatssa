@@ -416,7 +416,7 @@ const CampaignsPage = () => {
   };
 
   return (
-    <div className="p-3 md:p-6 space-y-6 max-w-[1000px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[1000px] mx-auto" dir="rtl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">الحملات</h1>

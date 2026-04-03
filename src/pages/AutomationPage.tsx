@@ -220,7 +220,7 @@ const AutomationPage = () => {
   }, {} as Record<string, number>);
 
   return (
-    <div className="p-3 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[900px] mx-auto" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold">الأتمتة</h1>

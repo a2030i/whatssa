@@ -187,7 +187,7 @@ const ConversationSettingsPage = () => {
   };
 
   return (
-    <div className="p-3 md:p-6 space-y-5 max-w-[800px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-5 max-w-[800px] mx-auto" dir="rtl">
       <div>
         <h1 className="text-xl font-bold">إعدادات المحادثات</h1>
         <p className="text-sm text-muted-foreground mt-1">استراتيجية الإسناد، ساعات العمل، استبيان الرضا والردود المحفوظة</p>

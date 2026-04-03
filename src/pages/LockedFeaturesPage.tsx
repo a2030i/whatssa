@@ -173,7 +173,7 @@ const LockedFeaturesPage = () => {
   }
 
   return (
-    <div className="p-3 md:p-6 space-y-6 max-w-[900px]" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-[900px] mx-auto" dir="rtl">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Lock className="w-5 h-5 text-muted-foreground" />
