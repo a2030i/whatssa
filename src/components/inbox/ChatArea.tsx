@@ -214,7 +214,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       onTouchStart={canReply ? swipe.onTouchStart : undefined}
       onTouchMove={canReply ? swipe.onTouchMove : undefined}
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
-      className="group relative max-w-[88%] md:max-w-[70%]"
+      className="group relative max-w-[85%] md:max-w-[65%]"
       data-message-id={msg.id}
       data-wa-message-id={msg.waMessageId || undefined}
     >
