@@ -81,9 +81,19 @@ const resolveMediaUrl = async (url: string | null | undefined): Promise<string |
   if (!url) return null;
   if (url.startsWith("storage:chat-media/")) {
     const path = url.replace("storage:chat-media/", "");
-    const { data, error } = await supabase.storage.from("chat-media").createSignedUrl(path, 3600);
-    if (error || !data?.signedUrl) return null;
-    return data.signedUrl;
+    try {
+      const { data, error } = await supabase.storage.from("chat-media").createSignedUrl(path, 3600);
+      if (error) {
+        console.error("[resolveMediaUrl] Signed URL error:", error.message, "path:", path);
+        // Fallback: try public URL
+        const { data: publicData } = supabase.storage.from("chat-media").getPublicUrl(path);
+        return publicData?.publicUrl || null;
+      }
+      return data?.signedUrl || null;
+    } catch (e) {
+      console.error("[resolveMediaUrl] Exception:", e, "path:", path);
+      return null;
+    }
   }
   return url;
 };
