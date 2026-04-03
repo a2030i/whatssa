@@ -262,6 +262,11 @@ const CustomerProfile = ({ customerId, onBack }: CustomerProfileProps) => {
         </>
       )}
 
+      {/* Customer Timeline */}
+      <div className="bg-card rounded-xl shadow-card border border-border p-4">
+        <CustomerTimeline customerId={customerId} customerPhone={customer.phone} />
+      </div>
+
       {/* Orders List */}
       <div className="bg-card rounded-xl shadow-card border border-border overflow-hidden">
         <div className="p-3 border-b border-border">
