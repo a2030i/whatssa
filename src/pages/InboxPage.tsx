@@ -293,6 +293,32 @@ const InboxPage = () => {
     };
   }, [selectedId]);
 
+  // Listen for optimistic reaction updates from ChatArea
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { messageId, emoji } = (e as CustomEvent).detail;
+      setAllMessages((prev) => {
+        const updated: Record<string, Message[]> = {};
+        for (const [convId, msgs] of Object.entries(prev)) {
+          updated[convId] = msgs.map((m) => {
+            if (m.id !== messageId) return m;
+            const reactions = [...(m.reactions || [])];
+            const idx = reactions.findIndex((r) => r.fromMe === true);
+            if (idx >= 0) {
+              reactions[idx] = { emoji, fromMe: true, timestamp: new Date().toISOString() };
+            } else {
+              reactions.push({ emoji, fromMe: true, timestamp: new Date().toISOString() });
+            }
+            return { ...m, reactions };
+          });
+        }
+        return updated;
+      });
+    };
+    window.addEventListener("optimistic-reaction", handler);
+    return () => window.removeEventListener("optimistic-reaction", handler);
+  }, []);
+
   useEffect(() => {
     if (!selectedId) return;
 
