@@ -331,15 +331,15 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         </div>
       )}
       <div className={cn(
-        "rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+        "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
         msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3",
         msg.isDeleted
           ? "bg-muted/50 border border-border/30 text-muted-foreground italic"
           : msg.type === "note"
             ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
             : msg.sender === "agent"
-              ? "bg-card shadow-[0_1px_3px_rgba(0,0,0,0.08)] text-foreground rounded-bl-sm"
-              : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-md"
+              ? "bg-card border border-border/10 shadow-[0_1px_4px_rgba(0,0,0,0.06)] text-foreground rounded-bl-sm"
+              : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
       )}>
         {msg.isDeleted ? (
           <div className="flex items-center gap-1.5 text-xs">
