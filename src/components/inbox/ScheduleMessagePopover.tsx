@@ -7,6 +7,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, CalendarIcon, Send, Trash2, Pencil, X, AlertTriangle, FileText, Loader2 } from "lucide-react";
+import TemplateVariableInputs from "./TemplateVariableInputs";
+import { buildTemplateComponents } from "@/types/whatsapp";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { cn } from "@/lib/utils";
