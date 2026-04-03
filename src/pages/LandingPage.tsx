@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
 import {
   MessageSquare, Bot, BarChart3, Users, Zap, Shield, Globe, ArrowLeft,
   CheckCircle2, Star, ClipboardCheck, FileText, Workflow,
-  ShoppingCart, Headphones, Send, Play, ChevronLeft, ChevronRight
+  ShoppingCart, Headphones, Send
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 const features = [
