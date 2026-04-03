@@ -1088,7 +1088,7 @@ serve(async (req) => {
         method: "POST",
         headers: evoHeaders,
         body: JSON.stringify({
-          number: Number(sanitizedPhone),
+          number: sanitizedPhone,
           text: new_text,
           key: {
             id: editMsgId,

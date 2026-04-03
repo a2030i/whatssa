@@ -136,9 +136,56 @@ serve(async (req) => {
       if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
 
       const cleanPhone = to.replace(/\D/g, "");
-      const remoteJid = to.includes("@") ? to : `${cleanPhone}@s.whatsapp.net`;
-      const editRes = await fetch(`${EVOLUTION_URL}/message/editMessage/${config.evolution_instance_name}`, {
-        method: "PUT",
+      let remoteJid = to.includes("@") ? to : `${cleanPhone}@s.whatsapp.net`;
+
+      try {
+        const statusEndpoints = [
+          `${EVOLUTION_URL}/chat/findStatusMessage/${config.evolution_instance_name}`,
+          `${EVOLUTION_URL}/chat/findMessages/${config.evolution_instance_name}`,
+        ];
+
+        for (const endpoint of statusEndpoints) {
+          const findRes = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY },
+            body: JSON.stringify({ where: { id: edit_message_id }, limit: 1 }),
+          });
+
+          if (!findRes.ok) continue;
+
+          const findData = await findRes.json().catch(() => ({}));
+          const rawItems = Array.isArray(findData)
+            ? findData
+            : Array.isArray(findData?.messages?.records)
+              ? findData.messages.records
+              : Array.isArray(findData?.messages)
+                ? findData.messages
+                : Array.isArray(findData?.data)
+                  ? findData.data
+                  : Array.isArray(findData?.response)
+                    ? findData.response
+                    : findData?.data
+                      ? [findData.data]
+                      : [];
+
+          const found = rawItems.find((item: any) => (
+            item?.key?.id === edit_message_id ||
+            item?.keyId === edit_message_id ||
+            item?.id === edit_message_id ||
+            item?.messageId === edit_message_id
+          ));
+
+          const foundJid = found?.key?.remoteJid || found?.remoteJid || found?.jid || "";
+          if (foundJid) {
+            remoteJid = foundJid;
+            break;
+          }
+        }
+      } catch {
+      }
+
+      const editRes = await fetch(`${EVOLUTION_URL}/chat/updateMessage/${config.evolution_instance_name}`, {
+        method: "POST",
         headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY },
         body: JSON.stringify({
           number: cleanPhone,
@@ -157,7 +204,8 @@ serve(async (req) => {
           error: errData,
           to,
           id: edit_message_id,
-          endpoint: "/message/editMessage",
+          remoteJid,
+          endpoint: "/chat/updateMessage",
         }, orgId, user.id);
         return json({ error: errData?.message || errData?.response?.message || "فشل تعديل الرسالة" }, editRes.status);
       }
