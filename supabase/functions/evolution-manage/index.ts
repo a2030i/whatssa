@@ -635,59 +635,73 @@ serve(async (req) => {
       return json({ success: true });
     }
 
-    // ── BLOCK CONTACT ──
-    if (action === "block_contact") {
-      const blockPhone = asString(payload.phone);
-      if (!blockPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
-      
-      // Resolve instance name from channel_id if provided
-      let targetInstance = instanceName;
-      if (channel_id) {
-        const { data: ch } = await adminClient.from("whatsapp_config")
-          .select("evolution_instance_name")
-          .eq("id", channel_id).eq("org_id", orgId).maybeSingle();
-        if (ch?.evolution_instance_name) targetInstance = ch.evolution_instance_name;
-      }
-      
-      const blockRes = await fetch(`${EVOLUTION_URL}/message/updateBlockStatus/${targetInstance}`, {
-        method: "POST",
-        headers: evoHeaders,
-        body: JSON.stringify({ number: blockPhone.replace(/\D/g, ""), status: "block" }),
-      });
-      const blockData = await blockRes.json();
-      if (!blockRes.ok) {
-        await logToSystem(adminClient, "error", `فشل حظر جهة اتصال: ${blockPhone}`, { instance: targetInstance, error: blockData }, orgId, userId);
-        return json({ error: blockData?.message || "فشل الحظر في واتساب", success: false }, 400);
-      }
-      await logToSystem(adminClient, "info", `تم حظر جهة اتصال: ${blockPhone}`, { instance: targetInstance }, orgId, userId);
-      return json({ success: true, data: blockData });
-    }
+    // ── BLOCK / UNBLOCK CONTACT ──
+    if (action === "block_contact" || action === "unblock_contact") {
+      const contactPhone = asString(payload.phone);
+      const desiredStatus = action === "block_contact" ? "block" : "unblock";
+      const actionLabel = action === "block_contact" ? "حظر" : "إلغاء حظر";
 
-    // ── UNBLOCK CONTACT ──
-    if (action === "unblock_contact") {
-      const unblockPhone = asString(payload.phone);
-      if (!unblockPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
-      
-      let targetInstance = instanceName;
-      if (channel_id) {
-        const { data: ch } = await adminClient.from("whatsapp_config")
-          .select("evolution_instance_name")
-          .eq("id", channel_id).eq("org_id", orgId).maybeSingle();
-        if (ch?.evolution_instance_name) targetInstance = ch.evolution_instance_name;
+      if (!contactPhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
+
+      const sanitizedPhone = contactPhone.replace(/\D/g, "");
+      if (!sanitizedPhone) return json({ error: "رقم الهاتف غير صالح" }, 400);
+
+      const targetInstance = await resolveEvolutionInstanceName(
+        adminClient,
+        orgId,
+        instance_name,
+        channel_id,
+      );
+
+      if (!targetInstance) {
+        await logToSystem(adminClient, "error", `تعذر تحديد جلسة Evolution لعملية ${actionLabel}`, {
+          phone: sanitizedPhone,
+          channel_id: channel_id || null,
+          requested_instance: instance_name || null,
+        }, orgId, userId);
+        return json({ error: "لا توجد قناة واتساب ويب مرتبطة لهذه المحادثة", success: false }, 400);
       }
-      
-      const unblockRes = await fetch(`${EVOLUTION_URL}/message/updateBlockStatus/${targetInstance}`, {
+
+      const providerResponse = await fetch(`${EVOLUTION_URL}/message/updateBlockStatus/${targetInstance}`, {
         method: "POST",
         headers: evoHeaders,
-        body: JSON.stringify({ number: unblockPhone.replace(/\D/g, ""), status: "unblock" }),
+        body: JSON.stringify({ number: sanitizedPhone, status: desiredStatus }),
       });
-      const unblockData = await unblockRes.json();
-      if (!unblockRes.ok) {
-        await logToSystem(adminClient, "error", `فشل إلغاء حظر: ${unblockPhone}`, { instance: targetInstance, error: unblockData }, orgId, userId);
-        return json({ error: unblockData?.message || "فشل إلغاء الحظر", success: false }, 400);
+      const providerData = await parseJsonSafe(providerResponse);
+
+      const providerMessage = extractProviderError(providerData);
+      const providerText = `${providerMessage} ${JSON.stringify(providerData ?? "")}`.toLowerCase();
+      const isIdempotentUnblock = desiredStatus === "unblock" && (
+        providerText.includes("not blocked") ||
+        providerText.includes("already unblocked") ||
+        providerText.includes("isn't blocked") ||
+        providerText.includes("is not blocked") ||
+        providerText.includes("não está bloqueado") ||
+        providerText.includes("ja desbloqueado") ||
+        providerText.includes("já desbloqueado")
+      );
+
+      if (!providerResponse.ok && !isIdempotentUnblock) {
+        await logToSystem(adminClient, "error", `فشل ${actionLabel} جهة اتصال`, {
+          instance: targetInstance,
+          phone: sanitizedPhone,
+          channel_id: channel_id || null,
+          http_status: providerResponse.status,
+          response: providerData,
+        }, orgId, userId);
+        return json({ error: providerMessage || `فشل ${actionLabel}`, success: false }, 400);
       }
-      await logToSystem(adminClient, "info", `تم إلغاء حظر جهة اتصال: ${unblockPhone}`, { instance: targetInstance }, orgId, userId);
-      return json({ success: true, data: unblockData });
+
+      await logToSystem(adminClient, "info", `تم ${actionLabel} جهة اتصال`, {
+        instance: targetInstance,
+        phone: sanitizedPhone,
+        channel_id: channel_id || null,
+        provider_status: providerResponse.status,
+        provider_response: providerData,
+        idempotent: isIdempotentUnblock,
+      }, orgId, userId);
+
+      return json({ success: true, data: providerData, instance_name: targetInstance, idempotent: isIdempotentUnblock });
     }
 
     // ── ARCHIVE CHAT ──
@@ -1415,4 +1429,73 @@ async function upsertConfig(adminClient: ReturnType<typeof createClient>, orgId:
       business_name: null,
     });
   }
+}
+
+async function parseJsonSafe(response: Response) {
+  const rawText = await response.text().catch(() => "");
+  if (!rawText) return null;
+
+  try {
+    return JSON.parse(rawText);
+  } catch {
+    return rawText;
+  }
+}
+
+function extractProviderError(data: unknown) {
+  if (!data) return "";
+  if (typeof data === "string") return data;
+  if (typeof data !== "object") return String(data);
+
+  const candidate = data as Record<string, unknown>;
+  const message = candidate.message;
+  if (typeof message === "string") return message;
+  if (Array.isArray(message)) return message.filter((item) => typeof item === "string").join(" - ");
+
+  const response = candidate.response;
+  if (response && typeof response === "object") {
+    const nestedMessage = (response as Record<string, unknown>).message;
+    if (typeof nestedMessage === "string") return nestedMessage;
+    if (Array.isArray(nestedMessage)) return nestedMessage.filter((item) => typeof item === "string").join(" - ");
+  }
+
+  const error = candidate.error;
+  if (typeof error === "string") return error;
+
+  return "";
+}
+
+async function resolveEvolutionInstanceName(
+  adminClient: ReturnType<typeof createClient>,
+  orgId: string,
+  requestedInstanceName?: string,
+  channelId?: string,
+) {
+  if (requestedInstanceName?.trim()) return requestedInstanceName.trim();
+
+  if (channelId) {
+    const { data: exactChannel } = await adminClient
+      .from("whatsapp_config")
+      .select("evolution_instance_name, channel_type, is_connected, updated_at")
+      .eq("id", channelId)
+      .eq("org_id", orgId)
+      .maybeSingle();
+
+    if (exactChannel?.channel_type === "evolution" && exactChannel.evolution_instance_name) {
+      return exactChannel.evolution_instance_name;
+    }
+  }
+
+  const { data: fallbackChannel } = await adminClient
+    .from("whatsapp_config")
+    .select("evolution_instance_name")
+    .eq("org_id", orgId)
+    .eq("channel_type", "evolution")
+    .not("evolution_instance_name", "is", null)
+    .order("is_connected", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return fallbackChannel?.evolution_instance_name || null;
 }
