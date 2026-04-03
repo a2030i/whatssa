@@ -291,16 +291,51 @@ serve(async (req) => {
           method: "POST", headers: evoHeaders, body: JSON.stringify(audioBody),
         });
 
-      const result = await response.json();
-      if (!response.ok) {
-        logToSystem(adminClient, "error", `فشل إرسال وسائط Evolution إلى ${to}`, {
-          to, http_status: response.status, error: result?.message || "unknown",
-        }, orgId, user.id);
-        return json({ error: result?.message || "فشل إرسال الوسائط عبر Evolution" }, response.status);
-      }
+        const result = await response.json();
+        if (!response.ok) {
+          logToSystem(adminClient, "error", `فشل إرسال صوت Evolution إلى ${to}`, {
+            to, http_status: response.status, error: result?.message || "unknown",
+          }, orgId, user.id);
+          return json({ error: result?.message || "فشل إرسال الصوت عبر Evolution" }, response.status);
+        }
 
-      waMessageId = result.key?.id || null;
-      sentContent = message || `[${sentMessageType}]`;
+        waMessageId = result.key?.id || null;
+        sentContent = "[audio]";
+      } else {
+        // Non-audio media (image, video, document)
+        const mediaBody: Record<string, unknown> = {
+          number: to,
+          mediatype: sentMessageType === "image" ? "image" : sentMessageType === "video" ? "video" : "document",
+          media: publicUrl,
+          caption: message || "",
+        };
+
+        if (reply_to?.wa_message_id) {
+          mediaBody.quoted = {
+            key: { remoteJid, fromMe: false, id: reply_to.wa_message_id },
+            message: { conversation: reply_to.text || "" },
+          };
+        }
+
+        logToSystem(adminClient, "info", `إرسال وسائط Evolution (${sentMessageType}) إلى ${to}`, {
+          to, instance: instanceName, media_type: sentMessageType,
+        }, orgId, user.id);
+
+        const response = await fetch(`${EVOLUTION_URL}/message/sendMedia/${instanceName}`, {
+          method: "POST", headers: evoHeaders, body: JSON.stringify(mediaBody),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          logToSystem(adminClient, "error", `فشل إرسال وسائط Evolution إلى ${to}`, {
+            to, http_status: response.status, error: result?.message || "unknown",
+          }, orgId, user.id);
+          return json({ error: result?.message || "فشل إرسال الوسائط عبر Evolution" }, response.status);
+        }
+
+        waMessageId = result.key?.id || null;
+        sentContent = message || `[${sentMessageType}]`;
+      }
     } else {
       // ── Send text message ──
       const sendBody: Record<string, unknown> = { number: to, text: message };
