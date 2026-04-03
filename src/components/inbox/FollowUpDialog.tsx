@@ -86,7 +86,7 @@ const FollowUpDialog = ({ open, onOpenChange, conversationId, customerPhone, cus
         auto_send_template_language: autoSend && isMetaChannel && selectedTemplate ? selectedTemplate.language : null,
       };
 
-      const { error } = await supabase.from("follow_up_reminders").insert(insertData);
+      const { error } = await supabase.from("follow_up_reminders").insert(insertData as any);
 
       if (error) throw error;
 
