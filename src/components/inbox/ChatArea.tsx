@@ -537,6 +537,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
+  // Check if AI is configured for this org
+  useEffect(() => {
+    if (!orgId) return;
+    supabase
+      .from("ai_provider_configs" as any)
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("is_active", true)
+      .limit(1)
+      .then(({ data }) => setHasAiConfig(!!(data && data.length > 0)));
+  }, [orgId]);
+
   // Real-time typing presence
   useEffect(() => {
     if (!conversation.id || !user?.id) return;
