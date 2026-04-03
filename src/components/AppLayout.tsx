@@ -3,6 +3,8 @@ import AppSidebar from "./AppSidebar";
 import NotificationBell from "./NotificationBell";
 import MobileBottomNav from "./MobileBottomNav";
 import OnboardingWizard from "./onboarding/OnboardingWizard";
+import GlobalSearch from "./GlobalSearch";
+import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -66,8 +68,14 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       )}
 
       {/* Top bar - glass effect */}
-      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[250px] h-14 bg-card/60 backdrop-blur-xl border-b border-border/30 flex items-center justify-end px-4 z-30 transition-all`}>
-        <NotificationBell />
+      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[250px] h-14 bg-card/60 backdrop-blur-xl border-b border-border/30 flex items-center justify-between px-4 z-30 transition-all`}>
+        <div className="flex items-center gap-2">
+          <GlobalSearch />
+        </div>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <NotificationBell />
+        </div>
       </div>
       <main className={`md:mr-[250px] min-h-screen ${isImpersonating ? "pt-[92px]" : "pt-14"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
         {children}
