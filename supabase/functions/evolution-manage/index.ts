@@ -1430,3 +1430,72 @@ async function upsertConfig(adminClient: ReturnType<typeof createClient>, orgId:
     });
   }
 }
+
+async function parseJsonSafe(response: Response) {
+  const rawText = await response.text().catch(() => "");
+  if (!rawText) return null;
+
+  try {
+    return JSON.parse(rawText);
+  } catch {
+    return rawText;
+  }
+}
+
+function extractProviderError(data: unknown) {
+  if (!data) return "";
+  if (typeof data === "string") return data;
+  if (typeof data !== "object") return String(data);
+
+  const candidate = data as Record<string, unknown>;
+  const message = candidate.message;
+  if (typeof message === "string") return message;
+  if (Array.isArray(message)) return message.filter((item) => typeof item === "string").join(" - ");
+
+  const response = candidate.response;
+  if (response && typeof response === "object") {
+    const nestedMessage = (response as Record<string, unknown>).message;
+    if (typeof nestedMessage === "string") return nestedMessage;
+    if (Array.isArray(nestedMessage)) return nestedMessage.filter((item) => typeof item === "string").join(" - ");
+  }
+
+  const error = candidate.error;
+  if (typeof error === "string") return error;
+
+  return "";
+}
+
+async function resolveEvolutionInstanceName(
+  adminClient: ReturnType<typeof createClient>,
+  orgId: string,
+  requestedInstanceName?: string,
+  channelId?: string,
+) {
+  if (requestedInstanceName?.trim()) return requestedInstanceName.trim();
+
+  if (channelId) {
+    const { data: exactChannel } = await adminClient
+      .from("whatsapp_config")
+      .select("evolution_instance_name, channel_type, is_connected, updated_at")
+      .eq("id", channelId)
+      .eq("org_id", orgId)
+      .maybeSingle();
+
+    if (exactChannel?.channel_type === "evolution" && exactChannel.evolution_instance_name) {
+      return exactChannel.evolution_instance_name;
+    }
+  }
+
+  const { data: fallbackChannel } = await adminClient
+    .from("whatsapp_config")
+    .select("evolution_instance_name")
+    .eq("org_id", orgId)
+    .eq("channel_type", "evolution")
+    .not("evolution_instance_name", "is", null)
+    .order("is_connected", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return fallbackChannel?.evolution_instance_name || null;
+}
