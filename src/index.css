@@ -69,43 +69,43 @@
   }
 
   .dark {
-    --background: 222 30% 8%;
+    --background: 220 18% 14%;
     --foreground: 220 14% 92%;
 
-    --card: 222 25% 12%;
+    --card: 220 16% 18%;
     --card-foreground: 220 14% 92%;
 
-    --popover: 222 25% 12%;
+    --popover: 220 16% 18%;
     --popover-foreground: 220 14% 92%;
 
     --primary: 142 64% 48%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 142 70% 55%;
 
-    --secondary: 222 20% 16%;
+    --secondary: 220 14% 22%;
     --secondary-foreground: 220 14% 88%;
 
-    --muted: 222 20% 16%;
-    --muted-foreground: 220 12% 55%;
+    --muted: 220 14% 22%;
+    --muted-foreground: 220 10% 58%;
 
-    --accent: 142 40% 15%;
+    --accent: 142 30% 20%;
     --accent-foreground: 142 64% 70%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 18% 20%;
-    --input: 222 18% 20%;
+    --border: 220 14% 26%;
+    --input: 220 14% 24%;
     --ring: 142 64% 48%;
 
     /* Sidebar */
-    --sidebar-background: 222 35% 6%;
+    --sidebar-background: 220 20% 11%;
     --sidebar-foreground: 220 14% 85%;
     --sidebar-primary: 142 64% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 25% 12%;
+    --sidebar-accent: 220 16% 17%;
     --sidebar-accent-foreground: 220 14% 92%;
-    --sidebar-border: 222 22% 14%;
+    --sidebar-border: 220 14% 20%;
     --sidebar-ring: 142 64% 48%;
 
     /* Custom tokens */
