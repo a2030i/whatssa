@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import TransferDialog from "./TransferDialog";
 import AudioPlayer from "./AudioPlayer";
+import VoiceRecorder from "./VoiceRecorder";
 import ClosureReasonDialog from "./ClosureReasonDialog";
 import ExportConversation from "./ExportConversation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -503,7 +504,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
   const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showClosureReason, setShowClosureReason] = useState(false);
   const [showFollowUp, setShowFollowUp] = useState(false);
@@ -536,10 +536,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
 
   // Sync blocked state when conversation changes
   useEffect(() => {
@@ -869,57 +866,23 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     return { header, text };
   };
 
-  const startRecording = async () => {
+  const handleVoiceSend = async (blob: Blob) => {
+    setIsRecording(false);
+    if (blob.size < 500) { toast.info("تسجيل قصير جداً"); return; }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm" });
-      audioChunksRef.current = [];
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        if (blob.size < 500) { toast.info("تسجيل قصير جداً"); return; }
-        // Upload to storage
-        try {
-          const path = `${conversation.id}/${Date.now()}.webm`;
-          const { error: uploadError } = await supabase.storage.from("chat-media").upload(path, blob, { contentType: "audio/webm" });
-          if (uploadError) throw uploadError;
-          const storagePath = `storage:chat-media/${path}`;
-          onSendMessage(conversation.id, `🎤 رسالة صوتية\n${storagePath}`);
-          toast.success("تم إرسال الرسالة الصوتية");
-        } catch (err: any) {
-          toast.error("فشل رفع التسجيل: " + (err?.message || ""));
-        }
-      };
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingTime(0);
-      recordingIntervalRef.current = setInterval(() => setRecordingTime((prev) => prev + 1), 1000);
-    } catch (err) {
-      toast.error("لا يمكن الوصول للميكروفون — تأكد من صلاحيات المتصفح");
+      const path = `${conversation.id}/${Date.now()}.webm`;
+      const { error: uploadError } = await supabase.storage.from("chat-media").upload(path, blob, { contentType: "audio/webm" });
+      if (uploadError) throw uploadError;
+      const storagePath = `storage:chat-media/${path}`;
+      onSendMessage(conversation.id, `🎤 رسالة صوتية\n${storagePath}`);
+      toast.success("تم إرسال الرسالة الصوتية");
+    } catch (err: any) {
+      toast.error("فشل رفع التسجيل: " + (err?.message || ""));
     }
   };
 
-  const stopRecording = () => {
+  const handleVoiceCancel = () => {
     setIsRecording(false);
-    if (recordingIntervalRef.current) { clearInterval(recordingIntervalRef.current); recordingIntervalRef.current = null; }
-    mediaRecorderRef.current?.stop();
-    setRecordingTime(0);
-  };
-
-  const cancelRecording = () => {
-    setIsRecording(false);
-    if (recordingIntervalRef.current) { clearInterval(recordingIntervalRef.current); recordingIntervalRef.current = null; }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.ondataavailable = null;
-      mediaRecorderRef.current.onstop = () => {
-        mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
-      };
-      mediaRecorderRef.current.stop();
-    }
-    audioChunksRef.current = [];
-    setRecordingTime(0);
     toast.info("تم إلغاء التسجيل");
   };
 
@@ -1428,21 +1391,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Recording UI */}
       {isRecording && (
-        <div className="shrink-0 border-t border-destructive/30 bg-destructive/5 p-3 flex items-center gap-3">
-          <button onClick={cancelRecording} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-secondary transition-colors" title="إلغاء">
-            <XCircle className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <div className="flex-1 flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-destructive animate-pulse" />
-            <span className="text-sm font-mono font-medium text-destructive">{formatTime(recordingTime)}</span>
-            <div className="flex-1 h-1 bg-destructive/20 rounded-full overflow-hidden">
-              <div className="h-full bg-destructive rounded-full animate-pulse" style={{ width: `${Math.min(recordingTime * 2, 100)}%` }} />
-            </div>
-          </div>
-          <button onClick={stopRecording} className="w-10 h-10 rounded-full gradient-whatsapp flex items-center justify-center hover:opacity-90 transition-opacity" title="إرسال">
-            <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
-          </button>
-        </div>
+        <VoiceRecorder onSend={handleVoiceSend} onCancel={handleVoiceCancel} />
       )}
 
       {/* Blocked Warning Banner */}
@@ -1691,7 +1640,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </button>
                 </div>
               ) : !isNoteMode ? (
-                <button onClick={startRecording} className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
+                <button onClick={() => setIsRecording(true)} className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
                   <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
               ) : (
