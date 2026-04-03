@@ -114,7 +114,8 @@ async function logToSystem(
   userId?: string | null,
 ) {
   try {
-    await client.from("system_logs").insert({
+    // Fire-and-forget: don't block the main flow
+    client.from("system_logs").insert({
       level,
       source: "edge_function",
       function_name: "evolution-manage",
@@ -122,7 +123,7 @@ async function logToSystem(
       metadata,
       org_id: orgId || null,
       user_id: userId || null,
-    });
+    }).then(() => {}).catch((e) => console.error("Log write failed:", e));
   } catch (e) {
     console.error("Failed to write system log:", e);
   }
