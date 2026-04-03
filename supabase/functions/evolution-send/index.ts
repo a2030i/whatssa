@@ -265,7 +265,7 @@ serve(async (req) => {
       }).eq("id", conversation.id);
     }
 
-    return json({ success: true, message_id: waMessageId });
+    return json({ success: true, message_id: waMessageId, conversation_id: conversation?.id || null });
   } catch (err: any) {
     await logToSystem(adminClient, "critical", "خطأ غير متوقع في إرسال رسالة Evolution", {
       error: err.message,
