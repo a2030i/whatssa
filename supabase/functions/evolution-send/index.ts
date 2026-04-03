@@ -90,7 +90,7 @@ serve(async (req) => {
       return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
     }
 
-    const { to, message, conversation_id, reply_to, media_url, media_type } = await req.json();
+    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName } = await req.json();
     if (!to || (!message && !media_url)) return json({ error: "الرقم والرسالة أو الوسائط مطلوبة" }, 400);
 
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
