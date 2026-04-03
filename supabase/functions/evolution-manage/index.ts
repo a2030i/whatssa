@@ -649,8 +649,8 @@ serve(async (req) => {
         if (ch?.evolution_instance_name) targetInstance = ch.evolution_instance_name;
       }
       
-      const blockRes = await fetch(`${EVOLUTION_URL}/chat/updateBlockStatus/${targetInstance}`, {
-        method: "PUT",
+      const blockRes = await fetch(`${EVOLUTION_URL}/message/updateBlockStatus/${targetInstance}`, {
+        method: "POST",
         headers: evoHeaders,
         body: JSON.stringify({ number: blockPhone.replace(/\D/g, ""), status: "block" }),
       });
