@@ -1054,6 +1054,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     غير رسمي
                   </span>
                 )}
+                {isBlocked && (
+                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive font-semibold shrink-0">
+                    <Ban className="w-2.5 h-2.5" />
+                    محظور
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{conversation.lastSeen || conversation.customerPhone}</p>
             </div>
