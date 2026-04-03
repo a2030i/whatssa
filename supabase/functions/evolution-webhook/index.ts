@@ -1329,7 +1329,7 @@ async function uploadMediaFromEvolution(params: {
     return null;
   }
 
-  if (!["audio", "image", "video", "document"].includes(messageType)) {
+  if (!["audio", "image", "video", "document", "sticker"].includes(messageType)) {
     return null;
   }
 
