@@ -20,6 +20,7 @@ import AudioPlayer from "./AudioPlayer";
 import ClosureReasonDialog from "./ClosureReasonDialog";
 import ExportConversation from "./ExportConversation";
 import { useAuth } from "@/contexts/AuthContext";
+import FollowUpDialog from "./FollowUpDialog";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
