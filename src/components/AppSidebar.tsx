@@ -46,6 +46,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
       { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows" },
       { label: "مزود الذكاء", icon: Zap, path: "/ai-settings" },
       { label: "الخصائص والتكاملات", icon: Lock, path: "/locked-features" },
+    ],
   },
   {
     section: "التسويق والتواصل",
