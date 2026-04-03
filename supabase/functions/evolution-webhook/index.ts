@@ -960,8 +960,28 @@ serve(async (req) => {
 
           if (conversation && conversationType === "private") {
             const safeIncomingName = chooseBestContactName(resolvedIncomingName, msg.pushName);
-            if (safeIncomingName) {
-              await supabase.from("conversations").update({ customer_name: safeIncomingName }).eq("id", conversation.id);
+            const convUpdate: Record<string, any> = {};
+            if (safeIncomingName) convUpdate.customer_name = safeIncomingName;
+
+            // Update profile picture if missing
+            const { data: convData } = await supabase.from("conversations").select("customer_profile_pic").eq("id", conversation.id).single();
+            if (!convData?.customer_profile_pic && EVOLUTION_API_URL && EVOLUTION_API_KEY) {
+              try {
+                const picRes = await fetch(`${EVOLUTION_API_URL}/chat/fetchProfilePictureUrl/${instanceName}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", apikey: EVOLUTION_API_KEY },
+                  body: JSON.stringify({ number: `${phone}@s.whatsapp.net` }),
+                });
+                if (picRes.ok) {
+                  const picData = await picRes.json();
+                  const pic = picData?.profilePictureUrl || picData?.url || picData?.picture || picData?.data?.profilePictureUrl || null;
+                  if (pic) convUpdate.customer_profile_pic = pic;
+                }
+              } catch {}
+            }
+
+            if (Object.keys(convUpdate).length > 0) {
+              await supabase.from("conversations").update(convUpdate).eq("id", conversation.id);
             }
           }
         } catch (custErr) {

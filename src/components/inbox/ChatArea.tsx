@@ -453,10 +453,17 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               const mediaUrl = msg.mediaUrl || textMediaUrl;
               let textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
               // Hide placeholder content like [audio], [image], [video], [document]
-              if (/^\[(audio|image|video|document|sticker)\]$/i.test(textWithoutUrl)) textWithoutUrl = "";
+              const isPlaceholder = /^\[(audio|image|video|document|sticker)\]$/i.test(textWithoutUrl);
+              if (isPlaceholder) textWithoutUrl = "";
               return (
                 <>
                   {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} isAgent={msg.sender === "agent"} onImageClick={onImageClick} />}
+                  {!mediaUrl && msg.type === "audio" && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                      <Mic className="w-3.5 h-3.5" />
+                      <span>رسالة صوتية</span>
+                    </div>
+                  )}
                   {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
                     <p className="whitespace-pre-wrap leading-[1.65]">
                       {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
