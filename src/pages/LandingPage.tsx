@@ -6,10 +6,6 @@ import {
   ShoppingCart, Headphones, Send, Play, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import inboxImg from "@/assets/landing-inbox.jpg";
-import analyticsImg from "@/assets/landing-analytics.jpg";
-import chatbotImg from "@/assets/landing-chatbot.jpg";
-
 const features = [
   { icon: MessageSquare, title: "صندوق وارد موحد", desc: "إدارة جميع محادثات واتساب من مكان واحد مع دعم أرقام متعددة وقنوات رسمية وغير رسمية" },
   { icon: Bot, title: "ذكاء اصطناعي متقدم", desc: "رد تلقائي ذكي من قاعدة معرفة مؤسستك مع تصحيح مستمر من الفريق" },
