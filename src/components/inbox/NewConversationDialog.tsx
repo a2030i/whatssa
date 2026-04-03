@@ -231,7 +231,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         );
       }
 
-      // Find or create conversation first so the sent message is saved and appears immediately in chat
+      // Find existing conversation (read-only, no RLS issue)
       const { data: existingConv } = await supabase
         .from("conversations")
         .select("id")
@@ -243,26 +243,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         .maybeSingle();
 
       let conversationId = existingConv?.id;
-
-      if (!conversationId) {
-        const { data: newConv, error: newConvError } = await supabase
-          .from("conversations")
-          .insert({
-            org_id: orgId!,
-            customer_phone: cleanPhone,
-            customer_name: customerName || cleanPhone,
-            channel_id: selectedChannel.id,
-            status: "active",
-          })
-          .select("id")
-          .single();
-
-        if (newConvError || !newConv) {
-          throw new Error(newConvError?.message || "تعذر إنشاء المحادثة");
-        }
-
-        conversationId = newConv.id;
-      }
 
       if (isMeta && selectedTemplate) {
         const { data, error } = await invokeCloud("whatsapp-send", {
