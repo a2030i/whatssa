@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -1162,9 +1162,11 @@ const IntegrationsPage = () => {
           <DialogContent className="max-w-md" dir="rtl">
             <DialogHeader>
               <DialogTitle className="text-center text-lg">اختر نوع الربط</DialogTitle>
+              <DialogDescription className="text-center text-sm text-muted-foreground">
+                اختر طريقة إضافة رقم واتساب جديد.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 gap-3 pt-2">
-              {/* Official — only shown if enabled or super admin */}
               {(officialEnabled || isSuperAdmin) && (
               <button
                 onClick={() => { setShowWhatsAppChoice(false); startConnect(); }}
@@ -1179,7 +1181,6 @@ const IntegrationsPage = () => {
                 </div>
               </button>
               )}
-              {/* Web / Unofficial */}
               <div className="rounded-xl border-2 border-border hover:border-warning hover:bg-warning/5 transition-all p-4">
                 <div className="flex items-center gap-3 text-right mb-3">
                   <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
@@ -1193,7 +1194,16 @@ const IntegrationsPage = () => {
                     <p className="text-[11px] text-muted-foreground mt-0.5">ربط عبر مسح QR — بدون حساب بزنس رسمي</p>
                   </div>
                 </div>
-                <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} autoOpen connectOnly onConfigChange={loadConfigs} />
+                {showWhatsAppChoice && (
+                  <WhatsAppWebSection
+                    key="whatsapp-web-connect-dialog"
+                    orgId={orgId}
+                    isSuperAdmin={isSuperAdmin}
+                    autoOpen
+                    connectOnly
+                    onConfigChange={loadConfigs}
+                  />
+                )}
               </div>
             </div>
           </DialogContent>
