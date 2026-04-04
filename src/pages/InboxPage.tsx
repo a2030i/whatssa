@@ -432,7 +432,7 @@ const InboxPage = () => {
 
     if (unreadKeys.length > 0) {
       invokeCloud("evolution-manage", {
-        body: { action: "read_messages", messages: unreadKeys },
+        body: { action: "read_messages", messages: unreadKeys, channel_id: conv.channelId },
       }).catch(() => {}); // fire and forget
     }
   }, [selectedId, allMessages, conversations, orgId]);
