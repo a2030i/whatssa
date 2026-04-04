@@ -115,6 +115,7 @@ const IntegrationsPage = () => {
   const [unofficialCheckingStatus, setUnofficialCheckingStatus] = useState<string | null>(null);
   const [metaAppId, setMetaAppId] = useState(DEFAULT_META_APP_ID);
   const [metaConfigId, setMetaConfigId] = useState(DEFAULT_META_CONFIG_ID);
+  const [officialEnabled, setOfficialEnabled] = useState(false);
 
   useEffect(() => {
     loadFacebookSDK();
