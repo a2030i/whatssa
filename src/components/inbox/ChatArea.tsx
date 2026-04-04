@@ -686,6 +686,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [aiLoading, setAiLoading] = useState(false);
   const [translatingMsgId, setTranslatingMsgId] = useState<string | null>(null);
   const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [hasAiConfig, setHasAiConfig] = useState(false);
