@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, FileText, Loader2, Plus, X, Save, Globe, ChevronDown, Users } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, FileText, Loader2, Plus, X, Save, Globe, ChevronDown, Users, Image as ImageIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -91,6 +91,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [groupMemberInput, setGroupMemberInput] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [groupImageFile, setGroupImageFile] = useState<File | null>(null);
+  const [groupImagePreview, setGroupImagePreview] = useState<string | null>(null);
+  const groupImageInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
   const fullPhone = `${countryCode}${localNumber.replace(/^0+/, "")}`;
@@ -116,6 +119,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setGroupName("");
       setGroupMembers([]);
       setGroupMemberInput("");
+      setGroupImageFile(null);
+      setGroupImagePreview(null);
     }
   }, [open]);
 
@@ -199,6 +204,33 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         },
       });
       if (error || data?.error) throw new Error(data?.error || "فشل إنشاء القروب");
+
+      // Upload group picture if selected
+      if (groupImageFile && data?.group_jid) {
+        try {
+          // Upload to storage first
+          const ext = groupImageFile.name.split(".").pop() || "jpg";
+          const path = `group-pics/${orgId}/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await supabase.storage.from("chat-media").upload(path, groupImageFile);
+          if (!uploadErr) {
+            const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+            if (urlData?.publicUrl) {
+              await invokeCloud("evolution-manage", {
+                body: {
+                  action: "update_group_picture",
+                  channel_id: ch.id,
+                  group_jid: data.group_jid,
+                  image_url: urlData.publicUrl,
+                },
+              });
+            }
+          }
+        } catch {
+          // Non-critical - group was created
+          console.warn("Failed to set group picture");
+        }
+      }
+
       toast.success(`✅ تم إنشاء قروب "${groupName}" بنجاح`);
       onOpenChange(false);
     } catch (err: any) {
@@ -423,15 +455,41 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         {/* ═══ GROUP MODE ═══ */}
         {dialogMode === "group" && (
           <div className="p-4 space-y-4">
-            {/* Group name */}
-            <div className="space-y-2">
-              <Label className="text-xs font-medium">📝 اسم القروب</Label>
-              <Input
-                placeholder="مثال: فريق المبيعات"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                className="h-10 text-sm bg-background"
+            {/* Group image + name */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => groupImageInputRef.current?.click()}
+                className="w-14 h-14 rounded-2xl bg-secondary/60 border border-border/40 flex items-center justify-center shrink-0 hover:bg-secondary transition-colors overflow-hidden"
+              >
+                {groupImagePreview ? (
+                  <img src={groupImagePreview} alt="صورة القروب" className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                )}
+              </button>
+              <input
+                ref={groupImageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setGroupImageFile(file);
+                    setGroupImagePreview(URL.createObjectURL(file));
+                  }
+                }}
               />
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs font-medium">📝 اسم القروب</Label>
+                <Input
+                  placeholder="مثال: فريق المبيعات"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  className="h-10 text-sm bg-background"
+                />
+              </div>
             </div>
 
             {/* Channel selector for group - evolution channels */}

@@ -42,12 +42,17 @@ interface ChatAreaProps {
   onShowCustomerInfo?: () => void;
 }
 
-const MessageStatus = ({ status }: { status?: string }) => {
+const MessageStatus = ({ status, isGroup }: { status?: string; isGroup?: boolean }) => {
   if (!status) return null;
-  if (status === "sent") return <Check className="w-3 h-3 text-muted-foreground inline-block mr-1" />;
-  if (status === "delivered") return <CheckCheck className="w-3 h-3 text-muted-foreground inline-block mr-1" />;
-  if (status === "read") return <CheckCheck className="w-3 h-3 text-primary inline-block mr-1" />;
-  if (status === "failed") return <AlertTriangle className="w-3 h-3 text-destructive inline-block mr-1" />;
+  if (status === "sent") return <span className="inline-block mr-1"><Check className="w-3 h-3 text-muted-foreground inline-block" /></span>;
+  if (status === "delivered") return <span className="inline-block mr-1"><CheckCheck className="w-3 h-3 text-muted-foreground inline-block" /></span>;
+  if (status === "read") return (
+    <span className="inline-flex items-center mr-1">
+      <CheckCheck className="w-3 h-3 text-primary inline-block" />
+      {isGroup && <span className="text-[8px] text-primary font-bold mr-0.5">قُرأت</span>}
+    </span>
+  );
+  if (status === "failed") return <span className="inline-block mr-1"><AlertTriangle className="w-3 h-3 text-destructive inline-block" /></span>;
   return null;
 };
 
@@ -513,7 +518,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             <div className={cn("flex items-center gap-1 mt-1.5", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground/70" : "text-white/55")}>
               <span className="text-[10px] font-medium">{msg.timestamp}</span>
               {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
-              {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} />}
+              {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} />}
             </div>
           </>
         )}
@@ -577,6 +582,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const groupPicInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync blocked state when conversation changes
@@ -619,6 +625,29 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       toast.success(newBlocked ? "✅ تم حظر الرقم في واتساب بنجاح" : "✅ تم إلغاء حظر الرقم في واتساب");
     } catch (err: any) {
       toast.error(newBlocked ? `فشل حظر الرقم: ${err?.message || ""}` : `فشل إلغاء الحظر: ${err?.message || ""}`);
+    }
+  };
+
+  const handleChangeGroupPicture = async (file: File) => {
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `group-pics/${orgId}/${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("chat-media").upload(path, file);
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+      if (!urlData?.publicUrl) throw new Error("لم يتم الحصول على رابط الصورة");
+      const { error } = await invokeCloud("evolution-manage", {
+        body: {
+          action: "update_group_picture",
+          channel_id: conversation.channelId,
+          group_jid: conversation.customerPhone,
+          image_url: urlData.publicUrl,
+        },
+      });
+      if (error) throw error;
+      toast.success("✅ تم تحديث صورة القروب");
+    } catch (err: any) {
+      toast.error("فشل تحديث صورة القروب: " + (err.message || ""));
     }
   };
 
@@ -1260,6 +1289,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     }}>
                       <FileText className="w-4 h-4 ml-2 text-muted-foreground" /> أرشفة في واتساب
                     </DropdownMenuItem>
+                    {conversation.conversationType === "group" && (
+                      <DropdownMenuItem onClick={() => groupPicInputRef.current?.click()}>
+                        <ImageIcon className="w-4 h-4 ml-2 text-primary" /> تغيير صورة القروب
+                      </DropdownMenuItem>
+                    )}
                   </>
                 )}
               </DropdownMenuContent>
@@ -1565,6 +1599,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   accept={allowedFileTypes}
                   className="hidden"
                   onChange={handleFileSelect}
+                />
+                {/* Hidden input for group picture change */}
+                <input
+                  ref={groupPicInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleChangeGroupPicture(file);
+                    if (e.target) e.target.value = "";
+                  }}
                 />
                 {!isNoteMode && (
                   <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
