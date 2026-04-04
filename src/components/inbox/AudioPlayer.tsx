@@ -41,6 +41,9 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Register in global set
+    activeAudioSet.add(audio);
+
     const onLoaded = () => {
       setDuration(audio.duration);
       setIsLoaded(true);
@@ -66,6 +69,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
     audio.addEventListener("error", onError);
 
     return () => {
+      activeAudioSet.delete(audio);
       audio.removeEventListener("loadedmetadata", onLoaded);
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("ended", onEnded);
