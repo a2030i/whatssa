@@ -227,7 +227,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants, onCopyLink, onForward, onStar }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }>; onCopyLink?: (msgId: string) => void; onForward?: (msg: Message) => void; onStar?: (msg: Message) => void }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants, onCopyLink, onForward, onStar, translationText }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }>; onCopyLink?: (msgId: string) => void; onForward?: (msg: Message) => void; onStar?: (msg: Message) => void; translationText?: string }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
@@ -611,6 +611,15 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 </>
               );
             })()}
+            {/* Inline auto-translation */}
+            {translationText && msg.sender === "customer" && (
+              <div className="mt-1 pt-1 border-t border-border/30">
+                <p className="text-[11px] text-primary/80 whitespace-pre-wrap leading-relaxed">
+                  <Languages className="w-3 h-3 inline-block ml-1 opacity-60" />
+                  {translationText}
+                </p>
+              </div>
+            )}
             {/* Timestamp + status */}
             <div className={cn("flex items-center gap-1 mt-1.5", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground/70" : "text-white/55")}>
               <span className="text-[10px] font-medium">{msg.timestamp}</span>
@@ -686,6 +695,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [aiLoading, setAiLoading] = useState(false);
   const [translatingMsgId, setTranslatingMsgId] = useState<string | null>(null);
   const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [hasAiConfig, setHasAiConfig] = useState(false);
@@ -923,6 +933,24 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       .limit(1)
       .then(({ data }) => setHasAiConfig(!!(data && data.length > 0)));
   }, [orgId]);
+
+  // Auto-translate incoming customer messages
+  useEffect(() => {
+    if (!autoTranslate || !hasAiConfig) return;
+    const customerMsgs = messages.filter(m => m.sender === "customer" && m.type === "text" && !translations[m.id]);
+    const lastMsg = customerMsgs[customerMsgs.length - 1];
+    if (!lastMsg) return;
+    (async () => {
+      try {
+        const { data } = await invokeCloud("ai-features", {
+          body: { action: "translate", text: lastMsg.text, target_language: "العربية" },
+        });
+        if (data?.translation) {
+          setTranslations(prev => ({ ...prev, [lastMsg.id]: data.translation }));
+        }
+      } catch { /* silent */ }
+    })();
+  }, [autoTranslate, hasAiConfig, messages.length]);
 
   // Check if org has products (to conditionally show catalog button)
   useEffect(() => {
@@ -1650,6 +1678,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <DropdownMenuItem onClick={() => setShowTransfer(true)} className="md:hidden">
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowMergeDialog(true)}>
+                  <GitMerge className="w-4 h-4 ml-2 text-primary" /> دمج المحادثة
+                </DropdownMenuItem>
+                {isEvolutionChannel && (
+                  <DropdownMenuItem onClick={() => setShowDisappearingMenu(!showDisappearingMenu)}>
+                    <Timer className="w-4 h-4 ml-2 text-primary" /> الرسائل المختفية
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={copyConversationLink}>
                   <Link2 className="w-4 h-4 ml-2 text-primary" /> نسخ رابط المحادثة
@@ -1832,6 +1868,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   onStarMessage?.(m.id, starred);
                   toast.success(starred ? "⭐ تم تمييز الرسالة" : "تم إلغاء التمييز");
                 }}
+                translationText={translations[msg.id]}
               />
             )}
           </div>
@@ -2108,6 +2145,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <ShoppingBag className="w-4 h-4" />
               </button>
             )}
+            {/* Send Poll — Evolution only */}
+            {!isNoteMode && isEvolutionChannel && (
+              <button onClick={() => setShowPollCreator(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال استطلاع">
+                <BarChart3 className="w-4 h-4" />
+              </button>
+            )}
+            {/* Send Contact Card */}
+            {!isNoteMode && (
+              <button onClick={() => setShowContactCard(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال بطاقة اتصال">
+                <Contact className="w-4 h-4" />
+              </button>
+            )}
             {/* AI Suggest Replies */}
             {hasAiConfig && !isNoteMode && !windowExpired && (
               <button
@@ -2161,6 +2210,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             >
               <Brain className="w-4 h-4" />
             </button>
+            )}
+            {/* Auto-Translate Toggle */}
+            {hasAiConfig && (
+              <button
+                onClick={() => setAutoTranslate(!autoTranslate)}
+                className={cn("p-1.5 rounded-lg transition-colors shrink-0", autoTranslate ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+                title={autoTranslate ? "إيقاف الترجمة التلقائية" : "تفعيل الترجمة التلقائية"}
+              >
+                <Languages className="w-4 h-4" />
+              </button>
             )}
           </div>
 
@@ -2460,6 +2519,73 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           toast.success("تم إرسال المنتج بنجاح");
         }}
       />
+
+      {/* Forward Message Dialog */}
+      <ForwardMessageDialog
+        open={!!forwardMsg}
+        onOpenChange={(open) => !open && setForwardMsg(null)}
+        message={forwardMsg}
+        sourceConversation={{ channelType: conversation.channelType, channelId: conversation.channelId }}
+      />
+
+      {/* Poll Creator Dialog — Evolution only */}
+      <PollCreatorDialog
+        open={showPollCreator}
+        onOpenChange={setShowPollCreator}
+        customerPhone={conversation.customerPhone}
+        conversationId={conversation.id}
+        channelId={conversation.channelId}
+      />
+
+      {/* Contact Card Dialog */}
+      <ContactCardDialog
+        open={showContactCard}
+        onOpenChange={setShowContactCard}
+        customerPhone={conversation.customerPhone}
+        conversationId={conversation.id}
+        channelId={conversation.channelId}
+      />
+
+      {/* Merge Conversation Dialog */}
+      <MergeConversationDialog
+        open={showMergeDialog}
+        onOpenChange={setShowMergeDialog}
+        sourceConversationId={conversation.id}
+        sourceCustomerPhone={conversation.customerPhone}
+        sourceCustomerName={conversation.customerName}
+      />
+
+      {/* Disappearing Messages Submenu */}
+      <Dialog open={showDisappearingMenu} onOpenChange={setShowDisappearingMenu}>
+        <DialogContent className="max-w-xs" dir="rtl">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Timer className="w-4 h-4 text-primary" /> الرسائل المختفية</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            {[
+              { label: "إيقاف", value: 0 },
+              { label: "24 ساعة", value: 86400 },
+              { label: "7 أيام", value: 604800 },
+              { label: "90 يوم", value: 7776000 },
+            ].map((opt) => (
+              <Button
+                key={opt.value}
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={async () => {
+                  try {
+                    await invokeCloud("evolution-manage", {
+                      body: { action: "set_disappearing", phone: conversation.customerPhone, expiration: opt.value },
+                    });
+                    toast.success(opt.value === 0 ? "تم إيقاف الرسائل المختفية" : `تم تفعيل الرسائل المختفية: ${opt.label}`);
+                    setShowDisappearingMenu(false);
+                  } catch { toast.error("فشل تغيير الإعداد"); }
+                }}
+              >
+                <Timer className="w-4 h-4" /> {opt.label}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {lightboxSrc && (
         <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />

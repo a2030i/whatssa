@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff } from "lucide-react";
+import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff, CheckSquare, Square } from "lucide-react";
+import BulkActionsBar from "./BulkActionsBar";
 import { cn } from "@/lib/utils";
 import { Conversation } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,8 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const [activeCustomInbox, setActiveCustomInbox] = useState<string | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingInbox, setEditingInbox] = useState<CustomInbox | null>(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const isMobile = useIsMobile();
 
   const loadCustomInboxes = async () => {
@@ -221,6 +224,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             >
               <Plus className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); }}
+              className={cn("p-2 rounded-xl transition-all", bulkMode ? "bg-primary/10 text-primary" : "hover:bg-secondary/80 text-muted-foreground")}
+              title="تحديد متعدد"
+            >
+              <CheckSquare className="w-4 h-4" />
+            </button>
             {hasActiveFilters && (
               <button onClick={clearFilters} className="p-2 rounded-xl hover:bg-destructive/10 transition-all" title="إعادة ضبط">
                 <RotateCcw className="w-4 h-4 text-muted-foreground" />
@@ -375,7 +385,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             return (
               <button
                 key={conv.id}
-                onClick={() => onSelect(conv.id)}
+                onClick={() => {
+                  if (bulkMode) {
+                    setBulkSelected(prev => {
+                      const next = new Set(prev);
+                      if (next.has(conv.id)) next.delete(conv.id); else next.add(conv.id);
+                      return next;
+                    });
+                  } else {
+                    onSelect(conv.id);
+                  }
+                }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   const menu = document.createElement("div");
@@ -399,10 +419,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                 }}
                 className={cn(
                   "w-full text-right px-3 py-3 transition-all border-b border-border/20 hover:bg-accent/50 group relative",
-                  isSelected && "bg-primary/5 border-r-2 border-r-primary"
+                  isSelected && !bulkMode && "bg-primary/5 border-r-2 border-r-primary",
+                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/10"
                 )}
               >
                 <div className="flex items-start gap-3">
+                  {bulkMode && (
+                    <div className="flex items-center pt-3 shrink-0">
+                      {bulkSelected.has(conv.id) ? (
+                        <CheckSquare className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Square className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  )}
                   {/* Avatar */}
                   <div className="relative shrink-0">
                     {conv.profilePic ? (
@@ -495,6 +525,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
           })
         )}
       </div>
+
+      {/* Bulk Actions Bar */}
+      {bulkMode && bulkSelected.size > 0 && (
+        <BulkActionsBar
+          selectedIds={Array.from(bulkSelected)}
+          onClear={() => setBulkSelected(new Set())}
+          onDone={() => { setBulkMode(false); setBulkSelected(new Set()); }}
+        />
+      )}
 
       {/* Custom Inbox Builder */}
       <CustomInboxBuilder
