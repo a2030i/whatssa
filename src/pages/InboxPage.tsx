@@ -815,6 +815,8 @@ const InboxPage = () => {
            onEditMessage={handleEditMessage}
            onDeleteMessage={handleDeleteMessage}
            onShowCustomerInfo={() => setMobileCustomerInfoOpen(true)}
+           scrollToMessageId={scrollToMessageId}
+           onScrollToMessageDone={() => setScrollToMessageId(null)}
          />
 
         {/* Mobile Customer Info Sheet */}
