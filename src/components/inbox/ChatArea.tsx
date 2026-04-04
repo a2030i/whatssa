@@ -2486,14 +2486,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         open={!!forwardMsg}
         onOpenChange={(open) => !open && setForwardMsg(null)}
         message={forwardMsg}
-        currentConversationId={conversation.id}
+        sourceConversation={{ channelType: conversation.channelType, channelId: conversation.channelId }}
       />
 
       {/* Poll Creator Dialog — Evolution only */}
       <PollCreatorDialog
         open={showPollCreator}
         onOpenChange={setShowPollCreator}
-        conversationPhone={conversation.customerPhone}
+        customerPhone={conversation.customerPhone}
         conversationId={conversation.id}
         channelId={conversation.channelId}
       />
@@ -2502,17 +2502,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       <ContactCardDialog
         open={showContactCard}
         onOpenChange={setShowContactCard}
-        conversationPhone={conversation.customerPhone}
+        customerPhone={conversation.customerPhone}
         conversationId={conversation.id}
         channelId={conversation.channelId}
-        channelType={conversation.channelType}
       />
 
       {/* Merge Conversation Dialog */}
       <MergeConversationDialog
         open={showMergeDialog}
         onOpenChange={setShowMergeDialog}
-        conversation={conversation}
+        sourceConversationId={conversation.id}
+        sourceCustomerPhone={conversation.customerPhone}
+        sourceCustomerName={conversation.customerName}
       />
 
       {/* Disappearing Messages Submenu */}
