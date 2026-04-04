@@ -526,6 +526,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
         )}
       </div>
 
+      {/* Bulk Actions Bar */}
+      {bulkMode && bulkSelected.size > 0 && (
+        <BulkActionsBar
+          selectedIds={Array.from(bulkSelected)}
+          onDone={() => { setBulkMode(false); setBulkSelected(new Set()); }}
+        />
+      )}
+
       {/* Custom Inbox Builder */}
       <CustomInboxBuilder
         open={builderOpen}
