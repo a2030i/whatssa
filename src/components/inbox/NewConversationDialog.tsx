@@ -712,7 +712,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         )}
 
         {/* Step: Channel Selection */}
-        {step === "channel" && (
+        {dialogMode === "private" && step === "channel" && (
           <div className="p-4 space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="w-4 h-4" />
