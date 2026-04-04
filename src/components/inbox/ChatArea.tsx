@@ -2083,7 +2083,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             >
               <AtSign className="w-4 h-4" />
             </button>
-            {!isNoteMode && (
+            {!isNoteMode && isMetaChannel && (
               <button onClick={() => setShowTemplates(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال قالب">
                 <FileText className="w-4 h-4" />
               </button>
