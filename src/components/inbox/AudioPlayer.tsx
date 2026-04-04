@@ -37,7 +37,11 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
       setIsLoaded(true);
     };
     const onTime = () => setCurrentTime(audio.currentTime);
-    const onEnded = () => setIsPlaying(false);
+    const onEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      if (audio) audio.currentTime = 0;
+    };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
 
