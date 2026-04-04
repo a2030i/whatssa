@@ -943,9 +943,10 @@ async function handleProductLowStock(supabase: any, orgId: string, data: any) {
   console.log(`[salla] Product low stock: ${productId} (qty: ${quantity})`);
 }
 
-function normalizePhone(phone: string): string {
+function normalizePhone(phone: unknown): string {
   if (!phone) return "";
-  let p = phone.replace(/[\s\-\(\)]/g, "");
+  const str = String(phone);
+  let p = str.replace(/[\s\-\(\)]/g, "");
   if (p.startsWith("05")) p = "966" + p.slice(1);
   if (p.startsWith("+")) p = p.slice(1);
   return p;
