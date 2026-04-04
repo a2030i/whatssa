@@ -607,7 +607,7 @@ serve(async (req) => {
 
       try {
         // Try POST first (v2.3.7+), then PUT as fallback
-        let readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
+        let readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${readInstanceName}`, {
           method: "POST",
           headers: evoHeaders,
           body: JSON.stringify({
