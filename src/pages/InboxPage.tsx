@@ -35,16 +35,29 @@ const formatTimestamp = (isoStr: string | null): string => {
 
 const InboxPage = () => {
   const { orgId, profile, userRole, teamId, isSupervisor, isSuperAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [allMessages, setAllMessages] = useState<Record<string, Message[]>>({});
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("conversation"));
+  const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(searchParams.get("message"));
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [newConvOpen, setNewConvOpen] = useState(false);
   const [mobileCustomerInfoOpen, setMobileCustomerInfoOpen] = useState(false);
   const selectedIdRef = useRef<string | null>(null);
+  const deepLinkApplied = useRef(false);
 
   const isMobile = useIsMobile();
+
+  // Sync URL when selectedId changes
+  useEffect(() => {
+    const current = searchParams.get("conversation");
+    if (selectedId && selectedId !== current) {
+      setSearchParams({ conversation: selectedId }, { replace: true });
+    } else if (!selectedId && current) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [selectedId]);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
