@@ -53,6 +53,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "User not found in your organization" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Check if target is an admin — if so, ensure at least 1 admin remains
+    const { data: targetRole } = await adminClient.from("user_roles").select("role").eq("user_id", user_id).eq("role", "admin").maybeSingle();
+    if (targetRole) {
+      // Count how many admins in this org
+      const { data: orgProfiles } = await adminClient.from("profiles").select("id").eq("org_id", callerProfile.org_id);
+      const orgUserIds = (orgProfiles || []).map((p: any) => p.id);
+      const { data: adminRoles } = await adminClient.from("user_roles").select("user_id").eq("role", "admin").in("user_id", orgUserIds);
+      if ((adminRoles || []).length <= 1) {
+        return new Response(JSON.stringify({ error: "لا يمكن حذف آخر مدير في المؤسسة — يجب وجود مدير واحد على الأقل" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     // Delete user roles
     await adminClient.from("user_roles").delete().eq("user_id", user_id);
 
