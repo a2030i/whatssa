@@ -915,9 +915,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     !savedReplyFilter || r.shortcut.toLowerCase().includes(savedReplyFilter) || r.title.toLowerCase().includes(savedReplyFilter)
   );
 
-  const insertMention = (agentName: string) => {
+  const insertMention = (displayName: string, phone?: string) => {
     const lastAtIndex = inputText.lastIndexOf("@");
-    const newText = inputText.slice(0, lastAtIndex) + `@${agentName} `;
+    // For group participants, use @phone format so Evolution API can resolve mentions
+    const mentionText = isGroupMentionMode && phone ? `@${phone}` : `@${displayName}`;
+    const newText = inputText.slice(0, lastAtIndex) + `${mentionText} `;
     setInputText(newText);
     setShowMentions(false);
     inputRef.current?.focus();
