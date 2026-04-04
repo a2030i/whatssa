@@ -611,6 +611,15 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 </>
               );
             })()}
+            {/* Inline auto-translation */}
+            {translations[msg.id] && msg.sender === "customer" && (
+              <div className="mt-1 pt-1 border-t border-border/30">
+                <p className="text-[11px] text-primary/80 whitespace-pre-wrap leading-relaxed">
+                  <Languages className="w-3 h-3 inline-block ml-1 opacity-60" />
+                  {translations[msg.id]}
+                </p>
+              </div>
+            )}
             {/* Timestamp + status */}
             <div className={cn("flex items-center gap-1 mt-1.5", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground/70" : "text-white/55")}>
               <span className="text-[10px] font-medium">{msg.timestamp}</span>
