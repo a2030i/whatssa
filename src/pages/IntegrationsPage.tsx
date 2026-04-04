@@ -223,7 +223,7 @@ const IntegrationsPage = () => {
   const loadFacebookSDK = () => {
     if (document.getElementById("facebook-jssdk")) { setSdkLoaded(true); return; }
     (window as any).fbAsyncInit = function () {
-      (window as any).FB.init({ appId: META_APP_ID, cookie: true, xfbml: true, version: "v21.0" });
+      (window as any).FB.init({ appId: metaAppId, cookie: true, xfbml: true, version: "v21.0" });
       setSdkLoaded(true);
     };
     const script = document.createElement("script");
