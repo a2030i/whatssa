@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSearchParams } from "react-router-dom";
 import { Conversation, Message } from "@/data/mockData";
 import { supabase, invokeCloud } from "@/lib/supabase";
 import ConversationList from "@/components/inbox/ConversationList";
@@ -34,16 +35,29 @@ const formatTimestamp = (isoStr: string | null): string => {
 
 const InboxPage = () => {
   const { orgId, profile, userRole, teamId, isSupervisor, isSuperAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [allMessages, setAllMessages] = useState<Record<string, Message[]>>({});
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("conversation"));
+  const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(searchParams.get("message"));
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [newConvOpen, setNewConvOpen] = useState(false);
   const [mobileCustomerInfoOpen, setMobileCustomerInfoOpen] = useState(false);
   const selectedIdRef = useRef<string | null>(null);
+  const deepLinkApplied = useRef(false);
 
   const isMobile = useIsMobile();
+
+  // Sync URL when selectedId changes
+  useEffect(() => {
+    const current = searchParams.get("conversation");
+    if (selectedId && selectedId !== current) {
+      setSearchParams({ conversation: selectedId }, { replace: true });
+    } else if (!selectedId && current) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [selectedId]);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -97,7 +111,12 @@ const InboxPage = () => {
     setLoading(true);
     setConversations([]);
     setAllMessages({});
-    setSelectedId(null);
+    // Preserve deep link selection on first load
+    if (!deepLinkApplied.current && searchParams.get("conversation")) {
+      // keep selectedId from URL
+    } else {
+      setSelectedId(null);
+    }
 
     const fetchConversations = async () => {
       const { data, error } = await supabase
@@ -195,7 +214,16 @@ const InboxPage = () => {
       }
 
       setConversations(filtered);
-      if (!isMobile && mapped.length > 0) {
+      // On first load, honour deep link; otherwise auto-select first
+      if (!deepLinkApplied.current) {
+        deepLinkApplied.current = true;
+        const urlConvId = searchParams.get("conversation");
+        if (urlConvId && filtered.some(c => c.id === urlConvId)) {
+          setSelectedId(urlConvId);
+        } else if (!isMobile && filtered.length > 0) {
+          setSelectedId(filtered[0].id);
+        }
+      } else if (!isMobile && mapped.length > 0) {
         setSelectedId((prev) => (prev && mapped.some((item) => item.id === prev) ? prev : mapped[0].id));
       }
       setLoading(false);
@@ -787,6 +815,8 @@ const InboxPage = () => {
            onEditMessage={handleEditMessage}
            onDeleteMessage={handleDeleteMessage}
            onShowCustomerInfo={() => setMobileCustomerInfoOpen(true)}
+           scrollToMessageId={scrollToMessageId}
+           onScrollToMessageDone={() => setScrollToMessageId(null)}
          />
 
         {/* Mobile Customer Info Sheet */}
@@ -839,6 +869,8 @@ const InboxPage = () => {
            onTagsChange={handleTagsChange}
            onEditMessage={handleEditMessage}
            onDeleteMessage={handleDeleteMessage}
+           scrollToMessageId={scrollToMessageId}
+           onScrollToMessageDone={() => setScrollToMessageId(null)}
          />
       ) : (
         !isMobile && (

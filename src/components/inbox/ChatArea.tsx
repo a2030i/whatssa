@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2 } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
@@ -40,6 +40,8 @@ interface ChatAreaProps {
   onEditMessage?: (msgId: string, waMessageId: string, newText: string, convPhone: string) => void;
   onDeleteMessage?: (msgId: string, waMessageId: string, convPhone: string) => void;
   onShowCustomerInfo?: () => void;
+  scrollToMessageId?: string | null;
+  onScrollToMessageDone?: () => void;
 }
 
 const MessageStatus = ({ status, isGroup, readBy, groupSize }: { status?: string; isGroup?: boolean; readBy?: string[]; groupSize?: number }) => {
@@ -217,7 +219,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }> }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants, onCopyLink }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }>; onCopyLink?: (msgId: string) => void }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
@@ -376,6 +378,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               {msg.type === "text" && (
                 <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(msg.text); toast.success("تم النسخ"); }} className="text-xs gap-2">
                   <FileText className="w-3.5 h-3.5" /> نسخ الرسالة
+                </DropdownMenuItem>
+              )}
+              {onCopyLink && (
+                <DropdownMenuItem onClick={() => onCopyLink(msg.id)} className="text-xs gap-2">
+                  <Link2 className="w-3.5 h-3.5" /> نسخ رابط الرسالة
                 </DropdownMenuItem>
               )}
               {hasAiConfig && msg.sender === "customer" && msg.type === "text" && (
@@ -615,7 +622,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   );
 };
 
-const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo }: ChatAreaProps) => {
+const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo, scrollToMessageId, onScrollToMessageDone }: ChatAreaProps) => {
   const { orgId, user, profile } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -676,7 +683,29 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const isEvolutionChannel = conversation.channelType === "evolution";
   const isMetaChannel = conversation.channelType === "meta_api";
 
-  // Sync blocked state when conversation changes
+  // Deep link: scroll to specific message
+  useEffect(() => {
+    if (!scrollToMessageId || messages.length === 0) return;
+    const el = document.getElementById(`msg-${scrollToMessageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary", "rounded-lg");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary", "rounded-lg"), 3000);
+      onScrollToMessageDone?.();
+    }
+  }, [scrollToMessageId, messages.length]);
+
+  const copyConversationLink = useCallback(() => {
+    const url = `${window.location.origin}/inbox?conversation=${conversation.id}`;
+    navigator.clipboard.writeText(url).then(() => toast.success("تم نسخ رابط المحادثة"));
+  }, [conversation.id]);
+
+  const copyMessageLink = useCallback((msgId: string) => {
+    const url = `${window.location.origin}/inbox?conversation=${conversation.id}&message=${msgId}`;
+    navigator.clipboard.writeText(url).then(() => toast.success("تم نسخ رابط الرسالة"));
+  }, [conversation.id]);
+
+
   useEffect(() => {
     setIsBlocked(conversation.isBlocked || false);
     setGroupPicture(conversation.profilePic || null);
@@ -1556,6 +1585,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={copyConversationLink}>
+                  <Link2 className="w-4 h-4 ml-2 text-primary" /> نسخ رابط المحادثة
+                </DropdownMenuItem>
                 <ExportConversation conversation={conversation} messages={messages} asMenuItem />
                 {conversation.channelType === "evolution" && (
                   <>
@@ -1709,7 +1741,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4 bg-gradient-to-b from-secondary/15 to-secondary/30">
         {messages.map((msg) => (
-          <div key={msg.id} className={cn(
+          <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
             msg.sender === "agent" ? "justify-start" : msg.sender === "system" ? "justify-center" : "justify-end"
           )}>
@@ -1727,6 +1759,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onImageClick={(src) => setLightboxSrc(src)}
                 hasAiConfig={hasAiConfig}
                 groupParticipants={isGroup ? groupParticipants : undefined}
+                onCopyLink={copyMessageLink}
               />
             )}
           </div>
