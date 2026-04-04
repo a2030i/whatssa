@@ -631,29 +631,6 @@ const IntegrationsPage = () => {
               </div>
             )}
 
-            {/* Profile Editor */}
-            {isConnected && (
-              <div className="flex justify-center">
-                <WhatsAppProfileEditor configId={config.id} channelType="meta_api" />
-              </div>
-            )}
-
-            {/* Catalog & QR */}
-            {isConnected && (
-              <div className="space-y-4 pt-2 border-t border-border">
-                <QRCodeSection />
-              </div>
-            )}
-
-            {/* Channel Routing */}
-            {orgId && (
-              <ChannelRoutingConfig
-                configId={config.id}
-                orgId={orgId}
-                defaultTeamId={(config as any).default_team_id}
-                defaultAgentId={(config as any).default_agent_id}
-              />
-            )}
 
             {config.registered_at && (
               <p className="text-[10px] text-muted-foreground text-center">
@@ -1034,43 +1011,6 @@ const IntegrationsPage = () => {
                           </div>
                         </div>
 
-                        {/* Test Message */}
-                        <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                          <p className="text-xs font-semibold flex items-center gap-1.5">
-                            <Send className="w-3.5 h-3.5 text-primary" /> إرسال رسالة اختبار
-                          </p>
-                          <div className="flex gap-2">
-                            <Input
-                              value={unofficialTestPhone}
-                              onChange={(e) => setUnofficialTestPhone(e.target.value)}
-                              placeholder="966535195202"
-                              className="bg-card border border-border text-xs flex-1"
-                              dir="ltr"
-                            />
-                            <Button size="sm" className="gap-1 text-xs" onClick={() => sendUnofficialTestMessage(config.id)} disabled={unofficialTestSending || !unofficialTestPhone}>
-                              {unofficialTestSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                              إرسال
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Profile Editor */}
-                        <div className="flex justify-center">
-                          <WhatsAppProfileEditor configId={config.id} channelType="evolution" />
-                        </div>
-
-                        {/* Channel Routing */}
-                        {orgId && (
-                          <ChannelRoutingConfig
-                            configId={config.id}
-                            orgId={orgId}
-                            defaultTeamId={(config as any).default_team_id}
-                            defaultAgentId={(config as any).default_agent_id}
-                          />
-                        )}
-
-                        {/* Rate Limit */}
-                        <UnofficialRateLimitPanel configId={config.id} initialSettings={(config as any).rate_limit_settings} />
 
                         {/* Delete */}
                         {isSuperAdmin && (
