@@ -127,6 +127,8 @@ const extractParticipantPhone = (participant: any) => {
   if (candidates.length > 0) return candidates[0];
   if (rawId.includes("@s.whatsapp.net")) return normalizeDigits(rawId);
   if (rawId.includes("@g.us")) return normalizeDigits(rawId);
+  // For @lid, try to extract digits - may not be a real phone but useful for matching
+  if (rawId.includes("@lid")) return normalizeDigits(rawId);
   return "";
 };
 
