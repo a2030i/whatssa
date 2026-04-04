@@ -47,13 +47,14 @@ Deno.serve(async (req) => {
     // Use first team as primary team_id on profile
     const primaryTeamId = resolvedTeamIds.length > 0 ? resolvedTeamIds[0] : null;
 
-    // Create user with temp password
-    const tempPassword = crypto.randomUUID().slice(0, 16) + "Aa1!";
+    // Create user with simple temp password
+    const pin = String(Math.floor(1000 + Math.random() * 9000));
+    const tempPassword = pin + pin; // e.g. "37423742"
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password: tempPassword,
       email_confirm: true,
-      user_metadata: { full_name },
+      user_metadata: { full_name, must_change_password: true },
     });
 
     if (createError) {
