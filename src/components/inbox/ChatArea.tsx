@@ -1595,6 +1595,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   className="hidden"
                   onChange={handleFileSelect}
                 />
+                {/* Hidden input for group picture change */}
+                <input
+                  ref={groupPicInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleChangeGroupPicture(file);
+                    if (e.target) e.target.value = "";
+                  }}
+                />
                 {!isNoteMode && (
                   <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
                     <Zap className="w-4 h-4" />
