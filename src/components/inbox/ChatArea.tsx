@@ -618,6 +618,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [showInternalProductPicker, setShowInternalProductPicker] = useState(false);
   const [isBlocked, setIsBlocked] = useState(conversation.isBlocked || false);
+  const [hasProducts, setHasProducts] = useState(false);
   const [showAddMembersDialog, setShowAddMembersDialog] = useState(false);
   const [reactionDetails, setReactionDetails] = useState<{ reactions: Array<{ emoji: string; fromMe: boolean; participant?: string; participantName?: string }>; messageId: string } | null>(null);
   const [addMemberPhone, setAddMemberPhone] = useState("");
