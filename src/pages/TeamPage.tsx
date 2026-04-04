@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
@@ -224,10 +224,10 @@ const TeamPage = () => {
     if (!inviteEmail.trim() || !inviteName.trim()) { toast.error("يرجى تعبئة الاسم والبريد"); return; }
     setInviting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await supabase.functions.invoke("invite-member", {
+      const { data, error } = await invokeCloud("invite-member", {
         body: { email: inviteEmail.trim(), full_name: inviteName.trim(), team_ids: inviteTeams.length ? inviteTeams : null, role: inviteRole },
       });
+      const res = { data, error };
       if (res.error || res.data?.error) {
         toast.error(res.data?.error || "فشل إضافة الموظف");
       } else {
