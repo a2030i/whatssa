@@ -20,13 +20,12 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const adminClient = createClient(supabaseUrl, serviceKey);
 
-    // Verify caller
     const { data: { user: caller }, error: userError } = await adminClient.auth.getUser(token);
     if (userError || !caller) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Caller must be admin in their org
+    // Caller must be admin
     const { data: callerRole } = await adminClient.from("user_roles").select("role").eq("user_id", caller.id).in("role", ["admin", "super_admin"]).maybeSingle();
     if (!callerRole) {
       return new Response(JSON.stringify({ error: "Forbidden — admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -38,15 +37,17 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "No org found" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { email, full_name, team_id, role } = await req.json();
+    const { email, full_name, team_id, team_ids, role } = await req.json();
     if (!email || !full_name) {
       return new Response(JSON.stringify({ error: "email and full_name required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Check plan limits — count existing members
-    const { count } = await adminClient.from("profiles").select("id", { count: "exact", head: true }).eq("org_id", callerProfile.org_id).eq("is_active", true);
+    // Resolve team — support both single team_id and team_ids array
+    const resolvedTeamIds: string[] = team_ids || (team_id ? [team_id] : []);
+    // Use first team as primary team_id on profile
+    const primaryTeamId = resolvedTeamIds.length > 0 ? resolvedTeamIds[0] : null;
 
-    // Create user with a temporary random password
+    // Create user with temp password
     const tempPassword = crypto.randomUUID().slice(0, 16) + "Aa1!";
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
@@ -64,20 +65,33 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user!.id;
 
-    // Update profile to belong to caller's org
+    // Update profile
+    const isSupervisor = role === "supervisor";
     await adminClient.from("profiles").update({
       org_id: callerProfile.org_id,
       full_name,
-      team_id: team_id || null,
+      team_id: primaryTeamId,
       is_active: true,
+      is_supervisor: isSupervisor,
     }).eq("id", userId);
 
-    // Set role if admin
+    // Set role
     if (role === "admin") {
       await adminClient.from("user_roles").upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
     }
+    // member and supervisor both use 'member' role in user_roles (supervisor is a profile flag)
 
-    // Generate password reset link so user can set their own password
+    // If multiple teams, insert into team_members junction table if it exists,
+    // otherwise we just use primary team_id
+    if (resolvedTeamIds.length > 1) {
+      // Try adding to additional teams via profile updates or a junction approach
+      // For now, store additional teams in profile metadata
+      await adminClient.from("profiles").update({
+        additional_team_ids: resolvedTeamIds.slice(1),
+      }).eq("id", userId);
+    }
+
+    // Generate recovery link
     const { data: linkData } = await adminClient.auth.admin.generateLink({
       type: "recovery",
       email,

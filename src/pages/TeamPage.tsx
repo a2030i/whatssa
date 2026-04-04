@@ -215,7 +215,7 @@ const TeamPage = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [inviteTeam, setInviteTeam] = useState("");
+  const [inviteTeams, setInviteTeams] = useState<string[]>([]);
   const [inviteRole, setInviteRole] = useState("member");
   const [inviting, setInviting] = useState(false);
   const [inviteResult, setInviteResult] = useState<{ temp_password?: string; email?: string } | null>(null);
@@ -226,7 +226,7 @@ const TeamPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("invite-member", {
-        body: { email: inviteEmail.trim(), full_name: inviteName.trim(), team_id: inviteTeam || null, role: inviteRole },
+        body: { email: inviteEmail.trim(), full_name: inviteName.trim(), team_ids: inviteTeams.length ? inviteTeams : null, role: inviteRole },
       });
       if (res.error || res.data?.error) {
         toast.error(res.data?.error || "فشل إضافة الموظف");
@@ -244,7 +244,7 @@ const TeamPage = () => {
   const resetInviteForm = () => {
     setInviteEmail("");
     setInviteName("");
-    setInviteTeam("");
+    setInviteTeams([]);
     setInviteRole("member");
     setInviteResult(null);
     setInviteOpen(false);
@@ -1002,16 +1002,28 @@ const TeamPage = () => {
                 <Input type="email" placeholder="name@company.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="text-sm" dir="ltr" />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs">الفريق</Label>
-                <Select value={inviteTeam || "none"} onValueChange={(v) => setInviteTeam(v === "none" ? "" : v)}>
-                  <SelectTrigger className="text-xs"><SelectValue placeholder="بدون فريق" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" className="text-xs">بدون فريق</SelectItem>
-                    {teams.map((t) => (
-                      <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs">الفرق</Label>
+                <div className="space-y-1.5 max-h-32 overflow-y-auto bg-muted/30 rounded-lg p-2">
+                  {teams.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground text-center py-2">لا توجد فرق — أنشئ فريق أولاً</p>
+                  ) : teams.map((t) => (
+                    <label key={t.id} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={inviteTeams.includes(t.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setInviteTeams([...inviteTeams, t.id]);
+                          else setInviteTeams(inviteTeams.filter((id: string) => id !== t.id));
+                        }}
+                        className="rounded border-border"
+                      />
+                      <span className="text-xs">{t.name}</span>
+                    </label>
+                  ))}
+                </div>
+                {inviteTeams.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground">{inviteTeams.length} فريق محدد</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">الصلاحية</Label>
@@ -1019,6 +1031,7 @@ const TeamPage = () => {
                   <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="member" className="text-xs">موظف</SelectItem>
+                    <SelectItem value="supervisor" className="text-xs">مشرف فريق</SelectItem>
                     <SelectItem value="admin" className="text-xs">مدير</SelectItem>
                   </SelectContent>
                 </Select>
