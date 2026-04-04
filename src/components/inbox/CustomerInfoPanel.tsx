@@ -357,9 +357,11 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
             <div className="p-3">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-semibold text-muted-foreground">الأعضاء ({groupParticipants.length})</span>
-                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAddMemberDialog(true)}>
-                  <UserPlus className="w-3.5 h-3.5" /> إضافة
-                </Button>
+                {isGroup && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAddMemberDialog(true)}>
+                    <UserPlus className="w-3.5 h-3.5" /> إضافة
+                  </Button>
+                )}
               </div>
               <div className="space-y-0.5 max-h-[350px] overflow-y-auto">
                 {groupParticipants.map((p) => (
