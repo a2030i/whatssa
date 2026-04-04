@@ -226,7 +226,7 @@ const TeamPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("invite-member", {
-        body: { email: inviteEmail.trim(), full_name: inviteName.trim(), team_id: inviteTeam || null, role: inviteRole },
+        body: { email: inviteEmail.trim(), full_name: inviteName.trim(), team_ids: inviteTeams.length ? inviteTeams : null, role: inviteRole },
       });
       if (res.error || res.data?.error) {
         toast.error(res.data?.error || "فشل إضافة الموظف");
