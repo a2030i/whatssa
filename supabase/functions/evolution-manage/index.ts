@@ -917,7 +917,44 @@ serve(async (req) => {
       return json({ success: leaveRes.ok, data: leaveData });
     }
 
-    // ── SET DISAPPEARING MESSAGES ──
+    // ── GROUP: PROMOTE/DEMOTE ADMIN ──
+    if (action === "group_promote" || action === "group_demote") {
+      const group_jid = asString(payload.group_jid);
+      const participants = asStringArray(payload.participants);
+      if (!group_jid || !participants?.length) return json({ error: "البيانات ناقصة" }, 400);
+      const promoteAction = action === "group_promote" ? "promote" : "demote";
+      const promoteRes = await fetch(`${EVOLUTION_URL}/group/updateParticipant/${instanceName}?groupJid=${group_jid}`, {
+        method: "PUT",
+        headers: evoHeaders,
+        body: JSON.stringify({ action: promoteAction, participants: participants.map((p: string) => `${p.replace(/\D/g, "")}@s.whatsapp.net`) }),
+      });
+      const promoteData = await promoteRes.json();
+      const actionLabel = action === "group_promote" ? "ترقية" : "تنزيل";
+      await logToSystem(adminClient, "info", `تم ${actionLabel} أعضاء في المجموعة`, { group_jid, count: participants.length }, orgId, userId);
+      return json({ success: promoteRes.ok, data: promoteData });
+    }
+
+    // ── GROUP: TOGGLE SETTINGS (who can send, edit info, etc.) ──
+    if (action === "group_toggle_setting") {
+      const group_jid = asString(payload.group_jid);
+      const setting = asString(payload.setting); // "announcement" | "locked"
+      if (!group_jid || !setting) return json({ error: "البيانات ناقصة" }, 400);
+      const endpoint = setting === "announcement"
+        ? `${EVOLUTION_URL}/group/toggleEphemeral/${instanceName}`
+        : `${EVOLUTION_URL}/group/updateSetting/${instanceName}?groupJid=${group_jid}`;
+      
+      // For announcement (only admins can send) and locked (only admins can edit group info)
+      const settingRes = await fetch(`${EVOLUTION_URL}/group/updateSetting/${instanceName}?groupJid=${group_jid}`, {
+        method: "PUT",
+        headers: evoHeaders,
+        body: JSON.stringify({ action: setting }),
+      });
+      const settingData = await settingRes.json().catch(() => ({}));
+      await logToSystem(adminClient, "info", `تم تعديل إعداد المجموعة: ${setting}`, { group_jid }, orgId, userId);
+      return json({ success: settingRes.ok, data: settingData });
+    }
+
+
     if (action === "set_disappearing") {
       const disappearPhone = asString(payload.phone);
       const expiration = asNumber(payload.expiration, 0);
