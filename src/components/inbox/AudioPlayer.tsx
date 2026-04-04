@@ -37,32 +37,55 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
     });
   }
 
+  // Use RAF for smooth progress updates
+  const rafRef = useRef<number>();
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Register in global set
     activeAudioSet.add(audio);
 
     const onLoaded = () => {
-      setDuration(audio.duration);
+      if (isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+      }
       setIsLoaded(true);
     };
-    const onTime = () => setCurrentTime(audio.currentTime);
+    const onDurationChange = () => {
+      if (isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+      }
+    };
     const onEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
       if (audio) audio.currentTime = 0;
     };
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
+    const onPlay = () => {
+      setIsPlaying(true);
+      const tick = () => {
+        if (!audio.paused) {
+          setCurrentTime(audio.currentTime);
+          if (isFinite(audio.duration) && audio.duration > 0) {
+            setDuration(audio.duration);
+          }
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    const onPause = () => {
+      setIsPlaying(false);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
     const onError = () => {
       setHasError(true);
       setIsPlaying(false);
     };
 
     audio.addEventListener("loadedmetadata", onLoaded);
-    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("durationchange", onDurationChange);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
@@ -70,8 +93,9 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
 
     return () => {
       activeAudioSet.delete(audio);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       audio.removeEventListener("loadedmetadata", onLoaded);
-      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("durationchange", onDurationChange);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
