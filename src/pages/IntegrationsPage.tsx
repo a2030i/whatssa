@@ -286,7 +286,7 @@ const IntegrationsPage = () => {
         scope: "whatsapp_business_management,whatsapp_business_messaging",
       }
     );
-  }, []);
+  }, [metaConfigId]);
 
   const handleCodeExchange = async (code: string) => {
     try {
