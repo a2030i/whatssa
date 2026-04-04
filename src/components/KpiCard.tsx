@@ -12,24 +12,20 @@ interface KpiCardProps {
 }
 
 const colorMap = {
-  1: { text: "text-kpi-1", bg: "bg-kpi-1/10", border: "border-kpi-1/20" },
-  2: { text: "text-kpi-2", bg: "bg-kpi-2/10", border: "border-kpi-2/20" },
-  3: { text: "text-kpi-3", bg: "bg-kpi-3/10", border: "border-kpi-3/20" },
-  4: { text: "text-kpi-4", bg: "bg-kpi-4/10", border: "border-kpi-4/20" },
+  1: "text-kpi-1",
+  2: "text-kpi-2",
+  3: "text-kpi-3",
+  4: "text-kpi-4",
 };
 
 const KpiCard = ({ title, value, subtitle, icon: Icon, emoji, trend, colorIndex = 1 }: KpiCardProps) => {
-  const colors = colorMap[colorIndex];
-
   return (
-    <div className="bg-card rounded-lg border border-border p-4 hover:shadow-card-hover transition-shadow">
-      <div className="flex items-center justify-between mb-3">
-        <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", colors.bg)}>
-          <Icon className={cn("w-[18px] h-[18px]", colors.text)} />
-        </div>
+    <div className="group bg-card rounded-2xl p-5 border border-border/50 hover:border-border transition-all duration-300 hover:shadow-card-hover animate-fade-in">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-sm font-medium text-muted-foreground">{title}</p>
         {trend && (
           <span className={cn(
-            "text-[11px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1",
+            "text-[11px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1",
             trend.positive 
               ? "bg-success/10 text-success" 
               : "bg-destructive/10 text-destructive"
@@ -39,9 +35,8 @@ const KpiCard = ({ title, value, subtitle, icon: Icon, emoji, trend, colorIndex 
           </span>
         )}
       </div>
-      <p className={cn("text-2xl font-bold tracking-tight", colors.text)}>{value}</p>
-      <p className="text-xs text-muted-foreground mt-1">{title}</p>
-      {subtitle && <p className="text-[11px] text-muted-foreground/70 mt-0.5">{subtitle}</p>}
+      <p className={cn("text-3xl font-black tracking-tight", colorMap[colorIndex])}>{value}</p>
+      {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
     </div>
   );
 };

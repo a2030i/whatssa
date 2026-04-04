@@ -13,15 +13,15 @@ interface Alert {
 }
 
 const severityStyles = {
-  critical: "border-destructive/20 bg-destructive/5",
-  warning: "border-warning/20 bg-warning/5",
-  info: "border-info/20 bg-info/5",
+  critical: "border-destructive/20 bg-destructive/5 hover:bg-destructive/8",
+  warning: "border-warning/20 bg-warning/5 hover:bg-warning/8",
+  info: "border-info/20 bg-info/5 hover:bg-info/8",
 };
 
-const severityIconColors = {
-  critical: "text-destructive",
-  warning: "text-warning",
-  info: "text-info",
+const severityIconBg = {
+  critical: "bg-destructive/15 text-destructive",
+  warning: "bg-warning/15 text-warning",
+  info: "bg-info/15 text-info",
 };
 
 const SmartAlerts = ({ data }: { data: DashboardData }) => {
@@ -63,23 +63,30 @@ const SmartAlerts = ({ data }: { data: DashboardData }) => {
 
   return (
     <div className="space-y-3 animate-fade-in">
-      <h2 className="text-sm font-semibold text-foreground">تنبيهات</h2>
+      <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+        <div className="w-1.5 h-5 rounded-full bg-warning" />
+        تنبيهات تنفيذية
+      </h2>
       <div className="space-y-2">
         {alerts.map((alert) => (
           <div
             key={alert.id}
             className={cn(
-              "rounded-lg border p-3.5 flex items-start gap-3",
+              "rounded-xl border p-4 flex items-start gap-3 transition-all duration-200",
               severityStyles[alert.severity]
             )}
           >
-            <alert.icon className={cn("w-4 h-4 mt-0.5 shrink-0", severityIconColors[alert.severity])} />
-            <p className="flex-1 text-sm text-foreground leading-relaxed">{alert.message}</p>
+            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", severityIconBg[alert.severity])}>
+              <alert.icon className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-foreground leading-relaxed">{alert.message}</p>
+            </div>
             {alert.action && (
               <Button
                 size="sm"
                 variant="outline"
-                className="shrink-0 text-xs h-7 gap-1 rounded-md"
+                className="shrink-0 text-xs h-8 gap-1 rounded-lg border-border/50 hover:bg-card"
                 onClick={() => alert.action?.path && navigate(alert.action.path)}
               >
                 {alert.action.label}

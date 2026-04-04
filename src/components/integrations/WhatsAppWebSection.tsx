@@ -19,7 +19,6 @@ interface Props {
   orgId: string | null;
   isSuperAdmin: boolean;
   autoOpen?: boolean;
-  connectOnly?: boolean;
   onConfigChange?: () => void;
 }
 
@@ -168,7 +167,7 @@ const RateLimitPanel = ({ configId, initialSettings }: RateLimitPanelProps) => {
   );
 };
 
-const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly = false, onConfigChange }: Props) => {
+const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigChange }: Props) => {
   const [showSetup, setShowSetup] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -193,24 +192,17 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
 
   useEffect(() => {
     if (!orgId) return;
-    // In connectOnly mode, skip loading existing config — always start fresh
-    if (!connectOnly) {
-      loadExistingConfig();
-    } else {
-      setIsLoadingConfig(false);
-      setExistingConfig(null);
-      setInstanceStatus("idle");
-    }
+    loadExistingConfig();
     loadUnofficialLimits();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [orgId, connectOnly]);
+  }, [orgId]);
 
   useEffect(() => {
     if (autoOpen) setShowSetup(true);
   }, [autoOpen]);
 
   useEffect(() => {
-    if (!autoOpen || connectOnly) return;
+    if (!autoOpen) return;
     if (existingConfig?.is_connected && (existingConfig?.evolution_instance_status === "connected" || existingConfig?.evolution_instance_status === "connecting")) {
       setInstanceStatus("connected");
       setQrCode(null);
@@ -230,7 +222,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
     setInstanceStatus("idle");
     setQrCode(null);
     setPairingCode(null);
-  }, [autoOpen, connectOnly, existingConfig?.evolution_instance_name, existingConfig?.evolution_instance_status, existingConfig?.is_connected]);
+  }, [autoOpen, existingConfig?.evolution_instance_name, existingConfig?.evolution_instance_status, existingConfig?.is_connected]);
 
   const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
@@ -672,7 +664,6 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
               </div>
 
               {/* Test Message */}
-              {!connectOnly && (
               <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                 <p className="text-xs font-semibold flex items-center gap-1.5">
                   <Send className="w-3.5 h-3.5 text-primary" /> إرسال رسالة اختبار
@@ -691,17 +682,16 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
                   </Button>
                 </div>
               </div>
-              )}
 
               {/* Profile Editor */}
-              {!connectOnly && existingConfig?.id && (
+              {existingConfig?.id && (
                 <div className="flex justify-center">
                   <WhatsAppProfileEditor configId={existingConfig.id} channelType="evolution" />
                 </div>
               )}
 
               {/* Channel Routing */}
-              {!connectOnly && orgId && existingConfig?.id && (
+              {orgId && existingConfig?.id && (
                 <ChannelRoutingConfig
                   configId={existingConfig.id}
                   orgId={orgId}
@@ -711,7 +701,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
               )}
 
               {/* Rate Limit Settings */}
-              {!connectOnly && existingConfig?.id && (
+              {existingConfig?.id && (
                 <RateLimitPanel configId={existingConfig.id} initialSettings={existingConfig.rate_limit_settings} />
               )}
 

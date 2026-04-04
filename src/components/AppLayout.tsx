@@ -27,6 +27,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   const hideBottomNav = location.pathname === "/inbox";
 
+  // Global hooks
   useNotificationSound();
   useKeyboardShortcuts();
 
@@ -66,8 +67,8 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </div>
       )}
 
-      {/* Top bar */}
-      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[240px] h-14 bg-card border-b border-border flex items-center justify-between px-4 md:px-6 z-30`}>
+      {/* Top bar - clean */}
+      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[250px] h-14 bg-card/80 backdrop-blur-xl border-b border-border/40 flex items-center justify-between px-4 z-30 transition-all`}>
         <div className="flex items-center gap-2">
           <GlobalSearch />
         </div>
@@ -76,8 +77,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <NotificationBell />
         </div>
       </div>
-
-      <main className={`md:mr-[240px] min-h-screen ${isImpersonating ? "pt-24" : "pt-14"} ${isMobile && !hideBottomNav ? "pb-16" : ""}`}>
+      <main className={`md:mr-[250px] min-h-screen ${isImpersonating ? "pt-[92px]" : "pt-14"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
         {children}
       </main>
 

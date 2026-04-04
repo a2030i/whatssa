@@ -16,17 +16,17 @@ interface StatusItem {
 }
 
 const statusColors = {
-  success: "text-success",
-  warning: "text-warning",
-  danger: "text-destructive",
-  neutral: "text-muted-foreground",
+  success: "bg-success/8 text-success border-success/15 shadow-[0_0_15px_-3px_hsl(var(--success)/0.15)]",
+  warning: "bg-warning/8 text-warning border-warning/15 shadow-[0_0_15px_-3px_hsl(var(--warning)/0.15)]",
+  danger: "bg-destructive/8 text-destructive border-destructive/15 shadow-[0_0_15px_-3px_hsl(var(--destructive)/0.15)]",
+  neutral: "bg-muted/50 text-muted-foreground border-border/50",
 };
 
 const dotColors = {
-  success: "bg-success",
-  warning: "bg-warning",
-  danger: "bg-destructive",
-  neutral: "bg-muted-foreground/40",
+  success: "bg-success shadow-[0_0_6px_hsl(var(--success)/0.6)]",
+  warning: "bg-warning shadow-[0_0_6px_hsl(var(--warning)/0.6)]",
+  danger: "bg-destructive shadow-[0_0_6px_hsl(var(--destructive)/0.6)]",
+  neutral: "bg-muted-foreground",
 };
 
 const getConnectionStatus = (data: DashboardData): StatusItem => {
@@ -101,10 +101,13 @@ const StatusBar = ({ data }: StatusBarProps) => {
     : "لم تتم المزامنة";
 
   return (
-    <div className="bg-card rounded-lg border border-border p-5 animate-fade-in">
+    <div className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/40 shadow-card p-5 animate-fade-in">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-foreground">حالة الحساب</h2>
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+          <div className="w-1.5 h-5 rounded-full bg-primary" />
+          حالة الحساب
+        </h2>
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-secondary/50 rounded-lg px-2.5 py-1">
           <Clock className="w-3 h-3" />
           <span>{lastSync}</span>
         </div>
@@ -113,15 +116,18 @@ const StatusBar = ({ data }: StatusBarProps) => {
         {items.map((item) => (
           <div
             key={item.label}
-            className="rounded-md border border-border bg-secondary/30 px-3 py-3 flex flex-col gap-1.5"
+            className={cn(
+              "rounded-xl border px-3.5 py-3 flex flex-col gap-2 transition-all hover:scale-[1.02] duration-200",
+              statusColors[item.status]
+            )}
           >
-            <div className="flex items-center gap-1.5">
-              <item.icon className={cn("w-3.5 h-3.5", statusColors[item.status])} />
-              <span className="text-[11px] text-muted-foreground">{item.label}</span>
+            <div className="flex items-center gap-2">
+              <item.icon className="w-4 h-4 opacity-70" />
+              <span className="text-[11px] font-medium opacity-70">{item.label}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className={cn("w-1.5 h-1.5 rounded-full", dotColors[item.status])} />
-              <span className={cn("text-sm font-semibold", statusColors[item.status])}>{item.value}</span>
+            <div className="flex items-center gap-2">
+              <div className={cn("w-2 h-2 rounded-full", dotColors[item.status])} />
+              <span className="text-sm font-bold">{item.value}</span>
             </div>
           </div>
         ))}
