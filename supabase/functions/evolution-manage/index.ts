@@ -617,7 +617,7 @@ serve(async (req) => {
 
         // Fallback to PUT if POST returns 404/405
         if (readRes.status === 404 || readRes.status === 405) {
-          readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
+          readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${readInstanceName}`, {
             method: "PUT",
             headers: evoHeaders,
             body: JSON.stringify({
