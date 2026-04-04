@@ -42,14 +42,21 @@ interface ChatAreaProps {
   onShowCustomerInfo?: () => void;
 }
 
-const MessageStatus = ({ status, isGroup }: { status?: string; isGroup?: boolean }) => {
+const MessageStatus = ({ status, isGroup, readBy, groupSize }: { status?: string; isGroup?: boolean; readBy?: string[]; groupSize?: number }) => {
   if (!status) return null;
   if (status === "sent") return <span className="inline-block mr-1"><Check className="w-3 h-3 text-muted-foreground inline-block" /></span>;
-  if (status === "delivered") return <span className="inline-block mr-1"><CheckCheck className="w-3 h-3 text-muted-foreground inline-block" /></span>;
+  if (status === "delivered") return (
+    <span className="inline-flex items-center mr-1">
+      <CheckCheck className="w-3 h-3 text-muted-foreground inline-block" />
+      {isGroup && readBy && readBy.length > 0 && groupSize && groupSize > 0 && (
+        <span className="text-[8px] text-muted-foreground font-bold mr-0.5">{readBy.length}/{groupSize}</span>
+      )}
+    </span>
+  );
   if (status === "read") return (
     <span className="inline-flex items-center mr-1">
       <CheckCheck className="w-3 h-3 text-primary inline-block" />
-      {isGroup && <span className="text-[8px] text-primary font-bold mr-0.5">قُرأت</span>}
+      {isGroup && <span className="text-[8px] text-primary font-bold mr-0.5">الكل</span>}
     </span>
   );
   if (status === "failed") return <span className="inline-block mr-1"><AlertTriangle className="w-3 h-3 text-destructive inline-block" /></span>;
