@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Settings, Save, AlertTriangle, CreditCard, Eye, EyeOff } from "lucide-react";
+import { Settings, Save, AlertTriangle, CreditCard, Eye, EyeOff, Globe } from "lucide-react";
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState<Record<string, any>>({});
