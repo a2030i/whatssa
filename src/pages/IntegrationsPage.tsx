@@ -101,6 +101,9 @@ const IntegrationsPage = () => {
     isLoading: boolean;
   }>>({});
   const [unofficialConfigs, setUnofficialConfigs] = useState<WhatsAppConfig[]>([]);
+  const [unofficialTestPhone, setUnofficialTestPhone] = useState("");
+  const [unofficialTestSending, setUnofficialTestSending] = useState(false);
+  const [unofficialCheckingStatus, setUnofficialCheckingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     loadFacebookSDK();
