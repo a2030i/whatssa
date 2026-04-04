@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Settings, Save, AlertTriangle, CreditCard, Eye, EyeOff } from "lucide-react";
+import { Settings, Save, AlertTriangle, CreditCard, Eye, EyeOff, Globe } from "lucide-react";
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState<Record<string, any>>({});
@@ -136,6 +136,86 @@ const AdminSettings = () => {
           <div className="bg-yellow-500/10 rounded-lg p-3 text-xs text-yellow-600 font-medium flex items-center gap-2">
             <AlertTriangle className="w-4 h-4" />
             بوابة الدفع غير مكتملة — أدخل المفتاحين لتفعيل الدفع الإلكتروني
+          </div>
+        )}
+      </div>
+
+      {/* Meta App Configuration */}
+      <div className="bg-card rounded-xl shadow-card p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <Globe className="w-4 h-4 text-primary" />
+          <p className="text-sm font-semibold">إعدادات تطبيق Meta (WhatsApp)</p>
+        </div>
+        <p className="text-[10px] text-muted-foreground -mt-2">
+          معرف التطبيق والمفتاح السري ومعرف التكوين لتسجيل الدخول عبر Facebook — يمكنك تعديلها بدون الحاجة لتغيير الكود.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs">Meta App ID (معرف التطبيق)</Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                value={getVal("meta_app_id", "1306128431426603")}
+                onChange={(e) => setVal("meta_app_id", e.target.value)}
+                placeholder="1306128431426603"
+                className="h-9 text-sm font-mono"
+                dir="ltr"
+              />
+              <Button size="sm" variant="outline" className="h-9" onClick={() => updateSetting("meta_app_id", getVal("meta_app_id", "1306128431426603"))}>
+                <Save className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Meta App Secret (المفتاح السري)</Label>
+            <div className="flex gap-2 mt-1">
+              <div className="relative flex-1">
+                <Input
+                  type={showSecretKey ? "text" : "password"}
+                  value={getVal("meta_app_secret")}
+                  onChange={(e) => setVal("meta_app_secret", e.target.value)}
+                  placeholder="أدخل المفتاح السري..."
+                  className="h-9 text-sm font-mono pl-9"
+                  dir="ltr"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecretKey(!showSecretKey)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showSecretKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              <Button size="sm" variant="outline" className="h-9" onClick={() => updateSetting("meta_app_secret", getVal("meta_app_secret"))}>
+                <Save className="w-3 h-3" />
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              ⚠️ المفتاح السري محفوظ أيضاً كـ Edge Function Secret — عند التغيير يجب تحديثه هناك أيضاً.
+            </p>
+          </div>
+          <div>
+            <Label className="text-xs">Login Config ID (معرف التكوين)</Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                value={getVal("meta_config_id", "1492677925851114")}
+                onChange={(e) => setVal("meta_config_id", e.target.value)}
+                placeholder="1492677925851114"
+                className="h-9 text-sm font-mono"
+                dir="ltr"
+              />
+              <Button size="sm" variant="outline" className="h-9" onClick={() => updateSetting("meta_config_id", getVal("meta_config_id", "1492677925851114"))}>
+                <Save className="w-3 h-3" />
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              معرف تكوين Facebook Login for Business — يُستخدم في Embedded Signup.
+            </p>
+          </div>
+        </div>
+        {getVal("meta_app_id") && getVal("meta_config_id") && (
+          <div className="bg-primary/5 rounded-lg p-3 text-xs text-primary font-medium flex items-center gap-2">
+            <Globe className="w-4 h-4" />
+            إعدادات Meta مكتملة — App ID: {getVal("meta_app_id")} | Config ID: {getVal("meta_config_id")}
           </div>
         )}
       </div>

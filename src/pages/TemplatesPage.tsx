@@ -221,7 +221,7 @@ const reviewChecklist = {
 
 const replaceTemplateVariables = (template: WhatsAppTemplate, variables: string[]) => {
   return variables.reduce(
-    (message, value, index) => message.replaceAll(`{{${index + 1}}}`, value || `{{${index + 1}}}`),
+    (message, value, index) => message.replace(new RegExp(`\\{\\{${index + 1}\\}\\}`, 'g'), value || `{{${index + 1}}}`),
     template.body,
   );
 };

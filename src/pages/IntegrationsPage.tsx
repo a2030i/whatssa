@@ -24,7 +24,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
-const META_APP_ID = "1306128431426603";
+const DEFAULT_META_APP_ID = "1306128431426603";
+const DEFAULT_META_CONFIG_ID = "1492677925851114";
 
 interface PhoneNumber {
   id: string;
@@ -104,9 +105,18 @@ const IntegrationsPage = () => {
   const [unofficialTestPhone, setUnofficialTestPhone] = useState("");
   const [unofficialTestSending, setUnofficialTestSending] = useState(false);
   const [unofficialCheckingStatus, setUnofficialCheckingStatus] = useState<string | null>(null);
+  const [metaAppId, setMetaAppId] = useState(DEFAULT_META_APP_ID);
+  const [metaConfigId, setMetaConfigId] = useState(DEFAULT_META_CONFIG_ID);
 
   useEffect(() => {
     loadFacebookSDK();
+    // Load Meta settings from system_settings
+    supabase.from("system_settings").select("key, value").in("key", ["meta_app_id", "meta_config_id"]).then(({ data }) => {
+      (data || []).forEach((s: any) => {
+        if (s.key === "meta_app_id" && s.value) setMetaAppId(String(s.value));
+        if (s.key === "meta_config_id" && s.value) setMetaConfigId(String(s.value));
+      });
+    });
   }, []);
 
   useEffect(() => {
@@ -213,7 +223,7 @@ const IntegrationsPage = () => {
   const loadFacebookSDK = () => {
     if (document.getElementById("facebook-jssdk")) { setSdkLoaded(true); return; }
     (window as any).fbAsyncInit = function () {
-      (window as any).FB.init({ appId: META_APP_ID, cookie: true, xfbml: true, version: "v21.0" });
+      (window as any).FB.init({ appId: metaAppId, cookie: true, xfbml: true, version: "v21.0" });
       setSdkLoaded(true);
     };
     const script = document.createElement("script");
@@ -270,13 +280,13 @@ const IntegrationsPage = () => {
         }
       },
       {
-        config_id: "1492677925851114",
+        config_id: metaConfigId,
         response_type: "code",
         override_default_response_type: true,
         scope: "whatsapp_business_management,whatsapp_business_messaging",
       }
     );
-  }, []);
+  }, [metaConfigId]);
 
   const handleCodeExchange = async (code: string) => {
     try {
