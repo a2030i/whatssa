@@ -200,7 +200,7 @@ serve(async (req) => {
       previous_provider: userPreviousProvider,
     } = body;
 
-    const appId = Deno.env.get("META_APP_ID") || "1239578701681497";
+    const appId = Deno.env.get("META_APP_ID") || "1306128431426603";
     const appSecret = Deno.env.get("META_APP_SECRET");
     const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
