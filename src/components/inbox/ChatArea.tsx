@@ -623,6 +623,29 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
   };
 
+  const handleChangeGroupPicture = async (file: File) => {
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `group-pics/${orgId}/${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("chat-media").upload(path, file);
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+      if (!urlData?.publicUrl) throw new Error("لم يتم الحصول على رابط الصورة");
+      const { error } = await invokeCloud("evolution-manage", {
+        body: {
+          action: "update_group_picture",
+          channel_id: conversation.channelId,
+          group_jid: conversation.customerPhone,
+          image_url: urlData.publicUrl,
+        },
+      });
+      if (error) throw error;
+      toast.success("✅ تم تحديث صورة القروب");
+    } catch (err: any) {
+      toast.error("فشل تحديث صورة القروب: " + (err.message || ""));
+    }
+  };
+
   // Check if AI is configured for this org
   useEffect(() => {
     if (!orgId) return;
