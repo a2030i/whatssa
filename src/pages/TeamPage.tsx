@@ -211,6 +211,45 @@ const TeamPage = () => {
 
   const isAdmin = userRole === "admin" || userRole === "super_admin";
 
+  // Invite member state
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteTeam, setInviteTeam] = useState("");
+  const [inviteRole, setInviteRole] = useState("member");
+  const [inviting, setInviting] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ temp_password?: string; email?: string } | null>(null);
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim() || !inviteName.trim()) { toast.error("يرجى تعبئة الاسم والبريد"); return; }
+    setInviting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("invite-member", {
+        body: { email: inviteEmail.trim(), full_name: inviteName.trim(), team_id: inviteTeam || null, role: inviteRole },
+      });
+      if (res.error || res.data?.error) {
+        toast.error(res.data?.error || "فشل إضافة الموظف");
+      } else {
+        toast.success(`تمت إضافة ${inviteName} بنجاح`);
+        setInviteResult({ temp_password: res.data.temp_password, email: inviteEmail.trim() });
+        load();
+      }
+    } catch (e: any) {
+      toast.error(e.message || "خطأ غير متوقع");
+    }
+    setInviting(false);
+  };
+
+  const resetInviteForm = () => {
+    setInviteEmail("");
+    setInviteName("");
+    setInviteTeam("");
+    setInviteRole("member");
+    setInviteResult(null);
+    setInviteOpen(false);
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-[1100px] mx-auto" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-3 animate-fade-in">
@@ -224,9 +263,14 @@ const TeamPage = () => {
           </div>
         </div>
         {isAdmin && (
-          <Button variant="outline" className="gap-2 text-xs rounded-xl border-border/50" onClick={() => setTeamDialogOpen(true)}>
-            <Layers className="w-4 h-4" /> فريق جديد
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button className="gap-2 text-xs rounded-xl" onClick={() => setInviteOpen(true)}>
+              <UserPlus className="w-4 h-4" /> أضف موظف
+            </Button>
+            <Button variant="outline" className="gap-2 text-xs rounded-xl border-border/50" onClick={() => setTeamDialogOpen(true)}>
+              <Layers className="w-4 h-4" /> فريق جديد
+            </Button>
+          </div>
         )}
       </div>
 
