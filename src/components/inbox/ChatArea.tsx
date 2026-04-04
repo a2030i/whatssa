@@ -2201,6 +2201,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <Brain className="w-4 h-4" />
             </button>
             )}
+            {/* Auto-Translate Toggle */}
+            {hasAiConfig && (
+              <button
+                onClick={() => setAutoTranslate(!autoTranslate)}
+                className={cn("p-1.5 rounded-lg transition-colors shrink-0", autoTranslate ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+                title={autoTranslate ? "إيقاف الترجمة التلقائية" : "تفعيل الترجمة التلقائية"}
+              >
+                <Languages className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* AI Suggestions Row */}
