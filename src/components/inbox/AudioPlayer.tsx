@@ -168,6 +168,9 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
           {bars.current.map((h, i) => {
             const barProgress = i / bars.current.length;
             const isPlayed = barProgress <= progress;
+            // Animate bars near the playback position
+            const isNearPlayhead = isPlaying && Math.abs(barProgress - progress) < 0.08;
+            const animScale = isNearPlayhead ? 0.7 + Math.random() * 0.6 : 1;
             return (
               <div
                 key={i}
@@ -177,7 +180,11 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
                     ? isAgent ? "bg-primary" : "bg-white"
                     : isAgent ? "bg-muted-foreground/25" : "bg-white/30"
                 )}
-                style={{ height: `${h * 100}%`, minWidth: 2 }}
+                style={{
+                  height: `${h * 100 * animScale}%`,
+                  minWidth: 2,
+                  transition: isNearPlayhead ? "height 0.15s ease" : "height 0.3s ease, colors 0.15s",
+                }}
               />
             );
           })}
