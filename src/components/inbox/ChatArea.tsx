@@ -1544,14 +1544,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {showMentions && filteredMentionAgents.length > 0 && (
         <div className="border-t border-border bg-card px-3 py-2">
-          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">اذكر موظف</p>
+          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">
+            {isGroupMentionMode ? "اذكر عضو في القروب" : "اذكر موظف"}
+          </p>
           <div className="flex gap-2 overflow-x-auto">
-            {filteredMentionAgents.map((a) => {
-              const initials = (a.full_name || "").split(" ").map(w => w[0]).join("").slice(0, 2);
+            {filteredMentionAgents.map((a: any) => {
+              const displayName = a.full_name || a.name || a.phone || "";
+              const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2);
               return (
-                <button key={a.id} onClick={() => insertMention(a.full_name || "")} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
+                <button key={a.id} onClick={() => insertMention(displayName)} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
                   <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{initials}</div>
-                  {a.full_name}
+                  {displayName}
                 </button>
               );
             })}
