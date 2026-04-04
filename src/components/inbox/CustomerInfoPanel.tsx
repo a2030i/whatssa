@@ -111,12 +111,14 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
       const mapped = participants.map((p: any) => {
         const rawId = p.id || p.jid || "";
         const phone = extractParticipantPhone(p);
+        const isLid = rawId.includes("@lid");
         return {
           id: rawId,
           name: extractParticipantName(p, phone),
           phone,
           rawDigits: normalizeDigits(rawId),
           admin: p.admin === "admin" || p.admin === "superadmin" || p.isAdmin || p.isSuperAdmin,
+          isLid,
         };
       });
 
