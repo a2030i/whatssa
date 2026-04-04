@@ -571,6 +571,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
+  const [showInternalProductPicker, setShowInternalProductPicker] = useState(false);
   const [isBlocked, setIsBlocked] = useState(conversation.isBlocked || false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
