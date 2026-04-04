@@ -204,6 +204,33 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         },
       });
       if (error || data?.error) throw new Error(data?.error || "فشل إنشاء القروب");
+
+      // Upload group picture if selected
+      if (groupImageFile && data?.group_jid) {
+        try {
+          // Upload to storage first
+          const ext = groupImageFile.name.split(".").pop() || "jpg";
+          const path = `group-pics/${orgId}/${Date.now()}.${ext}`;
+          const { error: uploadErr } = await supabase.storage.from("chat-media").upload(path, groupImageFile);
+          if (!uploadErr) {
+            const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+            if (urlData?.publicUrl) {
+              await invokeCloud("evolution-manage", {
+                body: {
+                  action: "update_group_picture",
+                  channel_id: ch.id,
+                  group_jid: data.group_jid,
+                  image_url: urlData.publicUrl,
+                },
+              });
+            }
+          }
+        } catch {
+          // Non-critical - group was created
+          console.warn("Failed to set group picture");
+        }
+      }
+
       toast.success(`✅ تم إنشاء قروب "${groupName}" بنجاح`);
       onOpenChange(false);
     } catch (err: any) {
