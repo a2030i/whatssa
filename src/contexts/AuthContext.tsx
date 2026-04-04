@@ -37,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
   hasMetaApi: false,
   isImpersonating: false,
   impersonatedOrgId: null,
+  mustChangePassword: false,
   startImpersonation: async () => {},
   stopImpersonation: () => {},
   refreshOrg: () => {},
