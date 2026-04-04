@@ -1398,11 +1398,11 @@ const IntegrationsPage = () => {
   // ============ CONNECTING / LOADING ============
   if (flowStep === "connecting") {
     return (
-      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
         <div className="bg-card rounded-2xl shadow-card border border-border p-12 text-center">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <h2 className="text-lg font-bold text-foreground">جاري الربط...</h2>
-          <p className="text-sm text-muted-foreground mt-2">أكمل الخطوات في نافذة Meta المنبثقة</p>
+          <h2 className="text-lg font-bold text-foreground">{t("جاري الربط...", "Connecting...")}</h2>
+          <p className="text-sm text-muted-foreground mt-2">{t("أكمل الخطوات في نافذة Meta المنبثقة", "Complete the steps in the Meta popup window")}</p>
         </div>
       </div>
     );
