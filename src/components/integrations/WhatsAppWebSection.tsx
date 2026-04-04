@@ -19,6 +19,7 @@ interface Props {
   orgId: string | null;
   isSuperAdmin: boolean;
   autoOpen?: boolean;
+  forNewNumber?: boolean;
   onConfigChange?: () => void;
 }
 
