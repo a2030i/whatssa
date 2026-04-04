@@ -419,8 +419,136 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           )}
         </DialogHeader>
 
+        {/* ═══ GROUP MODE ═══ */}
+        {dialogMode === "group" && (
+          <div className="p-4 space-y-4">
+            {/* Group name */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">📝 اسم القروب</Label>
+              <Input
+                placeholder="مثال: فريق المبيعات"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                className="h-10 text-sm bg-background"
+              />
+            </div>
+
+            {/* Channel selector for group - only evolution */}
+            {evolutionChannels.length > 1 && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">📱 القناة</Label>
+                <div className="grid gap-2">
+                  {evolutionChannels.map((ch) => (
+                    <button
+                      key={ch.id}
+                      onClick={() => setSelectedChannel(ch)}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-xl border transition-all text-right",
+                        selectedChannel?.id === ch.id
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-border/40 bg-card/50 hover:border-border/80"
+                      )}
+                    >
+                      <Wifi className="w-4 h-4 text-warning shrink-0" />
+                      <span className="text-sm font-medium truncate">{ch.business_name || ch.display_phone || ch.evolution_instance_name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add members */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">👥 الأعضاء ({groupMembers.length})</Label>
+              <div className="flex gap-1.5" dir="ltr">
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="966535195202"
+                  value={groupMemberInput}
+                  onChange={(e) => setGroupMemberInput(e.target.value.replace(/[^0-9]/g, ""))}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addGroupMember(); } }}
+                  className="text-sm h-10 bg-background font-mono"
+                />
+                <Button size="sm" className="h-10 px-4" onClick={addGroupMember} disabled={!groupMemberInput.trim()}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">أدخل الرقم مع مفتاح الدولة (بدون +)</p>
+
+              {/* Members list */}
+              {groupMembers.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {groupMembers.map((m, i) => (
+                    <Badge key={i} variant="secondary" className="gap-1 text-xs py-1 px-2 font-mono" dir="ltr">
+                      +{m}
+                      <button onClick={() => setGroupMembers(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Quick add from customers */}
+              <div className="mt-3">
+                <div className="relative">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="ابحث عن عميل لإضافته..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pr-9 text-sm h-9 bg-background"
+                  />
+                </div>
+                <ScrollArea className="h-[140px] mt-2">
+                  <div className="space-y-0.5">
+                    {customers.map((c) => {
+                      const rawPhone = c.phone.replace(/[^0-9]/g, "");
+                      const isAdded = groupMembers.includes(rawPhone);
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => {
+                            if (!isAdded) setGroupMembers(prev => [...prev, rawPhone]);
+                          }}
+                          disabled={isAdded}
+                          className={cn(
+                            "w-full flex items-center gap-2 p-2 rounded-lg text-right transition-colors",
+                            isAdded ? "opacity-50" : "hover:bg-accent/50"
+                          )}
+                        >
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <User className="w-3.5 h-3.5 text-primary" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium truncate">{c.name || "بدون اسم"}</p>
+                            <p className="text-[10px] text-muted-foreground" dir="ltr">{c.phone}</p>
+                          </div>
+                          {isAdded && <Badge variant="outline" className="text-[9px]">مضاف ✓</Badge>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+
+            {/* Create button */}
+            <Button
+              className="w-full h-11 gap-2"
+              disabled={!groupName.trim() || groupMembers.length < 1 || creatingGroup}
+              onClick={handleCreateGroup}
+            >
+              {creatingGroup ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+              {creatingGroup ? "جاري الإنشاء..." : `إنشاء القروب (${groupMembers.length} عضو)`}
+            </Button>
+          </div>
+        )}
+
+        {/* ═══ PRIVATE MODE ═══ */}
         {/* Step: Contact */}
-        {step === "contact" && (
+        {dialogMode === "private" && step === "contact" && (
           <div className="flex flex-col">
             {/* Phone input with country code */}
             <div className="p-4 pb-2 space-y-2">
