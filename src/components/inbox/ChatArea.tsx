@@ -671,7 +671,62 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
   };
 
-  // Check if AI is configured for this org
+  const handleLeaveGroup = async () => {
+    if (!confirm("هل أنت متأكد من الخروج من هذا القروب؟")) return;
+    try {
+      const { error } = await invokeCloud("evolution-manage", {
+        body: { action: "leave_group", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
+      });
+      if (error) throw error;
+      toast.success("✅ تم الخروج من القروب");
+    } catch (err: any) {
+      toast.error("فشل الخروج: " + (err.message || ""));
+    }
+  };
+
+  const handleAddMember = async () => {
+    const phone = addMemberPhone.replace(/\D/g, "");
+    if (!phone) return;
+    setAddingMember(true);
+    try {
+      const { error } = await invokeCloud("evolution-manage", {
+        body: { action: "group_add", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
+      });
+      if (error) throw error;
+      toast.success("✅ تمت إضافة العضو");
+      setAddMemberPhone("");
+      setShowAddMembersDialog(false);
+      // Refresh participants list
+      const { data } = await invokeCloud("evolution-manage", {
+        body: { action: "group_info", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
+      });
+      const participants = data?.data?.participants || data?.data?.data?.participants || [];
+      setGroupParticipants(participants.map((p: any) => {
+        const ph = (p.id || p.jid || "").replace(/@.*/, "");
+        return { id: p.id || p.jid || ph, name: p.pushName || p.name || ph, phone: ph };
+      }));
+    } catch (err: any) {
+      toast.error("فشل إضافة العضو: " + (err.message || ""));
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleRemoveMember = async (phone: string) => {
+    if (!confirm(`هل تريد إزالة ${phone} من القروب؟`)) return;
+    try {
+      const { error } = await invokeCloud("evolution-manage", {
+        body: { action: "group_remove", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
+      });
+      if (error) throw error;
+      toast.success("✅ تمت إزالة العضو");
+      setGroupParticipants(prev => prev.filter(p => p.phone !== phone));
+    } catch (err: any) {
+      toast.error("فشل إزالة العضو: " + (err.message || ""));
+    }
+  };
+
+
   useEffect(() => {
     if (!orgId) return;
     supabase
