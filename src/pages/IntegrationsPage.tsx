@@ -1132,10 +1132,32 @@ const IntegrationsPage = () => {
     );
   };
 
+  const reviewToggle = (
+    <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => setIsReviewMode(p => !p)}>
+      <Globe className="w-4 h-4" />
+      {isReviewMode ? "Arabic mode" : "Meta Review Mode"}
+    </Button>
+  );
+
   // ============ EMPTY STATE: Show all channels ============
   if (configs.length === 0 && flowStep === "idle") {
     return (
-      <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir="rtl">
+      <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir={dir}>
+        <div className="flex justify-end">{reviewToggle}</div>
+        {isReviewMode && (
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-2">
+            <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">Meta App Review — whatsapp_business_management</Badge>
+            <h2 className="text-sm font-semibold">Recording Guide: Full End-to-End Flow</h2>
+            <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+              <li><strong>Step 1 — Connect WhatsApp:</strong> Click "Add Number" → "Official WhatsApp" → Complete the Meta login popup (shows permission grant).</li>
+              <li><strong>Step 2 — Select Phone:</strong> Pick your WhatsApp Business number from the list returned by Meta.</li>
+              <li><strong>Step 3 — Verify Connection:</strong> See the connected number card with status details.</li>
+              <li><strong>Step 4 — Manage Templates:</strong> Go to Templates page → Create a new template → Refresh to see approval status.</li>
+              <li><strong>Step 5 — Send Template:</strong> Select an approved template → Send it to a test phone number.</li>
+            </ol>
+            <p className="text-[10px] text-muted-foreground italic mt-2">Note: This app uses a System User Token for API access. The Meta login flow (Embedded Signup) is used for onboarding new WhatsApp numbers only.</p>
+          </div>
+        )}
         {renderAllChannelsView(configs)}
       </div>
     );
