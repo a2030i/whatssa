@@ -4,6 +4,7 @@ import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
 import ProductPicker from "./ProductPicker";
+import InternalProductPicker from "./InternalProductPicker";
 import { supabase, cloudSupabase, invokeCloud } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Conversation, Message } from "@/data/mockData";
