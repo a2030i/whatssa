@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, FileText, Loader2, Plus, X, Save, Globe, ChevronDown } from "lucide-react";
+import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, FileText, Loader2, Plus, X, Save, Globe, ChevronDown, Users, Radio } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ interface NewConversationDialogProps {
   onConversationCreated: (convId: string) => void;
 }
 
+type ConversationMode = "private" | "group" | "broadcast";
 type Step = "contact" | "channel" | "message";
 
 const COUNTRY_CODES = [
@@ -67,6 +68,7 @@ const COUNTRY_CODES = [
 
 const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCreated }: NewConversationDialogProps) => {
   const { orgId } = useAuth();
+  const [mode, setMode] = useState<ConversationMode>("private");
   const [step, setStep] = useState<Step>("contact");
   const [channels, setChannels] = useState<Channel[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -84,14 +86,22 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [isExistingCustomer, setIsExistingCustomer] = useState(false);
 
+  // Group-specific state
+  const [groupName, setGroupName] = useState("");
+  const [selectedParticipants, setSelectedParticipants] = useState<Customer[]>([]);
+  const [addingNumber, setAddingNumber] = useState("");
+
+  // Broadcast-specific state
+  const [broadcastRecipients, setBroadcastRecipients] = useState<Customer[]>([]);
+
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
   const fullPhone = `${countryCode}${localNumber.replace(/^0+/, "")}`;
   const cleanDigits = localNumber.replace(/[^0-9]/g, "").replace(/^0+/, "");
   const isValidNumber = cleanDigits.length === selectedCountry.digits;
 
-  // Reset on open
   useEffect(() => {
     if (open) {
+      setMode("private");
       setStep("contact");
       setSelectedChannel(null);
       setCountryCode("966");
@@ -104,10 +114,13 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setSaveCustomer(false);
       setIsExistingCustomer(false);
       setShowCountryPicker(false);
+      setGroupName("");
+      setSelectedParticipants([]);
+      setAddingNumber("");
+      setBroadcastRecipients([]);
     }
   }, [open]);
 
-  // Load channels
   useEffect(() => {
     if (!orgId || !open) return;
     const load = async () => {
@@ -120,12 +133,10 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     load();
   }, [orgId, open]);
 
-  // Search customers - triggered by searchQuery OR localNumber input
   useEffect(() => {
     if (!orgId || !open) return;
     const query = searchQuery || localNumber;
     if (!query.trim()) {
-      // Load recent customers
       const load = async () => {
         setLoadingCustomers(true);
         const { data } = await supabase
@@ -159,9 +170,21 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 
   const isMeta = selectedChannel?.channel_type === "meta_api";
   const approvedTemplates = useMemo(() => templates.filter(t => t.status === "APPROVED"), [templates]);
+  const evolutionChannels = useMemo(() => channels.filter(c => c.channel_type === "evolution"), [channels]);
 
   const selectCustomer = (c: Customer) => {
-    // Parse phone - try to extract country code
+    if (mode === "group") {
+      if (!selectedParticipants.find(p => p.phone === c.phone)) {
+        setSelectedParticipants(prev => [...prev, c]);
+      }
+      return;
+    }
+    if (mode === "broadcast") {
+      if (!broadcastRecipients.find(p => p.phone === c.phone)) {
+        setBroadcastRecipients(prev => [...prev, c]);
+      }
+      return;
+    }
     const rawPhone = c.phone.replace(/[^0-9]/g, "");
     const matched = COUNTRY_CODES.find(cc => rawPhone.startsWith(cc.code));
     if (matched) {
@@ -210,28 +233,143 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     setTemplateVars(Array(varCount).fill(""));
   };
 
-  const handleSend = async () => {
-    if (!selectedChannel || !isValidNumber) return;
+  const addManualParticipant = () => {
+    const raw = addingNumber.replace(/[^0-9]/g, "");
+    if (raw.length < 7) {
+      toast.error("رقم غير صالح");
+      return;
+    }
+    const phone = raw.startsWith("0") ? `966${raw.slice(1)}` : raw;
+    if (mode === "group") {
+      if (!selectedParticipants.find(p => p.phone === phone)) {
+        setSelectedParticipants(prev => [...prev, { id: phone, name: null, phone }]);
+      }
+    } else {
+      if (!broadcastRecipients.find(p => p.phone === phone)) {
+        setBroadcastRecipients(prev => [...prev, { id: phone, name: null, phone }]);
+      }
+    }
+    setAddingNumber("");
+  };
 
+  const proceedGroupOrBroadcast = () => {
+    const list = mode === "group" ? selectedParticipants : broadcastRecipients;
+    if (list.length === 0) {
+      toast.error("أضف عضو واحد على الأقل");
+      return;
+    }
+    if (mode === "group" && !groupName.trim()) {
+      toast.error("أدخل اسم القروب");
+      return;
+    }
+    const relevantChannels = mode === "group" ? evolutionChannels : channels;
+    if (relevantChannels.length === 1) {
+      setSelectedChannel(relevantChannels[0]);
+      setStep("message");
+    } else if (relevantChannels.length === 0) {
+      toast.error(mode === "group" ? "إنشاء القروب يتطلب واتساب ويب" : "لا توجد قنوات متصلة");
+    } else {
+      setStep("channel");
+    }
+  };
+
+  const handleSend = async () => {
+    if (mode === "group") return handleCreateGroup();
+    if (mode === "broadcast") return handleSendBroadcast();
+    return handleSendPrivate();
+  };
+
+  const handleCreateGroup = async () => {
+    if (!selectedChannel || selectedParticipants.length === 0 || !groupName.trim()) return;
+    setSending(true);
+    try {
+      const { data, error } = await invokeCloud("evolution-manage", {
+        body: {
+          action: "create_group",
+          group_name: groupName,
+          participants: selectedParticipants.map(p => p.phone),
+          instance_name: selectedChannel.evolution_instance_name,
+          channel_id: selectedChannel.id,
+        },
+      });
+      if (error || data?.error) throw new Error(data?.error || "فشل إنشاء القروب");
+
+      toast.success(`تم إنشاء القروب "${groupName}" بنجاح`);
+      if (data?.conversation_id) {
+        onConversationCreated(data.conversation_id);
+      }
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err.message || "حدث خطأ");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSendBroadcast = async () => {
+    if (!selectedChannel || broadcastRecipients.length === 0) return;
+    const isMetaCh = selectedChannel.channel_type === "meta_api";
+    if (isMetaCh && !selectedTemplate) {
+      toast.error("يجب اختيار قالب للقناة الرسمية");
+      return;
+    }
+    if (!isMetaCh && !messageText.trim()) {
+      toast.error("أدخل نص الرسالة");
+      return;
+    }
+    setSending(true);
+    try {
+      if (isMetaCh && selectedTemplate) {
+        let successCount = 0;
+        for (const r of broadcastRecipients) {
+          const { error } = await invokeCloud("whatsapp-send", {
+            body: {
+              to: r.phone,
+              type: "template",
+              template_name: selectedTemplate.name,
+              template_language: selectedTemplate.language,
+              template_components: buildTemplateComponents(selectedTemplate, templateVars),
+              channel_id: selectedChannel.id,
+              customer_name: r.name || r.phone,
+            },
+          });
+          if (!error) successCount++;
+        }
+        toast.success(`تم الإرسال لـ ${successCount}/${broadcastRecipients.length} جهة اتصال`);
+      } else {
+        const { data, error } = await invokeCloud("evolution-manage", {
+          body: {
+            action: "send_broadcast",
+            phones: broadcastRecipients.map(r => r.phone),
+            text: messageText,
+            instance_name: selectedChannel.evolution_instance_name,
+          },
+        });
+        if (error || data?.error) throw new Error(data?.error || "فشل الإرسال الجماعي");
+        toast.success(`تم الإرسال لـ ${data?.sent || 0}/${broadcastRecipients.length} جهة اتصال`);
+      }
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err.message || "حدث خطأ");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSendPrivate = async () => {
+    if (!selectedChannel || !isValidNumber) return;
     setSending(true);
     try {
       const cleanPhone = fullPhone;
       const messagePreview = isMeta ? `📋 ${selectedTemplate?.name}` : messageText.trim();
 
-      // Save customer if requested
       if (saveCustomer && !isExistingCustomer && orgId) {
         await supabase.from("customers").upsert(
-          {
-            org_id: orgId,
-            phone: cleanPhone,
-            name: customerName || null,
-            source: "manual",
-          },
+          { org_id: orgId, phone: cleanPhone, name: customerName || null, source: "manual" },
           { onConflict: "org_id,phone" }
         );
       }
 
-      // Find existing conversation (read-only, no RLS issue)
       const { data: existingConv } = await supabase
         .from("conversations")
         .select("id")
@@ -258,7 +396,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           },
         });
         if (error || data?.error) throw new Error(data?.error || "فشل إرسال القالب");
-        // Edge function may return conversation_id if it created one
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (!isMeta && messageText.trim()) {
         const { data, error } = await invokeCloud("evolution-send", {
@@ -271,7 +408,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           },
         });
         if (error || data?.error) throw new Error(data?.error || "فشل إرسال الرسالة");
-        // Edge function creates conversation if needed — get its ID
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (isMeta && !selectedTemplate) {
         toast.error("يجب اختيار قالب للقناة الرسمية");
@@ -294,10 +430,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           .eq("id", conversationId);
       }
 
-      if (conversationId) {
-        onConversationCreated(conversationId);
-      }
-
+      if (conversationId) onConversationCreated(conversationId);
       toast.success("تم إرسال الرسالة بنجاح");
       onOpenChange(false);
     } catch (err: any) {
@@ -307,7 +440,75 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     }
   };
 
-  const canSend = isValidNumber && (isMeta ? !!selectedTemplate : messageText.trim().length > 0);
+  const canSend = mode === "private"
+    ? isValidNumber && (isMeta ? !!selectedTemplate : messageText.trim().length > 0)
+    : mode === "group"
+      ? selectedParticipants.length > 0 && groupName.trim().length > 0
+      : broadcastRecipients.length > 0 && (isMeta ? !!selectedTemplate : messageText.trim().length > 0);
+
+  const renderModeTabs = () => (
+    <div className="flex gap-1 p-1 bg-muted/50 rounded-lg mx-4 mt-3">
+      {([
+        { key: "private" as const, label: "محادثة", icon: MessageSquare },
+        { key: "group" as const, label: "قروب", icon: Users },
+        { key: "broadcast" as const, label: "بث جماعي", icon: Radio },
+      ]).map(({ key, label, icon: Icon }) => (
+        <button
+          key={key}
+          onClick={() => {
+            setMode(key);
+            setStep("contact");
+            setSelectedChannel(null);
+            setSelectedTemplate(null);
+            setMessageText("");
+          }}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all",
+            mode === key
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Icon className="w-3.5 h-3.5" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const renderParticipantChips = (list: Customer[], onRemove: (phone: string) => void) => (
+    list.length > 0 && (
+      <div className="flex flex-wrap gap-1.5 px-4 py-2">
+        {list.map(p => (
+          <Badge key={p.phone} variant="secondary" className="gap-1 text-[11px] pl-2 pr-1 py-1">
+            {p.name || p.phone}
+            <button onClick={() => onRemove(p.phone)} className="hover:bg-destructive/20 rounded-full p-0.5">
+              <X className="w-3 h-3" />
+            </button>
+          </Badge>
+        ))}
+      </div>
+    )
+  );
+
+  const renderAddNumberInput = () => (
+    <div className="px-4 pb-2">
+      <div className="flex gap-1.5" dir="ltr">
+        <Input
+          type="tel"
+          inputMode="numeric"
+          placeholder="أضف رقم يدوياً..."
+          value={addingNumber}
+          onChange={(e) => setAddingNumber(e.target.value.replace(/[^0-9]/g, ""))}
+          className="text-sm h-9 bg-background font-mono"
+          onKeyDown={(e) => e.key === "Enter" && addManualParticipant()}
+        />
+        <Button size="sm" variant="outline" className="h-9 px-3" onClick={addManualParticipant} disabled={!addingNumber}>
+          <Plus className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -320,38 +521,39 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             </div>
             محادثة جديدة
           </DialogTitle>
-          <div className="flex items-center gap-2 mt-3">
-            {(["contact", "channel", "message"] as Step[]).map((s, i) => {
-              const labels = ["جهة الاتصال", "القناة", "الرسالة"];
-              const isActive = s === step;
-              const isDone = (step === "channel" && i === 0) || (step === "message" && i < 2);
-              return (
-                <div key={s} className="flex items-center gap-1.5 flex-1">
-                  <div className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
-                    isActive ? "bg-primary text-primary-foreground" :
-                    isDone ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                  )}>
-                    {i + 1}
+          {renderModeTabs()}
+          {mode === "private" && (
+            <div className="flex items-center gap-2 mt-3">
+              {(["contact", "channel", "message"] as Step[]).map((s, i) => {
+                const labels = ["جهة الاتصال", "القناة", "الرسالة"];
+                const isActive = s === step;
+                const isDone = (step === "channel" && i === 0) || (step === "message" && i < 2);
+                return (
+                  <div key={s} className="flex items-center gap-1.5 flex-1">
+                    <div className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
+                      isActive ? "bg-primary text-primary-foreground" :
+                      isDone ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                    )}>
+                      {i + 1}
+                    </div>
+                    <span className={cn("text-[11px]", isActive ? "text-foreground font-medium" : "text-muted-foreground")}>
+                      {labels[i]}
+                    </span>
+                    {i < 2 && <div className="flex-1 h-px bg-border/60" />}
                   </div>
-                  <span className={cn("text-[11px]", isActive ? "text-foreground font-medium" : "text-muted-foreground")}>
-                    {labels[i]}
-                  </span>
-                  {i < 2 && <div className="flex-1 h-px bg-border/60" />}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </DialogHeader>
 
-        {/* Step: Contact */}
-        {step === "contact" && (
+        {/* ═══ PRIVATE MODE ═══ */}
+        {mode === "private" && step === "contact" && (
           <div className="flex flex-col">
-            {/* Phone input with country code */}
             <div className="p-4 pb-2 space-y-2">
               <Label className="text-xs text-muted-foreground">أدخل رقم الهاتف</Label>
               <div className="flex gap-1.5" dir="ltr">
-                {/* Country code picker */}
                 <div className="relative">
                   <button
                     onClick={() => setShowCountryPicker(!showCountryPicker)}
@@ -361,7 +563,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                     <span className="text-xs font-medium">+{countryCode}</span>
                     <ChevronDown className="w-3 h-3 text-muted-foreground" />
                   </button>
-
                   {showCountryPicker && (
                     <div className="absolute top-11 left-0 z-50 w-[220px] bg-popover border border-border rounded-xl shadow-lg overflow-hidden" dir="rtl">
                       <ScrollArea className="h-[200px]">
@@ -383,8 +584,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                     </div>
                   )}
                 </div>
-
-                {/* Number input */}
                 <div className="relative flex-1">
                   <Input
                     type="tel"
@@ -403,19 +602,10 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                     maxLength={selectedCountry.digits + 1}
                   />
                 </div>
-
-                {/* Next button */}
-                <Button
-                  size="sm"
-                  className="h-10 px-4"
-                  onClick={proceedWithNumber}
-                  disabled={!isValidNumber}
-                >
+                <Button size="sm" className="h-10 px-4" onClick={proceedWithNumber} disabled={!isValidNumber}>
                   التالي
                 </Button>
               </div>
-
-              {/* Validation feedback */}
               <div className="flex items-center justify-between">
                 <p className={cn(
                   "text-[10px] transition-colors",
@@ -424,75 +614,41 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                     : "text-muted-foreground"
                 )}>
                   {localNumber.length > 0
-                    ? isValidNumber
-                      ? `✓ رقم صحيح: +${fullPhone}`
-                      : `${cleanDigits.length}/${selectedCountry.digits} أرقام`
+                    ? isValidNumber ? `✓ رقم صحيح: +${fullPhone}` : `${cleanDigits.length}/${selectedCountry.digits} أرقام`
                     : `${selectedCountry.digits} أرقام بعد مفتاح الدولة`
                   }
                 </p>
-
-                {/* Save customer checkbox */}
                 {!isExistingCustomer && localNumber.length > 0 && (
                   <label className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox
-                      checked={saveCustomer}
-                      onCheckedChange={(v) => setSaveCustomer(v === true)}
-                      className="w-3.5 h-3.5"
-                    />
+                    <Checkbox checked={saveCustomer} onCheckedChange={(v) => setSaveCustomer(v === true)} className="w-3.5 h-3.5" />
                     <span className="text-[10px] text-muted-foreground">حفظ كعميل</span>
                   </label>
                 )}
               </div>
-
-              {/* Customer name input (when saving) */}
               {saveCustomer && !isExistingCustomer && (
-                <Input
-                  placeholder="اسم العميل (اختياري)"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="h-9 text-sm bg-background"
-                />
+                <Input placeholder="اسم العميل (اختياري)" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="h-9 text-sm bg-background" />
               )}
             </div>
-
-            {/* Divider */}
             <div className="flex items-center gap-3 px-4 py-2">
               <div className="flex-1 h-px bg-border/50" />
               <span className="text-[10px] text-muted-foreground">أو اختر من العملاء</span>
               <div className="flex-1 h-px bg-border/50" />
             </div>
-
-            {/* Customer search */}
             <div className="px-4 pb-2">
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="ابحث بالاسم أو الرقم..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pr-9 text-sm h-9 bg-background"
-                />
+                <Input placeholder="ابحث بالاسم أو الرقم..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 text-sm h-9 bg-background" />
               </div>
             </div>
-
-            {/* Customer list */}
             <ScrollArea className="h-[200px]">
               <div className="px-2 pb-2">
                 {loadingCustomers ? (
-                  <div className="flex justify-center py-6">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                  </div>
+                  <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
                 ) : customers.length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground text-xs">
-                    لا يوجد عملاء
-                  </div>
+                  <div className="text-center py-6 text-muted-foreground text-xs">لا يوجد عملاء</div>
                 ) : (
                   customers.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => selectCustomer(c)}
-                      className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-accent/50 transition-colors text-right"
-                    >
+                    <button key={c.id} onClick={() => selectCustomer(c)} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-accent/50 transition-colors text-right">
                       <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <User className="w-4 h-4 text-primary" />
                       </div>
@@ -508,20 +664,162 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           </div>
         )}
 
-        {/* Step: Channel Selection */}
+        {/* ═══ GROUP MODE - Contact Step ═══ */}
+        {mode === "group" && step === "contact" && (
+          <div className="flex flex-col">
+            <div className="p-4 pb-2 space-y-2">
+              <Label className="text-xs text-muted-foreground">اسم القروب</Label>
+              <Input
+                placeholder="أدخل اسم القروب..."
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                className="h-10 text-sm bg-background"
+              />
+            </div>
+
+            {renderParticipantChips(selectedParticipants, (phone) =>
+              setSelectedParticipants(prev => prev.filter(p => p.phone !== phone))
+            )}
+
+            <div className="flex items-center gap-3 px-4 py-2">
+              <div className="flex-1 h-px bg-border/50" />
+              <span className="text-[10px] text-muted-foreground">أضف أعضاء ({selectedParticipants.length})</span>
+              <div className="flex-1 h-px bg-border/50" />
+            </div>
+
+            {renderAddNumberInput()}
+
+            <div className="px-4 pb-2">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="ابحث بالاسم أو الرقم..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 text-sm h-9 bg-background" />
+              </div>
+            </div>
+
+            <ScrollArea className="h-[180px]">
+              <div className="px-2 pb-2">
+                {loadingCustomers ? (
+                  <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                ) : (
+                  customers.map((c) => {
+                    const isSelected = selectedParticipants.some(p => p.phone === c.phone);
+                    return (
+                      <button key={c.id} onClick={() => selectCustomer(c)} className={cn(
+                        "w-full flex items-center gap-3 p-2.5 rounded-xl transition-colors text-right",
+                        isSelected ? "bg-primary/5 opacity-60" : "hover:bg-accent/50"
+                      )}>
+                        <div className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0", isSelected ? "bg-primary/20" : "bg-primary/10")}>
+                          {isSelected ? <Checkbox checked className="w-4 h-4" /> : <User className="w-4 h-4 text-primary" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{c.name || "بدون اسم"}</p>
+                          <p className="text-[11px] text-muted-foreground" dir="ltr">{c.phone}</p>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+
+            <div className="p-4 pt-2 border-t border-border/30">
+              <Button className="w-full h-10 gap-2" onClick={proceedGroupOrBroadcast} disabled={selectedParticipants.length === 0 || !groupName.trim()}>
+                <Users className="w-4 h-4" />
+                التالي ({selectedParticipants.length} عضو)
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ BROADCAST MODE - Contact Step ═══ */}
+        {mode === "broadcast" && step === "contact" && (
+          <div className="flex flex-col">
+            {renderParticipantChips(broadcastRecipients, (phone) =>
+              setBroadcastRecipients(prev => prev.filter(p => p.phone !== phone))
+            )}
+
+            <div className="flex items-center gap-3 px-4 py-2">
+              <div className="flex-1 h-px bg-border/50" />
+              <span className="text-[10px] text-muted-foreground">اختر المستلمين ({broadcastRecipients.length})</span>
+              <div className="flex-1 h-px bg-border/50" />
+            </div>
+
+            {renderAddNumberInput()}
+
+            <div className="px-4 pb-2">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="ابحث بالاسم أو الرقم..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 text-sm h-9 bg-background" />
+              </div>
+            </div>
+
+            <ScrollArea className="h-[220px]">
+              <div className="px-2 pb-2">
+                {loadingCustomers ? (
+                  <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                ) : (
+                  customers.map((c) => {
+                    const isSelected = broadcastRecipients.some(p => p.phone === c.phone);
+                    return (
+                      <button key={c.id} onClick={() => selectCustomer(c)} className={cn(
+                        "w-full flex items-center gap-3 p-2.5 rounded-xl transition-colors text-right",
+                        isSelected ? "bg-primary/5 opacity-60" : "hover:bg-accent/50"
+                      )}>
+                        <div className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0", isSelected ? "bg-primary/20" : "bg-primary/10")}>
+                          {isSelected ? <Checkbox checked className="w-4 h-4" /> : <User className="w-4 h-4 text-primary" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{c.name || "بدون اسم"}</p>
+                          <p className="text-[11px] text-muted-foreground" dir="ltr">{c.phone}</p>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+
+            <div className="p-4 pt-2 border-t border-border/30">
+              <Button className="w-full h-10 gap-2" onClick={proceedGroupOrBroadcast} disabled={broadcastRecipients.length === 0}>
+                <Radio className="w-4 h-4" />
+                التالي ({broadcastRecipients.length} مستلم)
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ CHANNEL SELECTION (all modes) ═══ */}
         {step === "channel" && (
           <div className="p-4 space-y-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Phone className="w-4 h-4" />
-              <span dir="ltr">+{fullPhone}</span>
-              {customerName && <Badge variant="outline" className="text-[10px]">{customerName}</Badge>}
-              <button onClick={() => setStep("contact")} className="mr-auto text-xs text-primary hover:underline">تغيير</button>
-            </div>
+            {mode === "private" && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Phone className="w-4 h-4" />
+                <span dir="ltr">+{fullPhone}</span>
+                {customerName && <Badge variant="outline" className="text-[10px]">{customerName}</Badge>}
+                <button onClick={() => setStep("contact")} className="mr-auto text-xs text-primary hover:underline">تغيير</button>
+              </div>
+            )}
+            {mode === "group" && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Users className="w-4 h-4" />
+                <span>{groupName}</span>
+                <Badge variant="outline" className="text-[10px]">{selectedParticipants.length} عضو</Badge>
+                <button onClick={() => setStep("contact")} className="mr-auto text-xs text-primary hover:underline">تغيير</button>
+              </div>
+            )}
+            {mode === "broadcast" && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Radio className="w-4 h-4" />
+                <span>بث جماعي</span>
+                <Badge variant="outline" className="text-[10px]">{broadcastRecipients.length} مستلم</Badge>
+                <button onClick={() => setStep("contact")} className="mr-auto text-xs text-primary hover:underline">تغيير</button>
+              </div>
+            )}
 
             <Label className="text-xs font-medium">اختر القناة للإرسال</Label>
 
             <div className="grid gap-2">
-              {channels.map((ch) => {
+              {(mode === "group" ? evolutionChannels : channels).map((ch) => {
                 const isMetaCh = ch.channel_type === "meta_api";
                 return (
                   <button
@@ -536,12 +834,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                       {isMetaCh ? <ShieldCheck className="w-5 h-5 text-emerald-500" /> : <Wifi className="w-5 h-5 text-amber-500" />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">
-                        {ch.business_name || ch.display_phone || ch.evolution_instance_name || "قناة"}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {ch.display_phone || ch.evolution_instance_name}
-                      </p>
+                      <p className="text-sm font-medium truncate">{ch.business_name || ch.display_phone || ch.evolution_instance_name || "قناة"}</p>
+                      <p className="text-[10px] text-muted-foreground">{ch.display_phone || ch.evolution_instance_name}</p>
                     </div>
                     <Badge variant="outline" className={cn(
                       "text-[9px] shrink-0",
@@ -554,21 +848,20 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               })}
             </div>
 
-            {channels.length === 0 && (
+            {(mode === "group" ? evolutionChannels : channels).length === 0 && (
               <div className="text-center py-6 text-muted-foreground text-xs">
-                لا توجد قنوات متصلة. اربط واتساب أولاً
+                {mode === "group" ? "إنشاء القروب يتطلب قناة واتساب ويب" : "لا توجد قنوات متصلة"}
               </div>
             )}
           </div>
         )}
 
-        {/* Step: Message */}
-        {step === "message" && selectedChannel && (
+        {/* ═══ MESSAGE STEP (private & broadcast) ═══ */}
+        {step === "message" && selectedChannel && mode !== "group" && (
           <div className="flex flex-col">
-            {/* Summary bar */}
             <div className="p-3 border-b border-border/30 flex items-center gap-2 text-xs text-muted-foreground bg-muted/30">
-              <User className="w-3.5 h-3.5" />
-              <span>{customerName || `+${fullPhone}`}</span>
+              {mode === "private" ? <User className="w-3.5 h-3.5" /> : <Radio className="w-3.5 h-3.5" />}
+              <span>{mode === "private" ? (customerName || `+${fullPhone}`) : `${broadcastRecipients.length} مستلم`}</span>
               <span className="mx-1">•</span>
               {isMeta ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Wifi className="w-3.5 h-3.5 text-amber-500" />}
               <span>{selectedChannel.business_name || selectedChannel.display_phone || selectedChannel.evolution_instance_name}</span>
@@ -581,28 +874,18 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   <FileText className="w-4 h-4 text-primary" />
                   <Label className="text-xs font-medium">اختر قالب للإرسال</Label>
                 </div>
-                <p className="text-[10px] text-muted-foreground">
-                  القناة الرسمية تتطلب إرسال قالب معتمد كأول رسالة
-                </p>
+                <p className="text-[10px] text-muted-foreground">القناة الرسمية تتطلب إرسال قالب معتمد كأول رسالة</p>
 
                 {!selectedTemplate ? (
                   <ScrollArea className="h-[200px]">
                     <div className="grid gap-1.5">
                       {approvedTemplates.length === 0 ? (
-                        <div className="text-center py-6 text-muted-foreground text-xs">
-                          لا توجد قوالب معتمدة
-                        </div>
+                        <div className="text-center py-6 text-muted-foreground text-xs">لا توجد قوالب معتمدة</div>
                       ) : (
                         approvedTemplates.map((t) => (
-                          <button
-                            key={t.id || t.name}
-                            onClick={() => handleSelectTemplate(t)}
-                            className="w-full text-right p-3 rounded-xl border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all"
-                          >
+                          <button key={t.id || t.name} onClick={() => handleSelectTemplate(t)} className="w-full text-right p-3 rounded-xl border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all">
                             <p className="text-sm font-medium">{t.name}</p>
-                            <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">
-                              {t.components?.find(c => c.type === "BODY")?.text || ""}
-                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{t.components?.find(c => c.type === "BODY")?.text || ""}</p>
                             <div className="flex gap-1.5 mt-1.5">
                               <Badge variant="outline" className="text-[9px]">{t.language}</Badge>
                               <Badge variant="outline" className="text-[9px]">{t.category}</Badge>
@@ -621,11 +904,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                           <X className="w-4 h-4" />
                         </button>
                       </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        {selectedTemplate.components?.find(c => c.type === "BODY")?.text || ""}
-                      </p>
+                      <p className="text-[11px] text-muted-foreground">{selectedTemplate.components?.find(c => c.type === "BODY")?.text || ""}</p>
                     </div>
-
                     {templateVars.length > 0 && (
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">المتغيرات</Label>
@@ -654,7 +934,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   <Label className="text-xs font-medium">اكتب رسالتك</Label>
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  القناة غير الرسمية تتيح إرسال رسائل حرة مباشرة
+                  {mode === "broadcast" ? "سيتم إرسال هذه الرسالة لجميع المستلمين" : "القناة غير الرسمية تتيح إرسال رسائل حرة مباشرة"}
                 </p>
                 <Textarea
                   placeholder="اكتب رسالتك هنا..."
@@ -665,19 +945,51 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
             )}
 
-            {/* Send button */}
             <div className="p-4 pt-2 border-t border-border/30">
-              <Button
-                className="w-full h-11 gap-2"
-                disabled={!canSend || sending}
-                onClick={handleSend}
-              >
-                {sending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-                {sending ? "جاري الإرسال..." : saveCustomer ? "حفظ وإرسال" : "إرسال"}
+              <Button className="w-full h-11 gap-2" disabled={!canSend || sending} onClick={handleSend}>
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {sending ? "جاري الإرسال..." : mode === "broadcast" ? `إرسال لـ ${broadcastRecipients.length} مستلم` : saveCustomer ? "حفظ وإرسال" : "إرسال"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ GROUP - Confirm Step ═══ */}
+        {step === "message" && selectedChannel && mode === "group" && (
+          <div className="flex flex-col">
+            <div className="p-3 border-b border-border/30 flex items-center gap-2 text-xs text-muted-foreground bg-muted/30">
+              <Users className="w-3.5 h-3.5" />
+              <span>{groupName}</span>
+              <span className="mx-1">•</span>
+              <span>{selectedParticipants.length} عضو</span>
+              <span className="mx-1">•</span>
+              <Wifi className="w-3.5 h-3.5 text-amber-500" />
+              <span>{selectedChannel.business_name || selectedChannel.evolution_instance_name}</span>
+              <button onClick={() => setStep("contact")} className="mr-auto text-primary hover:underline text-[11px]">تغيير</button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                <Label className="text-xs font-medium">تأكيد إنشاء القروب</Label>
+              </div>
+              <div className="p-3 rounded-xl bg-muted/50 space-y-2">
+                <p className="text-sm font-medium">{groupName}</p>
+                <p className="text-xs text-muted-foreground">{selectedParticipants.length} عضو</p>
+                <div className="flex flex-wrap gap-1">
+                  {selectedParticipants.map(p => (
+                    <Badge key={p.phone} variant="outline" className="text-[10px]">
+                      {p.name || p.phone}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 pt-2 border-t border-border/30">
+              <Button className="w-full h-11 gap-2" disabled={sending} onClick={handleSend}>
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                {sending ? "جاري الإنشاء..." : "إنشاء القروب"}
               </Button>
             </div>
           </div>

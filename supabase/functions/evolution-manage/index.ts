@@ -1238,6 +1238,50 @@ serve(async (req) => {
     }
 
     // ── SEND BROADCAST (List Message) ──
+    if (action === "create_group") {
+      const groupName = asString(payload.group_name);
+      const participants = asStringArray(payload.participants);
+      if (!groupName) return json({ error: "اسم القروب مطلوب" }, 400);
+      if (!participants || participants.length === 0) return json({ error: "يجب إضافة عضو واحد على الأقل" }, 400);
+
+      const createRes = await fetch(`${EVOLUTION_URL}/group/create/${instanceName}`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          subject: groupName,
+          participants: participants.map(p => p.replace(/\D/g, "")),
+        }),
+      });
+
+      const createData = await createRes.json().catch(() => ({}));
+      if (!createRes.ok) {
+        await logToSystem(adminClient, "error", "فشل إنشاء قروب واتساب", { error: createData }, orgId, userId);
+        return json({ error: "فشل إنشاء القروب", details: createData }, 400);
+      }
+
+      const groupJid = createData?.id || createData?.groupId || createData?.jid || createData?.gid || "";
+
+      // Create conversation record for the group
+      if (groupJid) {
+        const { data: conv } = await adminClient.from("conversations").insert({
+          org_id: orgId,
+          customer_phone: groupJid,
+          customer_name: groupName,
+          conversation_type: "group",
+          channel_id: channel_id || null,
+          status: "active",
+          last_message: "تم إنشاء القروب",
+          last_message_at: new Date().toISOString(),
+        }).select("id").maybeSingle();
+
+        await logToSystem(adminClient, "info", `تم إنشاء قروب واتساب: ${groupName}`, { groupJid, participants: participants.length }, orgId, userId);
+        return json({ success: true, group_jid: groupJid, conversation_id: conv?.id, data: createData });
+      }
+
+      await logToSystem(adminClient, "info", `تم إنشاء قروب واتساب: ${groupName}`, { data: createData }, orgId, userId);
+      return json({ success: true, data: createData });
+    }
+
     if (action === "send_broadcast") {
       const phones = asStringArray(payload.phones);
       const broadcastText = asString(payload.text);
