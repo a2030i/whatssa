@@ -65,7 +65,74 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   const [addingMember, setAddingMember] = useState(false);
   const isGroup = conversation.conversationType === "group";
 
-  useEffect(() => {
+  const loadGroupInfo = async () => {
+    try {
+      const { data, error } = await invokeCloud("evolution-manage", {
+        body: { action: "group_info", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
+      });
+      if (error) return;
+      const info = data?.data || data?.data?.data || {};
+      setGroupInfo(info);
+      const participants = info?.participants || [];
+      setGroupParticipants(participants.map((p: any) => {
+        const phone = (p.id || p.jid || "").replace(/@.*/, "");
+        return {
+          id: p.id || p.jid || phone,
+          name: p.pushName || p.name || phone,
+          phone,
+          admin: p.admin === "admin" || p.admin === "superadmin" || p.isAdmin || p.isSuperAdmin,
+        };
+      }));
+    } catch {}
+  };
+
+  const handleAddGroupMember = async () => {
+    const phone = addMemberPhone.replace(/\D/g, "");
+    if (!phone) return;
+    setAddingMember(true);
+    try {
+      const { error } = await invokeCloud("evolution-manage", {
+        body: { action: "group_add", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
+      });
+      if (error) throw error;
+      toast.success("✅ تمت إضافة العضو");
+      setAddMemberPhone("");
+      setShowAddMemberDialog(false);
+      loadGroupInfo();
+    } catch (err: any) {
+      toast.error("فشل إضافة العضو: " + (err.message || ""));
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleRemoveGroupMember = async (phone: string) => {
+    if (!confirm(`هل تريد إزالة ${phone} من القروب؟`)) return;
+    try {
+      const { error } = await invokeCloud("evolution-manage", {
+        body: { action: "group_remove", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
+      });
+      if (error) throw error;
+      toast.success("✅ تمت إزالة العضو");
+      setGroupParticipants(prev => prev.filter(p => p.phone !== phone));
+    } catch (err: any) {
+      toast.error("فشل إزالة العضو: " + (err.message || ""));
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!confirm("هل أنت متأكد من الخروج من هذا القروب؟")) return;
+    try {
+      const { error } = await invokeCloud("evolution-manage", {
+        body: { action: "leave_group", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
+      });
+      if (error) throw error;
+      toast.success("✅ تم الخروج من القروب");
+    } catch (err: any) {
+      toast.error("فشل الخروج: " + (err.message || ""));
+    }
+  };
+
     setNotes(conversation.notes || "");
     loadCustomer();
     loadOrders();
