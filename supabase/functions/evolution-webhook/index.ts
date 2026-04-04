@@ -540,6 +540,9 @@ serve(async (req) => {
 
         const isFromMe = !!key.fromMe;
 
+        // Extract senderPn — real phone number for @lid participants
+        const senderPn: string = key.senderPn || msg.senderPn || "";
+
         const remoteJid = key.remoteJid || "";
         let conversationType = "private";
         let phone = "";
@@ -550,7 +553,9 @@ serve(async (req) => {
           conversationType = "broadcast";
           phone = remoteJid.replace("@broadcast", "");
         } else {
-          phone = remoteJid.replace("@s.whatsapp.net", "");
+          // For private chats with @lid, use senderPn if available
+          const rawPhone = remoteJid.replace("@s.whatsapp.net", "").replace("@lid", "");
+          phone = (remoteJid.includes("@lid") && senderPn) ? senderPn.replace(/\D/g, "") : rawPhone;
         }
         if (!phone || phone.includes("status")) continue;
 
