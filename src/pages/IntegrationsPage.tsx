@@ -1584,29 +1584,29 @@ const IntegrationsPage = () => {
   // ============ ERROR ============
   if (flowStep === "error") {
     return (
-      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
         <div className="bg-card rounded-2xl shadow-card border border-destructive/30 overflow-hidden">
           <div className="bg-destructive/5 p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-8 h-8 text-destructive" />
             </div>
-            <h2 className="text-lg font-bold text-foreground">لم يتم إكمال الربط</h2>
+            <h2 className="text-lg font-bold text-foreground">{t("لم يتم إكمال الربط", "Connection Not Completed")}</h2>
             <p className="text-sm text-muted-foreground mt-2 max-w-[320px] mx-auto">{errorMessage}</p>
           </div>
 
           <div className="p-6 space-y-3">
             <div className="bg-muted/50 rounded-lg p-3">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                💡 تأكد أن الرقم غير مربوط بتطبيق واتساب على هاتفك. يجب فصله أولاً لربطه بالمنصة.
+                {t("💡 تأكد أن الرقم غير مربوط بتطبيق واتساب على هاتفك. يجب فصله أولاً لربطه بالمنصة.", "💡 Make sure the number is not linked to any WhatsApp app on your phone. Disconnect it first.")}
               </p>
             </div>
 
             <Button onClick={() => { resetFlow(); startConnect(); }} className="w-full gap-2">
               <RefreshCw className="w-4 h-4" />
-              إعادة المحاولة
+              {t("إعادة المحاولة", "Try Again")}
             </Button>
             <Button onClick={resetFlow} variant="ghost" className="w-full text-sm">
-              رجوع
+              {t("رجوع", "Back")}
             </Button>
           </div>
         </div>
@@ -1616,7 +1616,8 @@ const IntegrationsPage = () => {
 
   // ============ MAIN: Connected Numbers Management ============
   return (
-    <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir="rtl">
+    <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir={dir}>
+      <div className="flex justify-end">{reviewToggle}</div>
       {renderAllChannelsView(configs)}
     </div>
   );
