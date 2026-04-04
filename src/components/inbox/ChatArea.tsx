@@ -219,7 +219,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }> }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants, onCopyLink }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }>; onCopyLink?: (msgId: string) => void }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
