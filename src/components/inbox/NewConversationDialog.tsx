@@ -170,6 +170,42 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 
   const isMeta = selectedChannel?.channel_type === "meta_api";
   const approvedTemplates = useMemo(() => templates.filter(t => t.status === "APPROVED"), [templates]);
+  const evolutionChannels = useMemo(() => channels.filter(c => c.channel_type === "evolution"), [channels]);
+  const hasEvolution = evolutionChannels.length > 0;
+
+  const addGroupMember = () => {
+    const raw = groupMemberInput.replace(/[^0-9]/g, "");
+    if (raw.length < 7) { toast.error("رقم غير صالح"); return; }
+    if (groupMembers.includes(raw)) { toast.error("الرقم مضاف مسبقاً"); return; }
+    setGroupMembers(prev => [...prev, raw]);
+    setGroupMemberInput("");
+  };
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim()) { toast.error("أدخل اسم القروب"); return; }
+    if (groupMembers.length < 1) { toast.error("أضف عضو واحد على الأقل"); return; }
+    const ch = selectedChannel || evolutionChannels[0];
+    if (!ch) { toast.error("لا توجد قناة واتساب ويب متصلة"); return; }
+    
+    setCreatingGroup(true);
+    try {
+      const { data, error } = await invokeCloud("evolution-send", {
+        body: {
+          action: "create_group",
+          channel_id: ch.id,
+          group_name: groupName.trim(),
+          members: groupMembers,
+        },
+      });
+      if (error || data?.error) throw new Error(data?.error || "فشل إنشاء القروب");
+      toast.success(`✅ تم إنشاء قروب "${groupName}" بنجاح`);
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err.message || "حدث خطأ");
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
 
   const selectCustomer = (c: Customer) => {
     // Parse phone - try to extract country code
