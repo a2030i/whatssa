@@ -61,6 +61,9 @@ const TeamPage = () => {
 
   useEffect(() => {
     if (orgId) load();
+    // Refresh every 30s to update online status
+    const interval = setInterval(() => { if (orgId) load(); }, 30000);
+    return () => clearInterval(interval);
   }, [orgId]);
 
   const load = async () => {
@@ -141,6 +144,24 @@ const TeamPage = () => {
     await supabase.from("teams").delete().eq("id", teamId);
     toast.success("تم حذف الفريق");
     load();
+  };
+
+  const handleDeleteMember = async (profile: any) => {
+    if (!confirm(`هل أنت متأكد من حذف "${profile.full_name}"؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+    try {
+      // Delete role, profile data via edge function
+      const { data, error } = await invokeCloud("admin-delete-member", {
+        body: { user_id: profile.id },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error || "فشل حذف الموظف");
+        return;
+      }
+      toast.success(`تم حذف ${profile.full_name}`);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "خطأ غير متوقع");
+    }
   };
 
   const openSchedule = (profile: any) => {
@@ -278,7 +299,7 @@ const TeamPage = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in">
         {[
           { value: profiles.length, label: "إجمالي الأعضاء", color: "text-foreground", iconBg: "bg-secondary/60" },
-          { value: profiles.filter((m) => m.is_online).length, label: "متصلون الآن", color: "text-success", iconBg: "bg-success/10" },
+          { value: profiles.filter((m) => m.is_online || (m.last_seen_at && Date.now() - new Date(m.last_seen_at).getTime() < 5 * 60 * 1000)).length, label: "متصلون الآن", color: "text-success", iconBg: "bg-success/10" },
           { value: teams.length, label: "عدد الفرق", color: "text-primary", iconBg: "bg-primary/10" },
           { value: roles.filter((r) => r.role === "admin").length, label: "مدراء", color: "text-kpi-3", iconBg: "bg-kpi-3/10" },
         ].map((stat, i) => (
@@ -297,7 +318,7 @@ const TeamPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {teams.map((team) => {
             const teamMembers = profiles.filter((m) => m.team_id === team.id);
-            const onlineCount = teamMembers.filter((m) => m.is_online).length;
+            const onlineCount = teamMembers.filter((m) => m.is_online || (m.last_seen_at && Date.now() - new Date(m.last_seen_at).getTime() < 5 * 60 * 1000)).length;
             const sc = strategyConfig[team.assignment_strategy] || strategyConfig.round_robin;
             const StrategyIcon = sc.icon;
             return (
@@ -376,7 +397,7 @@ const TeamPage = () => {
                     <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
                       {profile.full_name?.slice(0, 2) || "؟"}
                     </div>
-                    <div className={cn("absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-card", profile.is_online ? "bg-success" : "bg-muted-foreground/40")} />
+                    <div className={cn("absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-card", (profile.is_online || (profile.last_seen_at && Date.now() - new Date(profile.last_seen_at).getTime() < 5 * 60 * 1000)) ? "bg-success" : "bg-muted-foreground/40")} />
                   </div>
                   <div>
                     <p className="font-medium text-sm">{profile.full_name || "بدون اسم"}</p>
@@ -423,6 +444,9 @@ const TeamPage = () => {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openSchedule(profile)} className="gap-2 text-xs">
                           <Clock className="w-3.5 h-3.5" /> أوقات العمل
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDeleteMember(profile)} className="gap-2 text-xs text-destructive">
+                          <Trash2 className="w-3.5 h-3.5" /> حذف الموظف
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
