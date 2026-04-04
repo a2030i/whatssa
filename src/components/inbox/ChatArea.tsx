@@ -2545,6 +2545,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         customerPhone={conversation.customerPhone}
         conversationId={conversation.id}
         channelId={conversation.channelId}
+        orgId={orgId}
       />
 
       {/* Merge Conversation Dialog */}
