@@ -3,8 +3,11 @@ import {
   CheckCircle2, Copy, Loader2, Phone, RefreshCw,
   MessageSquare, KeyRound, Plus, Trash2, Send,
   AlertTriangle, ExternalLink, ArrowLeftRight, ArrowRight,
-  ShieldCheck, CreditCard, PhoneCall, Building2, QrCode, Pencil, Check, X, Smartphone
+  ShieldCheck, CreditCard, PhoneCall, Building2, QrCode, Pencil, Check, X, Smartphone,
+  LogOut, Shield, Clock, Gauge, Settings
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import WhatsAppWebSection from "@/components/integrations/WhatsAppWebSection";
 import SallaIntegrationSection from "@/components/integrations/SallaIntegrationSection";
 import ChannelRoutingConfig from "@/components/integrations/ChannelRoutingConfig";
