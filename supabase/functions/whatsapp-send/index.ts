@@ -136,6 +136,7 @@ serve(async (req) => {
       // Edit/Delete
       edit_message_id,
       delete_message_id,
+      sender_name,
     } = body;
 
     if (!to || typeof to !== "string") {
