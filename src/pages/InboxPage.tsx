@@ -168,6 +168,8 @@ const InboxPage = () => {
           channelName: channelConfig ? (channelConfig.display_phone || channelConfig.business_name || channelConfig.evolution_instance_name || "") : undefined,
           profilePic: conversation.customer_profile_pic || undefined,
           unreadMentionCount: conversation.unread_mention_count || 0,
+          isPinned: conversation.is_pinned || false,
+          isArchived: conversation.is_archived || false,
         };
       });
 
@@ -697,6 +699,24 @@ const InboxPage = () => {
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, tags } : conversation)));
   }, []);
 
+  const handleTogglePin = useCallback(async (convId: string) => {
+    const conv = conversations.find(c => c.id === convId);
+    if (!conv) return;
+    const newVal = !conv.isPinned;
+    await supabase.from("conversations").update({ is_pinned: newVal }).eq("id", convId);
+    setConversations((prev) => prev.map((c) => (c.id === convId ? { ...c, isPinned: newVal } : c)));
+    toast.success(newVal ? "📌 تم تثبيت المحادثة" : "تم إلغاء التثبيت");
+  }, [conversations]);
+
+  const handleToggleArchive = useCallback(async (convId: string) => {
+    const conv = conversations.find(c => c.id === convId);
+    if (!conv) return;
+    const newVal = !conv.isArchived;
+    await supabase.from("conversations").update({ is_archived: newVal }).eq("id", convId);
+    setConversations((prev) => prev.map((c) => (c.id === convId ? { ...c, isArchived: newVal } : c)));
+    toast.success(newVal ? "📁 تم أرشفة المحادثة" : "تم إلغاء الأرشفة");
+  }, [conversations]);
+
   const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
     const conv = conversations.find(c => c.customerPhone === convPhone);
     const isEvolution = conv?.channelType === "evolution" || !conv?.channelType;
@@ -846,13 +866,13 @@ const InboxPage = () => {
           selectedId={selectedId}
           onSelect={(id) => {
             setSelectedId(id);
-            // Immediately clear unread in local state
             setConversations(prev => prev.map(c => c.id === id ? { ...c, unread: 0 } : c));
-            // Persist to DB
             supabase.from("conversations").update({ unread_count: 0 }).eq("id", id).then();
           }}
           hasSelection={!!selected}
           onNewConversation={() => setNewConvOpen(true)}
+          onTogglePin={handleTogglePin}
+          onToggleArchive={handleToggleArchive}
         />
       )}
 

@@ -998,6 +998,8 @@ export type Database = {
           escalated_at: string | null
           first_response_at: string | null
           id: string
+          is_archived: boolean
+          is_pinned: boolean
           last_message: string | null
           last_message_at: string | null
           notes: string | null
@@ -1030,6 +1032,8 @@ export type Database = {
           escalated_at?: string | null
           first_response_at?: string | null
           id?: string
+          is_archived?: boolean
+          is_pinned?: boolean
           last_message?: string | null
           last_message_at?: string | null
           notes?: string | null
@@ -1062,6 +1066,8 @@ export type Database = {
           escalated_at?: string | null
           first_response_at?: string | null
           id?: string
+          is_archived?: boolean
+          is_pinned?: boolean
           last_message?: string | null
           last_message_at?: string | null
           notes?: string | null

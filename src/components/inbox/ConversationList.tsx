@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles } from "lucide-react";
+import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Conversation } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
@@ -44,9 +44,11 @@ interface ConversationListProps {
   onSelect: (id: string) => void;
   hasSelection: boolean;
   onNewConversation?: () => void;
+  onTogglePin?: (id: string) => void;
+  onToggleArchive?: (id: string) => void;
 }
 
-const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation }: ConversationListProps) => {
+const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive }: ConversationListProps) => {
   const { orgId } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("all");
@@ -131,15 +133,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
 
   const counts = useMemo(() => ({
-    all: conversations.filter(c => c.status !== "closed").length,
-    active: conversations.filter(c => c.status === "active").length,
-    unassigned: conversations.filter(c => c.status !== "closed" && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
-    unread: conversations.filter(c => c.status !== "closed" && c.unread > 0).length,
-    waiting: conversations.filter(c => c.status === "waiting").length,
+    all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
+    active: conversations.filter(c => c.status === "active" && !c.isArchived).length,
+    unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
+    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
+    waiting: conversations.filter(c => c.status === "waiting" && !c.isArchived).length,
     closed: conversations.filter(c => c.status === "closed").length,
-    private: conversations.filter(c => c.status !== "closed" && (!c.conversationType || c.conversationType === "private")).length,
-    group: conversations.filter(c => c.status !== "closed" && c.conversationType === "group").length,
-    broadcast: conversations.filter(c => c.status !== "closed" && c.conversationType === "broadcast").length,
+    pinned: conversations.filter(c => c.isPinned && !c.isArchived).length,
+    archived: conversations.filter(c => c.isArchived).length,
+    private: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.conversationType || c.conversationType === "private")).length,
+    group: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
+    broadcast: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "broadcast").length,
   }), [conversations]);
 
   const quickFilters: QuickFilter[] = [
@@ -148,21 +152,25 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
     { id: "waiting", label: "بانتظار", icon: Clock, count: counts.waiting },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed },
+    { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived },
   ];
 
   const activeInbox = customInboxes.find((i) => i.id === activeCustomInbox);
 
   const filtered = useMemo(() => {
-    return conversations.filter((conv) => {
+    const list = conversations.filter((conv) => {
       if (searchQuery && !conv.customerName.includes(searchQuery) && !conv.lastMessage.includes(searchQuery) && !conv.customerPhone.includes(searchQuery)) return false;
       if (activeInbox) return applyCustomFilters(conv, activeInbox);
-      if (activeQuickFilter !== "closed" && conv.status === "closed") return false;
+      // Hide archived unless specifically filtering for them
+      if (activeQuickFilter !== "archived" && conv.isArchived) return false;
+      if (activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.status === "closed") return false;
       switch (activeQuickFilter) {
         case "active": if (conv.status !== "active") return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
         case "unread": if (conv.unread <= 0) return false; break;
         case "waiting": if (conv.status !== "waiting") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
+        case "archived": if (!conv.isArchived) return false; break;
       }
       if (agentFilter !== "all" && conv.assignedTo !== agentFilter) return false;
       if (channelFilter !== "all") {
@@ -172,6 +180,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       if (selectedTags.length > 0 && !selectedTags.some((t) => conv.tags.includes(t))) return false;
       return true;
     });
+    // Sort: pinned first, then by default order
+    list.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return 0; // preserve existing order (by last_message_at)
+    });
+    return list;
   }, [conversations, searchQuery, activeQuickFilter, agentFilter, channelFilter, selectedTags, activeInbox]);
 
   const hasActiveFilters = agentFilter !== "all" || channelFilter !== "all" || selectedTags.length > 0 || !!activeCustomInbox;
@@ -361,6 +376,27 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
               <button
                 key={conv.id}
                 onClick={() => onSelect(conv.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  const menu = document.createElement("div");
+                  menu.className = "fixed z-50 bg-popover border border-border rounded-lg shadow-lg p-1 min-w-[140px] text-sm";
+                  menu.style.left = `${e.clientX}px`;
+                  menu.style.top = `${e.clientY}px`;
+                  const items = [
+                    { label: conv.isPinned ? "إلغاء التثبيت" : "📌 تثبيت", action: () => onTogglePin?.(conv.id) },
+                    { label: conv.isArchived ? "إلغاء الأرشفة" : "📁 أرشفة", action: () => onToggleArchive?.(conv.id) },
+                  ];
+                  items.forEach(item => {
+                    const btn = document.createElement("button");
+                    btn.className = "w-full text-right px-3 py-1.5 rounded hover:bg-accent text-xs";
+                    btn.textContent = item.label;
+                    btn.onclick = () => { item.action(); menu.remove(); };
+                    menu.appendChild(btn);
+                  });
+                  document.body.appendChild(menu);
+                  const dismiss = () => { menu.remove(); document.removeEventListener("click", dismiss); };
+                  setTimeout(() => document.addEventListener("click", dismiss), 0);
+                }}
                 className={cn(
                   "w-full text-right px-3 py-3 transition-all border-b border-border/20 hover:bg-accent/50 group relative",
                   isSelected && "bg-primary/5 border-r-2 border-r-primary"
@@ -404,7 +440,8 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
-                      <span className={cn("text-sm font-semibold truncate", isSelected && "text-primary")}>
+                      <span className={cn("text-sm font-semibold truncate flex items-center gap-1", isSelected && "text-primary")}>
+                        {conv.isPinned && <Pin className="w-3 h-3 text-primary shrink-0 rotate-45" />}
                         {conv.customerName}
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">

@@ -24,6 +24,8 @@ export interface Conversation {
   profilePic?: string;
   isBlocked?: boolean;
   unreadMentionCount?: number;
+  isPinned?: boolean;
+  isArchived?: boolean;
 }
 
 export interface MessageTemplate {
