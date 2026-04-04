@@ -4,7 +4,7 @@ import {
   MessageSquare, KeyRound, Plus, Trash2, Send,
   AlertTriangle, ExternalLink, ArrowLeftRight, ArrowRight,
   ShieldCheck, CreditCard, PhoneCall, Building2, QrCode, Pencil, Check, X, Smartphone,
-  LogOut, Shield, Clock, Gauge, Settings
+  LogOut, Shield, Clock, Gauge, Settings, Globe
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
