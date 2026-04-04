@@ -812,6 +812,140 @@ const IntegrationsPage = () => {
     );
   };
 
+  const sendUnofficialTestMessage = async (configId: string) => {
+    if (!unofficialTestPhone.trim()) { toast.error("أدخل رقم الهاتف"); return; }
+    setUnofficialTestSending(true);
+    try {
+      const { data, error } = await invokeCloud("evolution-send", {
+        body: { to: unofficialTestPhone.trim(), message: "✅ تم الربط بنجاح! هذه رسالة اختبار من Respondly (WhatsApp Web)." },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error || "فشل إرسال الرسالة");
+      } else {
+        toast.success("✅ تم إرسال الرسالة!");
+      }
+    } catch { toast.error("خطأ"); }
+    setUnofficialTestSending(false);
+  };
+
+  const checkUnofficialStatus = async (config: WhatsAppConfig) => {
+    if (!config.evolution_instance_name) return;
+    setUnofficialCheckingStatus(config.id);
+    const { data } = await invokeCloud("evolution-manage", {
+      body: { action: "status", instance_name: config.evolution_instance_name },
+    });
+    if (data?.status === "open") {
+      toast.success("✅ متصل");
+    } else {
+      toast.info(`الحالة: ${data?.status || "غير معروف"}`);
+    }
+    setUnofficialCheckingStatus(null);
+    loadConfigs();
+  };
+
+  const logoutUnofficial = async (config: WhatsAppConfig) => {
+    if (!config.evolution_instance_name || !confirm("هل تريد فصل الرقم؟")) return;
+    const { data } = await invokeCloud("evolution-manage", {
+      body: { action: "logout", instance_name: config.evolution_instance_name },
+    });
+    if (data?.success) {
+      toast.success("تم فصل الرقم");
+      loadConfigs();
+    }
+  };
+
+  const deleteUnofficialInstance = async (config: WhatsAppConfig) => {
+    if (!config.evolution_instance_name || !confirm("هل تريد حذف الجلسة نهائياً؟")) return;
+    const { data } = await invokeCloud("evolution-manage", {
+      body: { action: "delete", instance_name: config.evolution_instance_name },
+    });
+    if (data?.success) {
+      toast.success("تم حذف الجلسة");
+      loadConfigs();
+    }
+  };
+
+  // ── Inline Rate Limit Panel for unofficial cards ──
+  const UnofficialRateLimitPanel = ({ configId, initialSettings }: { configId: string; initialSettings: any }) => {
+    const defaults = {
+      enabled: true, min_delay_seconds: 8, max_delay_seconds: 15,
+      batch_size: 10, batch_pause_seconds: 30, daily_limit: 200, hourly_limit: 50,
+    };
+    const [rlSettings, setRlSettings] = useState({ ...defaults, ...(initialSettings || {}) });
+    const [rlOpen, setRlOpen] = useState(false);
+    const [rlSaving, setRlSaving] = useState(false);
+
+    const saveRl = async () => {
+      setRlSaving(true);
+      const cleaned = {
+        ...rlSettings,
+        min_delay_seconds: Math.max(1, Math.min(rlSettings.min_delay_seconds, rlSettings.max_delay_seconds)),
+        max_delay_seconds: Math.max(rlSettings.min_delay_seconds, rlSettings.max_delay_seconds),
+      };
+      await supabase.from("whatsapp_config").update({ rate_limit_settings: cleaned }).eq("id", configId);
+      setRlSettings(cleaned);
+      setRlSaving(false);
+      toast.success("تم حفظ إعدادات الحماية");
+    };
+
+    if (!rlOpen) {
+      return (
+        <button onClick={() => setRlOpen(true)} className="w-full flex items-center justify-between bg-warning/5 border border-warning/20 rounded-lg px-3 py-2.5 hover:bg-warning/10 transition-colors group">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-warning" />
+            <div className="text-right">
+              <p className="text-xs font-semibold text-foreground">حماية من الحظر</p>
+              <p className="text-[10px] text-muted-foreground">
+                {rlSettings.enabled ? `فاصل ${rlSettings.min_delay_seconds}-${rlSettings.max_delay_seconds}ث · ${rlSettings.hourly_limit}/ساعة · ${rlSettings.daily_limit}/يوم` : "معطّلة"}
+              </p>
+            </div>
+          </div>
+          <Settings className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+        </button>
+      );
+    }
+
+    return (
+      <div className="bg-card border border-warning/20 rounded-xl p-4 space-y-4 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-warning" />
+            <h4 className="text-xs font-bold">حماية من الحظر</h4>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground">{rlSettings.enabled ? "مفعّل" : "معطّل"}</span>
+            <Switch checked={rlSettings.enabled} onCheckedChange={(v: boolean) => setRlSettings({ ...rlSettings, enabled: v })} />
+          </div>
+        </div>
+        {rlSettings.enabled && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[11px]">حد بالساعة</Label>
+                <Input type="number" min={1} max={500} value={rlSettings.hourly_limit}
+                  onChange={(e) => setRlSettings({ ...rlSettings, hourly_limit: Number(e.target.value) || 50 })}
+                  className="h-7 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">حد يومي</Label>
+                <Input type="number" min={1} max={5000} value={rlSettings.daily_limit}
+                  onChange={(e) => setRlSettings({ ...rlSettings, daily_limit: Number(e.target.value) || 200 })}
+                  className="h-7 text-xs" />
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="flex gap-2">
+          <Button size="sm" className="flex-1 text-xs gap-1" onClick={saveRl} disabled={rlSaving}>
+            {rlSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+            حفظ
+          </Button>
+          <Button size="sm" variant="ghost" className="text-xs" onClick={() => setRlOpen(false)}>إغلاق</Button>
+        </div>
+      </div>
+    );
+  };
+
   const renderAllChannelsView = (currentConfigs: WhatsAppConfig[]) => {
     const connectedOfficialConfigs = currentConfigs.filter(c => (!(c as any).channel_type || (c as any).channel_type !== "evolution") && c.is_connected);
     const connectedUnofficialConfigs = unofficialConfigs.filter(c => c.is_connected || c.evolution_instance_status === "connected" || c.evolution_instance_status === "connecting" || !!c.display_phone);
