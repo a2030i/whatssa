@@ -357,7 +357,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
             <div className="p-3">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-semibold text-muted-foreground">الأعضاء ({groupParticipants.length})</span>
-                {isGroup && (
+                {isGroupAdmin && (
                   <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAddMemberDialog(true)}>
                     <UserPlus className="w-3.5 h-3.5" /> إضافة
                   </Button>
