@@ -404,6 +404,31 @@ const TeamPage = () => {
                     <div className="flex items-center gap-2 flex-wrap">
                       {team && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{team.name}</span>}
                       {profile.is_supervisor && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">مشرف</span>}
+                      {/* Last seen */}
+                      {(() => {
+                        const isOnline = profile.is_online || (profile.last_seen_at && Date.now() - new Date(profile.last_seen_at).getTime() < 2.5 * 60 * 1000);
+                        if (isOnline) {
+                          return <span className="text-[10px] text-success font-medium">متصل الآن</span>;
+                        }
+                        if (profile.last_seen_at) {
+                          const diff = Date.now() - new Date(profile.last_seen_at).getTime();
+                          const mins = Math.floor(diff / 60000);
+                          const hours = Math.floor(mins / 60);
+                          const days = Math.floor(hours / 24);
+                          let timeAgo = "";
+                          if (mins < 1) timeAgo = "الآن";
+                          else if (mins < 60) timeAgo = `منذ ${mins} د`;
+                          else if (hours < 24) timeAgo = `منذ ${hours} س`;
+                          else timeAgo = `منذ ${days} يوم`;
+                          return (
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              <Clock className="w-2.5 h-2.5" />
+                              آخر ظهور {timeAgo}
+                            </span>
+                          );
+                        }
+                        return <span className="text-[10px] text-muted-foreground/50">لم يسجل دخول</span>;
+                      })()}
                       {profile.work_start && (
                         <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                           <Clock className="w-2.5 h-2.5" />
