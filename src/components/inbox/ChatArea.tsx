@@ -886,14 +886,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       setShowSavedReplies(false);
     }
 
-    // Check for @ mentions - auto-switch to note mode
+    // Check for @ mentions - in groups (non-note mode): show group participants. Otherwise: auto-switch to note mode for team mentions
     const lastAtIndex = value.lastIndexOf("@");
     if (lastAtIndex !== -1) {
       const afterAt = value.slice(lastAtIndex + 1);
       if (!afterAt.includes(" ") && afterAt.length <= 20) {
         setShowMentions(true);
         setMentionFilter(afterAt);
-        if (!isNoteMode) {
+        // Only auto-switch to note mode in private chats (not groups)
+        if (!isNoteMode && !isGroup) {
           setIsNoteMode(true);
         }
         return;
