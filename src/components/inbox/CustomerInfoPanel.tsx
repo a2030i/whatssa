@@ -60,10 +60,11 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     stats: false,
   });
   const [groupInfo, setGroupInfo] = useState<any>(null);
-  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; admin?: boolean }>>([]);
+  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; admin?: boolean; isSaved?: boolean }>>([]);
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
   const [addMemberPhone, setAddMemberPhone] = useState("");
   const [addingMember, setAddingMember] = useState(false);
+  const [isGroupAdmin, setIsGroupAdmin] = useState(false);
   const isGroup = conversation.conversationType === "group";
 
   const loadGroupInfo = async () => {
