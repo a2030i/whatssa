@@ -244,7 +244,7 @@ const TeamPage = () => {
   const resetInviteForm = () => {
     setInviteEmail("");
     setInviteName("");
-    setInviteTeam("");
+    setInviteTeams([]);
     setInviteRole("member");
     setInviteResult(null);
     setInviteOpen(false);
