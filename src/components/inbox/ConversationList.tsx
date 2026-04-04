@@ -133,15 +133,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
 
   const counts = useMemo(() => ({
-    all: conversations.filter(c => c.status !== "closed").length,
-    active: conversations.filter(c => c.status === "active").length,
-    unassigned: conversations.filter(c => c.status !== "closed" && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
-    unread: conversations.filter(c => c.status !== "closed" && c.unread > 0).length,
-    waiting: conversations.filter(c => c.status === "waiting").length,
+    all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
+    active: conversations.filter(c => c.status === "active" && !c.isArchived).length,
+    unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
+    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
+    waiting: conversations.filter(c => c.status === "waiting" && !c.isArchived).length,
     closed: conversations.filter(c => c.status === "closed").length,
-    private: conversations.filter(c => c.status !== "closed" && (!c.conversationType || c.conversationType === "private")).length,
-    group: conversations.filter(c => c.status !== "closed" && c.conversationType === "group").length,
-    broadcast: conversations.filter(c => c.status !== "closed" && c.conversationType === "broadcast").length,
+    pinned: conversations.filter(c => c.isPinned && !c.isArchived).length,
+    archived: conversations.filter(c => c.isArchived).length,
+    private: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.conversationType || c.conversationType === "private")).length,
+    group: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
+    broadcast: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "broadcast").length,
   }), [conversations]);
 
   const quickFilters: QuickFilter[] = [
@@ -150,6 +152,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
     { id: "waiting", label: "بانتظار", icon: Clock, count: counts.waiting },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed },
+    { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived },
   ];
 
   const activeInbox = customInboxes.find((i) => i.id === activeCustomInbox);
