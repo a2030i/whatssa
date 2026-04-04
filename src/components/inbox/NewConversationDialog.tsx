@@ -100,6 +100,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   useEffect(() => {
     if (open) {
       setStep("contact");
+      setDialogMode("private");
       setSelectedChannel(null);
       setCountryCode("966");
       setLocalNumber("");
@@ -111,6 +112,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setSaveCustomer(false);
       setIsExistingCustomer(false);
       setShowCountryPicker(false);
+      setGroupName("");
+      setGroupMembers([]);
+      setGroupMemberInput("");
     }
   }, [open]);
 
