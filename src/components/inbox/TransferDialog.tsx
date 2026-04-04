@@ -152,6 +152,9 @@ const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: Tran
                         <p className="text-sm font-medium truncate">{agent.full_name}</p>
                         <p className="text-[10px] text-muted-foreground">آخر ظهور: {formatLastSeen(agent.last_seen_at)}</p>
                       </div>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 shrink-0">
+                        مُسند إليه {agent.assigned_count}
+                      </Badge>
                     </button>
                   ))}
                 </div>
