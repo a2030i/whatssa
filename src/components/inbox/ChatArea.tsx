@@ -508,7 +508,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                         const mentionValue = part.slice(1);
                         const isPhone = /^\d+$/.test(mentionValue);
                         let displayLabel = part;
-                        if (isPhone && isGroup) {
+                        if (isPhone && conversation.conversationType === "group" && groupParticipants?.length) {
                           const participant = groupParticipants.find(p => p.phone === mentionValue);
                           if (participant && participant.name !== participant.phone) {
                             displayLabel = `@${participant.name}`;
