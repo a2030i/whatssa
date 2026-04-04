@@ -548,6 +548,19 @@ serve(async (req) => {
         return json({ success: true }); // Nothing to mark
       }
 
+      // Resolve instance from channel_id if provided
+      let readInstanceName = instanceName;
+      if (channel_id) {
+        const { data: chConf } = await adminClient
+          .from("whatsapp_config")
+          .select("evolution_instance_name")
+          .eq("id", channel_id)
+          .maybeSingle();
+        if (chConf?.evolution_instance_name) {
+          readInstanceName = chConf.evolution_instance_name;
+        }
+      }
+
       // Resolve correct remoteJid by looking up the stored message in Evolution
       // The frontend sends @s.whatsapp.net but the actual JID might be @lid format
       const resolvedKeys: Array<{ remoteJid: string; fromMe: boolean; id: string }> = [];
