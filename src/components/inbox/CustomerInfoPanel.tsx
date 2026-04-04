@@ -18,6 +18,7 @@ interface CustomerInfoPanelProps {
   onUpdateNotes: (convId: string, notes: string) => void;
   onAssignAgent?: (convId: string, agentId: string | null, agentName: string) => void;
   onAssignTeam?: (convId: string, teamId: string | null, teamName: string) => void;
+  isMobileSheet?: boolean;
 }
 
 const ORDER_STATUS_MAP: Record<string, { label: string; color: string }> = {
