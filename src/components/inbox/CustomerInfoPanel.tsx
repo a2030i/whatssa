@@ -44,12 +44,14 @@ const normalizeDigits = (value: unknown) =>
 
 const extractParticipantPhone = (participant: any) => {
   const rawId = participant?.id || participant?.jid || "";
-  const candidates = [participant?.phone, participant?.number, participant?.notify, participant?.senderPn, participant?.participantPn]
+  const candidates = [participant?.phone, participant?.number, participant?.senderPn, participant?.participantPn]
     .map(normalizeDigits)
     .filter(Boolean);
 
   if (candidates.length > 0) return candidates[0];
-  return rawId.includes("@s.whatsapp.net") ? normalizeDigits(rawId) : "";
+  if (rawId.includes("@s.whatsapp.net")) return normalizeDigits(rawId);
+  if (rawId.includes("@g.us")) return normalizeDigits(rawId);
+  return "";
 };
 
 const extractParticipantName = (participant: any, phone: string) => {
