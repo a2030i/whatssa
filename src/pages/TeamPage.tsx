@@ -215,7 +215,7 @@ const TeamPage = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [inviteTeam, setInviteTeam] = useState("");
+  const [inviteTeams, setInviteTeams] = useState<string[]>([]);
   const [inviteRole, setInviteRole] = useState("member");
   const [inviting, setInviting] = useState(false);
   const [inviteResult, setInviteResult] = useState<{ temp_password?: string; email?: string } | null>(null);
