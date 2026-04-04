@@ -565,6 +565,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [savedReplyFilter, setSavedReplyFilter] = useState("");
   const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string }>>([]);
   const [otherTypingAgents, setOtherTypingAgents] = useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
@@ -728,10 +729,38 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     fetchMembers();
   }, [orgId]);
 
+  // Fetch group participants for group conversations (Evolution only)
+  const isGroup = conversation.conversationType === "group";
+  const isEvolutionChannel = conversation.channelType === "evolution";
+  useEffect(() => {
+    if (!isGroup || !isEvolutionChannel || !conversation.customerPhone) return;
+    const fetchGroupMembers = async () => {
+      try {
+        const { data, error } = await invokeCloud("evolution-manage", {
+          body: { action: "group_info", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
+        });
+        if (error) return;
+        const participants = data?.data?.participants || data?.data?.data?.participants || [];
+        const mapped = participants.map((p: any) => {
+          const phone = (p.id || p.jid || "").replace(/@.*/, "");
+          return { id: p.id || p.jid || phone, name: p.pushName || p.name || phone, phone };
+        });
+        setGroupParticipants(mapped);
+      } catch (e) {
+        console.error("Failed to fetch group participants:", e);
+      }
+    };
+    fetchGroupMembers();
+  }, [conversation.id, isGroup, isEvolutionChannel]);
+
   const isMetaChannel = conversation.channelType === "meta_api";
   const windowExpired = isMetaChannel ? windowInfo.expired : false;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
-  const filteredMentionAgents = teamMembers.filter((m) => (m.full_name || "").includes(mentionFilter));
+  // In note mode: show team members. In group non-note mode: show group participants
+  const isGroupMentionMode = isGroup && !isNoteMode;
+  const filteredMentionAgents = isGroupMentionMode
+    ? groupParticipants.filter((p) => (p.name || p.phone || "").toLowerCase().includes(mentionFilter.toLowerCase()))
+    : teamMembers.filter((m) => (m.full_name || "").includes(mentionFilter));
 
   // 24h window countdown - update every minute
   useEffect(() => {
@@ -857,14 +886,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       setShowSavedReplies(false);
     }
 
-    // Check for @ mentions - auto-switch to note mode
+    // Check for @ mentions - in groups (non-note mode): show group participants. Otherwise: auto-switch to note mode for team mentions
     const lastAtIndex = value.lastIndexOf("@");
     if (lastAtIndex !== -1) {
       const afterAt = value.slice(lastAtIndex + 1);
       if (!afterAt.includes(" ") && afterAt.length <= 20) {
         setShowMentions(true);
         setMentionFilter(afterAt);
-        if (!isNoteMode) {
+        // Only auto-switch to note mode in private chats (not groups)
+        if (!isNoteMode && !isGroup) {
           setIsNoteMode(true);
         }
         return;
@@ -885,9 +915,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     !savedReplyFilter || r.shortcut.toLowerCase().includes(savedReplyFilter) || r.title.toLowerCase().includes(savedReplyFilter)
   );
 
-  const insertMention = (agentName: string) => {
+  const insertMention = (displayName: string, phone?: string) => {
     const lastAtIndex = inputText.lastIndexOf("@");
-    const newText = inputText.slice(0, lastAtIndex) + `@${agentName} `;
+    // For group participants, use @phone format so Evolution API can resolve mentions
+    const mentionText = isGroupMentionMode && phone ? `@${phone}` : `@${displayName}`;
+    const newText = inputText.slice(0, lastAtIndex) + `${mentionText} `;
     setInputText(newText);
     setShowMentions(false);
     inputRef.current?.focus();
@@ -1514,14 +1546,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {showMentions && filteredMentionAgents.length > 0 && (
         <div className="border-t border-border bg-card px-3 py-2">
-          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">اذكر موظف</p>
+          <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">
+            {isGroupMentionMode ? "اذكر عضو في القروب" : "اذكر موظف"}
+          </p>
           <div className="flex gap-2 overflow-x-auto">
-            {filteredMentionAgents.map((a) => {
-              const initials = (a.full_name || "").split(" ").map(w => w[0]).join("").slice(0, 2);
+            {filteredMentionAgents.map((a: any) => {
+              const displayName = a.full_name || a.name || a.phone || "";
+              const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2);
               return (
-                <button key={a.id} onClick={() => insertMention(a.full_name || "")} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
+                <button key={a.id} onClick={() => insertMention(displayName, a.phone)} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
                   <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{initials}</div>
-                  {a.full_name}
+                  {displayName}
                 </button>
               );
             })}
@@ -1627,9 +1662,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <StickyNote className="w-4 h-4" />
             </button>
             <button
-              onClick={() => { setInputText((prev) => prev + "@"); setShowMentions(true); setMentionFilter(""); inputRef.current?.focus(); }}
+              onClick={() => {
+                setInputText((prev) => prev + "@");
+                setShowMentions(true);
+                setMentionFilter("");
+                // In private chats, auto-switch to note mode. In groups, keep current mode
+                if (!isGroup && !isNoteMode) setIsNoteMode(true);
+                inputRef.current?.focus();
+              }}
               className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
-              title="اذكر موظف @"
+              title={isGroup && !isNoteMode ? "اذكر عضو @" : "اذكر موظف @"}
             >
               <AtSign className="w-4 h-4" />
             </button>
