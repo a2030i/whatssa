@@ -65,8 +65,9 @@ serve(async (req) => {
       return json({ error: "نوع الملف غير مدعوم" }, 400);
     }
 
-    if (base64.length > 20 * 1024 * 1024) {
-      return json({ error: "حجم التسجيل كبير جداً" }, 400);
+    const maxSize = content_type.startsWith("audio/") ? 20 : 50; // MB: 20 for audio, 50 for other files
+    if (base64.length > maxSize * 1024 * 1024) {
+      return json({ error: `حجم الملف كبير جداً (الحد الأقصى ${maxSize}MB)` }, 400);
     }
 
     const [{ data: profile }, { data: conversation }, { data: isSuperAdmin }] = await Promise.all([
