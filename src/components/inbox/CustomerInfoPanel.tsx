@@ -18,6 +18,7 @@ interface CustomerInfoPanelProps {
   onUpdateNotes: (convId: string, notes: string) => void;
   onAssignAgent?: (convId: string, agentId: string | null, agentName: string) => void;
   onAssignTeam?: (convId: string, teamId: string | null, teamName: string) => void;
+  isMobileSheet?: boolean;
 }
 
 const ORDER_STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -38,7 +39,7 @@ const SHIPMENT_STATUS_MAP: Record<string, string> = {
   returned: "مرتجع",
 };
 
-const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssignTeam }: CustomerInfoPanelProps) => {
+const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssignTeam, isMobileSheet }: CustomerInfoPanelProps) => {
   const { orgId, isEcommerce } = useAuth();
   const [notes, setNotes] = useState(conversation.notes || "");
   const [editingNotes, setEditingNotes] = useState(false);
@@ -258,7 +259,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   );
 
   return (
-    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-y-auto">
+    <div className={isMobileSheet ? "flex flex-col overflow-y-auto bg-card" : "w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-y-auto"}>
       <Tabs defaultValue={isGroup ? "members" : "info"} className="flex flex-col">
         <TabsList className={`mx-2 mt-2 mb-0 grid shrink-0 ${isGroup ? (isEcommerce ? "grid-cols-4" : "grid-cols-3") : (isEcommerce ? "grid-cols-3" : "grid-cols-2")}`}>
           <TabsTrigger value="info" className="text-xs">معلومات</TabsTrigger>

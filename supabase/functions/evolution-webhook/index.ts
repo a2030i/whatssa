@@ -974,6 +974,41 @@ serve(async (req) => {
                 await logToSystem(supabase, "warn", "فشل التعيين التلقائي (Evolution)", { conversation_id: newConv?.id }, orgId);
               }
             }
+
+            // Auto-register ALL group members on first group conversation
+            if (newConv && conversationType === "group" && EVOLUTION_API_URL && EVOLUTION_API_KEY) {
+              try {
+                const membersRes = await fetch(
+                  `${EVOLUTION_API_URL}/group/findGroupInfos/${instanceName}?groupJid=${remoteJid}`,
+                  { headers: { apikey: EVOLUTION_API_KEY } }
+                );
+                if (membersRes.ok) {
+                  const membersData = await membersRes.json();
+                  const participants = membersData?.participants || membersData?.data?.participants || membersData?.[0]?.participants || [];
+                  for (const p of participants) {
+                    const memberPhone = (p.id || p.jid || "").replace(/@.*/, "");
+                    const memberName = p.pushName || p.name || null;
+                    if (memberPhone && memberPhone.length > 5) {
+                      try {
+                        await supabase.from("customers").upsert({
+                          org_id: orgId,
+                          phone: memberPhone,
+                          name: memberName,
+                          source: "whatsapp_group",
+                        }, { onConflict: "org_id,phone", ignoreDuplicates: true });
+                      } catch (_e) { /* ignore */ }
+                    }
+                  }
+                  await logToSystem(supabase, "info", `تم تسجيل ${participants.length} عضو من القروب تلقائياً`, {
+                    conversation_id: newConv.id, group_jid: remoteJid,
+                  }, orgId);
+                }
+              } catch (e) {
+                await logToSystem(supabase, "warn", "فشل تسجيل أعضاء القروب تلقائياً", {
+                  error: e instanceof Error ? e.message : String(e), group_jid: remoteJid,
+                }, orgId);
+              }
+            }
           }
 
         if (!conversation) continue;

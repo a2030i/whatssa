@@ -791,6 +791,7 @@ const InboxPage = () => {
                 onUpdateNotes={handleUpdateNotes}
                 onAssignAgent={handleAssignAgent}
                 onAssignTeam={handleAssignTeam}
+                isMobileSheet
               />
             </div>
           </SheetContent>
