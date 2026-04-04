@@ -91,6 +91,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [groupMemberInput, setGroupMemberInput] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [groupImageFile, setGroupImageFile] = useState<File | null>(null);
+  const [groupImagePreview, setGroupImagePreview] = useState<string | null>(null);
+  const groupImageInputRef = useRef<HTMLInputElement>(null);
 
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
   const fullPhone = `${countryCode}${localNumber.replace(/^0+/, "")}`;
