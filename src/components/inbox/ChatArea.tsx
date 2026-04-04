@@ -1417,7 +1417,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             <button className="w-8 h-8 md:w-9 md:h-9 rounded-xl hover:bg-secondary/80 transition-all flex items-center justify-center shrink-0" onClick={onBack}>
               <ArrowRight className="w-5 h-5 text-foreground" />
             </button>
-            <div className="relative">
+            <button
+              className="flex items-center gap-3 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => onShowCustomerInfo?.()}
+            >
+            <div className="relative shrink-0">
               {groupPicture ? (
                 <img src={groupPicture} alt={conversation.customerName} className="w-10 h-10 md:w-11 md:h-11 rounded-2xl object-cover shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
               ) : null}
@@ -1428,9 +1432,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card shadow-sm" />
               )}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 overflow-hidden">
               <div className="flex items-center gap-2">
-                <p className="font-bold text-sm truncate">{conversation.customerName}</p>
+                <p className="font-bold text-sm truncate max-w-[120px] md:max-w-[250px]">{conversation.customerName}</p>
                 {isMetaChannel ? (
                   <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-semibold shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
@@ -1451,6 +1455,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </div>
               <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{conversation.lastSeen || conversation.customerPhone}</p>
             </div>
+            </button>
           </div>
           <div className="flex items-center gap-1">
             {/* 24h Window Timer - Meta API only */}
