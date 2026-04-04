@@ -664,6 +664,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const groupPicInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isGroup = conversation.conversationType === "group";
+  const isEvolutionChannel = conversation.channelType === "evolution";
+  const isMetaChannel = conversation.channelType === "meta_api";
 
   // Sync blocked state when conversation changes
   useEffect(() => {
@@ -926,8 +929,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   }, [orgId]);
 
   // Fetch group participants for group conversations (Evolution only)
-  const isGroup = conversation.conversationType === "group";
-  const isEvolutionChannel = conversation.channelType === "evolution";
   useEffect(() => {
     if (!isGroup || !isEvolutionChannel || !conversation.customerPhone) return;
     const fetchGroupMembers = async () => {
@@ -988,7 +989,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     fetchGroupMembers();
   }, [conversation.id, isGroup, isEvolutionChannel]);
 
-  const isMetaChannel = conversation.channelType === "meta_api";
   const windowExpired = isMetaChannel ? windowInfo.expired : false;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
   // In note mode: show team members. In group non-note mode: show group participants
