@@ -328,18 +328,16 @@ const AppSidebar = () => {
 
   return (
     <>
-      {/* Mobile toggle - hidden on inbox page since chat has its own back button */}
-      {location.pathname !== "/inbox" && (
-        <button
-          onClick={() => setMobileOpen(true)}
-          className={cn(
-            "md:hidden fixed left-3 z-[60] w-10 h-10 rounded-xl bg-card shadow-card flex items-center justify-center border border-border/50",
-            isImpersonating ? "top-14" : "top-3"
-          )}
-        >
-          <Menu className="w-5 h-5 text-foreground" />
-        </button>
-      )}
+      {/* Mobile toggle */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className={cn(
+          "md:hidden fixed left-3 z-[60] w-10 h-10 rounded-xl bg-card shadow-card flex items-center justify-center border border-border/50",
+          isImpersonating ? "top-14" : "top-3"
+        )}
+      >
+        <Menu className="w-5 h-5 text-foreground" />
+      </button>
 
       {/* Mobile overlay */}
       {mobileOpen && (
