@@ -23,6 +23,7 @@ export interface Conversation {
   channelName?: string;
   profilePic?: string;
   isBlocked?: boolean;
+  unreadMentionCount?: number;
 }
 
 export interface MessageTemplate {

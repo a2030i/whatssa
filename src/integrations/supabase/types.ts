@@ -1006,6 +1006,7 @@ export type Database = {
           status: string | null
           tags: string[] | null
           unread_count: number | null
+          unread_mention_count: number
           updated_at: string | null
           wa_conversation_id: string | null
         }
@@ -1037,6 +1038,7 @@ export type Database = {
           status?: string | null
           tags?: string[] | null
           unread_count?: number | null
+          unread_mention_count?: number
           updated_at?: string | null
           wa_conversation_id?: string | null
         }
@@ -1068,6 +1070,7 @@ export type Database = {
           status?: string | null
           tags?: string[] | null
           unread_count?: number | null
+          unread_mention_count?: number
           updated_at?: string | null
           wa_conversation_id?: string | null
         }
@@ -3652,6 +3655,7 @@ export type Database = {
         Returns: boolean
       }
       hash_api_token: { Args: { _token_id: string }; Returns: undefined }
+      increment_mention_count: { Args: { conv_id: string }; Returns: undefined }
       increment_unread: { Args: { conv_id: string }; Returns: undefined }
       validate_coupon: { Args: { _code: string }; Returns: Json }
     }

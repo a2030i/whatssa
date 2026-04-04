@@ -412,7 +412,9 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
             : msg.sender === "agent"
               ? "bg-card border border-border/10 shadow-[0_1px_4px_rgba(0,0,0,0.06)] text-foreground rounded-bl-sm"
-              : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+              : msg.mentioned && msg.mentioned.length > 0
+                ? "bg-gradient-to-br from-primary/95 to-primary text-primary-foreground rounded-br-sm shadow-[0_2px_8px_rgba(0,0,0,0.1)] ring-2 ring-primary/40"
+                : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
       )}>
         {msg.isDeleted ? (
           <div className="flex items-center gap-1.5 text-xs">
@@ -650,6 +652,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [hasProducts, setHasProducts] = useState(false);
   const [groupPicture, setGroupPicture] = useState<string | null>(conversation.profilePic || null);
   const [showAddMembersDialog, setShowAddMembersDialog] = useState(false);
+  const [currentChannelPhone, setCurrentChannelPhone] = useState("");
+  const [mentionMessageIds, setMentionMessageIds] = useState<string[]>([]);
+  const [currentMentionIdx, setCurrentMentionIdx] = useState(-1);
   const [reactionDetails, setReactionDetails] = useState<{ reactions: Array<{ emoji: string; fromMe: boolean; participant?: string; participantName?: string }>; messageId: string } | null>(null);
   const [addMemberPhone, setAddMemberPhone] = useState("");
   const [addingMember, setAddingMember] = useState(false);
@@ -665,6 +670,43 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     setIsBlocked(conversation.isBlocked || false);
     setGroupPicture(conversation.profilePic || null);
   }, [conversation.id, conversation.isBlocked, conversation.profilePic]);
+
+  // Compute mention message IDs for floating @ navigation
+  useEffect(() => {
+    if (!isGroup || !currentChannelPhone) {
+      setMentionMessageIds([]);
+      setCurrentMentionIdx(-1);
+      return;
+    }
+    const ids = messages
+      .filter((m) => m.mentioned && Array.isArray(m.mentioned) && m.mentioned.some((mn) => {
+        const normalized = String(mn).replace(/\D/g, "");
+        return normalized === currentChannelPhone || currentChannelPhone.endsWith(normalized) || normalized.endsWith(currentChannelPhone);
+      }))
+      .map((m) => m.id);
+    setMentionMessageIds(ids);
+    if (ids.length > 0) setCurrentMentionIdx(ids.length - 1);
+    else setCurrentMentionIdx(-1);
+  }, [messages, currentChannelPhone, isGroup]);
+
+  const navigateToMention = (direction: "up" | "down") => {
+    if (mentionMessageIds.length === 0) return;
+    let nextIdx = currentMentionIdx;
+    if (direction === "up") nextIdx = Math.max(0, currentMentionIdx - 1);
+    else nextIdx = Math.min(mentionMessageIds.length - 1, currentMentionIdx + 1);
+    setCurrentMentionIdx(nextIdx);
+    const msgId = mentionMessageIds[nextIdx];
+    const el = document.querySelector(`[data-message-id="${msgId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary/60", "rounded-xl");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary/60", "rounded-xl"), 2000);
+    }
+    // Reset mention count on first navigation
+    if (conversation.unreadMentionCount && conversation.unreadMentionCount > 0) {
+      supabase.from("conversations").update({ unread_mention_count: 0 }).eq("id", conversation.id).then();
+    }
+  };
 
   // Listen for reaction detail sheet
   useEffect(() => {
@@ -1676,6 +1718,34 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             )}
           </div>
         ))}
+        {/* Floating @ mention navigation button */}
+        {isGroup && mentionMessageIds.length > 0 && (
+          <div className="sticky bottom-2 flex justify-start px-2 z-20">
+            <div className="flex items-center gap-1 bg-card border border-primary/30 rounded-full shadow-lg px-2 py-1">
+              <button
+                onClick={() => navigateToMention("up")}
+                disabled={currentMentionIdx <= 0}
+                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-secondary disabled:opacity-30 transition-colors"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => navigateToMention("down")}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold"
+              >
+                <AtSign className="w-3.5 h-3.5" />
+                <span>{currentMentionIdx + 1}/{mentionMessageIds.length}</span>
+              </button>
+              <button
+                onClick={() => navigateToMention("down")}
+                disabled={currentMentionIdx >= mentionMessageIds.length - 1}
+                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-secondary disabled:opacity-30 transition-colors"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
         {/* Customer typing indicator */}
         {customerTyping && (
           <div className="flex justify-start">
