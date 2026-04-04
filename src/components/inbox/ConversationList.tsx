@@ -426,6 +426,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                             <User className="w-2.5 h-2.5 text-primary" />
                           </div>
                         )}
+                        {(conv.unreadMentionCount || 0) > 0 && (
+                          <span className="min-w-[20px] h-5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center justify-center px-1.5 shadow-sm border border-primary/30">
+                            <AtSign className="w-3 h-3" />
+                          </span>
+                        )}
                         {conv.unread > 0 && (
                           <span className="min-w-[20px] h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1.5 shadow-md">
                             {conv.unread}

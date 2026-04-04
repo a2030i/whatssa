@@ -148,6 +148,7 @@ const InboxPage = () => {
           channelId: conversation.channel_id || undefined,
           channelName: channelConfig ? (channelConfig.display_phone || channelConfig.business_name || channelConfig.evolution_instance_name || "") : undefined,
           profilePic: conversation.customer_profile_pic || undefined,
+          unreadMentionCount: conversation.unread_mention_count || 0,
         };
       });
 
@@ -186,6 +187,10 @@ const InboxPage = () => {
         if (activeConv && activeConv.unread > 0) {
           activeConv.unread = 0;
           supabase.from("conversations").update({ unread_count: 0 }).eq("id", activeId).then();
+        }
+        if (activeConv && (activeConv.unreadMentionCount || 0) > 0) {
+          activeConv.unreadMentionCount = 0;
+          supabase.from("conversations").update({ unread_mention_count: 0 }).eq("id", activeId).then();
         }
       }
 
