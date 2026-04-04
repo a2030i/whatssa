@@ -129,10 +129,16 @@ const extractParticipantPhone = (participant: any) => {
 };
 
 const extractParticipantName = (participant: any, phone: string) => {
-  const candidate = [participant?.pushName, participant?.name, participant?.notify]
+  const candidate = [participant?.pushName, participant?.name, participant?.notify, participant?.verifiedName, participant?.shortName]
     .find((value) => typeof value === "string" && value.trim());
   if (candidate) return candidate.trim();
   if (phone) return `+${phone}`;
+  // For @lid participants without any name, show a generic label with partial id
+  const rawId = participant?.id || participant?.jid || "";
+  if (rawId.includes("@lid")) {
+    const lidShort = rawId.replace(/@.*/, "").slice(-6);
+    return `عضو #${lidShort}`;
+  }
   return "عضو بالقروب";
 };
 
