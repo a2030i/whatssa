@@ -1412,17 +1412,17 @@ const IntegrationsPage = () => {
   if (flowStep === "pick_phone") {
     const isMigration = onboardingMode !== "new";
     return (
-      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
         <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-2">
               {isMigration && <ArrowLeftRight className="w-5 h-5 text-primary" />}
               <h2 className="text-lg font-bold text-foreground">
-                {isMigration ? "اختر الرقم للنقل" : "اختر رقمك"}
+                {isMigration ? t("اختر الرقم للنقل", "Select number to migrate") : t("اختر رقمك", "Select your number")}
               </h2>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              تم العثور على {phoneNumbers.length} رقم — اختر الرقم الذي تريد {isMigration ? "نقله" : "ربطه"}
+              {t(`تم العثور على ${phoneNumbers.length} رقم — اختر الرقم الذي تريد ${isMigration ? "نقله" : "ربطه"}`, `Found ${phoneNumbers.length} number(s) — select the one you want to ${isMigration ? "migrate" : "connect"}`)}
             </p>
           </div>
           <div className="p-4 space-y-2">
