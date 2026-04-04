@@ -13,6 +13,7 @@ interface Agent {
   is_online: boolean;
   last_seen_at: string | null;
   team_id: string | null;
+  assigned_count: number;
 }
 
 interface TransferDialogProps {
