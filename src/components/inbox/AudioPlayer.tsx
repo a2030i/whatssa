@@ -45,8 +45,10 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
     };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
-
-    audio.addEventListener("loadedmetadata", onLoaded);
+    const onError = () => {
+      setHasError(true);
+      setIsPlaying(false);
+    };
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
