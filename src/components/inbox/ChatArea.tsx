@@ -577,6 +577,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const groupPicInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync blocked state when conversation changes
