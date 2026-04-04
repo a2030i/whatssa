@@ -925,6 +925,24 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       .then(({ data }) => setHasAiConfig(!!(data && data.length > 0)));
   }, [orgId]);
 
+  // Auto-translate incoming customer messages
+  useEffect(() => {
+    if (!autoTranslate || !hasAiConfig) return;
+    const customerMsgs = messages.filter(m => m.sender === "customer" && m.type === "text" && !translations[m.id]);
+    const lastMsg = customerMsgs[customerMsgs.length - 1];
+    if (!lastMsg) return;
+    (async () => {
+      try {
+        const { data } = await invokeCloud("ai-features", {
+          body: { action: "translate", text: lastMsg.text, target_language: "العربية" },
+        });
+        if (data?.translation) {
+          setTranslations(prev => ({ ...prev, [lastMsg.id]: data.translation }));
+        }
+      } catch { /* silent */ }
+    })();
+  }, [autoTranslate, hasAiConfig, messages.length]);
+
   // Check if org has products (to conditionally show catalog button)
   useEffect(() => {
     if (!orgId) return;
