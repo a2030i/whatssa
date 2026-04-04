@@ -182,7 +182,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string }> }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
@@ -502,13 +502,22 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   )}
                   {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
                     <p className="whitespace-pre-wrap leading-[1.65]">
-                      {textWithoutUrl.split(/(@[\u0600-\u06FFa-zA-Z]+)/g).map((part, i) =>
-                        part.startsWith("@") ? (
-                          <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{part}</span>
-                        ) : (
-                          <span key={i}>{part}</span>
-                        )
-                      )}
+                      {textWithoutUrl.split(/(@[\u0600-\u06FF\w\d+]+)/g).map((part, i) => {
+                        if (!part.startsWith("@")) return <span key={i}>{part}</span>;
+                        // Try to resolve phone-based mentions to display names
+                        const mentionValue = part.slice(1);
+                        const isPhone = /^\d+$/.test(mentionValue);
+                        let displayLabel = part;
+                        if (isPhone && conversation.conversationType === "group" && groupParticipants?.length) {
+                          const participant = groupParticipants.find(p => p.phone === mentionValue);
+                          if (participant && participant.name !== participant.phone) {
+                            displayLabel = `@${participant.name}`;
+                          }
+                        }
+                        return (
+                          <span key={i} className="bg-primary/10 text-primary font-semibold px-0.5 rounded">{displayLabel}</span>
+                        );
+                      })}
                     </p>
                   )}
                 </>
@@ -1461,6 +1470,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onDelete={onDeleteMessage ? handleDeleteMsg : undefined}
                 onImageClick={(src) => setLightboxSrc(src)}
                 hasAiConfig={hasAiConfig}
+                groupParticipants={isGroup ? groupParticipants : undefined}
               />
             )}
           </div>
