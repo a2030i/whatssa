@@ -211,16 +211,6 @@ const AppSidebar = () => {
       )}
       {collapsed && <div className="pt-4" />}
 
-      {/* Channel Selector placeholder */}
-      {!collapsed && (
-        <div className="mx-3 mb-2">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-sidebar-accent/40 border border-sidebar-border/30 text-xs">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse-soft" />
-            <span className="text-sidebar-foreground/70 truncate flex-1">قناة المتجر الرئيسي</span>
-            <ChevronDown className="w-3.5 h-3.5 text-sidebar-foreground/40" />
-          </div>
-        </div>
-      )}
 
       {/* Search */}
       {!collapsed && (
