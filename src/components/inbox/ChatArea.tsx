@@ -1580,6 +1580,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={copyConversationLink}>
+                  <Link2 className="w-4 h-4 ml-2 text-primary" /> نسخ رابط المحادثة
+                </DropdownMenuItem>
                 <ExportConversation conversation={conversation} messages={messages} asMenuItem />
                 {conversation.channelType === "evolution" && (
                   <>
