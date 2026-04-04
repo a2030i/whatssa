@@ -46,6 +46,8 @@ interface ChatAreaProps {
   onShowCustomerInfo?: () => void;
   scrollToMessageId?: string | null;
   onScrollToMessageDone?: () => void;
+  onStarMessage?: (msgId: string, starred: boolean) => void;
+  onForwardMessage?: (msg: Message) => void;
 }
 
 const MessageStatus = ({ status, isGroup, readBy, groupSize }: { status?: string; isGroup?: boolean; readBy?: string[]; groupSize?: number }) => {
