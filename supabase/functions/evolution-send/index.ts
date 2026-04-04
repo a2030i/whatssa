@@ -132,7 +132,7 @@ serve(async (req) => {
 
       if (groupPhone) {
         // Create conversation entry for this group
-        await adminClient.from("conversations").upsert({
+        const { error: convError } = await adminClient.from("conversations").insert({
           customer_phone: groupPhone,
           customer_name: group_name,
           org_id: orgId,
@@ -141,7 +141,14 @@ serve(async (req) => {
           status: "open",
           last_message: `تم إنشاء القروب "${group_name}"`,
           last_message_at: new Date().toISOString(),
-        }, { onConflict: "customer_phone,org_id" });
+        });
+
+        if (convError) {
+          console.error("Failed to create group conversation:", convError);
+          logToSystem(adminClient, "error", "فشل إنشاء محادثة القروب في قاعدة البيانات", {
+            error: convError, group_jid: groupJid, group_name,
+          }, orgId, user.id);
+        }
       }
 
       logToSystem(adminClient, "info", `تم إنشاء قروب "${group_name}" بنجاح`, {
