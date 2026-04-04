@@ -60,10 +60,11 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     stats: false,
   });
   const [groupInfo, setGroupInfo] = useState<any>(null);
-  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; admin?: boolean }>>([]);
+  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; admin?: boolean; isSaved?: boolean }>>([]);
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
   const [addMemberPhone, setAddMemberPhone] = useState("");
   const [addingMember, setAddingMember] = useState(false);
+  const [isGroupAdmin, setIsGroupAdmin] = useState(false);
   const isGroup = conversation.conversationType === "group";
 
   const loadGroupInfo = async () => {
@@ -85,8 +86,9 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         };
       });
 
-      // Enrich names from customers table
+      // Enrich names from customers table & detect saved contacts
       const phones = mapped.map((m: any) => m.phone).filter(Boolean);
+      const savedPhones = new Set<string>();
       if (phones.length > 0 && orgId) {
         const { data: customers } = await supabase
           .from("customers")
@@ -97,15 +99,37 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           const nameMap = new Map(customers.map((c: any) => [c.phone, c.name]));
           mapped.forEach((m: any) => {
             const savedName = nameMap.get(m.phone);
-            if (savedName) m.name = savedName;
+            if (savedName) {
+              m.name = savedName;
+              m.isSaved = true;
+              savedPhones.add(m.phone);
+            }
           });
         }
       }
 
-      // Sort: admins first, then alphabetically
+      // Check if our channel phone is admin in this group
+      if (conversation.channelId && orgId) {
+        const { data: channelData } = await supabase
+          .from("whatsapp_config_safe")
+          .select("display_phone")
+          .eq("id", conversation.channelId)
+          .maybeSingle();
+        if (channelData?.display_phone) {
+          const ourPhone = channelData.display_phone.replace(/\D/g, "");
+          const ourEntry = mapped.find((m: any) => m.phone === ourPhone);
+          setIsGroupAdmin(ourEntry?.admin === true);
+        }
+      }
+
+      // Sort: admins first → saved contacts → others, then alphabetically
       mapped.sort((a: any, b: any) => {
         if (a.admin && !b.admin) return -1;
         if (!a.admin && b.admin) return 1;
+        if (!a.admin && !b.admin) {
+          if (a.isSaved && !b.isSaved) return -1;
+          if (!a.isSaved && b.isSaved) return 1;
+        }
         return (a.name || "").localeCompare(b.name || "");
       });
 
@@ -333,9 +357,11 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
             <div className="p-3">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-semibold text-muted-foreground">الأعضاء ({groupParticipants.length})</span>
-                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAddMemberDialog(true)}>
-                  <UserPlus className="w-3.5 h-3.5" /> إضافة
-                </Button>
+                {isGroupAdmin && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAddMemberDialog(true)}>
+                    <UserPlus className="w-3.5 h-3.5" /> إضافة
+                  </Button>
+                )}
               </div>
               <div className="space-y-0.5 max-h-[350px] overflow-y-auto">
                 {groupParticipants.map((p) => (
@@ -348,18 +374,21 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                         <p className="text-xs font-medium truncate flex items-center gap-1">
                           {p.name}
                           {p.admin && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+                          {p.isSaved && !p.admin && <User className="w-3 h-3 text-primary shrink-0" />}
                         </p>
                         <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                      onClick={() => handleRemoveGroupMember(p.phone)}
-                    >
-                      <UserMinus className="w-3 h-3" />
-                    </Button>
+                    {isGroupAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                        onClick={() => handleRemoveGroupMember(p.phone)}
+                      >
+                        <UserMinus className="w-3 h-3" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
