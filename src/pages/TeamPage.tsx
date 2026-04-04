@@ -318,7 +318,7 @@ const TeamPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {teams.map((team) => {
             const teamMembers = profiles.filter((m) => m.team_id === team.id);
-            const onlineCount = teamMembers.filter((m) => m.is_online || (m.last_seen_at && Date.now() - new Date(m.last_seen_at).getTime() < 5 * 60 * 1000)).length;
+            const onlineCount = teamMembers.filter((m) => m.is_online || (m.last_seen_at && Date.now() - new Date(m.last_seen_at).getTime() const onlineCount = teamMembers.filter((m) => m.is_online || (m.last_seen_at && Date.now() - new Date(m.last_seen_at).getTime() < 2.5 * 60 * 1000)).length;
             const sc = strategyConfig[team.assignment_strategy] || strategyConfig.round_robin;
             const StrategyIcon = sc.icon;
             return (
