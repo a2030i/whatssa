@@ -2214,6 +2214,56 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Reaction Details Sheet - WhatsApp style */}
+      <Dialog open={!!reactionDetails} onOpenChange={(open) => !open && setReactionDetails(null)}>
+        <DialogContent className="max-w-sm p-0 rounded-t-2xl" dir="rtl">
+          <DialogHeader className="p-4 pb-2">
+            <DialogTitle className="text-sm text-center">
+              {reactionDetails?.reactions?.length || 0} {(reactionDetails?.reactions?.length || 0) > 2 ? "تفاعلات" : (reactionDetails?.reactions?.length || 0) === 2 ? "تفاعلان" : "تفاعل"}
+            </DialogTitle>
+          </DialogHeader>
+          {reactionDetails && (() => {
+            const grouped = reactionDetails.reactions.reduce((acc, r) => {
+              if (!acc[r.emoji]) acc[r.emoji] = [];
+              acc[r.emoji].push(r);
+              return acc;
+            }, {} as Record<string, typeof reactionDetails.reactions>);
+            const [activeTab, setActiveTab] = [Object.keys(grouped)[0], () => {}];
+            return (
+              <div>
+                {/* Emoji tabs */}
+                <div className="flex items-center justify-center gap-2 px-4 pb-3">
+                  {Object.entries(grouped).map(([emoji, list]) => (
+                    <span key={emoji} className="flex items-center gap-1 bg-secondary/60 rounded-full px-3 py-1.5 text-sm">
+                      {emoji} <span className="text-xs text-muted-foreground font-medium">{list.length}</span>
+                    </span>
+                  ))}
+                </div>
+                {/* Participants list */}
+                <div className="px-4 pb-4 space-y-1 max-h-[300px] overflow-y-auto">
+                  {reactionDetails.reactions.map((r, i) => (
+                    <div key={i} className="flex items-center gap-3 py-2">
+                      <span className="text-xl">{r.emoji}</span>
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+                        {(r.participantName || r.participant || "أنت").slice(0, 2)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">
+                          {r.fromMe ? "أنت" : (r.participantName || r.participant || "غير معروف")}
+                        </p>
+                        {r.participant && !r.fromMe && (
+                          <p className="text-[10px] text-muted-foreground" dir="ltr">+{r.participant}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
