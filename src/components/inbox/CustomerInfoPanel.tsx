@@ -284,6 +284,49 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     }
   };
 
+  const handlePromoteMember = async (participantId: string, name: string) => {
+    if (!confirm(`هل تريد ترقية ${name} إلى مشرف؟`)) return;
+    try {
+      const phone = participantId.replace(/@.*/, "");
+      const { error } = await invokeCloud("evolution-manage", {
+        body: { action: "group_promote", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
+      });
+      if (error) throw error;
+      toast.success("✅ تمت ترقية العضو إلى مشرف");
+      loadGroupInfo();
+    } catch (err: any) {
+      toast.error("فشل الترقية: " + (err.message || ""));
+    }
+  };
+
+  const handleDemoteMember = async (participantId: string, name: string) => {
+    if (!confirm(`هل تريد تنزيل ${name} من المشرفين؟`)) return;
+    try {
+      const phone = participantId.replace(/@.*/, "");
+      const { error } = await invokeCloud("evolution-manage", {
+        body: { action: "group_demote", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
+      });
+      if (error) throw error;
+      toast.success("✅ تم تنزيل العضو من المشرفين");
+      loadGroupInfo();
+    } catch (err: any) {
+      toast.error("فشل التنزيل: " + (err.message || ""));
+    }
+  };
+
+  const handleToggleGroupSetting = async (setting: string, label: string) => {
+    try {
+      const { error } = await invokeCloud("evolution-manage", {
+        body: { action: "group_toggle_setting", group_jid: conversation.customerPhone, setting, channel_id: conversation.channelId },
+      });
+      if (error) throw error;
+      toast.success(`✅ تم تعديل إعداد: ${label}`);
+      loadGroupInfo();
+    } catch (err: any) {
+      toast.error("فشل تعديل الإعداد: " + (err.message || ""));
+    }
+  };
+
   useEffect(() => {
     setNotes(conversation.notes || "");
     setGroupPicture(conversation.profilePic || null);
