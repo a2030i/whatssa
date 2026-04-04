@@ -650,11 +650,50 @@ const IntegrationsPage = () => {
               </div>
             )}
 
-
             {config.registered_at && (
               <p className="text-[10px] text-muted-foreground text-center">
                 آخر تسجيل: {new Date(config.registered_at).toLocaleString("ar-SA")}
               </p>
+            )}
+
+            {/* Test Message */}
+            {isConnected && (
+              <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Send className="w-4 h-4 text-primary" />
+                  <h4 className="text-xs font-bold">إرسال رسالة اختبار</h4>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    placeholder="9665xxxxxxxx"
+                    className="h-8 text-xs flex-1"
+                    dir="ltr"
+                  />
+                  <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={sendTestMessage} disabled={testSending || !testPhone}>
+                    {testSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                    إرسال
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Profile Editor */}
+            {isConnected && (
+              <WhatsAppProfileEditor configId={config.id} channelType="meta_api" />
+            )}
+
+            {/* Channel Routing */}
+            {isConnected && orgId && (
+              <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
+                <ChannelRoutingConfig
+                  configId={config.id}
+                  orgId={orgId}
+                  defaultTeamId={(config as any).default_team_id}
+                  defaultAgentId={(config as any).default_agent_id}
+                />
+              </div>
             )}
 
             <Button variant="ghost" size="sm" className="w-full text-xs text-destructive gap-1" onClick={() => handleDisconnect(config.id)}>
