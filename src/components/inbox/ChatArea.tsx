@@ -729,10 +729,38 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     fetchMembers();
   }, [orgId]);
 
+  // Fetch group participants for group conversations (Evolution only)
+  const isGroup = conversation.conversationType === "group";
+  const isEvolutionChannel = conversation.channelType === "evolution";
+  useEffect(() => {
+    if (!isGroup || !isEvolutionChannel || !conversation.customerPhone) return;
+    const fetchGroupMembers = async () => {
+      try {
+        const { data, error } = await invokeCloud("evolution-manage", {
+          body: { action: "group_info", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
+        });
+        if (error) return;
+        const participants = data?.data?.participants || data?.data?.data?.participants || [];
+        const mapped = participants.map((p: any) => {
+          const phone = (p.id || p.jid || "").replace(/@.*/, "");
+          return { id: p.id || p.jid || phone, name: p.pushName || p.name || phone, phone };
+        });
+        setGroupParticipants(mapped);
+      } catch (e) {
+        console.error("Failed to fetch group participants:", e);
+      }
+    };
+    fetchGroupMembers();
+  }, [conversation.id, isGroup, isEvolutionChannel]);
+
   const isMetaChannel = conversation.channelType === "meta_api";
   const windowExpired = isMetaChannel ? windowInfo.expired : false;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
-  const filteredMentionAgents = teamMembers.filter((m) => (m.full_name || "").includes(mentionFilter));
+  // In note mode: show team members. In group non-note mode: show group participants
+  const isGroupMentionMode = isGroup && !isNoteMode;
+  const filteredMentionAgents = isGroupMentionMode
+    ? groupParticipants.filter((p) => (p.name || p.phone || "").toLowerCase().includes(mentionFilter.toLowerCase()))
+    : teamMembers.filter((m) => (m.full_name || "").includes(mentionFilter));
 
   // 24h window countdown - update every minute
   useEffect(() => {
