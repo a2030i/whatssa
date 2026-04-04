@@ -1033,7 +1033,28 @@ serve(async (req) => {
 
         const metadata: Record<string, unknown> = { ...extraMetadata };
         if (senderName) metadata.sender_name = senderName;
-        if (conversationType === "group") metadata.participant = participant;
+        if (conversationType === "group") {
+          metadata.participant = participant;
+          // Store mentioned JIDs for proper mention rendering
+          const mentionedJid = contextInfo?.mentionedJid || [];
+          if (Array.isArray(mentionedJid) && mentionedJid.length > 0) {
+            metadata.mentioned = mentionedJid.map((jid: string) => jid.replace("@s.whatsapp.net", "").replace("@lid", ""));
+          }
+          // Auto-save group sender as customer if not exists
+          if (participant && senderName) {
+            const senderPhone = participant.replace("@s.whatsapp.net", "").replace("@lid", "");
+            if (senderPhone) {
+              try {
+                await supabase.from("customers").upsert({
+                  org_id: orgId,
+                  phone: senderPhone,
+                  name: senderName,
+                  source: "whatsapp_group",
+                }, { onConflict: "org_id,phone", ignoreDuplicates: false });
+              } catch (_e) { /* ignore upsert errors */ }
+            }
+          }
+        }
         if (quotedStanzaId && quotedMessage) {
           metadata.quoted = {
             stanza_id: quotedStanzaId,
