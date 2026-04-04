@@ -39,7 +39,7 @@ const SHIPMENT_STATUS_MAP: Record<string, string> = {
   returned: "مرتجع",
 };
 
-const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssignTeam }: CustomerInfoPanelProps) => {
+const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssignTeam, isMobileSheet }: CustomerInfoPanelProps) => {
   const { orgId, isEcommerce } = useAuth();
   const [notes, setNotes] = useState(conversation.notes || "");
   const [editingNotes, setEditingNotes] = useState(false);
