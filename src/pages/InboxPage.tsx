@@ -168,6 +168,8 @@ const InboxPage = () => {
           channelName: channelConfig ? (channelConfig.display_phone || channelConfig.business_name || channelConfig.evolution_instance_name || "") : undefined,
           profilePic: conversation.customer_profile_pic || undefined,
           unreadMentionCount: conversation.unread_mention_count || 0,
+          isPinned: conversation.is_pinned || false,
+          isArchived: conversation.is_archived || false,
         };
       });
 
