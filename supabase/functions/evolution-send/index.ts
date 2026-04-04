@@ -78,7 +78,7 @@ serve(async (req) => {
 
     const orgId = profile.org_id;
 
-    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id, action, group_name, members, sender_name } = body;
+    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id, action, group_name, members, sender_name, poll_name, poll_options } = body;
 
     // ── Create Group (Evolution API) ──
     if (action === "create_group") {
@@ -297,7 +297,7 @@ serve(async (req) => {
       return json({ success: true, edited: true });
     }
 
-    if (!to || (!message && !media_url)) return json({ error: "الرقم والرسالة أو الوسائط مطلوبة" }, 400);
+    if (!to || (!message && !media_url && type !== "poll")) return json({ error: "الرقم والرسالة أو الوسائط مطلوبة" }, 400);
 
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
@@ -414,6 +414,34 @@ serve(async (req) => {
         waMessageId = result.key?.id || null;
         sentContent = message || `[${sentMessageType}]`;
       }
+    } else if (type === "poll" && poll_name && Array.isArray(poll_options) && poll_options.length >= 2) {
+      // ── Send poll ──
+      const pollBody: Record<string, unknown> = {
+        number: to,
+        name: poll_name,
+        values: poll_options,
+        selectableCount: 1,
+      };
+
+      logToSystem(adminClient, "info", `إرسال تصويت Evolution إلى ${to}`, {
+        to, instance: instanceName, poll_name,
+      }, orgId, user.id);
+
+      const response = await fetch(`${EVOLUTION_URL}/message/sendPoll/${instanceName}`, {
+        method: "POST", headers: evoHeaders, body: JSON.stringify(pollBody),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        logToSystem(adminClient, "error", `فشل إرسال تصويت Evolution إلى ${to}`, {
+          to, http_status: response.status, error: result?.message || "unknown",
+        }, orgId, user.id);
+        return json({ error: result?.message || "فشل إرسال التصويت عبر Evolution" }, response.status);
+      }
+
+      waMessageId = result.key?.id || null;
+      sentContent = `📊 ${poll_name}`;
+      sentMessageType = "poll";
     } else {
       // ── Send text message ──
       const sendBody: Record<string, unknown> = { number: to, text: message };
