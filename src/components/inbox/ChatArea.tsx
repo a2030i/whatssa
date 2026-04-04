@@ -629,6 +629,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     setIsBlocked(conversation.isBlocked || false);
   }, [conversation.id, conversation.isBlocked]);
 
+  // Listen for reaction detail sheet
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setReactionDetails(detail);
+    };
+    window.addEventListener("show-reaction-details", handler);
+    return () => window.removeEventListener("show-reaction-details", handler);
+  }, []);
+
   const handleToggleBlock = async () => {
     const action = isBlocked ? "unblock_contact" : "block_contact";
     const newBlocked = !isBlocked;
