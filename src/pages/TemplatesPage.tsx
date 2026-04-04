@@ -1,23 +1,87 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, FileText, Check, Clock, XCircle, Eye, Globe, RefreshCw, Loader2, Pencil, Trash2, AlertTriangle, Image, Video, Type, Link, Phone, X, BarChart3, TrendingUp, Send as SendIcon, BookOpen } from "lucide-react";
+import {
+  Plus,
+  Search,
+  FileText,
+  Check,
+  Clock,
+  XCircle,
+  Eye,
+  Globe,
+  RefreshCw,
+  Loader2,
+  Pencil,
+  Trash2,
+  AlertTriangle,
+  Image,
+  Video,
+  Type,
+  Link,
+  Phone,
+  X,
+  BarChart3,
+  TrendingUp,
+  Send as SendIcon,
+  BookOpen,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase, invokeCloud } from "@/lib/supabase";
+import { invokeCloud } from "@/lib/supabase";
 import { toast } from "sonner";
-import { mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
+import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
 
-const categoryLabels: Record<string, string> = { marketing: "تسويقي", utility: "خدمي", authentication: "مصادقة" };
-const categoryColors: Record<string, string> = { marketing: "bg-primary/10 text-primary", utility: "bg-info/10 text-info", authentication: "bg-warning/10 text-warning" };
-const statusLabels: Record<string, string> = { approved: "معتمد", pending: "قيد المراجعة", rejected: "مرفوض", paused: "موقوف" };
-const statusIcons: Record<string, typeof Check> = { approved: Check, pending: Clock, rejected: XCircle, paused: Clock };
-const statusColors: Record<string, string> = { approved: "text-success", pending: "text-warning", rejected: "text-destructive", paused: "text-muted-foreground" };
+const categoryLabels: Record<string, string> = {
+  marketing: "تسويقي",
+  utility: "خدمي",
+  authentication: "مصادقة",
+};
+
+const categoryLabelsEn: Record<string, string> = {
+  marketing: "Marketing",
+  utility: "Utility",
+  authentication: "Authentication",
+};
+
+const categoryColors: Record<string, string> = {
+  marketing: "bg-primary/10 text-primary",
+  utility: "bg-info/10 text-info",
+  authentication: "bg-warning/10 text-warning",
+};
+
+const statusLabels: Record<string, string> = {
+  approved: "معتمد",
+  pending: "قيد المراجعة",
+  rejected: "مرفوض",
+  paused: "موقوف",
+};
+
+const statusLabelsEn: Record<string, string> = {
+  approved: "Approved",
+  pending: "Pending review",
+  rejected: "Rejected",
+  paused: "Paused",
+};
+
+const statusIcons: Record<string, typeof Check> = {
+  approved: Check,
+  pending: Clock,
+  rejected: XCircle,
+  paused: Clock,
+};
+
+const statusColors: Record<string, string> = {
+  approved: "text-success",
+  pending: "text-warning",
+  rejected: "text-destructive",
+  paused: "text-muted-foreground",
+};
 
 interface CtaButton {
   type: "url" | "phone";
@@ -36,14 +100,22 @@ interface TemplateFormData {
   buttons: CtaButton[];
 }
 
-const emptyForm: TemplateFormData = { name: "", category: "utility", headerType: "NONE", header: "", headerUrl: "", body: "", footer: "", buttons: [] };
-
-// ── نماذج قوالب جاهزة للمتاجر ──
 interface TemplateSuggestion {
   label: string;
   description: string;
   form: TemplateFormData;
 }
+
+const emptyForm: TemplateFormData = {
+  name: "",
+  category: "utility",
+  headerType: "NONE",
+  header: "",
+  headerUrl: "",
+  body: "",
+  footer: "",
+  buttons: [],
+};
 
 const ecommerceTemplateSuggestions: TemplateSuggestion[] = [
   {
@@ -132,7 +204,29 @@ const ecommerceTemplateSuggestions: TemplateSuggestion[] = [
   },
 ];
 
-const TemplateAnalytics = () => {
+const reviewChecklist = {
+  ar: [
+    "أنشئ قالباً جديداً أو افتح قالباً موجوداً.",
+    "حدّث الصفحة لإظهار حالة القالب وإدارته بعد المزامنة من Meta.",
+    "افتح نافذة الإرسال وأرسل قالباً معتمداً إلى رقم الاختبار.",
+    "اذكر أثناء التسجيل أن الاعتماد يُراجع في Meta وتتم مزامنته هنا داخل المنصة.",
+  ],
+  en: [
+    "Create a new template or open an existing one.",
+    "Refresh the page to show the template status synced from Meta.",
+    "Open the send dialog and send an approved template to your test number.",
+    "Mention in the recording that approval happens in Meta and is managed here through synced statuses.",
+  ],
+};
+
+const replaceTemplateVariables = (template: WhatsAppTemplate, variables: string[]) => {
+  return variables.reduce(
+    (message, value, index) => message.replaceAll(`{{${index + 1}}}`, value || `{{${index + 1}}}`),
+    template.body,
+  );
+};
+
+const TemplateAnalytics = ({ isReviewMode }: { isReviewMode: boolean }) => {
   const [analytics, setAnalytics] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -147,32 +241,44 @@ const TemplateAnalytics = () => {
     })();
   }, []);
 
-  if (isLoading) return (
-    <div className="bg-card rounded-xl border border-border p-8 text-center">
-      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-muted-foreground" />
-      <p className="text-sm text-muted-foreground">جاري جلب تحليلات القوالب من Meta...</p>
-    </div>
-  );
+  if (isLoading) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-8 text-center">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
+          {isReviewMode ? "Loading template analytics from Meta..." : "جاري جلب تحليلات القوالب من Meta..."}
+        </p>
+      </div>
+    );
+  }
 
-  if (analytics.length === 0) return (
-    <div className="bg-card rounded-xl border border-border p-8 text-center">
-      <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-      <h3 className="font-semibold text-sm">لا توجد بيانات تحليلية</h3>
-      <p className="text-xs text-muted-foreground mt-1">ابدأ بإرسال رسائل عبر القوالب لتظهر الإحصائيات هنا</p>
-    </div>
-  );
+  if (analytics.length === 0) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-8 text-center">
+        <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+        <h3 className="font-semibold text-sm">{isReviewMode ? "No analytics available yet" : "لا توجد بيانات تحليلية"}</h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          {isReviewMode ? "Start sending template messages to see analytics here." : "ابدأ بإرسال رسائل عبر القوالب لتظهر الإحصائيات هنا"}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       {analytics.map((templateData: any, idx: number) => {
         const points = templateData.data_points || [];
-        const totals = points.reduce((acc: any, dp: any) => {
-          acc.sent += dp.sent || 0;
-          acc.delivered += dp.delivered || 0;
-          acc.read += dp.read || 0;
-          acc.clicked += dp.clicked || 0;
-          return acc;
-        }, { sent: 0, delivered: 0, read: 0, clicked: 0 });
+        const totals = points.reduce(
+          (acc: any, dp: any) => {
+            acc.sent += dp.sent || 0;
+            acc.delivered += dp.delivered || 0;
+            acc.read += dp.read || 0;
+            acc.clicked += dp.clicked || 0;
+            return acc;
+          },
+          { sent: 0, delivered: 0, read: 0, clicked: 0 },
+        );
+
         const deliveryRate = totals.sent > 0 ? Math.round((totals.delivered / totals.sent) * 100) : 0;
         const readRate = totals.delivered > 0 ? Math.round((totals.read / totals.delivered) * 100) : 0;
         const clickRate = totals.read > 0 ? Math.round((totals.clicked / totals.read) * 100) : 0;
@@ -181,24 +287,34 @@ const TemplateAnalytics = () => {
           <div key={idx} className="bg-card rounded-xl border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm" dir="ltr">{templateData.template_id || `قالب ${idx + 1}`}</h3>
+              <h3 className="font-semibold text-sm" dir="ltr">
+                {templateData.template_id || (isReviewMode ? `Template ${idx + 1}` : `قالب ${idx + 1}`)}
+              </h3>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-muted/50 rounded-lg p-3 text-center">
                 <p className="text-lg font-bold text-foreground">{totals.sent.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><SendIcon className="w-3 h-3" /> مرسل</p>
+                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                  <SendIcon className="w-3 h-3" /> {isReviewMode ? "Sent" : "مرسل"}
+                </p>
               </div>
               <div className="bg-muted/50 rounded-lg p-3 text-center">
                 <p className="text-lg font-bold text-success">{deliveryRate}%</p>
-                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><Check className="w-3 h-3" /> تسليم</p>
+                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                  <Check className="w-3 h-3" /> {isReviewMode ? "Delivered" : "تسليم"}
+                </p>
               </div>
               <div className="bg-muted/50 rounded-lg p-3 text-center">
                 <p className="text-lg font-bold text-primary">{readRate}%</p>
-                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><BookOpen className="w-3 h-3" /> قراءة</p>
+                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                  <BookOpen className="w-3 h-3" /> {isReviewMode ? "Read" : "قراءة"}
+                </p>
               </div>
               <div className="bg-muted/50 rounded-lg p-3 text-center">
                 <p className="text-lg font-bold text-warning">{clickRate > 0 ? `${clickRate}%` : "-"}</p>
-                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><TrendingUp className="w-3 h-3" /> نقرات</p>
+                <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                  <TrendingUp className="w-3 h-3" /> {isReviewMode ? "Clicks" : "نقرات"}
+                </p>
               </div>
             </div>
           </div>
@@ -217,17 +333,26 @@ const TemplatesPage = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [previewTemplate, setPreviewTemplate] = useState<WhatsAppTemplate | null>(null);
-
-  // Create / Edit dialog
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WhatsAppTemplate | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<TemplateFormData>(emptyForm);
-
-  // Delete dialog
   const [deleteTarget, setDeleteTarget] = useState<WhatsAppTemplate | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [noWhatsApp, setNoWhatsApp] = useState(false);
+  const [isReviewMode, setIsReviewMode] = useState(false);
+  const [sendTarget, setSendTarget] = useState<WhatsAppTemplate | null>(null);
+  const [testPhone, setTestPhone] = useState("");
+  const [testVariables, setTestVariables] = useState<string[]>([]);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+
+  useEffect(() => {
+    setIsReviewMode(window.localStorage.getItem("meta-review-mode") === "1");
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("meta-review-mode", isReviewMode ? "1" : "0");
+  }, [isReviewMode]);
 
   const loadTemplates = useCallback(async (showRefreshState = false) => {
     if (showRefreshState) setIsRefreshing(true);
@@ -239,43 +364,42 @@ const TemplatesPage = () => {
 
     if (error || data?.error) {
       const errMsg = data?.error || "";
-      if (errMsg.includes("واتساب") || errMsg.includes("whatsapp")) {
+      if (errMsg.toLowerCase().includes("whatsapp") || errMsg.includes("واتساب")) {
         setNoWhatsApp(true);
       } else {
-        toast.error(errMsg || "تعذر جلب القوالب من Meta");
+        toast.error(errMsg || (isReviewMode ? "Failed to load templates from Meta" : "تعذر جلب القوالب من Meta"));
       }
       setTemplates([]);
     } else {
+      setNoWhatsApp(false);
       setTemplates((data?.templates || []).map(mapMetaTemplate));
     }
 
     setIsLoading(false);
     setIsRefreshing(false);
-  }, []);
+  }, [isReviewMode]);
 
   useEffect(() => {
     loadTemplates();
   }, [loadTemplates]);
 
-  const filtered = useMemo(
-    () =>
-      templates.filter((template) => {
-        if (searchQuery && !template.name.includes(searchQuery) && !template.body.includes(searchQuery)) return false;
-        if (categoryFilter !== "all" && template.category !== categoryFilter) return false;
-        if (statusFilter !== "all" && template.status !== statusFilter) return false;
-        return true;
-      }),
-    [templates, searchQuery, categoryFilter, statusFilter],
-  );
+  const filtered = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return templates.filter((template) => {
+      if (query && !template.name.toLowerCase().includes(query) && !template.body.toLowerCase().includes(query)) return false;
+      if (categoryFilter !== "all" && template.category !== categoryFilter) return false;
+      if (statusFilter !== "all" && template.status !== statusFilter) return false;
+      return true;
+    });
+  }, [templates, searchQuery, categoryFilter, statusFilter]);
 
-  // ── Open create dialog ──
   const openCreateDialog = () => {
     setEditingTemplate(null);
     setFormData(emptyForm);
+    setShowSuggestions(false);
     setShowFormDialog(true);
   };
 
-  // ── Open edit dialog ──
   const openEditDialog = (template: WhatsAppTemplate) => {
     setEditingTemplate(template);
     setFormData({
@@ -286,19 +410,23 @@ const TemplatesPage = () => {
       headerUrl: template.headerUrl || "",
       body: template.body,
       footer: template.footer || "",
-      buttons: (template.buttons || []).map((b) => ({
-        type: b.type === "phone_number" ? "phone" : "url",
-        text: b.text,
-        value: b.value || "",
+      buttons: (template.buttons || []).map((button) => ({
+        type: button.type === "phone_number" ? "phone" : "url",
+        text: button.text,
+        value: button.value || "",
       })),
     });
     setShowFormDialog(true);
   };
 
-  // ── Submit create or edit ──
+  const openSendDialog = (template: WhatsAppTemplate) => {
+    setSendTarget(template);
+    setTestVariables(Array.from({ length: template.variableCount }, () => ""));
+  };
+
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.body.trim()) {
-      toast.error("يرجى تعبئة الاسم والمحتوى");
+      toast.error(isReviewMode ? "Please fill in the template name and body" : "يرجى تعبئة الاسم والمحتوى");
       return;
     }
 
@@ -315,18 +443,27 @@ const TemplatesPage = () => {
         header_url: formData.headerType !== "TEXT" && formData.headerType !== "NONE" ? formData.headerUrl.trim() : "",
         body: formData.body.trim(),
         footer: formData.footer.trim(),
-        buttons: formData.buttons.filter((b) => b.text.trim() && b.value.trim()),
+        buttons: formData.buttons.filter((button) => button.text.trim() && button.value.trim()),
         language: editingTemplate?.language || "ar",
       },
     });
 
     if (error || data?.error) {
-      toast.error(data?.error || `تعذر ${editingTemplate ? "تعديل" : "إنشاء"} القالب`);
+      toast.error(data?.error || (isReviewMode ? `Failed to ${editingTemplate ? "update" : "create"} template` : `تعذر ${editingTemplate ? "تعديل" : "إنشاء"} القالب`));
       setIsSubmitting(false);
       return;
     }
 
-    toast.success(editingTemplate ? "تم تعديل القالب وإعادة إرساله لـ Meta" : "تم إرسال القالب إلى Meta");
+    toast.success(
+      editingTemplate
+        ? isReviewMode
+          ? "Template updated and resubmitted to Meta"
+          : "تم تعديل القالب وإعادة إرساله لـ Meta"
+        : isReviewMode
+          ? "Template submitted to Meta"
+          : "تم إرسال القالب إلى Meta",
+    );
+
     setShowFormDialog(false);
     setEditingTemplate(null);
     setFormData(emptyForm);
@@ -334,7 +471,6 @@ const TemplatesPage = () => {
     loadTemplates(true);
   };
 
-  // ── Delete ──
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -344,23 +480,57 @@ const TemplatesPage = () => {
     });
 
     if (error || data?.error) {
-      toast.error(data?.error || "تعذر حذف القالب");
+      toast.error(data?.error || (isReviewMode ? "Failed to delete template" : "تعذر حذف القالب"));
       setIsDeleting(false);
       return;
     }
 
-    toast.success("تم حذف القالب بنجاح");
+    toast.success(isReviewMode ? "Template deleted successfully" : "تم حذف القالب بنجاح");
     setDeleteTarget(null);
     setIsDeleting(false);
     loadTemplates(true);
   };
 
+  const handleSendTest = async () => {
+    if (!sendTarget) return;
+
+    if (!testPhone.trim()) {
+      toast.error(isReviewMode ? "Enter a test phone number" : "أدخل رقم اختبار");
+      return;
+    }
+
+    setIsSendingTest(true);
+
+    const { data, error } = await invokeCloud("whatsapp-send", {
+      body: {
+        to: testPhone.trim(),
+        type: "template",
+        template_name: sendTarget.name,
+        template_language: sendTarget.language,
+        template_components: buildTemplateComponents(sendTarget, testVariables),
+      },
+    });
+
+    if (error || data?.error) {
+      toast.error(data?.error || (isReviewMode ? "Failed to send test template" : "فشل إرسال القالب التجريبي"));
+      setIsSendingTest(false);
+      return;
+    }
+
+    toast.success(isReviewMode ? "Test template sent successfully" : "تم إرسال القالب التجريبي بنجاح");
+    setIsSendingTest(false);
+    setSendTarget(null);
+  };
+
+  const activeCategoryLabels = isReviewMode ? categoryLabelsEn : categoryLabels;
+  const activeStatusLabels = isReviewMode ? statusLabelsEn : statusLabels;
+
   const renderTemplatePreview = (template: WhatsAppTemplate) => (
-    <div className="bg-secondary rounded-xl p-4 max-w-[300px] mx-auto space-y-2">
+    <div className="bg-secondary rounded-xl p-4 max-w-[320px] mx-auto space-y-2">
       {template.headerFormat === "IMAGE" && (
-        <div className="bg-muted rounded-lg h-32 flex items-center justify-center">
+        <div className="bg-muted rounded-lg h-32 flex items-center justify-center overflow-hidden">
           {template.headerUrl ? (
-            <img src={template.headerUrl} alt="Header" className="w-full h-32 object-cover rounded-lg" />
+            <img src={template.headerUrl} alt="Template header" className="w-full h-32 object-cover rounded-lg" loading="lazy" />
           ) : (
             <Image className="w-8 h-8 text-muted-foreground" />
           )}
@@ -389,195 +559,261 @@ const TemplatesPage = () => {
   );
 
   const stats = [
-    { label: "معتمد", count: templates.filter((t) => t.status === "approved").length, color: "text-success" },
-    { label: "قيد المراجعة", count: templates.filter((t) => t.status === "pending").length, color: "text-warning" },
-    { label: "مرفوض", count: templates.filter((t) => t.status === "rejected").length, color: "text-destructive" },
+    { label: isReviewMode ? "Approved" : "معتمد", count: templates.filter((template) => template.status === "approved").length, color: "text-success" },
+    { label: isReviewMode ? "Pending" : "قيد المراجعة", count: templates.filter((template) => template.status === "pending").length, color: "text-warning" },
+    { label: isReviewMode ? "Rejected" : "مرفوض", count: templates.filter((template) => template.status === "rejected").length, color: "text-destructive" },
   ];
 
   const isEditing = !!editingTemplate;
+  const guideItems = isReviewMode ? reviewChecklist.en : reviewChecklist.ar;
 
   return (
-    <div className="p-3 md:p-6 space-y-6" dir="rtl">
-      {/* Header */}
+    <div className="p-3 md:p-6 space-y-6" dir={isReviewMode ? "ltr" : "rtl"}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold">قوالب الرسائل</h1>
-          <p className="text-sm text-muted-foreground mt-1">إدارة وإنشاء وتعديل القوالب المرتبطة مع Meta</p>
+          <h1 className="text-xl font-bold">{isReviewMode ? "Message Templates" : "قوالب الرسائل"}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isReviewMode ? "Create, manage, review, and test WhatsApp templates connected to Meta." : "إدارة وإنشاء وتعديل القوالب المرتبطة مع Meta"}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsReviewMode((prev) => !prev)}>
+            <Globe className="w-4 h-4" />
+            {isReviewMode ? "Arabic mode" : "Meta Review Mode"}
+          </Button>
           <Button variant="outline" size="sm" className="gap-2" onClick={() => loadTemplates(true)} disabled={isRefreshing}>
             {isRefreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            تحديث
+            {isReviewMode ? "Refresh" : "تحديث"}
           </Button>
           <Button className="gradient-whatsapp text-whatsapp-foreground gap-2" onClick={openCreateDialog}>
-            <Plus className="w-4 h-4" /> إنشاء قالب
+            <Plus className="w-4 h-4" /> {isReviewMode ? "Create Template" : "إنشاء قالب"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-4 md:p-5 space-y-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2 max-w-2xl">
+            <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+              {isReviewMode ? "Meta App Review" : "مراجعة Meta"}
+            </Badge>
+            <h2 className="text-base font-semibold">
+              {isReviewMode ? "This page now covers the template creation, management, and sending flow required for review." : "هذه الصفحة أصبحت تغطي إنشاء القالب وإدارته وإرساله كما تطلب Meta في المراجعة."}
+            </h2>
+            <ol className="space-y-1 text-sm text-muted-foreground">
+              {guideItems.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ol>
+          </div>
+          <Button
+            variant="secondary"
+            className="gap-2"
+            onClick={() => {
+              const approvedTemplate = templates.find((template) => template.status === "approved");
+              if (!approvedTemplate) {
+                toast.error(isReviewMode ? "Approve or refresh a template first" : "اعتمد قالباً أو حدّث القائمة أولاً");
+                return;
+              }
+              openSendDialog(approvedTemplate);
+            }}
+          >
+            <SendIcon className="w-4 h-4" />
+            {isReviewMode ? "Send Approved Template" : "إرسال قالب معتمد"}
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue="templates" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="templates" className="gap-1.5"><FileText className="w-3.5 h-3.5" /> القوالب</TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-1.5"><BarChart3 className="w-3.5 h-3.5" /> التحليلات</TabsTrigger>
+          <TabsTrigger value="templates" className="gap-1.5">
+            <FileText className="w-3.5 h-3.5" /> {isReviewMode ? "Templates" : "القوالب"}
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-1.5">
+            <BarChart3 className="w-3.5 h-3.5" /> {isReviewMode ? "Analytics" : "التحليلات"}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="analytics">
-          <TemplateAnalytics />
+          <TemplateAnalytics isReviewMode={isReviewMode} />
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="بحث في القوالب..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 bg-secondary border-0 text-sm" />
-        </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[140px] text-xs bg-secondary border-0"><SelectValue placeholder="التصنيف" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل التصنيفات</SelectItem>
-            <SelectItem value="marketing">تسويقي</SelectItem>
-            <SelectItem value="utility">خدمي</SelectItem>
-            <SelectItem value="authentication">مصادقة</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px] text-xs bg-secondary border-0"><SelectValue placeholder="الحالة" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل الحالات</SelectItem>
-            <SelectItem value="approved">معتمد</SelectItem>
-            <SelectItem value="pending">قيد المراجعة</SelectItem>
-            <SelectItem value="rejected">مرفوض</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        {stats.map((stat) => (
-          <div key={stat.label} className="bg-card rounded-xl p-3 text-center border border-border">
-            <p className={cn("text-2xl font-bold", stat.color)}>{stat.count}</p>
-            <p className="text-xs text-muted-foreground">{stat.label}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder={isReviewMode ? "Search templates..." : "بحث في القوالب..."}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="pr-9 bg-secondary border-0 text-sm"
+              />
+            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[170px] text-xs bg-secondary border-0">
+                <SelectValue placeholder={isReviewMode ? "Category" : "التصنيف"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{isReviewMode ? "All categories" : "كل التصنيفات"}</SelectItem>
+                <SelectItem value="marketing">{activeCategoryLabels.marketing}</SelectItem>
+                <SelectItem value="utility">{activeCategoryLabels.utility}</SelectItem>
+                <SelectItem value="authentication">{activeCategoryLabels.authentication}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[170px] text-xs bg-secondary border-0">
+                <SelectValue placeholder={isReviewMode ? "Status" : "الحالة"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{isReviewMode ? "All statuses" : "كل الحالات"}</SelectItem>
+                <SelectItem value="approved">{activeStatusLabels.approved}</SelectItem>
+                <SelectItem value="pending">{activeStatusLabels.pending}</SelectItem>
+                <SelectItem value="rejected">{activeStatusLabels.rejected}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        ))}
-      </div>
 
-      {/* Templates Grid */}
-      {noWhatsApp ? (
-        <div className="bg-card rounded-xl border border-border p-8 text-center space-y-3">
-          <AlertTriangle className="w-10 h-10 mx-auto text-warning" />
-          <h3 className="font-semibold">القوالب تتطلب ربط رقم عبر WhatsApp Cloud API</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            ميزة القوالب متاحة فقط عبر Meta Cloud API الرسمي. إذا كنت تستخدم واتساب ويب (Evolution) فلن تتمكن من إدارة القوالب.
-            اربط رقم عبر WhatsApp Cloud API من صفحة التكاملات.
-          </p>
-          <Button variant="outline" className="mt-2" onClick={() => window.location.href = '/integrations'}>
-            الذهاب للتكاملات
-          </Button>
-        </div>
-      ) : isLoading ? (
-        <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3" />
-          <p className="text-sm">جاري جلب القوالب...</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((template) => {
-            const StatusIcon = statusIcons[template.status] || Clock;
-            return (
-              <div key={template.id} className="bg-card rounded-xl border border-border p-4 space-y-3 hover:shadow-card transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <h3 className="font-semibold text-sm truncate" dir="ltr">{template.name}</h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 border-0", categoryColors[template.category] || "bg-secondary text-secondary-foreground")}>
-                        {categoryLabels[template.category] || template.category}
-                      </Badge>
-                      <span className={cn("flex items-center gap-0.5 text-[10px]", statusColors[template.status] || "text-muted-foreground")}>
-                        <StatusIcon className="w-3 h-3" /> {statusLabels[template.status] || template.status}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPreviewTemplate(template)} title="معاينة">
-                      <Eye className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(template)} title="تعديل">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(template)} title="حذف">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="bg-secondary/50 rounded-lg p-3">
-                  {(template.headerFormat === "IMAGE" || template.headerFormat === "VIDEO") && (
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      {template.headerFormat === "IMAGE" ? <Image className="w-3.5 h-3.5 text-primary" /> : <Video className="w-3.5 h-3.5 text-primary" />}
-                      <span className="text-[10px] font-medium text-primary">{template.headerFormat === "IMAGE" ? "صورة" : "فيديو"}</span>
-                    </div>
-                  )}
-                  {template.header && template.headerFormat !== "IMAGE" && template.headerFormat !== "VIDEO" && (
-                    <p className="font-semibold text-xs mb-1">{template.header}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground line-clamp-3">{template.body}</p>
-                  {template.footer && <p className="text-[10px] text-muted-foreground/60 mt-1">{template.footer}</p>}
-                </div>
-
-                {template.variableCount > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {Array.from({ length: template.variableCount }, (_, index) => (
-                      <span key={index} className="text-[10px] bg-accent px-1.5 py-0.5 rounded text-accent-foreground">{`{{${index + 1}}}`}</span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Globe className="w-3 h-3" /> {template.language === "ar" ? "عربي" : template.language}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">Meta</span>
-                </div>
+          <div className="grid grid-cols-3 gap-3">
+            {stats.map((stat) => (
+              <div key={stat.label} className="bg-card rounded-xl p-3 text-center border border-border">
+                <p className={cn("text-2xl font-bold", stat.color)}>{stat.count}</p>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
               </div>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
 
-      {!isLoading && filtered.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">لا توجد قوالب مطابقة</p>
-        </div>
-      )}
-      </TabsContent>
+          {noWhatsApp ? (
+            <div className="bg-card rounded-xl border border-border p-8 text-center space-y-3">
+              <AlertTriangle className="w-10 h-10 mx-auto text-warning" />
+              <h3 className="font-semibold">
+                {isReviewMode ? "Templates require an official WhatsApp Cloud API connection" : "القوالب تتطلب ربط رقم عبر WhatsApp Cloud API"}
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                {isReviewMode
+                  ? "Template management is available only through the official Meta Cloud API connection. Connect an official number from the integrations page first."
+                  : "ميزة القوالب متاحة فقط عبر Meta Cloud API الرسمي. إذا كنت تستخدم واتساب ويب فلن تتمكن من إدارة القوالب. اربط رقماً رسمياً من صفحة التكاملات."}
+              </p>
+              <Button variant="outline" className="mt-2" onClick={() => { window.location.href = "/integrations"; }}>
+                {isReviewMode ? "Go to integrations" : "الذهاب للتكاملات"}
+              </Button>
+            </div>
+          ) : isLoading ? (
+            <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3" />
+              <p className="text-sm">{isReviewMode ? "Loading templates..." : "جاري جلب القوالب..."}</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((template) => {
+                const StatusIcon = statusIcons[template.status] || Clock;
+                return (
+                  <div key={template.id} className="bg-card rounded-xl border border-border p-4 space-y-3 hover:shadow-card transition-shadow">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <h3 className="font-semibold text-sm truncate" dir="ltr">{template.name}</h3>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 border-0", categoryColors[template.category] || "bg-secondary text-secondary-foreground")}>
+                            {activeCategoryLabels[template.category] || template.category}
+                          </Badge>
+                          <span className={cn("flex items-center gap-0.5 text-[10px]", statusColors[template.status] || "text-muted-foreground")}>
+                            <StatusIcon className="w-3 h-3" /> {activeStatusLabels[template.status] || template.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        {template.status === "approved" && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSendDialog(template)} title={isReviewMode ? "Send test" : "إرسال تجريبي"}>
+                            <SendIcon className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPreviewTemplate(template)} title={isReviewMode ? "Preview" : "معاينة"}>
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(template)} title={isReviewMode ? "Edit" : "تعديل"}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(template)} title={isReviewMode ? "Delete" : "حذف"}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="bg-secondary/50 rounded-lg p-3">
+                      {(template.headerFormat === "IMAGE" || template.headerFormat === "VIDEO") && (
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          {template.headerFormat === "IMAGE" ? <Image className="w-3.5 h-3.5 text-primary" /> : <Video className="w-3.5 h-3.5 text-primary" />}
+                          <span className="text-[10px] font-medium text-primary">
+                            {template.headerFormat === "IMAGE" ? (isReviewMode ? "Image" : "صورة") : isReviewMode ? "Video" : "فيديو"}
+                          </span>
+                        </div>
+                      )}
+                      {template.header && template.headerFormat !== "IMAGE" && template.headerFormat !== "VIDEO" && (
+                        <p className="font-semibold text-xs mb-1">{template.header}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground line-clamp-3">{template.body}</p>
+                      {template.footer && <p className="text-[10px] text-muted-foreground/60 mt-1">{template.footer}</p>}
+                    </div>
+
+                    {template.variableCount > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {Array.from({ length: template.variableCount }, (_, index) => (
+                          <span key={index} className="text-[10px] bg-accent px-1.5 py-0.5 rounded text-accent-foreground">{`{{${index + 1}}}`}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Globe className="w-3 h-3" /> {template.language === "ar" ? (isReviewMode ? "Arabic" : "عربي") : template.language}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Meta</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {!isLoading && filtered.length === 0 && !noWhatsApp && (
+            <div className="text-center py-12 text-muted-foreground">
+              <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">{isReviewMode ? "No matching templates" : "لا توجد قوالب مطابقة"}</p>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
-      {/* Create / Edit Dialog */}
-      <Dialog open={showFormDialog} onOpenChange={(open) => { if (!open) { setShowFormDialog(false); setEditingTemplate(null); setFormData(emptyForm); } }}>
-        <DialogContent className="max-w-lg" dir="rtl">
+      <Dialog
+        open={showFormDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowFormDialog(false);
+            setEditingTemplate(null);
+            setFormData(emptyForm);
+            setShowSuggestions(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg" dir={isReviewMode ? "ltr" : "rtl"}>
           <DialogHeader>
-            <DialogTitle>{isEditing ? "تعديل القالب" : "إنشاء قالب جديد"}</DialogTitle>
+            <DialogTitle>{isEditing ? (isReviewMode ? "Edit template" : "تعديل القالب") : isReviewMode ? "Create new template" : "إنشاء قالب جديد"}</DialogTitle>
             <DialogDescription>
               {isEditing
-                ? "سيتم حذف القالب الحالي وإعادة إنشائه بالمحتوى الجديد في Meta (يتطلب مراجعة جديدة)"
-                : "أنشئ قالب رسالة جديد يُرسل مباشرة إلى Meta للمراجعة"}
+                ? isReviewMode
+                  ? "The current template will be deleted and recreated in Meta with the updated content. This requires a new review."
+                  : "سيتم حذف القالب الحالي وإعادة إنشائه بالمحتوى الجديد في Meta (يتطلب مراجعة جديدة)"
+                : isReviewMode
+                  ? "Create a message template and submit it directly to Meta for review."
+                  : "أنشئ قالب رسالة جديد يُرسل مباشرة إلى Meta للمراجعة"}
             </DialogDescription>
           </DialogHeader>
 
-          {/* Template Suggestions - only in create mode */}
-          {!isEditing && (
+          {!isEditing && !isReviewMode && (
             <div className="mt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full text-xs gap-2 border-dashed"
-                onClick={() => setShowSuggestions(!showSuggestions)}
-              >
+              <Button variant="outline" size="sm" className="w-full text-xs gap-2 border-dashed" onClick={() => setShowSuggestions((prev) => !prev)}>
                 <FileText className="w-3.5 h-3.5" />
                 {showSuggestions ? "إخفاء النماذج الجاهزة" : "📋 نماذج جاهزة للمتاجر — اضغط للاختيار"}
               </Button>
@@ -604,92 +840,132 @@ const TemplatesPage = () => {
           <div className="space-y-4 mt-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">اسم القالب</Label>
+                <Label className="text-xs">{isReviewMode ? "Template name" : "اسم القالب"}</Label>
                 <Input
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="example_order_update"
+                  onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                  placeholder="order_update_notice"
                   className="text-sm"
                   dir="ltr"
                   disabled={isEditing}
                 />
-                {!isEditing && <p className="text-[10px] text-muted-foreground">حروف إنجليزية صغيرة وأرقام وشرطة سفلية فقط</p>}
+                {!isEditing && (
+                  <p className="text-[10px] text-muted-foreground">
+                    {isReviewMode ? "Use lowercase English letters, numbers, and underscores only." : "حروف إنجليزية صغيرة وأرقام وشرطة سفلية فقط"}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">التصنيف</Label>
+                <Label className="text-xs">{isReviewMode ? "Category" : "التصنيف"}</Label>
                 <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                  <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="marketing">تسويقي</SelectItem>
-                    <SelectItem value="utility">خدمي</SelectItem>
-                    <SelectItem value="authentication">مصادقة</SelectItem>
+                    <SelectItem value="marketing">{activeCategoryLabels.marketing}</SelectItem>
+                    <SelectItem value="utility">{activeCategoryLabels.utility}</SelectItem>
+                    <SelectItem value="authentication">{activeCategoryLabels.authentication}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+
             <div className="space-y-1.5">
-              <Label className="text-xs">نوع العنوان</Label>
+              <Label className="text-xs">{isReviewMode ? "Header type" : "نوع العنوان"}</Label>
               <div className="flex gap-1.5">
                 {([
-                  { value: "NONE", label: "بدون", icon: null },
-                  { value: "TEXT", label: "نص", icon: Type },
-                  { value: "IMAGE", label: "صورة", icon: Image },
-                  { value: "VIDEO", label: "فيديو", icon: Video },
-                ] as const).map((opt) => (
+                  { value: "NONE", label: isReviewMode ? "None" : "بدون", icon: null },
+                  { value: "TEXT", label: isReviewMode ? "Text" : "نص", icon: Type },
+                  { value: "IMAGE", label: isReviewMode ? "Image" : "صورة", icon: Image },
+                  { value: "VIDEO", label: isReviewMode ? "Video" : "فيديو", icon: Video },
+                ] as const).map((option) => (
                   <button
-                    key={opt.value}
+                    key={option.value}
                     type="button"
-                    onClick={() => setFormData({ ...formData, headerType: opt.value, header: opt.value === "TEXT" ? formData.header : "", headerUrl: opt.value !== "TEXT" && opt.value !== "NONE" ? formData.headerUrl : "" })}
+                    onClick={() => setFormData({
+                      ...formData,
+                      headerType: option.value,
+                      header: option.value === "TEXT" ? formData.header : "",
+                      headerUrl: option.value !== "TEXT" && option.value !== "NONE" ? formData.headerUrl : "",
+                    })}
                     className={cn(
                       "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-medium border transition-all",
-                      formData.headerType === opt.value
+                      formData.headerType === option.value
                         ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-secondary text-muted-foreground hover:border-primary/40"
+                        : "border-border bg-secondary text-muted-foreground hover:border-primary/40",
                     )}
                   >
-                    {opt.icon && <opt.icon className="w-3.5 h-3.5" />}
-                    {opt.label}
+                    {option.icon && <option.icon className="w-3.5 h-3.5" />}
+                    {option.label}
                   </button>
                 ))}
               </div>
             </div>
+
             {formData.headerType === "TEXT" && (
               <div className="space-y-1.5">
-                <Label className="text-xs">نص العنوان</Label>
-                <Input value={formData.header} onChange={(e) => setFormData({ ...formData, header: e.target.value })} placeholder="عنوان القالب" className="text-sm" />
+                <Label className="text-xs">{isReviewMode ? "Header text" : "نص العنوان"}</Label>
+                <Input
+                  value={formData.header}
+                  onChange={(event) => setFormData({ ...formData, header: event.target.value })}
+                  placeholder={isReviewMode ? "Template header" : "عنوان القالب"}
+                  className="text-sm"
+                />
               </div>
             )}
+
             {(formData.headerType === "IMAGE" || formData.headerType === "VIDEO") && (
               <div className="space-y-1.5">
-                <Label className="text-xs">رابط {formData.headerType === "IMAGE" ? "الصورة" : "الفيديو"} (مثال)</Label>
+                <Label className="text-xs">
+                  {isReviewMode
+                    ? `${formData.headerType === "IMAGE" ? "Image" : "Video"} URL example`
+                    : `رابط ${formData.headerType === "IMAGE" ? "الصورة" : "الفيديو"} (مثال)`}
+                </Label>
                 <Input
                   value={formData.headerUrl}
-                  onChange={(e) => setFormData({ ...formData, headerUrl: e.target.value })}
+                  onChange={(event) => setFormData({ ...formData, headerUrl: event.target.value })}
                   placeholder={formData.headerType === "IMAGE" ? "https://example.com/image.jpg" : "https://example.com/video.mp4"}
                   className="text-sm"
                   dir="ltr"
                 />
                 <p className="text-[10px] text-muted-foreground">
                   {formData.headerType === "IMAGE"
-                    ? "رابط صورة عامة (JPEG/PNG) — تُستخدم كمثال عند مراجعة Meta"
-                    : "رابط فيديو عام (MP4) — يُستخدم كمثال عند مراجعة Meta"}
+                    ? isReviewMode
+                      ? "Use a public JPEG/PNG image URL. Meta uses it as the review sample."
+                      : "رابط صورة عامة (JPEG/PNG) — تُستخدم كمثال عند مراجعة Meta"
+                    : isReviewMode
+                      ? "Use a public MP4 video URL. Meta uses it as the review sample."
+                      : "رابط فيديو عام (MP4) — يُستخدم كمثال عند مراجعة Meta"}
                 </p>
               </div>
             )}
+
             <div className="space-y-1.5">
-              <Label className="text-xs">محتوى الرسالة *</Label>
-              <Textarea value={formData.body} onChange={(e) => setFormData({ ...formData, body: e.target.value })} placeholder="مرحباً {{1}}، تم تحديث طلبك..." className="text-sm min-h-[100px]" />
-              <p className="text-[10px] text-muted-foreground">استخدم {"{{1}}"} {"{{2}}"} للمتغيرات</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">التذييل (اختياري)</Label>
-              <Input value={formData.footer} onChange={(e) => setFormData({ ...formData, footer: e.target.value })} placeholder="مثال: شكراً لتواصلك معنا" className="text-sm" />
+              <Label className="text-xs">{isReviewMode ? "Message body *" : "محتوى الرسالة *"}</Label>
+              <Textarea
+                value={formData.body}
+                onChange={(event) => setFormData({ ...formData, body: event.target.value })}
+                placeholder={isReviewMode ? "Hello {{1}}, your order {{2}} has been updated..." : "مرحباً {{1}}، تم تحديث طلبك..."}
+                className="text-sm min-h-[100px]"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                {isReviewMode ? "Use {{1}}, {{2}}, etc. for variables." : "استخدم {{1}} {{2}} للمتغيرات"}
+              </p>
             </div>
 
-            {/* CTA Buttons */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">{isReviewMode ? "Footer (optional)" : "التذييل (اختياري)"}</Label>
+              <Input
+                value={formData.footer}
+                onChange={(event) => setFormData({ ...formData, footer: event.target.value })}
+                placeholder={isReviewMode ? "Example: Thanks for contacting us" : "مثال: شكراً لتواصلك معنا"}
+                className="text-sm"
+              />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs">أزرار CTA (اختياري)</Label>
+                <Label className="text-xs">{isReviewMode ? "CTA buttons (optional)" : "أزرار CTA (اختياري)"}</Label>
                 {formData.buttons.length < 3 && (
                   <div className="flex gap-1">
                     <Button
@@ -699,7 +975,7 @@ const TemplatesPage = () => {
                       className="h-7 text-[10px] gap-1"
                       onClick={() => setFormData({ ...formData, buttons: [...formData.buttons, { type: "url", text: "", value: "" }] })}
                     >
-                      <Link className="w-3 h-3" /> رابط URL
+                      <Link className="w-3 h-3" /> {isReviewMode ? "URL button" : "رابط URL"}
                     </Button>
                     <Button
                       type="button"
@@ -708,36 +984,39 @@ const TemplatesPage = () => {
                       className="h-7 text-[10px] gap-1"
                       onClick={() => setFormData({ ...formData, buttons: [...formData.buttons, { type: "phone", text: "", value: "" }] })}
                     >
-                      <Phone className="w-3 h-3" /> رقم هاتف
+                      <Phone className="w-3 h-3" /> {isReviewMode ? "Phone button" : "رقم هاتف"}
                     </Button>
                   </div>
                 )}
               </div>
-              {formData.buttons.map((btn, idx) => (
-                <div key={idx} className="flex items-start gap-2 bg-secondary/50 rounded-lg p-2.5">
+
+              {formData.buttons.map((button, index) => (
+                <div key={index} className="flex items-start gap-2 bg-secondary/50 rounded-lg p-2.5">
                   <div className="flex-1 space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      {btn.type === "url" ? <Link className="w-3 h-3 text-primary shrink-0" /> : <Phone className="w-3 h-3 text-primary shrink-0" />}
-                      <span className="text-[10px] font-medium text-primary">{btn.type === "url" ? "رابط URL" : "رقم هاتف"}</span>
+                      {button.type === "url" ? <Link className="w-3 h-3 text-primary shrink-0" /> : <Phone className="w-3 h-3 text-primary shrink-0" />}
+                      <span className="text-[10px] font-medium text-primary">
+                        {button.type === "url" ? (isReviewMode ? "URL button" : "رابط URL") : isReviewMode ? "Phone button" : "رقم هاتف"}
+                      </span>
                     </div>
                     <Input
-                      value={btn.text}
-                      onChange={(e) => {
+                      value={button.text}
+                      onChange={(event) => {
                         const updated = [...formData.buttons];
-                        updated[idx] = { ...updated[idx], text: e.target.value };
+                        updated[index] = { ...updated[index], text: event.target.value };
                         setFormData({ ...formData, buttons: updated });
                       }}
-                      placeholder="نص الزر"
+                      placeholder={isReviewMode ? "Button text" : "نص الزر"}
                       className="text-xs h-8"
                     />
                     <Input
-                      value={btn.value}
-                      onChange={(e) => {
+                      value={button.value}
+                      onChange={(event) => {
                         const updated = [...formData.buttons];
-                        updated[idx] = { ...updated[idx], value: e.target.value };
+                        updated[index] = { ...updated[index], value: event.target.value };
                         setFormData({ ...formData, buttons: updated });
                       }}
-                      placeholder={btn.type === "url" ? "https://example.com/page" : "+966500000000"}
+                      placeholder={button.type === "url" ? "https://example.com/page" : "+966500000000"}
                       className="text-xs h-8"
                       dir="ltr"
                     />
@@ -747,61 +1026,151 @@ const TemplatesPage = () => {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                    onClick={() => setFormData({ ...formData, buttons: formData.buttons.filter((_, i) => i !== idx) })}
+                    onClick={() => setFormData({ ...formData, buttons: formData.buttons.filter((_, buttonIndex) => buttonIndex !== index) })}
                   >
                     <X className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               ))}
+
               {formData.buttons.length > 0 && (
-                <p className="text-[10px] text-muted-foreground">يمكنك إضافة حتى 3 أزرار. Meta تدعم زر واحد من نوع رقم هاتف وزر واحد من نوع رابط.</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {isReviewMode ? "You can add up to 3 buttons. Meta supports one phone button and one URL button." : "يمكنك إضافة حتى 3 أزرار. Meta تدعم زر واحد من نوع رقم هاتف وزر واحد من نوع رابط."}
+                </p>
               )}
             </div>
 
             {isEditing && (
               <div className="bg-warning/10 text-warning rounded-lg p-3 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                <p className="text-xs">تعديل القالب يعني حذفه وإعادة إنشائه — سيحتاج مراجعة جديدة من Meta</p>
+                <p className="text-xs">
+                  {isReviewMode ? "Editing deletes and recreates the template in Meta, so it will go through review again." : "تعديل القالب يعني حذفه وإعادة إنشائه — سيحتاج مراجعة جديدة من Meta"}
+                </p>
               </div>
             )}
 
             <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full gradient-whatsapp text-whatsapp-foreground gap-2">
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isEditing ? "حفظ التعديلات" : "إرسال إلى Meta"}
+              {isEditing ? (isReviewMode ? "Save changes" : "حفظ التعديلات") : isReviewMode ? "Submit to Meta" : "إرسال إلى Meta"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <DialogContent className="max-w-sm" dir="rtl">
+        <DialogContent className="max-w-sm" dir={isReviewMode ? "ltr" : "rtl"}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="w-5 h-5" /> حذف القالب
+              <Trash2 className="w-5 h-5" /> {isReviewMode ? "Delete template" : "حذف القالب"}
             </DialogTitle>
             <DialogDescription>
-              هل تريد حذف القالب <strong dir="ltr" className="text-foreground">{deleteTarget?.name}</strong> نهائياً من Meta؟ لا يمكن التراجع عن هذا الإجراء.
+              {isReviewMode ? (
+                <>
+                  Do you want to permanently delete <strong dir="ltr" className="text-foreground">{deleteTarget?.name}</strong> from Meta? This action cannot be undone.
+                </>
+              ) : (
+                <>
+                  هل تريد حذف القالب <strong dir="ltr" className="text-foreground">{deleteTarget?.name}</strong> نهائياً من Meta؟ لا يمكن التراجع عن هذا الإجراء.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>إلغاء</Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
+              {isReviewMode ? "Cancel" : "إلغاء"}
+            </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={isDeleting} className="gap-2">
               {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
-              حذف نهائياً
+              {isReviewMode ? "Delete permanently" : "حذف نهائياً"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Preview Dialog */}
       <Dialog open={!!previewTemplate} onOpenChange={() => setPreviewTemplate(null)}>
-        <DialogContent className="max-w-sm" dir="rtl">
-          <DialogHeader><DialogTitle>معاينة القالب</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-sm" dir={isReviewMode ? "ltr" : "rtl"}>
+          <DialogHeader>
+            <DialogTitle>{isReviewMode ? "Template preview" : "معاينة القالب"}</DialogTitle>
+          </DialogHeader>
           {previewTemplate && (
             <div className="mt-2">
-              <p className="text-xs text-muted-foreground mb-3">معاينة القالب كما سيظهر للعميل:</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                {isReviewMode ? "Preview as shown to the customer:" : "معاينة القالب كما سيظهر للعميل:"}
+              </p>
               {renderTemplatePreview(previewTemplate)}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!sendTarget} onOpenChange={(open) => { if (!open) setSendTarget(null); }}>
+        <DialogContent className="max-w-lg" dir={isReviewMode ? "ltr" : "rtl"}>
+          <DialogHeader>
+            <DialogTitle>{isReviewMode ? "Send test template" : "إرسال قالب تجريبي"}</DialogTitle>
+            <DialogDescription>
+              {isReviewMode ? "Send an approved template to a test number to demonstrate the full use case." : "أرسل قالباً معتمداً إلى رقم اختبار لإظهار حالة الاستخدام كاملة."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {sendTarget && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-secondary/50 p-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="text-sm font-semibold" dir="ltr">{sendTarget.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {activeStatusLabels[sendTarget.status] || sendTarget.status} • {activeCategoryLabels[sendTarget.category] || sendTarget.category}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className={cn("border-0", categoryColors[sendTarget.category] || "bg-secondary text-secondary-foreground")}>
+                    {sendTarget.language === "ar" ? (isReviewMode ? "Arabic" : "عربي") : sendTarget.language}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">{isReviewMode ? "Test phone number" : "رقم الاختبار"}</Label>
+                <Input value={testPhone} onChange={(event) => setTestPhone(event.target.value)} placeholder="+9665XXXXXXXX" dir="ltr" />
+              </div>
+
+              {sendTarget.variableCount > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-xs">{isReviewMode ? "Template variables" : "متغيرات القالب"}</Label>
+                  {Array.from({ length: sendTarget.variableCount }, (_, index) => (
+                    <div key={index} className="space-y-1.5">
+                      <Label className="text-[11px] text-muted-foreground">
+                        {isReviewMode ? `Variable {{${index + 1}}}` : `المتغير {{${index + 1}}}`}
+                      </Label>
+                      <Input
+                        value={testVariables[index] || ""}
+                        onChange={(event) => {
+                          const next = [...testVariables];
+                          next[index] = event.target.value;
+                          setTestVariables(next);
+                        }}
+                        placeholder={isReviewMode ? `Value for {{${index + 1}}}` : `قيمة {{${index + 1}}}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xs text-muted-foreground mb-2">{isReviewMode ? "Message preview" : "معاينة الرسالة"}</p>
+                <p className="text-sm whitespace-pre-wrap text-foreground">
+                  {replaceTemplateVariables(sendTarget, testVariables)}
+                </p>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setSendTarget(null)} disabled={isSendingTest}>
+                  {isReviewMode ? "Cancel" : "إلغاء"}
+                </Button>
+                <Button onClick={handleSendTest} disabled={isSendingTest} className="gap-2">
+                  {isSendingTest ? <Loader2 className="w-4 h-4 animate-spin" /> : <SendIcon className="w-4 h-4" />}
+                  {isReviewMode ? "Send test template" : "إرسال القالب التجريبي"}
+                </Button>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>
