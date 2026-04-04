@@ -530,6 +530,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       {bulkMode && bulkSelected.size > 0 && (
         <BulkActionsBar
           selectedIds={Array.from(bulkSelected)}
+          onClear={() => setBulkSelected(new Set())}
           onDone={() => { setBulkMode(false); setBulkSelected(new Set()); }}
         />
       )}
