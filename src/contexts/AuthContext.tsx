@@ -245,6 +245,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         hasMetaApi,
         isImpersonating,
         impersonatedOrgId,
+        mustChangePassword: !!user?.user_metadata?.must_change_password,
         startImpersonation,
         stopImpersonation,
         refreshOrg,
