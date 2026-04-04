@@ -1660,9 +1660,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <StickyNote className="w-4 h-4" />
             </button>
             <button
-              onClick={() => { setInputText((prev) => prev + "@"); setShowMentions(true); setMentionFilter(""); inputRef.current?.focus(); }}
+              onClick={() => {
+                setInputText((prev) => prev + "@");
+                setShowMentions(true);
+                setMentionFilter("");
+                // In private chats, auto-switch to note mode. In groups, keep current mode
+                if (!isGroup && !isNoteMode) setIsNoteMode(true);
+                inputRef.current?.focus();
+              }}
               className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
-              title="اذكر موظف @"
+              title={isGroup && !isNoteMode ? "اذكر عضو @" : "اذكر موظف @"}
             >
               <AtSign className="w-4 h-4" />
             </button>
