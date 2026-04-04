@@ -1165,22 +1165,23 @@ const IntegrationsPage = () => {
   // ============ CHOOSE ONBOARDING TYPE ============
   if (flowStep === "choose_type") {
     return (
-      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
+        <div className="flex justify-end mb-4">{reviewToggle}</div>
         <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
           <div className="p-6 border-b border-border">
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-primary" />
-              كيف تريد ربط رقمك؟
+              {t("كيف تريد ربط رقمك؟", "How do you want to connect your number?")}
             </h2>
-            <p className="text-sm text-muted-foreground mt-1">اختر نوع العملية بناءً على حالة رقمك الحالية</p>
+            <p className="text-sm text-muted-foreground mt-1">{t("اختر نوع العملية بناءً على حالة رقمك الحالية", "Choose the operation type based on your current number status")}</p>
           </div>
           <div className="p-5 space-y-3">
             {([
               {
                 mode: "new" as OnboardingMode,
                 icon: Plus,
-                title: "رقم جديد",
-                desc: "ربط رقم لأول مرة — لم يُستخدم مع WhatsApp Business API من قبل",
+                title: t("رقم جديد", "New number"),
+                desc: t("ربط رقم لأول مرة — لم يُستخدم مع WhatsApp Business API من قبل", "Connect a number for the first time — never used with WhatsApp Business API before"),
                 color: "text-primary",
                 bgColor: "bg-primary/10",
                 borderColor: "border-primary",
@@ -1188,8 +1189,8 @@ const IntegrationsPage = () => {
               {
                 mode: "migrate_app" as OnboardingMode,
                 icon: Smartphone,
-                title: "نقل من تطبيق واتساب أعمال",
-                desc: "نقل رقم مُستخدم حالياً على تطبيق WhatsApp Business العادي إلى Cloud API",
+                title: t("نقل من تطبيق واتساب أعمال", "Migrate from WhatsApp Business App"),
+                desc: t("نقل رقم مُستخدم حالياً على تطبيق WhatsApp Business العادي إلى Cloud API", "Migrate a number currently used on the regular WhatsApp Business app to Cloud API"),
                 color: "text-warning",
                 bgColor: "bg-warning/10",
                 borderColor: "border-warning",
@@ -1197,8 +1198,8 @@ const IntegrationsPage = () => {
               {
                 mode: "migrate_provider" as OnboardingMode,
                 icon: ArrowLeftRight,
-                title: "نقل من مزوّد آخر",
-                desc: "نقل رقم مربوط حالياً بمزوّد Cloud API آخر (مثل 360dialog, Twilio, MessageBird)",
+                title: t("نقل من مزوّد آخر", "Migrate from another provider"),
+                desc: t("نقل رقم مربوط حالياً بمزوّد Cloud API آخر (مثل 360dialog, Twilio, MessageBird)", "Migrate a number currently connected to another Cloud API provider (e.g. 360dialog, Twilio, MessageBird)"),
                 color: "text-accent-foreground",
                 bgColor: "bg-accent/50",
                 borderColor: "border-accent",
@@ -1208,7 +1209,8 @@ const IntegrationsPage = () => {
                 key={opt.mode}
                 onClick={() => setOnboardingMode(opt.mode)}
                 className={cn(
-                  "w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-right",
+                  "w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all",
+                  isReviewMode ? "text-left" : "text-right",
                   onboardingMode === opt.mode
                     ? `${opt.borderColor} bg-muted/50`
                     : "border-border hover:border-muted-foreground/30"
@@ -1230,9 +1232,9 @@ const IntegrationsPage = () => {
             <div className="pt-3 space-y-2">
               <Button onClick={proceedFromTypeChoice} className="w-full gap-2 py-5 text-sm font-bold rounded-xl">
                 <ArrowRight className="w-4 h-4" />
-                متابعة
+                {t("متابعة", "Continue")}
               </Button>
-              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetFlow}>← رجوع</Button>
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetFlow}>{t("← رجوع", "← Back")}</Button>
             </div>
           </div>
         </div>
