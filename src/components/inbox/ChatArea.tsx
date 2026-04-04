@@ -24,6 +24,10 @@ import ExportConversation from "./ExportConversation";
 import { useAuth } from "@/contexts/AuthContext";
 import FollowUpDialog from "./FollowUpDialog";
 import ScheduleMessagePopover from "./ScheduleMessagePopover";
+import ForwardMessageDialog from "./ForwardMessageDialog";
+import PollCreatorDialog from "./PollCreatorDialog";
+import ContactCardDialog from "./ContactCardDialog";
+import MergeConversationDialog from "./MergeConversationDialog";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
