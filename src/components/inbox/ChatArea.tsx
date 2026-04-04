@@ -1759,6 +1759,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onImageClick={(src) => setLightboxSrc(src)}
                 hasAiConfig={hasAiConfig}
                 groupParticipants={isGroup ? groupParticipants : undefined}
+                onCopyLink={copyMessageLink}
               />
             )}
           </div>
