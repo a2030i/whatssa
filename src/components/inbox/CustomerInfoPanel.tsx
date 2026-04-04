@@ -12,6 +12,7 @@ import { supabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import InternalNotes from "./InternalNotes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 interface CustomerInfoPanelProps {
   conversation: Conversation;
