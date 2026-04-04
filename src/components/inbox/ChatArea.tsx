@@ -2108,6 +2108,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <ShoppingBag className="w-4 h-4" />
               </button>
             )}
+            {/* Send Poll — Evolution only */}
+            {!isNoteMode && isEvolutionChannel && (
+              <button onClick={() => setShowPollCreator(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال استطلاع">
+                <BarChart3 className="w-4 h-4" />
+              </button>
+            )}
+            {/* Send Contact Card */}
+            {!isNoteMode && (
+              <button onClick={() => setShowContactCard(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال بطاقة اتصال">
+                <Contact className="w-4 h-4" />
+              </button>
+            )}
             {/* AI Suggest Replies */}
             {hasAiConfig && !isNoteMode && !windowExpired && (
               <button
