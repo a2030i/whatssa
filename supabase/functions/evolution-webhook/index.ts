@@ -1158,19 +1158,24 @@ serve(async (req) => {
         if (senderName) metadata.sender_name = senderName;
         if (conversationType === "group") {
           metadata.participant = participant;
+          // Store senderPn (real phone) for @lid resolution
+          if (senderPn) metadata.sender_pn = senderPn.replace(/\D/g, "");
           // Store mentioned JIDs for proper mention rendering
           const mentionedJid = contextInfo?.mentionedJid || [];
           if (Array.isArray(mentionedJid) && mentionedJid.length > 0) {
             metadata.mentioned = mentionedJid.map((jid: string) => jid.replace("@s.whatsapp.net", "").replace("@lid", ""));
           }
-          // Auto-save group sender as customer if not exists
+          // Auto-save group sender as customer with real phone
           if (participant && senderName) {
-            const senderPhone = participant.replace("@s.whatsapp.net", "").replace("@lid", "");
-            if (senderPhone) {
+            const isLidPart = participant.includes("@lid");
+            const realPhone = (isLidPart && senderPn)
+              ? senderPn.replace(/\D/g, "")
+              : participant.replace("@s.whatsapp.net", "").replace("@lid", "");
+            if (realPhone && realPhone.length > 5) {
               try {
                 await supabase.from("customers").upsert({
                   org_id: orgId,
-                  phone: senderPhone,
+                  phone: realPhone,
                   name: senderName,
                   source: "whatsapp_group",
                 }, { onConflict: "org_id,phone", ignoreDuplicates: true });
