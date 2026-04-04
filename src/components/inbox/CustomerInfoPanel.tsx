@@ -530,7 +530,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                             <MoreVertical className="w-3 h-3" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-[140px]" dir="rtl">
+                        <DropdownMenuContent align="end" className="min-w-[140px]">
                           {p.admin ? (
                             <DropdownMenuItem onClick={() => handleDemoteMember(p.id, p.name)} className="text-xs gap-2">
                               <ShieldOff className="w-3 h-3" /> تنزيل من مشرف
