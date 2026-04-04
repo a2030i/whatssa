@@ -78,7 +78,7 @@ serve(async (req) => {
 
     const orgId = profile.org_id;
 
-    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id, action, group_name, members } = body;
+    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id, action, group_name, members, sender_name } = body;
 
     // ── Create Group (Evolution API) ──
     if (action === "create_group") {
