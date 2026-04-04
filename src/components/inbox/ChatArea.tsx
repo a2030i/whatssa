@@ -540,15 +540,33 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         )}
       </div>
       {/* Reactions badge - WhatsApp style floating below bubble */}
-      {msg.reactions && msg.reactions.length > 0 && (
-        <div className={cn("flex -mt-2 mb-1", msg.sender === "agent" ? "justify-end mr-2" : "justify-start ml-2")}>
-          <div className="flex items-center gap-0.5 bg-card border border-border/40 rounded-full px-1.5 py-0.5 shadow-sm">
-            {msg.reactions.map((r, i) => (
-              <span key={i} className="text-sm">{r.emoji}</span>
-            ))}
+      {msg.reactions && msg.reactions.length > 0 && (() => {
+        // Group reactions by emoji with count
+        const grouped = msg.reactions.reduce((acc, r) => {
+          if (!acc[r.emoji]) acc[r.emoji] = [];
+          acc[r.emoji].push(r);
+          return acc;
+        }, {} as Record<string, typeof msg.reactions>);
+        return (
+          <div className={cn("flex -mt-2 mb-1", msg.sender === "agent" ? "justify-end mr-2" : "justify-start ml-2")}>
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("show-reaction-details", {
+                  detail: { reactions: msg.reactions, messageId: msg.id },
+                }));
+              }}
+              className="flex items-center gap-0.5 bg-card border border-border/40 rounded-full px-1.5 py-0.5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            >
+              {Object.entries(grouped).map(([emoji, list]) => (
+                <span key={emoji} className="flex items-center gap-0.5">
+                  <span className="text-sm">{emoji}</span>
+                  {list.length > 1 && <span className="text-[10px] text-muted-foreground font-medium">{list.length}</span>}
+                </span>
+              ))}
+            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
