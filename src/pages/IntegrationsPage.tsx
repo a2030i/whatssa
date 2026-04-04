@@ -105,9 +105,18 @@ const IntegrationsPage = () => {
   const [unofficialTestPhone, setUnofficialTestPhone] = useState("");
   const [unofficialTestSending, setUnofficialTestSending] = useState(false);
   const [unofficialCheckingStatus, setUnofficialCheckingStatus] = useState<string | null>(null);
+  const [metaAppId, setMetaAppId] = useState(DEFAULT_META_APP_ID);
+  const [metaConfigId, setMetaConfigId] = useState(DEFAULT_META_CONFIG_ID);
 
   useEffect(() => {
     loadFacebookSDK();
+    // Load Meta settings from system_settings
+    supabase.from("system_settings").select("key, value").in("key", ["meta_app_id", "meta_config_id"]).then(({ data }) => {
+      (data || []).forEach((s: any) => {
+        if (s.key === "meta_app_id" && s.value) setMetaAppId(String(s.value));
+        if (s.key === "meta_config_id" && s.value) setMetaConfigId(String(s.value));
+      });
+    });
   }, []);
 
   useEffect(() => {
