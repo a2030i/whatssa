@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2 } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2, Forward, Star, BarChart3, GitMerge, Timer as TimerIcon } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
@@ -24,6 +24,10 @@ import ExportConversation from "./ExportConversation";
 import { useAuth } from "@/contexts/AuthContext";
 import FollowUpDialog from "./FollowUpDialog";
 import ScheduleMessagePopover from "./ScheduleMessagePopover";
+import ForwardMessageDialog from "./ForwardMessageDialog";
+import PollCreatorDialog from "./PollCreatorDialog";
+import ContactCardDialog from "./ContactCardDialog";
+import MergeConversationDialog from "./MergeConversationDialog";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
@@ -42,6 +46,8 @@ interface ChatAreaProps {
   onShowCustomerInfo?: () => void;
   scrollToMessageId?: string | null;
   onScrollToMessageDone?: () => void;
+  onStarMessage?: (msgId: string, starred: boolean) => void;
+  onForwardMessage?: (msg: Message) => void;
 }
 
 const MessageStatus = ({ status, isGroup, readBy, groupSize }: { status?: string; isGroup?: boolean; readBy?: string[]; groupSize?: number }) => {
@@ -221,7 +227,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants, onCopyLink }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }>; onCopyLink?: (msgId: string) => void }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants, onCopyLink, onForward, onStar }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }>; onCopyLink?: (msgId: string) => void; onForward?: (msg: Message) => void; onStar?: (msg: Message) => void }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
@@ -355,6 +361,18 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             <button onClick={() => onDelete(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-destructive/10" title="حذف">
               <Trash2 className="w-3.5 h-3.5 text-destructive" />
             </button>
+           )}
+          {/* Forward button */}
+          {onForward && msg.type === "text" && !msg.isDeleted && (
+            <button onClick={() => onForward(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="إعادة توجيه">
+              <Forward className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          )}
+          {/* Star button */}
+          {onStar && !msg.isDeleted && (
+            <button onClick={() => onStar(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="تمييز">
+              <Star className={cn("w-3.5 h-3.5", (msg as any).isStarred ? "text-amber-500 fill-amber-500" : "text-muted-foreground")} />
+            </button>
           )}
         </div>
       )}
@@ -385,6 +403,16 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               {onCopyLink && (
                 <DropdownMenuItem onClick={() => onCopyLink(msg.id)} className="text-xs gap-2">
                   <Link2 className="w-3.5 h-3.5" /> نسخ رابط الرسالة
+                </DropdownMenuItem>
+               )}
+              {onForward && msg.type === "text" && !msg.isDeleted && (
+                <DropdownMenuItem onClick={() => onForward(msg)} className="text-xs gap-2">
+                  <Forward className="w-3.5 h-3.5" /> إعادة توجيه
+                </DropdownMenuItem>
+              )}
+              {onStar && !msg.isDeleted && (
+                <DropdownMenuItem onClick={() => onStar(msg)} className="text-xs gap-2">
+                  <Star className={cn("w-3.5 h-3.5", (msg as any).isStarred ? "text-amber-500 fill-amber-500" : "")} /> {(msg as any).isStarred ? "إلغاء التمييز" : "تمييز ⭐"}
                 </DropdownMenuItem>
               )}
               {hasAiConfig && msg.sender === "customer" && msg.type === "text" && (
@@ -624,7 +652,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   );
 };
 
-const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo, scrollToMessageId, onScrollToMessageDone }: ChatAreaProps) => {
+const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo, scrollToMessageId, onScrollToMessageDone, onStarMessage, onForwardMessage }: ChatAreaProps) => {
   const { orgId, user, profile } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -675,6 +703,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [reactionDetails, setReactionDetails] = useState<{ reactions: Array<{ emoji: string; fromMe: boolean; participant?: string; participantName?: string }>; messageId: string } | null>(null);
   const [addMemberPhone, setAddMemberPhone] = useState("");
   const [addingMember, setAddingMember] = useState(false);
+  const [forwardMsg, setForwardMsg] = useState<Message | null>(null);
+  const [showPollCreator, setShowPollCreator] = useState(false);
+  const [showContactCard, setShowContactCard] = useState(false);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [showDisappearingMenu, setShowDisappearingMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1793,6 +1826,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 hasAiConfig={hasAiConfig}
                 groupParticipants={isGroup ? groupParticipants : undefined}
                 onCopyLink={copyMessageLink}
+                onForward={(m) => setForwardMsg(m)}
+                onStar={(m) => {
+                  const starred = !(m as any).isStarred;
+                  onStarMessage?.(m.id, starred);
+                  toast.success(starred ? "⭐ تم تمييز الرسالة" : "تم إلغاء التمييز");
+                }}
               />
             )}
           </div>
