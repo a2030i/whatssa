@@ -1470,6 +1470,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onDelete={onDeleteMessage ? handleDeleteMsg : undefined}
                 onImageClick={(src) => setLightboxSrc(src)}
                 hasAiConfig={hasAiConfig}
+                groupParticipants={isGroup ? groupParticipants : undefined}
               />
             )}
           </div>
