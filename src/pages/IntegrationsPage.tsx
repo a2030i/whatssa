@@ -1536,27 +1536,26 @@ const IntegrationsPage = () => {
   // ============ SUCCESS ============
   if (flowStep === "success") {
     return (
-      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
         <div className="bg-card rounded-2xl shadow-card border border-success/30 overflow-hidden">
           <div className="bg-success/5 p-8 text-center">
             <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-10 h-10 text-success" />
             </div>
-            <h2 className="text-xl font-bold text-foreground">✅ تم ربط الرقم بنجاح</h2>
+            <h2 className="text-xl font-bold text-foreground">{t("✅ تم ربط الرقم بنجاح", "✅ Number Connected Successfully")}</h2>
             {connectedPhone && (
               <p className="text-lg font-bold text-primary mt-2" dir="ltr">{connectedPhone}</p>
             )}
-            <Badge className="mt-2 bg-success/10 text-success border-0">متصل</Badge>
+            <Badge className="mt-2 bg-success/10 text-success border-0">{t("متصل", "Connected")}</Badge>
           </div>
 
-          {/* Test Message */}
           <div className="p-6 space-y-4">
             <div className="bg-muted/50 rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Send className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-bold text-foreground">أرسل رسالة اختبار</h3>
+                <h3 className="text-sm font-bold text-foreground">{t("أرسل رسالة اختبار", "Send a Test Message")}</h3>
               </div>
-              <p className="text-xs text-muted-foreground">تأكد من جاهزية الرقم بإرسال رسالة اختبار</p>
+              <p className="text-xs text-muted-foreground">{t("تأكد من جاهزية الرقم بإرسال رسالة اختبار", "Verify the number is ready by sending a test message")}</p>
               <div className="flex gap-2">
                 <Input
                   value={testPhone}
@@ -1567,14 +1566,14 @@ const IntegrationsPage = () => {
                 />
                 <Button onClick={sendTestMessage} disabled={testSending || !testPhone} className="gap-1.5 shrink-0">
                   {testSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  إرسال
+                  {t("إرسال", "Send")}
                 </Button>
               </div>
             </div>
 
             <Button onClick={resetFlow} variant="outline" className="w-full gap-2">
               <CheckCircle2 className="w-4 h-4" />
-              تم — الذهاب لإدارة الأرقام
+              {t("تم — الذهاب لإدارة الأرقام", "Done — Go to Number Management")}
             </Button>
           </div>
         </div>
