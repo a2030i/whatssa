@@ -122,36 +122,78 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         };
       });
 
-      // Enrich names from customers table & detect saved contacts
+      // For @lid participants, resolve names & phones from message history
+      const lidParticipants = mapped.filter((m: any) => m.isLid);
+      if (lidParticipants.length > 0) {
+        const { data: msgRows } = await supabase
+          .from("messages")
+          .select("metadata")
+          .eq("conversation_id", conversation.id)
+          .not("metadata", "is", null)
+          .limit(500);
+        
+        // Build lid → name mapping from messages
+        const lidNameMap = new Map<string, string>();
+        (msgRows || []).forEach((row: any) => {
+          const meta = row.metadata;
+          if (meta?.participant && typeof meta.participant === "string" && meta.participant.includes("@lid")) {
+            const lid = meta.participant;
+            const name = meta.sender_name || meta.senderName || meta.pushName;
+            if (name && !lidNameMap.has(lid)) lidNameMap.set(lid, name);
+          }
+        });
+
+        lidParticipants.forEach((m: any) => {
+          const resolvedName = lidNameMap.get(m.id);
+          if (resolvedName) m.name = resolvedName;
+        });
+      }
+
+      // Enrich names from customers table & resolve real phones for @lid by name match
       const phones = mapped.map((m: any) => m.phone).filter(Boolean);
       const rawDigits = mapped.map((m: any) => m.rawDigits).filter(Boolean);
       const allLookups = [...new Set([...phones, ...rawDigits])];
-      const savedPhones = new Set<string>();
-      if (allLookups.length > 0 && orgId) {
+      if (orgId) {
+        // Get all org customers for name-based matching too
         const { data: customers } = await supabase
           .from("customers")
           .select("phone, name")
           .eq("org_id", orgId)
-          .in("phone", allLookups);
-        const nameMap = new Map<string, string>();
-        (customers || []).forEach((c: any) => { if (c.name) nameMap.set(c.phone, c.name); });
+          .limit(1000);
+        
+        const phoneToName = new Map<string, string>();
+        const nameToPhone = new Map<string, string>();
+        (customers || []).forEach((c: any) => {
+          if (c.name) phoneToName.set(c.phone, c.name);
+          if (c.name && c.phone) {
+            const normalName = c.name.trim().toLowerCase();
+            if (!nameToPhone.has(normalName)) nameToPhone.set(normalName, c.phone);
+          }
+        });
 
         mapped.forEach((m: any) => {
-          // Exact match
-          const savedName = nameMap.get(m.phone) || nameMap.get(m.rawDigits);
+          // Exact phone match
+          const savedName = phoneToName.get(m.phone) || phoneToName.get(m.rawDigits);
           if (savedName) {
             m.name = savedName;
             m.isSaved = true;
-            savedPhones.add(m.phone);
             return;
           }
-          // Suffix match
-          for (const [cPhone, cName] of nameMap) {
+          // Suffix match on phone
+          for (const [cPhone, cName] of phoneToName) {
             if (cPhone && m.phone && (cPhone.endsWith(m.phone) || m.phone.endsWith(cPhone)) && cPhone.length >= 7) {
               m.name = cName;
               m.isSaved = true;
-              savedPhones.add(m.phone);
               return;
+            }
+          }
+          // For @lid: match by name to find real phone
+          if (m.isLid && m.name) {
+            const normalName = m.name.trim().toLowerCase();
+            const realPhone = nameToPhone.get(normalName);
+            if (realPhone) {
+              m.phone = realPhone.replace(/\D/g, "");
+              m.isSaved = true;
             }
           }
         });
@@ -426,7 +468,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                           {p.admin && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
                           {p.isSaved && !p.admin && <User className="w-3 h-3 text-primary shrink-0" />}
                         </p>
-                        {p.phone && !p.isLid && <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>}
+                        {p.phone && !(p.isLid && !p.isSaved) && <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>}
                       </div>
                     </div>
                     {isGroupAdmin && (
