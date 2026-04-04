@@ -376,6 +376,27 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
               <button
                 key={conv.id}
                 onClick={() => onSelect(conv.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  const menu = document.createElement("div");
+                  menu.className = "fixed z-50 bg-popover border border-border rounded-lg shadow-lg p-1 min-w-[140px] text-sm";
+                  menu.style.left = `${e.clientX}px`;
+                  menu.style.top = `${e.clientY}px`;
+                  const items = [
+                    { label: conv.isPinned ? "إلغاء التثبيت" : "📌 تثبيت", action: () => onTogglePin?.(conv.id) },
+                    { label: conv.isArchived ? "إلغاء الأرشفة" : "📁 أرشفة", action: () => onToggleArchive?.(conv.id) },
+                  ];
+                  items.forEach(item => {
+                    const btn = document.createElement("button");
+                    btn.className = "w-full text-right px-3 py-1.5 rounded hover:bg-accent text-xs";
+                    btn.textContent = item.label;
+                    btn.onclick = () => { item.action(); menu.remove(); };
+                    menu.appendChild(btn);
+                  });
+                  document.body.appendChild(menu);
+                  const dismiss = () => { menu.remove(); document.removeEventListener("click", dismiss); };
+                  setTimeout(() => document.addEventListener("click", dismiss), 0);
+                }}
                 className={cn(
                   "w-full text-right px-3 py-3 transition-all border-b border-border/20 hover:bg-accent/50 group relative",
                   isSelected && "bg-primary/5 border-r-2 border-r-primary"
