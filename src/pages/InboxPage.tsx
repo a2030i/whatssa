@@ -441,6 +441,7 @@ const InboxPage = () => {
   const currentMessages = selectedId ? allMessages[selectedId] || [] : [];
 
   const handleSendMessage = useCallback(async (convId: string, text: string, type: "text" | "note" = "text", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }) => {
+    const agentDisplayName = profile?.full_name || "النظام";
     if (type === "note") {
       const { error } = await supabase.from("messages").insert({
         conversation_id: convId,
@@ -448,7 +449,10 @@ const InboxPage = () => {
         sender: "agent",
         message_type: "note",
         status: "sent",
-        metadata: replyTo ? { quoted: { message_id: replyTo.id, sender_name: replyTo.senderName || "أنت", text: replyTo.text } } : {},
+        metadata: {
+          ...(replyTo ? { quoted: { message_id: replyTo.id, sender_name: replyTo.senderName || "أنت", text: replyTo.text } } : {}),
+          sender_name: agentDisplayName,
+        },
       });
 
       if (error) {
