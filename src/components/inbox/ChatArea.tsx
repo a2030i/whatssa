@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
@@ -189,7 +189,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string }> }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }> }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
@@ -205,6 +205,15 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
+
+  const resolveMentionLabel = (value: string) => {
+    const normalized = normalizeDigits(value);
+    if (!normalized) return value;
+    const participant = groupParticipants?.find((item) => item.phone === normalized || item.rawDigits === normalized);
+    if (participant?.name && participant.name !== participant.rawDigits) return participant.name;
+    if (participant?.phone) return `+${participant.phone}`;
+    return value;
+  };
 
   const handleReaction = async (emoji: string) => {
     try {
@@ -604,7 +613,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [savedReplyFilter, setSavedReplyFilter] = useState("");
   const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; full_name: string }>>([]);
-  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string }>>([]);
+  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; rawDigits: string; admin?: boolean; isSaved?: boolean }>>([]);
   const [otherTypingAgents, setOtherTypingAgents] = useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
@@ -619,6 +628,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showInternalProductPicker, setShowInternalProductPicker] = useState(false);
   const [isBlocked, setIsBlocked] = useState(conversation.isBlocked || false);
   const [hasProducts, setHasProducts] = useState(false);
+  const [groupPicture, setGroupPicture] = useState<string | null>(conversation.profilePic || null);
   const [showAddMembersDialog, setShowAddMembersDialog] = useState(false);
   const [reactionDetails, setReactionDetails] = useState<{ reactions: Array<{ emoji: string; fromMe: boolean; participant?: string; participantName?: string }>; messageId: string } | null>(null);
   const [addMemberPhone, setAddMemberPhone] = useState("");
@@ -633,7 +643,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   // Sync blocked state when conversation changes
   useEffect(() => {
     setIsBlocked(conversation.isBlocked || false);
-  }, [conversation.id, conversation.isBlocked]);
+    setGroupPicture(conversation.profilePic || null);
+  }, [conversation.id, conversation.isBlocked, conversation.profilePic]);
 
   // Listen for reaction detail sheet
   useEffect(() => {
@@ -735,12 +746,13 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       const { data } = await invokeCloud("evolution-manage", {
         body: { action: "group_info", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
       });
-      const participants = data?.data?.participants || data?.data?.data?.participants || [];
+      const info = data?.data?.data || data?.data || {};
+      setGroupPicture(info?.pictureUrl || info?.picture || info?.profilePictureUrl || conversation.profilePic || null);
+      const participants = info?.participants || [];
       setGroupParticipants(participants.map((p: any) => {
         const rawId = p.id || p.jid || "";
-        const isLid = rawId.includes("@lid");
-        const ph = isLid ? "" : rawId.replace(/@.*/, "");
-        return { id: rawId, name: p.pushName || p.name || ph || rawId.replace(/@.*/, ""), phone: ph };
+        const ph = extractParticipantPhone(p);
+        return { id: rawId, name: extractParticipantName(p, ph), phone: ph, rawDigits: normalizeDigits(rawId) };
       }));
     } catch (err: any) {
       toast.error("فشل إضافة العضو: " + (err.message || ""));
@@ -862,12 +874,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           body: { action: "group_info", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
         });
         if (error) return;
-        const participants = data?.data?.participants || data?.data?.data?.participants || [];
+        const info = data?.data?.data || data?.data || {};
+        setGroupPicture(info?.pictureUrl || info?.picture || info?.profilePictureUrl || conversation.profilePic || null);
+        const participants = info?.participants || [];
         const mapped = participants.map((p: any) => {
           const rawId = p.id || p.jid || "";
-          const isLid = rawId.includes("@lid");
-          const phone = isLid ? "" : rawId.replace(/@.*/, "");
-          return { id: rawId, name: p.pushName || p.name || phone || rawId.replace(/@.*/, ""), phone };
+          const phone = extractParticipantPhone(p);
+          return {
+            id: rawId,
+            name: extractParticipantName(p, phone),
+            phone,
+            rawDigits: normalizeDigits(rawId),
+            admin: p.admin === "admin" || p.admin === "superadmin" || p.isAdmin || p.isSuperAdmin,
+          };
         });
 
         // Enrich with saved customer names from DB
@@ -883,12 +902,21 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             const customerMap = new Map(savedCustomers.map(c => [c.phone, c.name]));
             mapped.forEach((p: any) => {
               const savedName = customerMap.get(p.phone);
-              if (savedName && savedName !== p.phone) {
+              if (savedName) {
                 p.name = savedName;
+                p.isSaved = true;
               }
             });
           }
         }
+
+        mapped.sort((a: any, b: any) => {
+          if (a.admin && !b.admin) return -1;
+          if (!a.admin && b.admin) return 1;
+          if (a.isSaved && !b.isSaved) return -1;
+          if (!a.isSaved && b.isSaved) return 1;
+          return (a.name || a.phone || a.rawDigits).localeCompare(b.name || b.phone || b.rawDigits);
+        });
 
         setGroupParticipants(mapped);
       } catch (e) {
@@ -905,14 +933,13 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const isGroupMentionMode = isGroup && !isNoteMode;
   const filteredMentionAgents = isGroupMentionMode
     ? groupParticipants
-        .filter((p) => (p.name || p.phone || "").toLowerCase().includes(mentionFilter.toLowerCase()))
+        .filter((p) => [p.name, p.phone, p.rawDigits].some((value) => (value || "").toLowerCase().includes(mentionFilter.toLowerCase())))
         .sort((a, b) => {
-          // Contacts with saved names first, then those with phone-only names
-          const aHasName = a.name && a.name !== a.phone;
-          const bHasName = b.name && b.name !== b.phone;
-          if (aHasName && !bHasName) return -1;
-          if (!aHasName && bHasName) return 1;
-          return (a.name || a.phone).localeCompare(b.name || b.phone);
+          if (a.admin && !b.admin) return -1;
+          if (!a.admin && b.admin) return 1;
+          if (a.isSaved && !b.isSaved) return -1;
+          if (!a.isSaved && b.isSaved) return 1;
+          return (a.name || a.phone || a.rawDigits).localeCompare(b.name || b.phone || b.rawDigits);
         })
     : teamMembers.filter((m) => (m.full_name || "").includes(mentionFilter));
 
@@ -1321,10 +1348,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <ArrowRight className="w-5 h-5 text-foreground" />
             </button>
             <div className="relative">
-              {conversation.profilePic ? (
-                <img src={conversation.profilePic} alt={conversation.customerName} className="w-10 h-10 md:w-11 md:h-11 rounded-2xl object-cover shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+              {groupPicture ? (
+                <img src={groupPicture} alt={conversation.customerName} className="w-10 h-10 md:w-11 md:h-11 rounded-2xl object-cover shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
               ) : null}
-              <div className={cn("w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-gradient-to-br from-primary/25 to-primary/10 flex items-center justify-center text-sm font-bold text-primary shadow-sm", conversation.profilePic ? "hidden" : "")}>
+              <div className={cn("w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-gradient-to-br from-primary/25 to-primary/10 flex items-center justify-center text-sm font-bold text-primary shadow-sm", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
@@ -1722,7 +1749,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <button key={a.id} onClick={() => insertMention(displayName, a.phone)} className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-secondary hover:bg-accent transition-colors text-right">
                   <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{initials}</div>
                   <div className="flex flex-col items-start min-w-0">
-                    <span className="font-medium truncate">{displayName}</span>
+                    <span className="font-medium truncate flex items-center gap-1">{displayName}{isGroupMentionMode && a.admin && <Crown className="w-3 h-3 shrink-0 text-primary" />}</span>
                     {isGroupMentionMode && a.phone && (
                       <span className="text-[10px] text-muted-foreground" dir="ltr">+{a.phone}</span>
                     )}

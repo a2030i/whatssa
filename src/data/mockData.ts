@@ -76,6 +76,7 @@ export interface Message {
     sender_name?: string;
     text?: string;
   };
+  mentioned?: string[];
   waMessageId?: string;
   reactions?: MessageReaction[];
   location?: MessageLocation;

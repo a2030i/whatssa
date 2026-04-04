@@ -39,6 +39,28 @@ const SHIPMENT_STATUS_MAP: Record<string, string> = {
   returned: "مرتجع",
 };
 
+const normalizeDigits = (value: unknown) =>
+  typeof value === "string" ? value.replace(/@.*/, "").replace(/\D/g, "") : "";
+
+const extractParticipantPhone = (participant: any) => {
+  const rawId = participant?.id || participant?.jid || "";
+  const candidates = [participant?.phone, participant?.number, participant?.notify, participant?.senderPn, participant?.participantPn]
+    .map(normalizeDigits)
+    .filter(Boolean);
+
+  if (candidates.length > 0) return candidates[0];
+  return rawId.includes("@s.whatsapp.net") ? normalizeDigits(rawId) : "";
+};
+
+const extractParticipantName = (participant: any, phone: string) => {
+  const candidate = [participant?.pushName, participant?.name, participant?.notify]
+    .find((value) => typeof value === "string" && value.trim());
+
+  if (candidate) return candidate.trim();
+  if (phone) return `+${phone}`;
+  return "عضو بالقروب";
+};
+
 const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssignTeam, isMobileSheet }: CustomerInfoPanelProps) => {
   const { orgId, isEcommerce } = useAuth();
   const [notes, setNotes] = useState(conversation.notes || "");
@@ -60,7 +82,8 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     stats: false,
   });
   const [groupInfo, setGroupInfo] = useState<any>(null);
-  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; admin?: boolean; isSaved?: boolean }>>([]);
+  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; rawDigits: string; admin?: boolean; isSaved?: boolean }>>([]);
+  const [groupPicture, setGroupPicture] = useState<string | null>(conversation.profilePic || null);
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
   const [addMemberPhone, setAddMemberPhone] = useState("");
   const [addingMember, setAddingMember] = useState(false);
@@ -73,19 +96,19 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         body: { action: "group_info", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
       });
       if (error) return;
-      const info = data?.data || data?.data?.data || {};
+      const info = data?.data?.data || data?.data || {};
       setGroupInfo(info);
+      setGroupPicture(info?.pictureUrl || info?.picture || info?.profilePictureUrl || conversation.profilePic || null);
       const participants = info?.participants || [];
       const mapped = participants.map((p: any) => {
         const rawId = p.id || p.jid || "";
-        const isLid = rawId.includes("@lid");
-        const phone = isLid ? "" : rawId.replace(/@.*/, "");
+        const phone = extractParticipantPhone(p);
         return {
           id: rawId,
-          name: p.pushName || p.name || phone || rawId.replace(/@.*/, ""),
+          name: extractParticipantName(p, phone),
           phone,
+          rawDigits: normalizeDigits(rawId),
           admin: p.admin === "admin" || p.admin === "superadmin" || p.isAdmin || p.isSuperAdmin,
-          isLid,
         };
       });
 
@@ -189,6 +212,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
 
   useEffect(() => {
     setNotes(conversation.notes || "");
+    setGroupPicture(conversation.profilePic || null);
     loadCustomer();
     loadOrders();
     if (isGroup && conversation.channelType === "evolution") {
@@ -340,10 +364,10 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           <TabsContent value="members" className="mt-0">
             <div className="p-4 border-b border-border text-center">
               <div className="relative inline-block">
-                {conversation.profilePic ? (
-                  <img src={conversation.profilePic} alt={conversation.customerName} className="w-16 h-16 rounded-full object-cover mx-auto mb-2" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                {groupPicture ? (
+                  <img src={groupPicture} alt={conversation.customerName} className="w-16 h-16 rounded-full object-cover mx-auto mb-2" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
                 ) : null}
-                <div className={`w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary mx-auto mb-2 ${conversation.profilePic ? "hidden" : ""}`}>
+                <div className={`w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary mx-auto mb-2 ${groupPicture ? "hidden" : ""}`}>
                   <Users className="w-7 h-7" />
                 </div>
               </div>
@@ -371,7 +395,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                   <div key={p.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors group">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                        {(p.name || p.phone).slice(0, 2)}
+                        {(p.name || p.phone || "ع").slice(0, 2)}
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-medium truncate flex items-center gap-1">
@@ -386,6 +410,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                       <Button
                         variant="ghost"
                         size="icon"
+                        disabled={!p.phone}
                         className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
                         onClick={() => handleRemoveGroupMember(p.phone)}
                       >
@@ -431,10 +456,10 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         <TabsContent value="info" className="mt-0">
       <div className="p-4 border-b border-border text-center">
         <div className="relative inline-block">
-          {conversation.profilePic ? (
-            <img src={conversation.profilePic} alt={conversation.customerName} className="w-16 h-16 rounded-full object-cover mx-auto mb-2" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+          {groupPicture ? (
+            <img src={groupPicture} alt={conversation.customerName} className="w-16 h-16 rounded-full object-cover mx-auto mb-2" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
           ) : null}
-          <div className={`w-16 h-16 rounded-full gradient-whatsapp flex items-center justify-center text-xl font-bold text-whatsapp-foreground mx-auto mb-2 ${conversation.profilePic ? "hidden" : ""}`}>
+          <div className={`w-16 h-16 rounded-full gradient-whatsapp flex items-center justify-center text-xl font-bold text-whatsapp-foreground mx-auto mb-2 ${groupPicture ? "hidden" : ""}`}>
             {conversation.customerName.charAt(0)}
           </div>
           {conversation.lastSeen === "متصل الآن" && (
