@@ -245,3 +245,8 @@
     background-size: 20px 20px;
   }
 }
+
+@keyframes wavePulse {
+  0% { transform: scaleY(0.6); }
+  100% { transform: scaleY(1.3); }
+}
