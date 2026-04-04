@@ -78,6 +78,14 @@ const IntegrationsPage = () => {
   const [accessToken, setAccessToken] = useState("");
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isReviewMode, setIsReviewMode] = useState(() => window.localStorage.getItem("meta-review-mode") === "1");
+
+  useEffect(() => {
+    window.localStorage.setItem("meta-review-mode", isReviewMode ? "1" : "0");
+  }, [isReviewMode]);
+
+  const t = useCallback((ar: string, en: string) => isReviewMode ? en : ar, [isReviewMode]);
+  const dir = isReviewMode ? "ltr" : "rtl";
   // Manual connect removed
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [connectedPhone, setConnectedPhone] = useState<string>("");
