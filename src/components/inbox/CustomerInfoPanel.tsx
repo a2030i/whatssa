@@ -507,7 +507,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                   </Button>
                 )}
               </div>
-              <div className="space-y-0.5 max-h-[350px] overflow-y-auto">
+              <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
                 {groupParticipants.map((p) => (
                   <div key={p.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors group">
                     <div className="flex items-center gap-2 min-w-0">
@@ -524,21 +524,47 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                       </div>
                     </div>
                     {isGroupAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={!p.phone}
-                        className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                        onClick={() => handleRemoveGroupMember(p.phone)}
-                      >
-                        <UserMinus className="w-3 h-3" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreVertical className="w-3 h-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-[140px]" dir="rtl">
+                          {p.admin ? (
+                            <DropdownMenuItem onClick={() => handleDemoteMember(p.id, p.name)} className="text-xs gap-2">
+                              <ShieldOff className="w-3 h-3" /> تنزيل من مشرف
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => handlePromoteMember(p.id, p.name)} className="text-xs gap-2">
+                              <ShieldCheck className="w-3 h-3" /> ترقية لمشرف
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleRemoveGroupMember(p.phone)} disabled={!p.phone} className="text-xs gap-2 text-destructive focus:text-destructive">
+                            <UserMinus className="w-3 h-3" /> إزالة من القروب
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 ))}
               </div>
 
-              <div className="mt-4 pt-3 border-t border-border">
+              {/* Group Settings */}
+              {isGroupAdmin && (
+                <div className="mt-3 pt-3 border-t border-border space-y-1.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground">إعدادات القروب</span>
+                  <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 justify-start" onClick={() => handleToggleGroupSetting("announcement", "المشرفون فقط يرسلون")}>
+                    <Lock className="w-3 h-3" /> تبديل: المشرفون فقط يرسلون
+                  </Button>
+                  <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 justify-start" onClick={() => handleToggleGroupSetting("locked", "المشرفون فقط يعدلون البيانات")}>
+                    <Shield className="w-3 h-3" /> تبديل: المشرفون فقط يعدلون البيانات
+                  </Button>
+                </div>
+              )}
+
+              <div className="mt-3 pt-3 border-t border-border">
                 <Button variant="destructive" size="sm" className="w-full text-xs gap-1.5" onClick={handleLeaveGroup}>
                   <LogOut className="w-3.5 h-3.5" /> الخروج من القروب
                 </Button>
