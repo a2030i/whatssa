@@ -678,7 +678,29 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const isEvolutionChannel = conversation.channelType === "evolution";
   const isMetaChannel = conversation.channelType === "meta_api";
 
-  // Sync blocked state when conversation changes
+  // Deep link: scroll to specific message
+  useEffect(() => {
+    if (!scrollToMessageId || messages.length === 0) return;
+    const el = document.getElementById(`msg-${scrollToMessageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary", "rounded-lg");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary", "rounded-lg"), 3000);
+      onScrollToMessageDone?.();
+    }
+  }, [scrollToMessageId, messages.length]);
+
+  const copyConversationLink = useCallback(() => {
+    const url = `${window.location.origin}/inbox?conversation=${conversation.id}`;
+    navigator.clipboard.writeText(url).then(() => toast.success("تم نسخ رابط المحادثة"));
+  }, [conversation.id]);
+
+  const copyMessageLink = useCallback((msgId: string) => {
+    const url = `${window.location.origin}/inbox?conversation=${conversation.id}&message=${msgId}`;
+    navigator.clipboard.writeText(url).then(() => toast.success("تم نسخ رابط الرسالة"));
+  }, [conversation.id]);
+
+
   useEffect(() => {
     setIsBlocked(conversation.isBlocked || false);
     setGroupPicture(conversation.profilePic || null);
