@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
@@ -664,6 +664,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const groupPicInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isGroup = conversation.conversationType === "group";
+  const isEvolutionChannel = conversation.channelType === "evolution";
+  const isMetaChannel = conversation.channelType === "meta_api";
 
   // Sync blocked state when conversation changes
   useEffect(() => {
@@ -926,8 +929,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   }, [orgId]);
 
   // Fetch group participants for group conversations (Evolution only)
-  const isGroup = conversation.conversationType === "group";
-  const isEvolutionChannel = conversation.channelType === "evolution";
   useEffect(() => {
     if (!isGroup || !isEvolutionChannel || !conversation.customerPhone) return;
     const fetchGroupMembers = async () => {
@@ -988,7 +989,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     fetchGroupMembers();
   }, [conversation.id, isGroup, isEvolutionChannel]);
 
-  const isMetaChannel = conversation.channelType === "meta_api";
   const windowExpired = isMetaChannel ? windowInfo.expired : false;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
   // In note mode: show team members. In group non-note mode: show group participants
