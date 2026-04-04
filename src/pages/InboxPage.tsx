@@ -495,6 +495,7 @@ const InboxPage = () => {
         to: conversation.customerPhone,
         message: text,
         conversation_id: convId,
+        sender_name: agentDisplayName,
         reply_to: replyTo ? { wa_message_id: replyTo.waMessageId, sender_name: replyTo.senderName, text: replyTo.text, message_id: replyTo.id } : undefined,
       },
     });
