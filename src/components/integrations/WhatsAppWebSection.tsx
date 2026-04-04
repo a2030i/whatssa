@@ -193,25 +193,24 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
 
   useEffect(() => {
     if (!orgId) return;
-    loadExistingConfig();
+    // In connectOnly mode, skip loading existing config — always start fresh
+    if (!connectOnly) {
+      loadExistingConfig();
+    } else {
+      setIsLoadingConfig(false);
+      setExistingConfig(null);
+      setInstanceStatus("idle");
+    }
     loadUnofficialLimits();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [orgId]);
+  }, [orgId, connectOnly]);
 
   useEffect(() => {
     if (autoOpen) setShowSetup(true);
   }, [autoOpen]);
 
   useEffect(() => {
-    if (!autoOpen) return;
-    // When connectOnly and already connected, treat as idle so user can add a new number
-    if (connectOnly && existingConfig?.is_connected && (existingConfig?.evolution_instance_status === "connected" || existingConfig?.evolution_instance_status === "connecting")) {
-      setInstanceStatus("idle");
-      setQrCode(null);
-      setPairingCode(null);
-      setExistingConfig(null);
-      return;
-    }
+    if (!autoOpen || connectOnly) return;
     if (existingConfig?.is_connected && (existingConfig?.evolution_instance_status === "connected" || existingConfig?.evolution_instance_status === "connecting")) {
       setInstanceStatus("connected");
       setQrCode(null);
