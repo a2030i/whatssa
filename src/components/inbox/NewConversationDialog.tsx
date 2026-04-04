@@ -433,8 +433,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               />
             </div>
 
-            {/* Channel selector for group - only evolution */}
-            {evolutionChannels.length > 1 && (
+            {/* Channel selector for group - evolution channels */}
+            {evolutionChannels.length > 0 ? (
               <div className="space-y-2">
                 <Label className="text-xs font-medium">📱 القناة</Label>
                 <div className="grid gap-2">
@@ -444,16 +444,21 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                       onClick={() => setSelectedChannel(ch)}
                       className={cn(
                         "flex items-center gap-3 p-3 rounded-xl border transition-all text-right",
-                        selectedChannel?.id === ch.id
+                        (selectedChannel?.id === ch.id || (evolutionChannels.length === 1))
                           ? "border-primary/40 bg-primary/5"
                           : "border-border/40 bg-card/50 hover:border-border/80"
                       )}
                     >
                       <Wifi className="w-4 h-4 text-warning shrink-0" />
-                      <span className="text-sm font-medium truncate">{ch.business_name || ch.display_phone || ch.evolution_instance_name}</span>
+                      <span className="text-sm font-medium truncate">{ch.channel_label || ch.business_name || ch.display_phone || ch.evolution_instance_name}</span>
                     </button>
                   ))}
                 </div>
+              </div>
+            ) : (
+              <div className="bg-warning/10 border border-warning/20 rounded-xl p-3 text-center">
+                <p className="text-xs text-warning font-medium">⚠️ لا توجد قناة واتساب ويب متصلة</p>
+                <p className="text-[10px] text-muted-foreground mt-1">يجب ربط رقم واتساب ويب أولاً من صفحة التكاملات</p>
               </div>
             )}
 
