@@ -1932,7 +1932,39 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         }}
       />
 
-      {/* Image Lightbox */}
+      <InternalProductPicker
+        open={showInternalProductPicker}
+        onOpenChange={setShowInternalProductPicker}
+        onSendProduct={async ({ sendMode, product }) => {
+          const displayName = product.name_ar || product.name;
+          const priceText = `${product.price.toFixed(2)} ${product.currency || "SAR"}`;
+          const caption = `🛍️ *${displayName}*\n💰 ${priceText}${product.description ? `\n📝 ${product.description}` : ""}${product.sku ? `\n🔖 SKU: ${product.sku}` : ""}`;
+
+          if (sendMode === "image" && product.image_url) {
+            await invokeCloud("evolution-send", {
+              body: {
+                to: conversation.customerPhone,
+                conversation_id: conversation.id,
+                message: caption,
+                media_url: product.image_url,
+                media_type: "image",
+                channel_id: conversation.channelId,
+              },
+            });
+          } else {
+            await invokeCloud("evolution-send", {
+              body: {
+                to: conversation.customerPhone,
+                conversation_id: conversation.id,
+                message: caption,
+                channel_id: conversation.channelId,
+              },
+            });
+          }
+          toast.success("تم إرسال المنتج بنجاح");
+        }}
+      />
+
       {lightboxSrc && (
         <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       )}
