@@ -1016,6 +1016,62 @@ serve(async (req) => {
       return json({ success: true, data: reactData });
     }
 
+    // ── UPDATE GROUP PICTURE ──
+    if (action === "update_group_picture") {
+      const groupJid = asString(payload.group_jid);
+      const imageUrl = asString(payload.image_url);
+
+      if (!groupJid || !imageUrl) {
+        return json({ error: "group_jid و image_url مطلوبين" }, 400);
+      }
+
+      let targetInstance = instanceName;
+      if (!targetInstance && channel_id) {
+        const { data: chConf } = await adminClient
+          .from("whatsapp_config")
+          .select("evolution_instance_name")
+          .eq("id", channel_id)
+          .eq("org_id", orgId)
+          .eq("channel_type", "evolution")
+          .maybeSingle();
+        targetInstance = chConf?.evolution_instance_name || undefined;
+      }
+
+      if (!targetInstance) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
+
+      const jid = groupJid.includes("@g.us") ? groupJid : `${groupJid}@g.us`;
+
+      const picRes = await fetch(
+        `${EVOLUTION_URL}/group/updateGroupPicture/${targetInstance}?groupJid=${encodeURIComponent(jid)}`,
+        {
+          method: "POST",
+          headers: evoHeaders,
+          body: JSON.stringify({ image: imageUrl }),
+        }
+      );
+
+      const picData = await picRes.json().catch(() => ({}));
+      if (!picRes.ok) {
+        await logToSystem(adminClient, "error", "فشل تحديث صورة القروب", {
+          error: picData, groupJid: jid, instance: targetInstance,
+        }, orgId, userId);
+        return json({ error: picData?.message || "فشل تحديث صورة القروب" }, 400);
+      }
+
+      // Update profile pic in conversations table
+      await adminClient
+        .from("conversations")
+        .update({ customer_profile_pic: imageUrl })
+        .eq("customer_phone", groupJid.replace("@g.us", ""))
+        .eq("org_id", orgId);
+
+      await logToSystem(adminClient, "info", "تم تحديث صورة القروب", {
+        groupJid: jid, instance: targetInstance,
+      }, orgId, userId);
+
+      return json({ success: true, data: picData });
+    }
+
     // ── POST STATUS/STORY ──
     if (action === "post_status") {
       const statusContent = asString(payload.content);

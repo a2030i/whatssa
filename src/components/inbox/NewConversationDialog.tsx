@@ -119,6 +119,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setGroupName("");
       setGroupMembers([]);
       setGroupMemberInput("");
+      setGroupImageFile(null);
+      setGroupImagePreview(null);
     }
   }, [open]);
 
