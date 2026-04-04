@@ -259,7 +259,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   );
 
   return (
-    <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-y-auto">
+    <div className={isMobileSheet ? "flex flex-col overflow-y-auto bg-card" : "w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-y-auto"}>
       <Tabs defaultValue={isGroup ? "members" : "info"} className="flex flex-col">
         <TabsList className={`mx-2 mt-2 mb-0 grid shrink-0 ${isGroup ? (isEcommerce ? "grid-cols-4" : "grid-cols-3") : (isEcommerce ? "grid-cols-3" : "grid-cols-2")}`}>
           <TabsTrigger value="info" className="text-xs">معلومات</TabsTrigger>
