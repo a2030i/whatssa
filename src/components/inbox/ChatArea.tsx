@@ -1650,6 +1650,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <DropdownMenuItem onClick={() => setShowTransfer(true)} className="md:hidden">
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowMergeDialog(true)}>
+                  <GitMerge className="w-4 h-4 ml-2 text-primary" /> دمج المحادثة
+                </DropdownMenuItem>
+                {isEvolutionChannel && (
+                  <DropdownMenuItem onClick={() => setShowDisappearingMenu(!showDisappearingMenu)}>
+                    <Timer className="w-4 h-4 ml-2 text-primary" /> الرسائل المختفية
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={copyConversationLink}>
                   <Link2 className="w-4 h-4 ml-2 text-primary" /> نسخ رابط المحادثة
