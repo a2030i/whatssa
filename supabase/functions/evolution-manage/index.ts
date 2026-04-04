@@ -574,7 +574,7 @@ serve(async (req) => {
 
         // Look up the actual JID from Evolution's stored messages
         try {
-          const findRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${instanceName}`, {
+          const findRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${readInstanceName}`, {
             method: "POST",
             headers: evoHeaders,
             body: JSON.stringify({ where: { id: msgId }, limit: 1 }),
