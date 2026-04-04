@@ -67,7 +67,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       )}
 
       {/* Top bar */}
-      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[240px] h-12 bg-card border-b border-border flex items-center justify-between px-4 z-30 transition-all`}>
+      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[240px] h-14 bg-card border-b border-border flex items-center justify-between px-4 md:px-6 z-30`}>
         <div className="flex items-center gap-2">
           <GlobalSearch />
         </div>
@@ -77,7 +77,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </div>
       </div>
 
-      <main className={`md:mr-[240px] min-h-screen ${isImpersonating ? "pt-[88px]" : "pt-12"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-200`}>
+      <main className={`md:mr-[240px] min-h-screen ${isImpersonating ? "pt-24" : "pt-14"} ${isMobile && !hideBottomNav ? "pb-16" : ""}`}>
         {children}
       </main>
 
