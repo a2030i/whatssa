@@ -468,7 +468,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                           {p.admin && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
                           {p.isSaved && !p.admin && <User className="w-3 h-3 text-primary shrink-0" />}
                         </p>
-                        {p.phone && !p.isLid && <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>}
+                        {p.phone && !(p.isLid && !p.isSaved) && <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>}
                       </div>
                     </div>
                     {isGroupAdmin && (
