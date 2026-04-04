@@ -1132,12 +1132,12 @@ const IntegrationsPage = () => {
     );
   };
 
-  const reviewToggle = (
+  const reviewToggle = isSuperAdmin ? (
     <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => setIsReviewMode(p => !p)}>
       <Globe className="w-4 h-4" />
       {isReviewMode ? "Arabic mode" : "Meta Review Mode"}
     </Button>
-  );
+  ) : null;
 
   // ============ EMPTY STATE: Show all channels ============
   if (configs.length === 0 && flowStep === "idle") {
