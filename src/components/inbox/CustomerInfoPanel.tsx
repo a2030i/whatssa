@@ -90,7 +90,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     stats: false,
   });
   const [groupInfo, setGroupInfo] = useState<any>(null);
-  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; rawDigits: string; admin?: boolean; isSaved?: boolean }>>([]);
+  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; rawDigits: string; admin?: boolean; isSaved?: boolean; isLid?: boolean }>>([]);
   const [groupPicture, setGroupPicture] = useState<string | null>(conversation.profilePic || null);
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
   const [addMemberPhone, setAddMemberPhone] = useState("");
