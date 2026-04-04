@@ -442,6 +442,9 @@ const TeamPage = () => {
                         <DropdownMenuItem onClick={() => openSchedule(profile)} className="gap-2 text-xs">
                           <Clock className="w-3.5 h-3.5" /> أوقات العمل
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDeleteMember(profile)} className="gap-2 text-xs text-destructive">
+                          <Trash2 className="w-3.5 h-3.5" /> حذف الموظف
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
