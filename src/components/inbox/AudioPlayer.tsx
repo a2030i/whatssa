@@ -125,7 +125,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
       isAgent ? "bg-secondary/60" : "bg-white/15",
       className
     )}>
-      <audio ref={audioRef} src={src} preload="metadata" crossOrigin="anonymous" />
+      <audio ref={audioRef} src={src} preload="metadata" />
 
       {/* Play/Pause button */}
       <button
