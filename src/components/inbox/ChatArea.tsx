@@ -1592,10 +1592,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <FileText className="w-4 h-4" />
               </button>
             )}
-            {/* Send Product from Catalog */}
+            {/* Send Product from Catalog — Meta */}
             {!isNoteMode && !windowExpired && isMetaChannel && (
               <button
                 onClick={() => setShowProductPicker(true)}
+                className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+                title="إرسال منتج من الكتالوج"
+              >
+                <ShoppingBag className="w-4 h-4" />
+              </button>
+            )}
+            {/* Send Product — Evolution (internal products) */}
+            {!isNoteMode && !isMetaChannel && (
+              <button
+                onClick={() => setShowInternalProductPicker(true)}
                 className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
                 title="إرسال منتج"
               >
