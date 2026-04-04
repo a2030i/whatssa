@@ -75,7 +75,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
       const info = data?.data || data?.data?.data || {};
       setGroupInfo(info);
       const participants = info?.participants || [];
-      setGroupParticipants(participants.map((p: any) => {
+      const mapped = participants.map((p: any) => {
         const phone = (p.id || p.jid || "").replace(/@.*/, "");
         return {
           id: p.id || p.jid || phone,
@@ -83,7 +83,33 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           phone,
           admin: p.admin === "admin" || p.admin === "superadmin" || p.isAdmin || p.isSuperAdmin,
         };
-      }));
+      });
+
+      // Enrich names from customers table
+      const phones = mapped.map((m: any) => m.phone).filter(Boolean);
+      if (phones.length > 0 && orgId) {
+        const { data: customers } = await supabase
+          .from("customers")
+          .select("phone, name")
+          .eq("org_id", orgId)
+          .in("phone", phones);
+        if (customers && customers.length > 0) {
+          const nameMap = new Map(customers.map((c: any) => [c.phone, c.name]));
+          mapped.forEach((m: any) => {
+            const savedName = nameMap.get(m.phone);
+            if (savedName) m.name = savedName;
+          });
+        }
+      }
+
+      // Sort: admins first, then alphabetically
+      mapped.sort((a: any, b: any) => {
+        if (a.admin && !b.admin) return -1;
+        if (!a.admin && b.admin) return 1;
+        return (a.name || "").localeCompare(b.name || "");
+      });
+
+      setGroupParticipants(mapped);
     } catch {}
   };
 
