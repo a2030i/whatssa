@@ -114,7 +114,27 @@ const resolveMediaUrl = async (url: string | null | undefined): Promise<string |
   return url;
 };
 
-const scrollToMessage = (messageId?: string) => {
+const normalizeDigits = (value: unknown) =>
+  typeof value === "string" ? value.replace(/@.*/, "").replace(/\D/g, "") : "";
+
+const extractParticipantPhone = (participant: any) => {
+  const rawId = participant?.id || participant?.jid || "";
+  const candidates = [participant?.phone, participant?.number, participant?.notify, participant?.senderPn, participant?.participantPn]
+    .map(normalizeDigits)
+    .filter(Boolean);
+  if (candidates.length > 0) return candidates[0];
+  return rawId.includes("@s.whatsapp.net") ? normalizeDigits(rawId) : "";
+};
+
+const extractParticipantName = (participant: any, phone: string) => {
+  const candidate = [participant?.pushName, participant?.name, participant?.notify]
+    .find((value) => typeof value === "string" && value.trim());
+  if (candidate) return candidate.trim();
+  if (phone) return `+${phone}`;
+  return "عضو بالقروب";
+};
+
+
   if (!messageId) return;
   const el = document.querySelector(`[data-message-id="${messageId}"]`) || document.querySelector(`[data-wa-message-id="${messageId}"]`);
   if (!el) return;
