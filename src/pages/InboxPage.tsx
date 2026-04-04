@@ -278,6 +278,8 @@ const InboxPage = () => {
           isDeleted: message.metadata?.is_deleted || false,
           poll: message.metadata?.poll || undefined,
           createdAt: message.created_at || undefined,
+          readBy: message.metadata?.read_by || undefined,
+          groupSize: message.metadata?.group_size || undefined,
         };
         setAllMessages((prev) => ({
           ...prev,
