@@ -490,7 +490,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   className="h-10 text-sm bg-background"
                 />
               </div>
-            </div>
+
+            {/* Channel selector for group - evolution channels */}
+            {evolutionChannels.length > 0 ? (
               <div className="space-y-2">
                 <Label className="text-xs font-medium">📱 القناة</Label>
                 <div className="grid gap-2">
