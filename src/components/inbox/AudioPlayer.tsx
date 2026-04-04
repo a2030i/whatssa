@@ -1,5 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Pause, Download } from "lucide-react";
+
+// Global registry: only one audio plays at a time
+const activeAudioSet = new Set<HTMLAudioElement>();
+const pauseAllExcept = (current: HTMLAudioElement) => {
+  activeAudioSet.forEach((audio) => {
+    if (audio !== current && !audio.paused) audio.pause();
+  });
+};
 import { cn } from "@/lib/utils";
 
 interface AudioPlayerProps {
@@ -33,6 +41,9 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Register in global set
+    activeAudioSet.add(audio);
+
     const onLoaded = () => {
       setDuration(audio.duration);
       setIsLoaded(true);
@@ -58,6 +69,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
     audio.addEventListener("error", onError);
 
     return () => {
+      activeAudioSet.delete(audio);
       audio.removeEventListener("loadedmetadata", onLoaded);
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("ended", onEnded);
@@ -73,6 +85,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
     if (isPlaying) {
       audio.pause();
     } else {
+      pauseAllExcept(audio);
       audio.play().catch(() => {});
     }
   }, [isPlaying]);
