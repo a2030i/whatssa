@@ -866,13 +866,13 @@ const InboxPage = () => {
           selectedId={selectedId}
           onSelect={(id) => {
             setSelectedId(id);
-            // Immediately clear unread in local state
             setConversations(prev => prev.map(c => c.id === id ? { ...c, unread: 0 } : c));
-            // Persist to DB
             supabase.from("conversations").update({ unread_count: 0 }).eq("id", id).then();
           }}
           hasSelection={!!selected}
           onNewConversation={() => setNewConvOpen(true)}
+          onTogglePin={handleTogglePin}
+          onToggleArchive={handleToggleArchive}
         />
       )}
 
