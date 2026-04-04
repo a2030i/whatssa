@@ -44,23 +44,24 @@ serve(async (req) => {
 
     const body = await req.json();
 
-    // ── Sign action: generate signed URL from Lovable Cloud storage ──
+    // ── Sign action: generate signed URL from external storage (primary) ──
     if (body?.action === "sign" && body?.path) {
+      // Try external storage first (where files are uploaded)
+      const { data, error: signErr } = await adminClient.storage
+        .from("chat-media")
+        .createSignedUrl(body.path, 3600);
+      if (data?.signedUrl) return json({ signedUrl: data.signedUrl });
+
+      // Fallback: try Lovable Cloud storage (legacy files)
       const cloudUrl = Deno.env.get("SUPABASE_URL")!;
       const cloudKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const cloudClient = createClient(cloudUrl, cloudKey);
-      const { data, error: signErr } = await cloudClient.storage
+      const { data: cloudData } = await cloudClient.storage
         .from("chat-media")
         .createSignedUrl(body.path, 3600);
-      if (signErr || !data?.signedUrl) {
-        // Fallback: try external storage
-        const { data: extData } = await adminClient.storage
-          .from("chat-media")
-          .createSignedUrl(body.path, 3600);
-        if (extData?.signedUrl) return json({ signedUrl: extData.signedUrl });
-        return json({ error: signErr?.message || "فشل توليد الرابط" }, 400);
-      }
-      return json({ signedUrl: data.signedUrl });
+      if (cloudData?.signedUrl) return json({ signedUrl: cloudData.signedUrl });
+
+      return json({ error: signErr?.message || "فشل توليد الرابط" }, 400);
     }
 
     const {
