@@ -52,9 +52,35 @@ const AdminSettings = () => {
     setSettings({ ...settings, [key]: { ...settings[key], value } });
   };
 
+  const officialWhatsAppEnabled = settings.official_whatsapp_enabled?.value === true || settings.official_whatsapp_enabled?.value === "true";
+
   return (
     <div className="space-y-6">
       <h2 className="font-semibold text-sm flex items-center gap-2"><Settings className="w-4 h-4 text-primary" /> إعدادات النظام</h2>
+
+      {/* Official WhatsApp Launch Toggle */}
+      <div className="bg-card rounded-xl shadow-card p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Globe className={`w-5 h-5 ${officialWhatsAppEnabled ? "text-primary" : "text-muted-foreground"}`} />
+            <div>
+              <p className="text-sm font-semibold">🚀 إطلاق الربط الرسمي (Meta API)</p>
+              <p className="text-[10px] text-muted-foreground">إتاحة خيار ربط واتساب الرسمي لجميع العملاء</p>
+            </div>
+          </div>
+          <Switch checked={officialWhatsAppEnabled} onCheckedChange={(v) => updateSetting("official_whatsapp_enabled", v)} />
+        </div>
+        {!officialWhatsAppEnabled && (
+          <div className="mt-3 bg-warning/10 rounded-lg p-3 text-xs text-warning font-medium">
+            ⚠️ الربط الرسمي مخفي عن العملاء — يظهر فقط للسوبر أدمن
+          </div>
+        )}
+        {officialWhatsAppEnabled && (
+          <div className="mt-3 bg-success/10 rounded-lg p-3 text-xs text-success font-medium">
+            ✅ الربط الرسمي مُتاح لجميع العملاء
+          </div>
+        )}
+      </div>
 
       {/* Maintenance Mode */}
       <div className="bg-card rounded-xl shadow-card p-4">
