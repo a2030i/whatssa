@@ -1554,7 +1554,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               const displayName = a.full_name || a.name || a.phone || "";
               const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2);
               return (
-                <button key={a.id} onClick={() => insertMention(displayName)} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
+                <button key={a.id} onClick={() => insertMention(displayName, a.phone)} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
                   <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{initials}</div>
                   {displayName}
                 </button>
