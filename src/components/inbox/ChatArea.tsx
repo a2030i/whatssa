@@ -1850,7 +1850,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </button>
             )}
             {/* Send Product from Catalog — Meta */}
-            {!isNoteMode && !windowExpired && isMetaChannel && (
+            {!isNoteMode && !windowExpired && isMetaChannel && hasProducts && (
               <button
                 onClick={() => setShowProductPicker(true)}
                 className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
