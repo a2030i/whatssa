@@ -1396,9 +1396,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                       <FileText className="w-4 h-4 ml-2 text-muted-foreground" /> أرشفة في واتساب
                     </DropdownMenuItem>
                     {conversation.conversationType === "group" && (
-                      <DropdownMenuItem onClick={() => groupPicInputRef.current?.click()}>
-                        <ImageIcon className="w-4 h-4 ml-2 text-primary" /> تغيير صورة القروب
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => groupPicInputRef.current?.click()}>
+                          <ImageIcon className="w-4 h-4 ml-2 text-primary" /> تغيير صورة القروب
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setShowAddMembersDialog(true)}>
+                          <UserPlus className="w-4 h-4 ml-2 text-primary" /> إضافة أعضاء
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleLeaveGroup} className="text-destructive">
+                          <LogOut className="w-4 h-4 ml-2" /> الخروج من القروب
+                        </DropdownMenuItem>
+                      </>
                     )}
                   </>
                 )}
