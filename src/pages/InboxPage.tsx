@@ -311,6 +311,8 @@ const InboxPage = () => {
               reactions: updated.metadata?.reactions || m.reactions,
               editedAt: updated.metadata?.edited_at || m.editedAt,
               isDeleted: updated.metadata?.is_deleted || false,
+              readBy: updated.metadata?.read_by || m.readBy,
+              groupSize: updated.metadata?.group_size || m.groupSize,
             };
           }),
         }));
