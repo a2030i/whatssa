@@ -168,7 +168,7 @@ const RateLimitPanel = ({ configId, initialSettings }: RateLimitPanelProps) => {
   );
 };
 
-const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigChange }: Props) => {
+const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly = false, onConfigChange }: Props) => {
   const [showSetup, setShowSetup] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
