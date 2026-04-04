@@ -1322,19 +1322,82 @@ serve(async (req) => {
 
         const { data: existingMsg } = await supabase
           .from("messages")
-          .select("id, status")
+          .select("id, status, metadata, conversation_id")
           .eq("wa_message_id", waMessageId)
           .limit(1)
           .maybeSingle();
 
         if (existingMsg) {
-          // Only upgrade status (sent→delivered→read), never downgrade
           const priority: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
-          if ((priority[newStatus] || 0) > (priority[existingMsg.status || ""] || 0)) {
-            await supabase.from("messages").update({ status: newStatus }).eq("id", existingMsg.id);
-            await logToSystem(supabase, "info", `تم تحديث حالة الرسالة: ${existingMsg.status} → ${newStatus}`, {
-              wa_message_id: waMessageId, old_status: existingMsg.status, new_status: newStatus,
-            }, orgId);
+          const meta = (existingMsg.metadata as Record<string, any>) || {};
+
+          // Check if this message belongs to a group conversation
+          const updParticipant = upd?.key?.participant || upd?.participant || "";
+          const remoteJid = upd?.key?.remoteJid || "";
+          const isGroupMsg = remoteJid.endsWith("@g.us");
+
+          if (isGroupMsg && newStatus === "read" && updParticipant) {
+            // Track individual readers for group messages
+            const readBy: string[] = Array.isArray(meta.read_by) ? [...meta.read_by] : [];
+            const readerPhone = updParticipant.replace("@s.whatsapp.net", "").replace("@lid", "");
+            if (readerPhone && !readBy.includes(readerPhone)) {
+              readBy.push(readerPhone);
+            }
+
+            // Fetch group participant count to determine if all read
+            let totalParticipants = meta.group_size || 0;
+            if (!totalParticipants && existingMsg.conversation_id) {
+              const { data: conv } = await supabase
+                .from("conversations")
+                .select("customer_phone, channel_id")
+                .eq("id", existingMsg.conversation_id)
+                .maybeSingle();
+              if (conv?.customer_phone && conv.customer_phone.includes("@g.us")) {
+                // Try to get group size from Evolution API
+                try {
+                  const { data: chConfig } = await supabase
+                    .from("whatsapp_config")
+                    .select("evolution_instance_name")
+                    .eq("id", conv.channel_id)
+                    .maybeSingle();
+                  if (chConfig?.evolution_instance_name) {
+                    const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
+                    const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
+                    if (EVOLUTION_URL && EVOLUTION_KEY) {
+                      const gRes = await fetch(
+                        `${EVOLUTION_URL}/group/findGroupInfos/${chConfig.evolution_instance_name}?groupJid=${conv.customer_phone}`,
+                        { headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY } }
+                      );
+                      if (gRes.ok) {
+                        const gData = await gRes.json();
+                        const participants = gData?.participants || gData?.data?.participants || [];
+                        totalParticipants = participants.length > 0 ? participants.length - 1 : 0; // exclude self
+                      }
+                    }
+                  }
+                } catch (_e) { /* ignore */ }
+              }
+            }
+
+            const allRead = totalParticipants > 0 && readBy.length >= totalParticipants;
+            const updateData: Record<string, any> = {
+              metadata: { ...meta, read_by: readBy, group_size: totalParticipants || meta.group_size },
+            };
+
+            // Only set status to "read" when all participants have read
+            if (allRead) {
+              updateData.status = "read";
+            } else if ((priority["delivered"] || 0) > (priority[existingMsg.status || ""] || 0)) {
+              // At least mark as delivered if someone interacted
+              updateData.status = "delivered";
+            }
+
+            await supabase.from("messages").update(updateData).eq("id", existingMsg.id);
+          } else {
+            // Private chats: direct status upgrade
+            if ((priority[newStatus] || 0) > (priority[existingMsg.status || ""] || 0)) {
+              await supabase.from("messages").update({ status: newStatus }).eq("id", existingMsg.id);
+            }
           }
         }
       }
