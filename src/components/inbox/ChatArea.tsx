@@ -98,7 +98,7 @@ const getStorageUrlFromText = (text: string) => {
   return match?.[1];
 };
 
-/** Resolve a media URL: if it's a storage path, create a signed URL; otherwise return as-is */
+/** Resolve a media URL: if it's a storage path, get signed URL via edge function; otherwise return as-is */
 const resolveMediaUrl = async (url: string | null | undefined): Promise<string | null> => {
   if (!url) return null;
   // Blob URLs (optimistic) – pass through directly
@@ -106,12 +106,13 @@ const resolveMediaUrl = async (url: string | null | undefined): Promise<string |
   if (url.startsWith("storage:chat-media/")) {
     const path = url.replace("storage:chat-media/", "");
     try {
-      // Files are stored in the external Supabase storage, use the main client
-      const { data, error } = await supabase.storage.from("chat-media").createSignedUrl(path, 3600);
+      // Use edge function to generate signed URL from the correct storage (Lovable Cloud)
+      const { data, error } = await invokeCloud("upload-chat-media", {
+        body: { action: "sign", path },
+      });
       if (error) {
-        console.error("[resolveMediaUrl] Signed URL error:", error.message, "path:", path);
-        const { data: publicData } = supabase.storage.from("chat-media").getPublicUrl(path);
-        return publicData?.publicUrl || null;
+        console.error("[resolveMediaUrl] Edge sign error:", error, "path:", path);
+        return null;
       }
       return data?.signedUrl || null;
     } catch (e) {
