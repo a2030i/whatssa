@@ -725,6 +725,7 @@ const InboxPage = () => {
         status: "sent" as const,
         type: "template" as const,
         createdAt: new Date().toISOString(),
+        senderName: profile?.full_name || "النظام",
       }],
     }));
 
@@ -737,6 +738,7 @@ const InboxPage = () => {
         template_language: template.language,
         template_components: buildTemplateComponents(template, variables),
         conversation_id: convId,
+        sender_name: profile?.full_name || "النظام",
       },
     });
 
