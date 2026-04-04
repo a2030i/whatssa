@@ -44,9 +44,11 @@ interface ConversationListProps {
   onSelect: (id: string) => void;
   hasSelection: boolean;
   onNewConversation?: () => void;
+  onTogglePin?: (id: string) => void;
+  onToggleArchive?: (id: string) => void;
 }
 
-const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation }: ConversationListProps) => {
+const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive }: ConversationListProps) => {
   const { orgId } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("all");
