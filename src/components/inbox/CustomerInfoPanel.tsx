@@ -259,9 +259,17 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
 
   return (
     <div className="w-[280px] border-r border-border bg-card hidden xl:flex flex-col overflow-y-auto">
-      <Tabs defaultValue="info" className="flex flex-col">
-        <TabsList className={`mx-2 mt-2 mb-0 grid shrink-0 ${isEcommerce ? "grid-cols-3" : "grid-cols-2"}`}>
+      <Tabs defaultValue={isGroup ? "members" : "info"} className="flex flex-col">
+        <TabsList className={`mx-2 mt-2 mb-0 grid shrink-0 ${isGroup ? (isEcommerce ? "grid-cols-4" : "grid-cols-3") : (isEcommerce ? "grid-cols-3" : "grid-cols-2")}`}>
           <TabsTrigger value="info" className="text-xs">معلومات</TabsTrigger>
+          {isGroup && (
+            <TabsTrigger value="members" className="text-xs gap-1">
+              أعضاء
+              {groupParticipants.length > 0 && (
+                <span className="bg-primary/15 text-primary text-[9px] px-1 rounded-full font-bold">{groupParticipants.length}</span>
+              )}
+            </TabsTrigger>
+          )}
           {isEcommerce && (
             <TabsTrigger value="orders" className="text-xs gap-1">
               طلبات
@@ -272,6 +280,93 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           )}
           <TabsTrigger value="notes" className="text-xs">ملاحظات</TabsTrigger>
         </TabsList>
+
+        {/* Members Tab - Groups only */}
+        {isGroup && (
+          <TabsContent value="members" className="mt-0">
+            <div className="p-4 border-b border-border text-center">
+              <div className="relative inline-block">
+                {conversation.profilePic ? (
+                  <img src={conversation.profilePic} alt={conversation.customerName} className="w-16 h-16 rounded-full object-cover mx-auto mb-2" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                ) : null}
+                <div className={`w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary mx-auto mb-2 ${conversation.profilePic ? "hidden" : ""}`}>
+                  <Users className="w-7 h-7" />
+                </div>
+              </div>
+              <h3 className="font-bold text-sm">{conversation.customerName}</h3>
+              {groupInfo?.description && (
+                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed max-w-full">{groupInfo.description}</p>
+              )}
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {groupInfo?.creation ? `أُنشئ ${new Date(groupInfo.creation * 1000).toLocaleDateString("ar-SA")}` : ""}
+                {groupParticipants.length > 0 && ` · ${groupParticipants.length} عضو`}
+              </p>
+            </div>
+
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-muted-foreground">الأعضاء ({groupParticipants.length})</span>
+                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAddMemberDialog(true)}>
+                  <UserPlus className="w-3.5 h-3.5" /> إضافة
+                </Button>
+              </div>
+              <div className="space-y-0.5 max-h-[350px] overflow-y-auto">
+                {groupParticipants.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors group">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                        {(p.name || p.phone).slice(0, 2)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium truncate flex items-center gap-1">
+                          {p.name}
+                          {p.admin && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                      onClick={() => handleRemoveGroupMember(p.phone)}
+                    >
+                      <UserMinus className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-border">
+                <Button variant="destructive" size="sm" className="w-full text-xs gap-1.5" onClick={handleLeaveGroup}>
+                  <LogOut className="w-3.5 h-3.5" /> الخروج من القروب
+                </Button>
+              </div>
+            </div>
+
+            {/* Add Member Dialog */}
+            <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
+              <DialogContent className="max-w-sm" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle className="text-sm">إضافة عضو جديد</DialogTitle>
+                </DialogHeader>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="رقم الهاتف (مثال: 966500000000)"
+                    value={addMemberPhone}
+                    onChange={(e) => setAddMemberPhone(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddGroupMember()}
+                    dir="ltr"
+                    className="text-left text-sm"
+                  />
+                  <Button onClick={handleAddGroupMember} disabled={addingMember || !addMemberPhone.trim()} size="sm">
+                    {addingMember ? "..." : "إضافة"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+        )}
 
         {/* Info Tab */}
         <TabsContent value="info" className="mt-0">
@@ -288,8 +383,8 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           )}
         </div>
         <h3 className="font-bold text-sm">{conversation.customerName}</h3>
-        <p className="text-[11px] text-muted-foreground">{conversation.lastSeen || "غير متصل"}</p>
-        {customer && (
+        <p className="text-[11px] text-muted-foreground">{isGroup ? `${groupParticipants.length} عضو` : (conversation.lastSeen || "غير متصل")}</p>
+        {customer && !isGroup && (
           <Badge variant="outline" className="text-[10px] mt-1.5 gap-1">
             <Building2 className="w-2.5 h-2.5" />
             عميل مسجل
