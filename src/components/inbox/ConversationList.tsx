@@ -385,7 +385,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             return (
               <button
                 key={conv.id}
-                onClick={() => onSelect(conv.id)}
+                onClick={() => {
+                  if (bulkMode) {
+                    setBulkSelected(prev => {
+                      const next = new Set(prev);
+                      if (next.has(conv.id)) next.delete(conv.id); else next.add(conv.id);
+                      return next;
+                    });
+                  } else {
+                    onSelect(conv.id);
+                  }
+                }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   const menu = document.createElement("div");
