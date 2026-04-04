@@ -32,13 +32,31 @@ const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: Tran
     if (!open || !orgId) return;
     const load = async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, full_name, is_online, last_seen_at, team_id")
-        .eq("org_id", orgId)
-        .eq("is_active", true)
-        .neq("id", user?.id || "");
-      setAgents(data || []);
+      const [{ data: profilesData }, { data: countsData }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, full_name, is_online, last_seen_at, team_id")
+          .eq("org_id", orgId)
+          .eq("is_active", true)
+          .neq("id", user?.id || ""),
+        supabase
+          .from("conversations")
+          .select("assigned_to_id")
+          .eq("org_id", orgId)
+          .eq("status", "open"),
+      ]);
+      const countMap: Record<string, number> = {};
+      (countsData || []).forEach((c: any) => {
+        if (c.assigned_to_id) {
+          countMap[c.assigned_to_id] = (countMap[c.assigned_to_id] || 0) + 1;
+        }
+      });
+      setAgents(
+        (profilesData || []).map((p: any) => ({
+          ...p,
+          assigned_count: countMap[p.id] || 0,
+        }))
+      );
       setLoading(false);
     };
     load();
