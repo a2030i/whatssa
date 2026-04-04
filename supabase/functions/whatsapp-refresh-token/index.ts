@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const META_APP_ID = Deno.env.get("META_APP_ID") || "1239578701681497";
+const META_APP_ID = Deno.env.get("META_APP_ID") || "1306128431426603";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
