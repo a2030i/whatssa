@@ -2140,6 +2140,51 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       {lightboxSrc && (
         <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       )}
+
+      {/* Add Members Dialog */}
+      <Dialog open={showAddMembersDialog} onOpenChange={setShowAddMembersDialog}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>إدارة أعضاء القروب</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Add new member */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="رقم الهاتف مع مفتاح الدولة (مثال: 966500000000)"
+                value={addMemberPhone}
+                onChange={(e) => setAddMemberPhone(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddMember()}
+                dir="ltr"
+                className="text-left"
+              />
+              <Button onClick={handleAddMember} disabled={addingMember || !addMemberPhone.trim()} size="sm">
+                {addingMember ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+              </Button>
+            </div>
+            {/* Current members list */}
+            <div className="max-h-60 overflow-y-auto space-y-1">
+              <p className="text-xs text-muted-foreground font-medium mb-2">الأعضاء الحاليون ({groupParticipants.length})</p>
+              {groupParticipants.map((p) => (
+                <div key={p.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                      {(p.name || p.phone).slice(0, 2)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:text-destructive" onClick={() => handleRemoveMember(p.phone)}>
+                    <UserMinus className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
