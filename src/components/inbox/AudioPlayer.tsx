@@ -16,6 +16,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   // Generate fake waveform bars (deterministic based on src)
   const bars = useRef<number[]>([]);
