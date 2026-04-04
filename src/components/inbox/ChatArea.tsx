@@ -888,7 +888,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   // In note mode: show team members. In group non-note mode: show group participants
   const isGroupMentionMode = isGroup && !isNoteMode;
   const filteredMentionAgents = isGroupMentionMode
-    ? groupParticipants.filter((p) => (p.name || p.phone || "").toLowerCase().includes(mentionFilter.toLowerCase()))
+    ? groupParticipants
+        .filter((p) => (p.name || p.phone || "").toLowerCase().includes(mentionFilter.toLowerCase()))
+        .sort((a, b) => {
+          // Contacts with saved names first, then those with phone-only names
+          const aHasName = a.name && a.name !== a.phone;
+          const bHasName = b.name && b.name !== b.phone;
+          if (aHasName && !bHasName) return -1;
+          if (!aHasName && bHasName) return 1;
+          return (a.name || a.phone).localeCompare(b.name || b.phone);
+        })
     : teamMembers.filter((m) => (m.full_name || "").includes(mentionFilter));
 
   // 24h window countdown - update every minute
