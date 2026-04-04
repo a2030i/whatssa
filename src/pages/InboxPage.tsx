@@ -214,7 +214,16 @@ const InboxPage = () => {
       }
 
       setConversations(filtered);
-      if (!isMobile && mapped.length > 0) {
+      // On first load, honour deep link; otherwise auto-select first
+      if (!deepLinkApplied.current) {
+        deepLinkApplied.current = true;
+        const urlConvId = searchParams.get("conversation");
+        if (urlConvId && filtered.some(c => c.id === urlConvId)) {
+          setSelectedId(urlConvId);
+        } else if (!isMobile && filtered.length > 0) {
+          setSelectedId(filtered[0].id);
+        }
+      } else if (!isMobile && mapped.length > 0) {
         setSelectedId((prev) => (prev && mapped.some((item) => item.id === prev) ? prev : mapped[0].id));
       }
       setLoading(false);
