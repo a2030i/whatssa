@@ -90,7 +90,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     stats: false,
   });
   const [groupInfo, setGroupInfo] = useState<any>(null);
-  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; rawDigits: string; admin?: boolean; isSaved?: boolean }>>([]);
+  const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; rawDigits: string; admin?: boolean; isSaved?: boolean; isLid?: boolean }>>([]);
   const [groupPicture, setGroupPicture] = useState<string | null>(conversation.profilePic || null);
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
   const [addMemberPhone, setAddMemberPhone] = useState("");
@@ -111,12 +111,14 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
       const mapped = participants.map((p: any) => {
         const rawId = p.id || p.jid || "";
         const phone = extractParticipantPhone(p);
+        const isLid = rawId.includes("@lid");
         return {
           id: rawId,
           name: extractParticipantName(p, phone),
           phone,
           rawDigits: normalizeDigits(rawId),
           admin: p.admin === "admin" || p.admin === "superadmin" || p.isAdmin || p.isSuperAdmin,
+          isLid,
         };
       });
 
@@ -424,7 +426,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                           {p.admin && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
                           {p.isSaved && !p.admin && <User className="w-3 h-3 text-primary shrink-0" />}
                         </p>
-                        {p.phone && <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>}
+                        {p.phone && !p.isLid && <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>}
                       </div>
                     </div>
                     {isGroupAdmin && (
