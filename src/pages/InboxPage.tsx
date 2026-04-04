@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSearchParams } from "react-router-dom";
 import { Conversation, Message } from "@/data/mockData";
 import { supabase, invokeCloud } from "@/lib/supabase";
 import ConversationList from "@/components/inbox/ConversationList";
