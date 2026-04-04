@@ -16,6 +16,7 @@ interface AuthContextType {
   hasMetaApi: boolean;
   isImpersonating: boolean;
   impersonatedOrgId: string | null;
+  mustChangePassword: boolean;
   startImpersonation: (orgId: string) => Promise<void>;
   stopImpersonation: () => void;
   refreshOrg: () => void;
@@ -36,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
   hasMetaApi: false,
   isImpersonating: false,
   impersonatedOrgId: null,
+  mustChangePassword: false,
   startImpersonation: async () => {},
   stopImpersonation: () => {},
   refreshOrg: () => {},
@@ -243,6 +245,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         hasMetaApi,
         isImpersonating,
         impersonatedOrgId,
+        mustChangePassword: !!user?.user_metadata?.must_change_password,
         startImpersonation,
         stopImpersonation,
         refreshOrg,

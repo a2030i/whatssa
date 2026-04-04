@@ -43,18 +43,20 @@ import WarehousesPage from "./pages/WarehousesPage";
 import LockedFeaturesPage from "./pages/LockedFeaturesPage";
 import LandingPage from "./pages/LandingPage";
 import TasksPage from "./pages/TasksPage";
+import ForceChangePasswordPage from "./pages/ForceChangePasswordPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, mustChangePassword } = useAuth();
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
     </div>
   );
   if (!user) return <Navigate to="/auth" replace />;
+  if (mustChangePassword) return <Navigate to="/change-password" replace />;
   return <>{children}</>;
 };
 
@@ -98,6 +100,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/auth" element={user ? (shouldRedirectToAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/dashboard" replace />) : <AuthPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/change-password" element={user ? <ForceChangePasswordPage /> : <Navigate to="/auth" replace />} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       <Route path="/" element={user ? (shouldRedirectToAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/dashboard" replace />) : <LandingPage />} />
       <Route path="/dashboard" element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
