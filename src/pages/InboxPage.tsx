@@ -246,6 +246,8 @@ const InboxPage = () => {
         isDeleted: (message.metadata as any)?.is_deleted || false,
         poll: (message.metadata as any)?.poll || undefined,
         createdAt: message.created_at || undefined,
+        readBy: (message.metadata as any)?.read_by || undefined,
+        groupSize: (message.metadata as any)?.group_size || undefined,
       }));
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
@@ -276,6 +278,8 @@ const InboxPage = () => {
           isDeleted: message.metadata?.is_deleted || false,
           poll: message.metadata?.poll || undefined,
           createdAt: message.created_at || undefined,
+          readBy: message.metadata?.read_by || undefined,
+          groupSize: message.metadata?.group_size || undefined,
         };
         setAllMessages((prev) => ({
           ...prev,
@@ -307,6 +311,8 @@ const InboxPage = () => {
               reactions: updated.metadata?.reactions || m.reactions,
               editedAt: updated.metadata?.edited_at || m.editedAt,
               isDeleted: updated.metadata?.is_deleted || false,
+              readBy: updated.metadata?.read_by || m.readBy,
+              groupSize: updated.metadata?.group_size || m.groupSize,
             };
           }),
         }));

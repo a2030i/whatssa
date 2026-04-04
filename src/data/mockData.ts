@@ -86,6 +86,8 @@ export interface Message {
     votes?: Record<string, string[]>; // option_id -> voter phones
   };
   createdAt?: string;
+  readBy?: string[];
+  groupSize?: number;
 }
 
 export interface Agent {
