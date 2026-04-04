@@ -484,6 +484,9 @@ serve(async (req) => {
 
     if (conversation) {
       const msgMetadata: Record<string, unknown> = {};
+      if (sender_name) {
+        msgMetadata.sender_name = sender_name;
+      }
       if (reply_to) {
         msgMetadata.quoted = {
           message_id: reply_to.message_id,
