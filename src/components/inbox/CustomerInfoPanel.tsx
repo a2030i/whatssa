@@ -122,24 +122,37 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
 
       // Enrich names from customers table & detect saved contacts
       const phones = mapped.map((m: any) => m.phone).filter(Boolean);
+      const rawDigits = mapped.map((m: any) => m.rawDigits).filter(Boolean);
+      const allLookups = [...new Set([...phones, ...rawDigits])];
       const savedPhones = new Set<string>();
-      if (phones.length > 0 && orgId) {
+      if (allLookups.length > 0 && orgId) {
         const { data: customers } = await supabase
           .from("customers")
           .select("phone, name")
           .eq("org_id", orgId)
-          .in("phone", phones);
-        if (customers && customers.length > 0) {
-          const nameMap = new Map(customers.map((c: any) => [c.phone, c.name]));
-          mapped.forEach((m: any) => {
-            const savedName = nameMap.get(m.phone);
-            if (savedName) {
-              m.name = savedName;
+          .in("phone", allLookups);
+        const nameMap = new Map<string, string>();
+        (customers || []).forEach((c: any) => { if (c.name) nameMap.set(c.phone, c.name); });
+
+        mapped.forEach((m: any) => {
+          // Exact match
+          const savedName = nameMap.get(m.phone) || nameMap.get(m.rawDigits);
+          if (savedName) {
+            m.name = savedName;
+            m.isSaved = true;
+            savedPhones.add(m.phone);
+            return;
+          }
+          // Suffix match
+          for (const [cPhone, cName] of nameMap) {
+            if (cPhone && m.phone && (cPhone.endsWith(m.phone) || m.phone.endsWith(cPhone)) && cPhone.length >= 7) {
+              m.name = cName;
               m.isSaved = true;
               savedPhones.add(m.phone);
+              return;
             }
-          });
-        }
+          }
+        });
       }
 
       // Check if our channel phone is admin in this group
