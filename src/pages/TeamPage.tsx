@@ -143,6 +143,24 @@ const TeamPage = () => {
     load();
   };
 
+  const handleDeleteMember = async (profile: any) => {
+    if (!confirm(`هل أنت متأكد من حذف "${profile.full_name}"؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+    try {
+      // Delete role, profile data via edge function
+      const { data, error } = await invokeCloud("admin-delete-member", {
+        body: { user_id: profile.id },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error || "فشل حذف الموظف");
+        return;
+      }
+      toast.success(`تم حذف ${profile.full_name}`);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "خطأ غير متوقع");
+    }
+  };
+
   const openSchedule = (profile: any) => {
     setScheduleDialog(profile);
     setWorkStart(profile.work_start || "09:00");
