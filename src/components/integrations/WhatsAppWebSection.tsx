@@ -665,6 +665,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
               </div>
 
               {/* Test Message */}
+              {!connectOnly && (
               <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                 <p className="text-xs font-semibold flex items-center gap-1.5">
                   <Send className="w-3.5 h-3.5 text-primary" /> إرسال رسالة اختبار
@@ -683,16 +684,17 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
                   </Button>
                 </div>
               </div>
+              )}
 
               {/* Profile Editor */}
-              {existingConfig?.id && (
+              {!connectOnly && existingConfig?.id && (
                 <div className="flex justify-center">
                   <WhatsAppProfileEditor configId={existingConfig.id} channelType="evolution" />
                 </div>
               )}
 
               {/* Channel Routing */}
-              {orgId && existingConfig?.id && (
+              {!connectOnly && orgId && existingConfig?.id && (
                 <ChannelRoutingConfig
                   configId={existingConfig.id}
                   orgId={orgId}
@@ -702,7 +704,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
               )}
 
               {/* Rate Limit Settings */}
-              {existingConfig?.id && (
+              {!connectOnly && existingConfig?.id && (
                 <RateLimitPanel configId={existingConfig.id} initialSettings={existingConfig.rate_limit_settings} />
               )}
 
