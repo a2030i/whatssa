@@ -205,7 +205,7 @@ const AppSidebar = () => {
       {/* Logo Area */}
       {!collapsed && (
         <div className="px-4 pt-5 pb-3 text-center">
-          <h2 className="text-2xl font-extrabold text-sidebar-accent-foreground tracking-tight">Whatssa</h2>
+          <h2 className="text-2xl font-extrabold text-sidebar-accent-foreground tracking-tight">Respondly</h2>
           <p className="text-[10px] text-sidebar-foreground/35 mt-0.5">نظام إدارة المحادثات</p>
         </div>
       )}
