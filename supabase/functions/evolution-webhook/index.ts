@@ -1022,7 +1022,12 @@ serve(async (req) => {
         try {
           if (conversationType === "group") {
             // For groups, save the actual sender (participant) as a customer, not the group JID
-            const senderPhone = (key.participant || "").replace("@s.whatsapp.net", "").replace("@lid", "");
+            const participantRaw = key.participant || "";
+            const isLidParticipant = participantRaw.includes("@lid");
+            // Use senderPn (real phone) for @lid participants, otherwise strip JID suffix
+            const senderPhone = (isLidParticipant && senderPn)
+              ? senderPn.replace(/\D/g, "")
+              : participantRaw.replace("@s.whatsapp.net", "").replace("@lid", "");
             const senderPushName = msg.pushName || "";
             if (senderPhone && senderPhone.length > 5) {
               const { data: existingParticipant } = await supabase
