@@ -206,16 +206,16 @@ const ecommerceTemplateSuggestions: TemplateSuggestion[] = [
 
 const reviewChecklist = {
   ar: [
-    "أنشئ قالباً جديداً أو افتح قالباً موجوداً.",
-    "حدّث الصفحة لإظهار حالة القالب وإدارته بعد المزامنة من Meta.",
-    "افتح نافذة الإرسال وأرسل قالباً معتمداً إلى رقم الاختبار.",
-    "اذكر أثناء التسجيل أن الاعتماد يُراجع في Meta وتتم مزامنته هنا داخل المنصة.",
+    "① ابدأ من صفحة التكاملات: اربط رقم واتساب عبر Meta Embedded Signup (يظهر تسجيل دخول Meta ومنح الصلاحيات).",
+    "② ارجع لصفحة القوالب: أنشئ قالباً جديداً أو افتح قالباً موجوداً.",
+    "③ حدّث الصفحة لإظهار حالة القالب وإدارته بعد المزامنة من Meta.",
+    "④ افتح نافذة الإرسال وأرسل قالباً معتمداً إلى رقم الاختبار.",
   ],
   en: [
-    "Create a new template or open an existing one.",
-    "Refresh the page to show the template status synced from Meta.",
-    "Open the send dialog and send an approved template to your test number.",
-    "Mention in the recording that approval happens in Meta and is managed here through synced statuses.",
+    "① Start from the Integrations page: Connect a WhatsApp number via Meta Embedded Signup (shows the full Meta login flow and permission grant).",
+    "② Navigate to the Templates page: Create a new template or open an existing one.",
+    "③ Refresh to show the template status synced from Meta (Approved / Pending / Rejected).",
+    "④ Open the send dialog and send an approved template to a test phone number.",
   ],
 };
 
