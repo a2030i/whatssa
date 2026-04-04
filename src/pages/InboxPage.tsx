@@ -111,7 +111,12 @@ const InboxPage = () => {
     setLoading(true);
     setConversations([]);
     setAllMessages({});
-    setSelectedId(null);
+    // Preserve deep link selection on first load
+    if (!deepLinkApplied.current && searchParams.get("conversation")) {
+      // keep selectedId from URL
+    } else {
+      setSelectedId(null);
+    }
 
     const fetchConversations = async () => {
       const { data, error } = await supabase
