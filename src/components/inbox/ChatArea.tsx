@@ -1868,6 +1868,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   onStarMessage?.(m.id, starred);
                   toast.success(starred ? "⭐ تم تمييز الرسالة" : "تم إلغاء التمييز");
                 }}
+                translationText={translations[msg.id]}
               />
             )}
           </div>
