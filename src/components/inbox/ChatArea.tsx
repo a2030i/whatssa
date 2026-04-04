@@ -2481,6 +2481,72 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         }}
       />
 
+      {/* Forward Message Dialog */}
+      <ForwardMessageDialog
+        open={!!forwardMsg}
+        onOpenChange={(open) => !open && setForwardMsg(null)}
+        message={forwardMsg}
+        currentConversationId={conversation.id}
+      />
+
+      {/* Poll Creator Dialog — Evolution only */}
+      <PollCreatorDialog
+        open={showPollCreator}
+        onOpenChange={setShowPollCreator}
+        conversationPhone={conversation.customerPhone}
+        conversationId={conversation.id}
+        channelId={conversation.channelId}
+      />
+
+      {/* Contact Card Dialog */}
+      <ContactCardDialog
+        open={showContactCard}
+        onOpenChange={setShowContactCard}
+        conversationPhone={conversation.customerPhone}
+        conversationId={conversation.id}
+        channelId={conversation.channelId}
+        channelType={conversation.channelType}
+      />
+
+      {/* Merge Conversation Dialog */}
+      <MergeConversationDialog
+        open={showMergeDialog}
+        onOpenChange={setShowMergeDialog}
+        conversation={conversation}
+      />
+
+      {/* Disappearing Messages Submenu */}
+      <Dialog open={showDisappearingMenu} onOpenChange={setShowDisappearingMenu}>
+        <DialogContent className="max-w-xs" dir="rtl">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Timer className="w-4 h-4 text-primary" /> الرسائل المختفية</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            {[
+              { label: "إيقاف", value: 0 },
+              { label: "24 ساعة", value: 86400 },
+              { label: "7 أيام", value: 604800 },
+              { label: "90 يوم", value: 7776000 },
+            ].map((opt) => (
+              <Button
+                key={opt.value}
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={async () => {
+                  try {
+                    await invokeCloud("evolution-manage", {
+                      body: { action: "set_disappearing", phone: conversation.customerPhone, expiration: opt.value },
+                    });
+                    toast.success(opt.value === 0 ? "تم إيقاف الرسائل المختفية" : `تم تفعيل الرسائل المختفية: ${opt.label}`);
+                    setShowDisappearingMenu(false);
+                  } catch { toast.error("فشل تغيير الإعداد"); }
+                }}
+              >
+                <Timer className="w-4 h-4" /> {opt.label}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {lightboxSrc && (
         <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       )}
