@@ -112,11 +112,11 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
       if (conversation.channelId && orgId) {
         const { data: channelData } = await supabase
           .from("whatsapp_config_safe")
-          .select("phone_number")
+          .select("display_phone")
           .eq("id", conversation.channelId)
           .maybeSingle();
-        if (channelData?.phone_number) {
-          const ourPhone = channelData.phone_number.replace(/\D/g, "");
+        if (channelData?.display_phone) {
+          const ourPhone = channelData.display_phone.replace(/\D/g, "");
           const ourEntry = mapped.find((m: any) => m.phone === ourPhone);
           setIsGroupAdmin(ourEntry?.admin === true);
         }
