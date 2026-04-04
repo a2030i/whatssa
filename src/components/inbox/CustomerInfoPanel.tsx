@@ -133,6 +133,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     }
   };
 
+  useEffect(() => {
     setNotes(conversation.notes || "");
     loadCustomer();
     loadOrders();
