@@ -37,8 +37,7 @@ const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: Tran
           .from("profiles")
           .select("id, full_name, is_online, last_seen_at, team_id")
           .eq("org_id", orgId)
-          .eq("is_active", true)
-          .neq("id", user?.id || ""),
+          .eq("is_active", true),
         supabase
           .from("conversations")
           .select("assigned_to_id")
