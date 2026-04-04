@@ -560,6 +560,8 @@ serve(async (req) => {
           const targetWaId = reactionKey.id;
           const emoji = messageContent.reactionMessage.text || "";
           const reactionFromMe = !!isFromMe;
+          const reactionParticipant = (key.participant || "").replace("@s.whatsapp.net", "").replace("@lid", "");
+          const reactionParticipantName = msg.pushName || "";
 
           if (targetWaId) {
             const { data: targetMsg } = await supabase
@@ -571,17 +573,32 @@ serve(async (req) => {
 
             if (targetMsg) {
               const meta = (targetMsg.metadata as Record<string, any>) || {};
-              let reactions: Array<{ emoji: string; fromMe: boolean; timestamp?: string }> = meta.reactions || [];
+              let reactions: Array<{ emoji: string; fromMe: boolean; timestamp?: string; participant?: string; participantName?: string }> = meta.reactions || [];
 
               if (emoji) {
-                const existingIdx = reactions.findIndex(r => r.fromMe === reactionFromMe);
+                // In groups, identify by participant phone; in private, by fromMe
+                const matchFn = reactionParticipant
+                  ? (r: any) => r.participant === reactionParticipant
+                  : (r: any) => r.fromMe === reactionFromMe;
+                const existingIdx = reactions.findIndex(matchFn);
+                const newReaction = {
+                  emoji,
+                  fromMe: reactionFromMe,
+                  timestamp: new Date().toISOString(),
+                  ...(reactionParticipant ? { participant: reactionParticipant } : {}),
+                  ...(reactionParticipantName ? { participantName: reactionParticipantName } : {}),
+                };
                 if (existingIdx >= 0) {
-                  reactions[existingIdx] = { emoji, fromMe: reactionFromMe, timestamp: new Date().toISOString() };
+                  reactions[existingIdx] = newReaction;
                 } else {
-                  reactions.push({ emoji, fromMe: reactionFromMe, timestamp: new Date().toISOString() });
+                  reactions.push(newReaction);
                 }
               } else {
-                reactions = reactions.filter(r => r.fromMe !== reactionFromMe);
+                // Remove reaction
+                const matchFn = reactionParticipant
+                  ? (r: any) => r.participant !== reactionParticipant
+                  : (r: any) => r.fromMe !== reactionFromMe;
+                reactions = reactions.filter(matchFn);
               }
 
               await supabase.from("messages").update({
@@ -589,7 +606,7 @@ serve(async (req) => {
               }).eq("id", targetMsg.id);
 
               await logToSystem(supabase, "info", `تفاعل ${emoji || '(إزالة)'} على رسالة`, {
-                wa_message_id: targetWaId, fromMe: reactionFromMe,
+                wa_message_id: targetWaId, fromMe: reactionFromMe, participant: reactionParticipant,
               }, orgId);
             }
           }

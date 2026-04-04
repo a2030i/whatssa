@@ -540,15 +540,33 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         )}
       </div>
       {/* Reactions badge - WhatsApp style floating below bubble */}
-      {msg.reactions && msg.reactions.length > 0 && (
-        <div className={cn("flex -mt-2 mb-1", msg.sender === "agent" ? "justify-end mr-2" : "justify-start ml-2")}>
-          <div className="flex items-center gap-0.5 bg-card border border-border/40 rounded-full px-1.5 py-0.5 shadow-sm">
-            {msg.reactions.map((r, i) => (
-              <span key={i} className="text-sm">{r.emoji}</span>
-            ))}
+      {msg.reactions && msg.reactions.length > 0 && (() => {
+        // Group reactions by emoji with count
+        const grouped = msg.reactions.reduce((acc, r) => {
+          if (!acc[r.emoji]) acc[r.emoji] = [];
+          acc[r.emoji].push(r);
+          return acc;
+        }, {} as Record<string, typeof msg.reactions>);
+        return (
+          <div className={cn("flex -mt-2 mb-1", msg.sender === "agent" ? "justify-end mr-2" : "justify-start ml-2")}>
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("show-reaction-details", {
+                  detail: { reactions: msg.reactions, messageId: msg.id },
+                }));
+              }}
+              className="flex items-center gap-0.5 bg-card border border-border/40 rounded-full px-1.5 py-0.5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            >
+              {Object.entries(grouped).map(([emoji, list]) => (
+                <span key={emoji} className="flex items-center gap-0.5">
+                  <span className="text-sm">{emoji}</span>
+                  {list.length > 1 && <span className="text-[10px] text-muted-foreground font-medium">{list.length}</span>}
+                </span>
+              ))}
+            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
@@ -596,6 +614,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showInternalProductPicker, setShowInternalProductPicker] = useState(false);
   const [isBlocked, setIsBlocked] = useState(conversation.isBlocked || false);
   const [showAddMembersDialog, setShowAddMembersDialog] = useState(false);
+  const [reactionDetails, setReactionDetails] = useState<{ reactions: Array<{ emoji: string; fromMe: boolean; participant?: string; participantName?: string }>; messageId: string } | null>(null);
   const [addMemberPhone, setAddMemberPhone] = useState("");
   const [addingMember, setAddingMember] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -609,6 +628,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   useEffect(() => {
     setIsBlocked(conversation.isBlocked || false);
   }, [conversation.id, conversation.isBlocked]);
+
+  // Listen for reaction detail sheet
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setReactionDetails(detail);
+    };
+    window.addEventListener("show-reaction-details", handler);
+    return () => window.removeEventListener("show-reaction-details", handler);
+  }, []);
 
   const handleToggleBlock = async () => {
     const action = isBlocked ? "unblock_contact" : "block_contact";
@@ -2183,6 +2212,56 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               ))}
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reaction Details Sheet - WhatsApp style */}
+      <Dialog open={!!reactionDetails} onOpenChange={(open) => !open && setReactionDetails(null)}>
+        <DialogContent className="max-w-sm p-0 rounded-t-2xl" dir="rtl">
+          <DialogHeader className="p-4 pb-2">
+            <DialogTitle className="text-sm text-center">
+              {reactionDetails?.reactions?.length || 0} {(reactionDetails?.reactions?.length || 0) > 2 ? "تفاعلات" : (reactionDetails?.reactions?.length || 0) === 2 ? "تفاعلان" : "تفاعل"}
+            </DialogTitle>
+          </DialogHeader>
+          {reactionDetails && (() => {
+            const grouped = reactionDetails.reactions.reduce((acc, r) => {
+              if (!acc[r.emoji]) acc[r.emoji] = [];
+              acc[r.emoji].push(r);
+              return acc;
+            }, {} as Record<string, typeof reactionDetails.reactions>);
+            const [activeTab, setActiveTab] = [Object.keys(grouped)[0], () => {}];
+            return (
+              <div>
+                {/* Emoji tabs */}
+                <div className="flex items-center justify-center gap-2 px-4 pb-3">
+                  {Object.entries(grouped).map(([emoji, list]) => (
+                    <span key={emoji} className="flex items-center gap-1 bg-secondary/60 rounded-full px-3 py-1.5 text-sm">
+                      {emoji} <span className="text-xs text-muted-foreground font-medium">{list.length}</span>
+                    </span>
+                  ))}
+                </div>
+                {/* Participants list */}
+                <div className="px-4 pb-4 space-y-1 max-h-[300px] overflow-y-auto">
+                  {reactionDetails.reactions.map((r, i) => (
+                    <div key={i} className="flex items-center gap-3 py-2">
+                      <span className="text-xl">{r.emoji}</span>
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+                        {(r.participantName || r.participant || "أنت").slice(0, 2)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">
+                          {r.fromMe ? "أنت" : (r.participantName || r.participant || "غير معروف")}
+                        </p>
+                        {r.participant && !r.fromMe && (
+                          <p className="text-[10px] text-muted-foreground" dir="ltr">+{r.participant}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

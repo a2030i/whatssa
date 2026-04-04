@@ -43,6 +43,8 @@ export interface MessageReaction {
   emoji: string;
   fromMe: boolean;
   timestamp?: string;
+  participant?: string;
+  participantName?: string;
 }
 
 export interface MessageLocation {
