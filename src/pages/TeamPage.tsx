@@ -299,7 +299,7 @@ const TeamPage = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in">
         {[
           { value: profiles.length, label: "إجمالي الأعضاء", color: "text-foreground", iconBg: "bg-secondary/60" },
-          { value: profiles.filter((m) => m.is_online || (m.last_seen_at && Date.now() - new Date(m.last_seen_at).getTime() < 5 * 60 * 1000)).length, label: "متصلون الآن", color: "text-success", iconBg: "bg-success/10" },
+          { value: profiles.filter((m) => m.is_online || (m.last_seen_at && Date.now() - new Date(m.last_seen_at).getTime() { value: profiles.filter((m) => m.is_online || (m.last_seen_at && Date.now() - new Date(m.last_seen_at).getTime() < 2.5 * 60 * 1000)).length, label: "متصلون الآن", color: "text-success", iconBg: "bg-success/10" },, color: "text-success", iconBg: "bg-success/10" },
           { value: teams.length, label: "عدد الفرق", color: "text-primary", iconBg: "bg-primary/10" },
           { value: roles.filter((r) => r.role === "admin").length, label: "مدراء", color: "text-kpi-3", iconBg: "bg-kpi-3/10" },
         ].map((stat, i) => (
