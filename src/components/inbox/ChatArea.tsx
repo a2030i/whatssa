@@ -85,11 +85,11 @@ const resolveMediaUrl = async (url: string | null | undefined): Promise<string |
   if (url.startsWith("storage:chat-media/")) {
     const path = url.replace("storage:chat-media/", "");
     try {
-      // Files are stored in Lovable Cloud storage, use cloudSupabase
-      const { data, error } = await cloudSupabase.storage.from("chat-media").createSignedUrl(path, 3600);
+      // Files are stored in the external Supabase storage, use the main client
+      const { data, error } = await supabase.storage.from("chat-media").createSignedUrl(path, 3600);
       if (error) {
         console.error("[resolveMediaUrl] Signed URL error:", error.message, "path:", path);
-        const { data: publicData } = cloudSupabase.storage.from("chat-media").getPublicUrl(path);
+        const { data: publicData } = supabase.storage.from("chat-media").getPublicUrl(path);
         return publicData?.publicUrl || null;
       }
       return data?.signedUrl || null;
