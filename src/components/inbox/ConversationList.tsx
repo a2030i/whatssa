@@ -158,16 +158,19 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const activeInbox = customInboxes.find((i) => i.id === activeCustomInbox);
 
   const filtered = useMemo(() => {
-    return conversations.filter((conv) => {
+    const list = conversations.filter((conv) => {
       if (searchQuery && !conv.customerName.includes(searchQuery) && !conv.lastMessage.includes(searchQuery) && !conv.customerPhone.includes(searchQuery)) return false;
       if (activeInbox) return applyCustomFilters(conv, activeInbox);
-      if (activeQuickFilter !== "closed" && conv.status === "closed") return false;
+      // Hide archived unless specifically filtering for them
+      if (activeQuickFilter !== "archived" && conv.isArchived) return false;
+      if (activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.status === "closed") return false;
       switch (activeQuickFilter) {
         case "active": if (conv.status !== "active") return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
         case "unread": if (conv.unread <= 0) return false; break;
         case "waiting": if (conv.status !== "waiting") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
+        case "archived": if (!conv.isArchived) return false; break;
       }
       if (agentFilter !== "all" && conv.assignedTo !== agentFilter) return false;
       if (channelFilter !== "all") {
@@ -177,6 +180,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       if (selectedTags.length > 0 && !selectedTags.some((t) => conv.tags.includes(t))) return false;
       return true;
     });
+    // Sort: pinned first, then by default order
+    list.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return 0; // preserve existing order (by last_message_at)
+    });
+    return list;
   }, [conversations, searchQuery, activeQuickFilter, agentFilter, channelFilter, selectedTags, activeInbox]);
 
   const hasActiveFilters = agentFilter !== "all" || channelFilter !== "all" || selectedTags.length > 0 || !!activeCustomInbox;
