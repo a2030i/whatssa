@@ -57,7 +57,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
       { label: "العملاء", icon: UserCircle, path: "/customers", emoji: "👥" },
       { label: "الطلبات", icon: ShoppingCart, path: "/orders", emoji: "🛒", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً" },
       { label: "السلل المهجورة", icon: ShoppingBag, path: "/abandoned-carts", emoji: "🛒", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً" },
-      { label: "الكتالوج", icon: Package, path: "/catalog", emoji: "📦", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي أولاً لإدارة الكتالوج" },
+      { label: "الكتالوج", icon: Package, path: "/catalog", emoji: "📦" },
     ],
   },
   {
