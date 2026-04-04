@@ -104,13 +104,28 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
 
   const progress = duration > 0 ? currentTime / duration : 0;
 
+  if (hasError) {
+    return (
+      <div className={cn(
+        "flex items-center gap-2 rounded-2xl px-3 py-2.5 min-w-[180px]",
+        isAgent ? "bg-secondary/60" : "bg-white/15",
+        className
+      )}>
+        <a href={src} target="_blank" rel="noreferrer" download className={cn("flex items-center gap-2 text-xs", isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white")}>
+          <Download className="w-4 h-4" />
+          <span>تحميل الصوتية</span>
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className={cn(
       "flex items-center gap-2 rounded-2xl px-3 py-2 min-w-[220px] max-w-[320px]",
       isAgent ? "bg-secondary/60" : "bg-white/15",
       className
     )}>
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} src={src} preload="metadata" crossOrigin="anonymous" />
 
       {/* Play/Pause button */}
       <button

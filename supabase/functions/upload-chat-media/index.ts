@@ -59,7 +59,9 @@ serve(async (req) => {
       return json({ error: "بيانات الملف غير مكتملة" }, 400);
     }
 
-    if (!content_type.startsWith("audio/")) {
+    const allowedPrefixes = ["audio/", "image/", "video/", "application/pdf", "application/vnd.", "application/msword", "application/octet-stream", "text/"];
+    const isAllowed = allowedPrefixes.some(p => content_type.startsWith(p));
+    if (!isAllowed) {
       return json({ error: "نوع الملف غير مدعوم" }, 400);
     }
 
