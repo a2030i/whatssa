@@ -224,6 +224,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             >
               <Plus className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); }}
+              className={cn("p-2 rounded-xl transition-all", bulkMode ? "bg-primary/10 text-primary" : "hover:bg-secondary/80 text-muted-foreground")}
+              title="تحديد متعدد"
+            >
+              <CheckSquare className="w-4 h-4" />
+            </button>
             {hasActiveFilters && (
               <button onClick={clearFilters} className="p-2 rounded-xl hover:bg-destructive/10 transition-all" title="إعادة ضبط">
                 <RotateCcw className="w-4 h-4 text-muted-foreground" />
