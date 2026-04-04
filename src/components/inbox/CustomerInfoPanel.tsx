@@ -69,6 +69,9 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     setNotes(conversation.notes || "");
     loadCustomer();
     loadOrders();
+    if (isGroup && conversation.channelType === "evolution") {
+      loadGroupInfo();
+    }
   }, [conversation.id]);
 
   useEffect(() => {
