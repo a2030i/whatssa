@@ -631,29 +631,6 @@ const IntegrationsPage = () => {
               </div>
             )}
 
-            {/* Profile Editor */}
-            {isConnected && (
-              <div className="flex justify-center">
-                <WhatsAppProfileEditor configId={config.id} channelType="meta_api" />
-              </div>
-            )}
-
-            {/* Catalog & QR */}
-            {isConnected && (
-              <div className="space-y-4 pt-2 border-t border-border">
-                <QRCodeSection />
-              </div>
-            )}
-
-            {/* Channel Routing */}
-            {orgId && (
-              <ChannelRoutingConfig
-                configId={config.id}
-                orgId={orgId}
-                defaultTeamId={(config as any).default_team_id}
-                defaultAgentId={(config as any).default_agent_id}
-              />
-            )}
 
             {config.registered_at && (
               <p className="text-[10px] text-muted-foreground text-center">
