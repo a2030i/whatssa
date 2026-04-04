@@ -246,6 +246,8 @@ const InboxPage = () => {
         isDeleted: (message.metadata as any)?.is_deleted || false,
         poll: (message.metadata as any)?.poll || undefined,
         createdAt: message.created_at || undefined,
+        readBy: (message.metadata as any)?.read_by || undefined,
+        groupSize: (message.metadata as any)?.group_size || undefined,
       }));
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
