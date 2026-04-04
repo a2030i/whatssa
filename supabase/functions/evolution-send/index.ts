@@ -414,6 +414,34 @@ serve(async (req) => {
         waMessageId = result.key?.id || null;
         sentContent = message || `[${sentMessageType}]`;
       }
+    } else if (type === "poll" && poll_name && Array.isArray(poll_options) && poll_options.length >= 2) {
+      // ── Send poll ──
+      const pollBody: Record<string, unknown> = {
+        number: to,
+        name: poll_name,
+        values: poll_options,
+        selectableCount: 1,
+      };
+
+      logToSystem(adminClient, "info", `إرسال تصويت Evolution إلى ${to}`, {
+        to, instance: instanceName, poll_name,
+      }, orgId, user.id);
+
+      const response = await fetch(`${EVOLUTION_URL}/message/sendPoll/${instanceName}`, {
+        method: "POST", headers: evoHeaders, body: JSON.stringify(pollBody),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        logToSystem(adminClient, "error", `فشل إرسال تصويت Evolution إلى ${to}`, {
+          to, http_status: response.status, error: result?.message || "unknown",
+        }, orgId, user.id);
+        return json({ error: result?.message || "فشل إرسال التصويت عبر Evolution" }, response.status);
+      }
+
+      waMessageId = result.key?.id || null;
+      sentContent = `📊 ${poll_name}`;
+      sentMessageType = "poll";
     } else {
       // ── Send text message ──
       const sendBody: Record<string, unknown> = { number: to, text: message };
