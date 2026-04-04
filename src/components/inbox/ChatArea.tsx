@@ -773,6 +773,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       .then(({ data }) => setHasAiConfig(!!(data && data.length > 0)));
   }, [orgId]);
 
+  // Check if org has products (to conditionally show catalog button)
+  useEffect(() => {
+    if (!orgId) return;
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .eq("is_active", true)
+      .then(({ count }) => setHasProducts((count || 0) > 0));
+  }, [orgId]);
+
   // Real-time typing presence
   useEffect(() => {
     if (!conversation.id || !user?.id) return;
