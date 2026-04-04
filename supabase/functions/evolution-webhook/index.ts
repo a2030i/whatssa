@@ -978,26 +978,51 @@ serve(async (req) => {
 
         if (!conversation) continue;
 
-        // Auto-save customer record
+        // Auto-save customer record (skip groups — save individual participants instead)
         try {
-          const contactDisplayName = chooseBestContactName(conversationDisplayName, resolvedIncomingName, msg.pushName) || "";
-          const { data: existingCustomer } = await supabase
-            .from("customers")
-            .select("id, name")
-            .eq("org_id", orgId)
-            .eq("phone", phone)
-            .maybeSingle();
+          if (conversationType === "group") {
+            // For groups, save the actual sender (participant) as a customer, not the group JID
+            const senderPhone = (key.participant || "").replace("@s.whatsapp.net", "").replace("@lid", "");
+            const senderPushName = msg.pushName || "";
+            if (senderPhone && senderPhone.length > 5) {
+              const { data: existingParticipant } = await supabase
+                .from("customers")
+                .select("id, name")
+                .eq("org_id", orgId)
+                .eq("phone", senderPhone)
+                .maybeSingle();
 
-          if (!existingCustomer) {
-            await supabase.from("customers").insert({
-              org_id: orgId,
-              phone: phone,
-              name: contactDisplayName || null,
-              source: "whatsapp",
-            });
-          } else if (contactDisplayName && (!existingCustomer.name || existingCustomer.name === phone)) {
-            await supabase.from("customers").update({ name: contactDisplayName }).eq("id", existingCustomer.id);
-          }
+              if (!existingParticipant) {
+                await supabase.from("customers").insert({
+                  org_id: orgId,
+                  phone: senderPhone,
+                  name: senderPushName || null,
+                  source: "whatsapp_group",
+                });
+              } else if (senderPushName && (!existingParticipant.name || existingParticipant.name === senderPhone)) {
+                await supabase.from("customers").update({ name: senderPushName }).eq("id", existingParticipant.id);
+              }
+            }
+          } else {
+            // Private conversations — save the contact as customer
+            const contactDisplayName = chooseBestContactName(conversationDisplayName, resolvedIncomingName, msg.pushName) || "";
+            const { data: existingCustomer } = await supabase
+              .from("customers")
+              .select("id, name")
+              .eq("org_id", orgId)
+              .eq("phone", phone)
+              .maybeSingle();
+
+            if (!existingCustomer) {
+              await supabase.from("customers").insert({
+                org_id: orgId,
+                phone: phone,
+                name: contactDisplayName || null,
+                source: "whatsapp",
+              });
+            } else if (contactDisplayName && (!existingCustomer.name || existingCustomer.name === phone)) {
+              await supabase.from("customers").update({ name: contactDisplayName }).eq("id", existingCustomer.id);
+            }
 
           // Link customer to conversation if not linked
           if (conversation) {
