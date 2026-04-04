@@ -1024,13 +1024,14 @@ serve(async (req) => {
               await supabase.from("customers").update({ name: contactDisplayName }).eq("id", existingCustomer.id);
             }
 
-          // Link customer to conversation if not linked
-          if (conversation) {
-            const { data: convCheck } = await supabase.from("conversations").select("customer_id").eq("id", conversation.id).single();
-            if (convCheck && !convCheck.customer_id) {
-              const { data: cust } = await supabase.from("customers").select("id").eq("org_id", orgId).eq("phone", phone).maybeSingle();
-              if (cust) {
-                await supabase.from("conversations").update({ customer_id: cust.id }).eq("id", conversation.id);
+            // Link customer to conversation if not linked (private only)
+            if (conversation) {
+              const { data: convCheck } = await supabase.from("conversations").select("customer_id").eq("id", conversation.id).single();
+              if (convCheck && !convCheck.customer_id) {
+                const { data: cust } = await supabase.from("customers").select("id").eq("org_id", orgId).eq("phone", phone).maybeSingle();
+                if (cust) {
+                  await supabase.from("conversations").update({ customer_id: cust.id }).eq("id", conversation.id);
+                }
               }
             }
           }
