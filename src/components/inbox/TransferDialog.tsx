@@ -121,6 +121,9 @@ const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: Tran
                         <p className="text-sm font-medium truncate">{agent.full_name}</p>
                         <p className="text-[10px] text-success">متصل الآن</p>
                       </div>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 shrink-0">
+                        مُسند إليه {agent.assigned_count}
+                      </Badge>
                     </button>
                   ))}
                 </div>
