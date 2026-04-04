@@ -43,6 +43,7 @@ import WarehousesPage from "./pages/WarehousesPage";
 import LockedFeaturesPage from "./pages/LockedFeaturesPage";
 import LandingPage from "./pages/LandingPage";
 import TasksPage from "./pages/TasksPage";
+import ForceChangePasswordPage from "./pages/ForceChangePasswordPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
