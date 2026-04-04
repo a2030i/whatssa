@@ -840,6 +840,43 @@ serve(async (req) => {
       return json({ success: true });
     }
 
+    // ── GROUP: LEAVE ──
+    if (action === "leave_group") {
+      const group_jid = asString(payload.group_jid);
+      if (!group_jid) return json({ error: "معرف المجموعة مطلوب" }, 400);
+
+      let targetInstance = instanceName;
+      if (channel_id) {
+        const { data: chConf } = await adminClient
+          .from("whatsapp_config")
+          .select("evolution_instance_name")
+          .eq("id", channel_id)
+          .maybeSingle();
+        if (chConf?.evolution_instance_name) targetInstance = chConf.evolution_instance_name;
+      }
+
+      const jid = group_jid.includes("@g.us") ? group_jid : `${group_jid}@g.us`;
+      const leaveRes = await fetch(`${EVOLUTION_URL}/group/leaveGroup/${targetInstance}`, {
+        method: "DELETE",
+        headers: evoHeaders,
+        body: JSON.stringify({ groupJid: jid }),
+      });
+      const leaveData = await leaveRes.json().catch(() => ({}));
+
+      if (leaveRes.ok) {
+        // Mark conversation as closed
+        await adminClient
+          .from("conversations")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("customer_phone", group_jid.replace("@g.us", ""))
+          .eq("org_id", orgId);
+
+        await logToSystem(adminClient, "info", `تم الخروج من المجموعة`, { group_jid: jid }, orgId, userId);
+      }
+
+      return json({ success: leaveRes.ok, data: leaveData });
+    }
+
     // ── SET DISAPPEARING MESSAGES ──
     if (action === "set_disappearing") {
       const disappearPhone = asString(payload.phone);

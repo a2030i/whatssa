@@ -596,6 +596,41 @@ serve(async (req) => {
           continue;
         }
 
+        // ── Handle group membership changes (stub messages) ──
+        const stubType = msg.messageStubType;
+        if (stubType && conversationType === "group") {
+          const stubParams = msg.messageStubParameters || [];
+          let systemText = "";
+          const affectedPhones = stubParams.map((p: string) => p.replace("@s.whatsapp.net", "").replace("@lid", ""));
+          const actorName = msg.pushName || key.participant?.replace("@s.whatsapp.net", "").replace("@lid", "") || "";
+
+          // 27=add, 28=remove, 32=join via link, 31=leave
+          if (stubType === 27 || stubType === "27") {
+            systemText = `${actorName} أضاف ${affectedPhones.join(", ")} إلى المجموعة`;
+          } else if (stubType === 28 || stubType === "28" || stubType === 31 || stubType === "31") {
+            systemText = `${affectedPhones.join(", ")} غادر المجموعة`;
+          } else if (stubType === 32 || stubType === "32") {
+            systemText = `${affectedPhones.join(", ")} انضم عبر رابط الدعوة`;
+          }
+
+          if (systemText && conversation) {
+            // Insert system message
+            await supabase.from("messages").insert({
+              conversation_id: conversation.id,
+              content: systemText,
+              sender: "system",
+              message_type: "text",
+              wa_message_id: key.id || `stub_${Date.now()}`,
+              metadata: { stub_type: stubType, affected_phones: affectedPhones },
+            });
+            await supabase.from("conversations").update({
+              last_message: systemText,
+              last_message_at: new Date().toISOString(),
+            }).eq("id", conversation.id);
+          }
+          continue;
+        }
+
         const text =
           messageContent.conversation ||
           messageContent.extendedTextMessage?.text ||
