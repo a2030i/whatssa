@@ -44,20 +44,27 @@ const normalizeDigits = (value: unknown) =>
 
 const extractParticipantPhone = (participant: any) => {
   const rawId = participant?.id || participant?.jid || "";
-  const candidates = [participant?.phone, participant?.number, participant?.notify, participant?.senderPn, participant?.participantPn]
+  const candidates = [participant?.phone, participant?.number, participant?.senderPn, participant?.participantPn]
     .map(normalizeDigits)
     .filter(Boolean);
 
   if (candidates.length > 0) return candidates[0];
-  return rawId.includes("@s.whatsapp.net") ? normalizeDigits(rawId) : "";
+  if (rawId.includes("@s.whatsapp.net")) return normalizeDigits(rawId);
+  if (rawId.includes("@g.us")) return normalizeDigits(rawId);
+  return "";
 };
 
 const extractParticipantName = (participant: any, phone: string) => {
-  const candidate = [participant?.pushName, participant?.name, participant?.notify]
+  const candidate = [participant?.pushName, participant?.name, participant?.notify, participant?.verifiedName, participant?.shortName]
     .find((value) => typeof value === "string" && value.trim());
 
   if (candidate) return candidate.trim();
   if (phone) return `+${phone}`;
+  const rawId = participant?.id || participant?.jid || "";
+  if (rawId.includes("@lid")) {
+    const lidShort = rawId.replace(/@.*/, "").slice(-6);
+    return `عضو #${lidShort}`;
+  }
   return "عضو بالقروب";
 };
 
