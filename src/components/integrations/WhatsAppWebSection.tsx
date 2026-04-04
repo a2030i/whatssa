@@ -204,6 +204,14 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
 
   useEffect(() => {
     if (!autoOpen) return;
+    // When connectOnly and already connected, treat as idle so user can add a new number
+    if (connectOnly && existingConfig?.is_connected && (existingConfig?.evolution_instance_status === "connected" || existingConfig?.evolution_instance_status === "connecting")) {
+      setInstanceStatus("idle");
+      setQrCode(null);
+      setPairingCode(null);
+      setExistingConfig(null);
+      return;
+    }
     if (existingConfig?.is_connected && (existingConfig?.evolution_instance_status === "connected" || existingConfig?.evolution_instance_status === "connecting")) {
       setInstanceStatus("connected");
       setQrCode(null);
@@ -223,7 +231,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, connectOnly
     setInstanceStatus("idle");
     setQrCode(null);
     setPairingCode(null);
-  }, [autoOpen, existingConfig?.evolution_instance_name, existingConfig?.evolution_instance_status, existingConfig?.is_connected]);
+  }, [autoOpen, connectOnly, existingConfig?.evolution_instance_name, existingConfig?.evolution_instance_status, existingConfig?.is_connected]);
 
   const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
