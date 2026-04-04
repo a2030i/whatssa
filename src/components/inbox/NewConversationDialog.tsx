@@ -455,19 +455,42 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         {/* ═══ GROUP MODE ═══ */}
         {dialogMode === "group" && (
           <div className="p-4 space-y-4">
-            {/* Group name */}
-            <div className="space-y-2">
-              <Label className="text-xs font-medium">📝 اسم القروب</Label>
-              <Input
-                placeholder="مثال: فريق المبيعات"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                className="h-10 text-sm bg-background"
+            {/* Group image + name */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => groupImageInputRef.current?.click()}
+                className="w-14 h-14 rounded-2xl bg-secondary/60 border border-border/40 flex items-center justify-center shrink-0 hover:bg-secondary transition-colors overflow-hidden"
+              >
+                {groupImagePreview ? (
+                  <img src={groupImagePreview} alt="صورة القروب" className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                )}
+              </button>
+              <input
+                ref={groupImageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setGroupImageFile(file);
+                    setGroupImagePreview(URL.createObjectURL(file));
+                  }
+                }}
               />
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs font-medium">📝 اسم القروب</Label>
+                <Input
+                  placeholder="مثال: فريق المبيعات"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  className="h-10 text-sm bg-background"
+                />
+              </div>
             </div>
-
-            {/* Channel selector for group - evolution channels */}
-            {evolutionChannels.length > 0 ? (
               <div className="space-y-2">
                 <Label className="text-xs font-medium">📱 القناة</Label>
                 <div className="grid gap-2">
