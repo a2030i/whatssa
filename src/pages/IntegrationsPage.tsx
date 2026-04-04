@@ -270,7 +270,7 @@ const IntegrationsPage = () => {
         }
       },
       {
-        config_id: "841284742321361",
+        config_id: "1492677925851114",
         response_type: "code",
         override_default_response_type: true,
         scope: "whatsapp_business_management,whatsapp_business_messaging",
