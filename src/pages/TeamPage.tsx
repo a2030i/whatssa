@@ -961,6 +961,79 @@ const TeamPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Invite Member Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={(o) => { if (!o) resetInviteForm(); }}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-primary" />
+              إضافة موظف جديد
+            </DialogTitle>
+          </DialogHeader>
+          {inviteResult ? (
+            <div className="space-y-4 py-2">
+              <div className="bg-success/10 rounded-xl p-4 text-center space-y-2">
+                <CheckCircle className="w-8 h-8 text-success mx-auto" />
+                <p className="text-sm font-bold">تمت الإضافة بنجاح!</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-xs">
+                <p className="font-semibold">بيانات الدخول المؤقتة:</p>
+                <div className="flex items-center justify-between bg-card rounded p-2">
+                  <span className="text-muted-foreground">البريد:</span>
+                  <span className="font-mono text-[11px] select-all">{inviteResult.email}</span>
+                </div>
+                <div className="flex items-center justify-between bg-card rounded p-2">
+                  <span className="text-muted-foreground">كلمة المرور:</span>
+                  <span className="font-mono text-[11px] select-all">{inviteResult.temp_password}</span>
+                </div>
+                <p className="text-[10px] text-warning mt-2">⚠️ انسخ كلمة المرور الآن وأرسلها للموظف — لن تظهر مجدداً</p>
+              </div>
+              <Button className="w-full" onClick={resetInviteForm}>تم</Button>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label className="text-xs">الاسم الكامل *</Label>
+                <Input placeholder="محمد أحمد" value={inviteName} onChange={(e) => setInviteName(e.target.value)} className="text-sm" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">البريد الإلكتروني *</Label>
+                <Input type="email" placeholder="name@company.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="text-sm" dir="ltr" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">الفريق</Label>
+                <Select value={inviteTeam || "none"} onValueChange={(v) => setInviteTeam(v === "none" ? "" : v)}>
+                  <SelectTrigger className="text-xs"><SelectValue placeholder="بدون فريق" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="text-xs">بدون فريق</SelectItem>
+                    {teams.map((t) => (
+                      <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">الصلاحية</Label>
+                <Select value={inviteRole} onValueChange={setInviteRole}>
+                  <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member" className="text-xs">موظف</SelectItem>
+                    <SelectItem value="admin" className="text-xs">مدير</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={resetInviteForm}>إلغاء</Button>
+                <Button onClick={handleInvite} disabled={inviting} className="gap-1.5">
+                  {inviting ? <span className="animate-spin">⏳</span> : <UserPlus className="w-4 h-4" />}
+                  إضافة
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
