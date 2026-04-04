@@ -869,6 +869,8 @@ const InboxPage = () => {
            onTagsChange={handleTagsChange}
            onEditMessage={handleEditMessage}
            onDeleteMessage={handleDeleteMessage}
+           scrollToMessageId={scrollToMessageId}
+           onScrollToMessageDone={() => setScrollToMessageId(null)}
          />
       ) : (
         !isMobile && (
