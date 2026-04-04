@@ -1315,45 +1315,46 @@ const IntegrationsPage = () => {
   // ============ CHECKLIST BEFORE ADDING NEW NUMBER ============
   if (flowStep === "checklist") {
     return (
-      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
+        <div className="flex justify-end mb-4">{reviewToggle}</div>
         <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
           <div className="p-6 border-b border-border">
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
-              قائمة التحقق قبل الربط
+              {t("قائمة التحقق قبل الربط", "Pre-connection Checklist")}
             </h2>
-            <p className="text-sm text-muted-foreground mt-1">تأكد من استيفاء هذه المتطلبات في Meta Business Suite قبل إضافة رقم جديد</p>
+            <p className="text-sm text-muted-foreground mt-1">{t("تأكد من استيفاء هذه المتطلبات في Meta Business Suite قبل إضافة رقم جديد", "Make sure these requirements are met in Meta Business Suite before adding a new number")}</p>
           </div>
           <div className="p-5 space-y-3">
             {[
               {
                 icon: Building2,
-                title: "توثيق النشاط التجاري",
-                desc: "وثّق حافظة الأعمال (Business Verification) لرفع حدود الإرسال وتفعيل المحادثات",
+                title: t("توثيق النشاط التجاري", "Business Verification"),
+                desc: t("وثّق حافظة الأعمال (Business Verification) لرفع حدود الإرسال وتفعيل المحادثات", "Verify your Business Portfolio to increase messaging limits and activate conversations"),
                 link: "https://business.facebook.com/settings/security",
-                linkLabel: "تحقق من التوثيق",
+                linkLabel: t("تحقق من التوثيق", "Check verification"),
                 required: false,
               },
               {
                 icon: CreditCard,
-                title: "وسيلة الدفع",
-                desc: "أضف بطاقة ائتمان صالحة في إعدادات الدفع — مطلوبة لإرسال الرسائل التسويقية",
+                title: t("وسيلة الدفع", "Payment Method"),
+                desc: t("أضف بطاقة ائتمان صالحة في إعدادات الدفع — مطلوبة لإرسال الرسائل التسويقية", "Add a valid credit card in payment settings — required for sending marketing messages"),
                 link: "https://business.facebook.com/billing_hub/payment_methods",
-                linkLabel: "إدارة وسائل الدفع",
+                linkLabel: t("إدارة وسائل الدفع", "Manage payment methods"),
                 required: true,
               },
               {
                 icon: PhoneCall,
-                title: "رقم واتساب جاهز",
-                desc: "رقم غير مربوط بتطبيق واتساب على الهاتف — يجب فصله أولاً قبل ربطه بالمنصة",
+                title: t("رقم واتساب جاهز", "WhatsApp Number Ready"),
+                desc: t("رقم غير مربوط بتطبيق واتساب على الهاتف — يجب فصله أولاً قبل ربطه بالمنصة", "A number not linked to any WhatsApp app on your phone — must be disconnected first"),
                 required: true,
               },
               {
                 icon: MessageSquare,
-                title: "حساب WABA مفعّل",
-                desc: "أنشئ حساب WhatsApp Business Account من Meta Business Suite إن لم يكن موجوداً",
+                title: t("حساب WABA مفعّل", "WABA Account Active"),
+                desc: t("أنشئ حساب WhatsApp Business Account من Meta Business Suite إن لم يكن موجوداً", "Create a WhatsApp Business Account from Meta Business Suite if not already created"),
                 link: "https://business.facebook.com/wa/manage/home",
-                linkLabel: "إدارة حسابات WhatsApp",
+                linkLabel: t("إدارة حسابات WhatsApp", "Manage WhatsApp accounts"),
                 required: true,
               },
             ].map((item, i) => (
@@ -1365,19 +1366,14 @@ const IntegrationsPage = () => {
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs font-semibold text-foreground">{item.title}</p>
                     {item.required ? (
-                      <Badge className="bg-destructive/10 text-destructive border-0 text-[9px] px-1.5 py-0">مطلوب</Badge>
+                      <Badge className="bg-destructive/10 text-destructive border-0 text-[9px] px-1.5 py-0">{t("مطلوب", "Required")}</Badge>
                     ) : (
-                      <Badge className="bg-warning/10 text-warning border-0 text-[9px] px-1.5 py-0">موصى به</Badge>
+                      <Badge className="bg-warning/10 text-warning border-0 text-[9px] px-1.5 py-0">{t("موصى به", "Recommended")}</Badge>
                     )}
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
                   {item.link && (
-                    <a
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] text-primary hover:underline underline-offset-2 mt-1 inline-flex items-center gap-1"
-                    >
+                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline underline-offset-2 mt-1 inline-flex items-center gap-1">
                       <ExternalLink className="w-2.5 h-2.5" />
                       {item.linkLabel}
                     </a>
@@ -1389,9 +1385,9 @@ const IntegrationsPage = () => {
             <div className="pt-3 space-y-2">
               <Button onClick={proceedToMetaLogin} disabled={!sdkLoaded} className="w-full gap-2 py-5 text-sm font-bold rounded-xl">
                 {!sdkLoaded ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-                تأكدت — متابعة الربط
+                {t("تأكدت — متابعة الربط", "Confirmed — Continue to Connect")}
               </Button>
-              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetFlow}>← رجوع</Button>
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetFlow}>{t("← رجوع", "← Back")}</Button>
             </div>
           </div>
         </div>
