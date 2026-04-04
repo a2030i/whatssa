@@ -105,6 +105,8 @@ const AppSidebar = () => {
   const navSections = buildGroups(isEcommerce, hasMetaApi);
 
   const isLocked = (item: NavItem): boolean => {
+    // Super admin always has full access
+    if (isSuperAdmin) return false;
     if (item.metaApiOnly && !hasMetaApi) return true;
     if (item.ecommerceOnly && !isEcommerce) return true;
     return false;

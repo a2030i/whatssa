@@ -68,7 +68,7 @@ type OnboardingMode = "new" | "migrate_app" | "migrate_provider";
 type FlowStep = "idle" | "choose_type" | "checklist" | "migration_info" | "connecting" | "pick_phone" | "migration_prereqs" | "success" | "error";
 
 const IntegrationsPage = () => {
-  const { orgId, isSuperAdmin } = useAuth();
+  const { orgId, isSuperAdmin, isImpersonating } = useAuth();
   const [configs, setConfigs] = useState<WhatsAppConfig[]>([]);
   const [maxPhones, setMaxPhones] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,14 +115,16 @@ const IntegrationsPage = () => {
   const [unofficialCheckingStatus, setUnofficialCheckingStatus] = useState<string | null>(null);
   const [metaAppId, setMetaAppId] = useState(DEFAULT_META_APP_ID);
   const [metaConfigId, setMetaConfigId] = useState(DEFAULT_META_CONFIG_ID);
+  const [officialEnabled, setOfficialEnabled] = useState(false);
 
   useEffect(() => {
     loadFacebookSDK();
     // Load Meta settings from system_settings
-    supabase.from("system_settings").select("key, value").in("key", ["meta_app_id", "meta_config_id"]).then(({ data }) => {
+    supabase.from("system_settings").select("key, value").in("key", ["meta_app_id", "meta_config_id", "official_whatsapp_enabled"]).then(({ data }) => {
       (data || []).forEach((s: any) => {
         if (s.key === "meta_app_id" && s.value) setMetaAppId(String(s.value));
         if (s.key === "meta_config_id" && s.value) setMetaConfigId(String(s.value));
+        if (s.key === "official_whatsapp_enabled") setOfficialEnabled(s.value === true || s.value === "true");
       });
     });
   }, []);
@@ -1162,7 +1164,8 @@ const IntegrationsPage = () => {
               <DialogTitle className="text-center text-lg">اختر نوع الربط</DialogTitle>
             </DialogHeader>
             <div className="grid grid-cols-1 gap-3 pt-2">
-              {/* Official */}
+              {/* Official — only shown if enabled or super admin */}
+              {(officialEnabled || isSuperAdmin) && (
               <button
                 onClick={() => { setShowWhatsAppChoice(false); startConnect(); }}
                 className="flex items-center gap-3 p-4 rounded-xl border-2 border-border hover:border-emerald-500 hover:bg-emerald-500/5 transition-all text-right"
@@ -1175,6 +1178,7 @@ const IntegrationsPage = () => {
                   <p className="text-[11px] text-muted-foreground mt-0.5">WhatsApp Business API — ربط رسمي عبر Meta مع قوالب وحملات</p>
                 </div>
               </button>
+              )}
               {/* Web / Unofficial */}
               <div className="rounded-xl border-2 border-border hover:border-warning hover:bg-warning/5 transition-all p-4">
                 <div className="flex items-center gap-3 text-right mb-3">
