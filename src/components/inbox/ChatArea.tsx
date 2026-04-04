@@ -853,6 +853,27 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           const phone = (p.id || p.jid || "").replace(/@.*/, "");
           return { id: p.id || p.jid || phone, name: p.pushName || p.name || phone, phone };
         });
+
+        // Enrich with saved customer names from DB
+        if (mapped.length > 0 && orgId) {
+          const phones = mapped.map((m: any) => m.phone).filter(Boolean);
+          const { data: savedCustomers } = await supabase
+            .from("customers")
+            .select("phone, name")
+            .eq("org_id", orgId)
+            .in("phone", phones);
+
+          if (savedCustomers && savedCustomers.length > 0) {
+            const customerMap = new Map(savedCustomers.map(c => [c.phone, c.name]));
+            mapped.forEach((p: any) => {
+              const savedName = customerMap.get(p.phone);
+              if (savedName && savedName !== p.phone) {
+                p.name = savedName;
+              }
+            });
+          }
+        }
+
         setGroupParticipants(mapped);
       } catch (e) {
         console.error("Failed to fetch group participants:", e);
