@@ -991,25 +991,56 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           };
         });
 
-        // Enrich with saved customer names from DB
+        // Enrich with saved customer names from DB + message sender names
         if (mapped.length > 0 && orgId) {
           const phones = mapped.map((m: any) => m.phone).filter(Boolean);
+          const rawDigits = mapped.map((m: any) => m.rawDigits).filter(Boolean);
+          const allLookups = [...new Set([...phones, ...rawDigits])];
+          
+          // 1. Check customers table
           const { data: savedCustomers } = await supabase
             .from("customers")
             .select("phone, name")
             .eq("org_id", orgId)
-            .in("phone", phones);
+            .in("phone", allLookups);
 
-          if (savedCustomers && savedCustomers.length > 0) {
-            const customerMap = new Map(savedCustomers.map(c => [c.phone, c.name]));
-            mapped.forEach((p: any) => {
-              const savedName = customerMap.get(p.phone);
-              if (savedName) {
-                p.name = savedName;
+          const customerMap = new Map<string, string>();
+          (savedCustomers || []).forEach(c => { if (c.name) customerMap.set(c.phone, c.name); });
+
+          // 2. Extract names from recent messages metadata (sender_name field)
+          const msgNameMap = new Map<string, string>();
+          messages.forEach(m => {
+            const meta = m as any;
+            const senderName = meta.senderName || (meta.metadata as any)?.sender_name;
+            const senderJid = (meta.metadata as any)?.sender_jid || (meta.metadata as any)?.participant;
+            if (senderName && senderJid) {
+              const senderDigits = normalizeDigits(senderJid);
+              if (senderDigits) msgNameMap.set(senderDigits, senderName);
+            }
+          });
+
+          mapped.forEach((p: any) => {
+            // Try exact phone match from customers
+            const savedName = customerMap.get(p.phone) || customerMap.get(p.rawDigits);
+            if (savedName) {
+              p.name = savedName;
+              p.isSaved = true;
+              return;
+            }
+            // Try suffix matching (some phones stored with/without country code)
+            for (const [cPhone, cName] of customerMap) {
+              if (cPhone && p.phone && (cPhone.endsWith(p.phone) || p.phone.endsWith(cPhone)) && cPhone.length >= 7) {
+                p.name = cName;
                 p.isSaved = true;
+                return;
               }
-            });
-          }
+            }
+            // Try name from message metadata
+            const msgName = msgNameMap.get(p.phone) || msgNameMap.get(p.rawDigits);
+            if (msgName && (p.name.startsWith("عضو") || p.name.startsWith("+"))) {
+              p.name = msgName;
+            }
+          });
         }
 
         mapped.sort((a: any, b: any) => {
