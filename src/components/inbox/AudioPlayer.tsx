@@ -85,6 +85,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
     if (isPlaying) {
       audio.pause();
     } else {
+      pauseAllExcept(audio);
       audio.play().catch(() => {});
     }
   }, [isPlaying]);
