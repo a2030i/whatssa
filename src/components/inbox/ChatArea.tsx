@@ -1860,7 +1860,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </button>
             )}
             {/* Send Product — Evolution (internal products) */}
-            {!isNoteMode && !isMetaChannel && (
+            {!isNoteMode && !isMetaChannel && hasProducts && (
               <button
                 onClick={() => setShowInternalProductPicker(true)}
                 className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
