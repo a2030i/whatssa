@@ -1069,6 +1069,44 @@ const IntegrationsPage = () => {
                           </div>
                         </div>
 
+                        {/* Test Message */}
+                        <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Send className="w-4 h-4 text-primary" />
+                            <h4 className="text-xs font-bold">إرسال رسالة اختبار</h4>
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              value={unofficialTestPhone}
+                              onChange={(e) => setUnofficialTestPhone(e.target.value)}
+                              placeholder="9665xxxxxxxx"
+                              className="h-8 text-xs flex-1"
+                              dir="ltr"
+                            />
+                            <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={() => sendUnofficialTestMessage(config.id)} disabled={unofficialTestSending || !unofficialTestPhone}>
+                              {unofficialTestSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                              إرسال
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Profile Editor */}
+                        <WhatsAppProfileEditor configId={config.id} channelType="evolution" />
+
+                        {/* Channel Routing */}
+                        {orgId && (
+                          <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
+                            <ChannelRoutingConfig
+                              configId={config.id}
+                              orgId={orgId}
+                              defaultTeamId={(config as any).default_team_id}
+                              defaultAgentId={(config as any).default_agent_id}
+                            />
+                          </div>
+                        )}
+
+                        {/* Ban Protection */}
+                        <UnofficialRateLimitPanel configId={config.id} initialSettings={(config as any).rate_limit_settings} />
 
                         {/* Delete */}
                         {isSuperAdmin && (
