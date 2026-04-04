@@ -374,18 +374,21 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                         <p className="text-xs font-medium truncate flex items-center gap-1">
                           {p.name}
                           {p.admin && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+                          {p.isSaved && !p.admin && <User className="w-3 h-3 text-primary shrink-0" />}
                         </p>
                         <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                      onClick={() => handleRemoveGroupMember(p.phone)}
-                    >
-                      <UserMinus className="w-3 h-3" />
-                    </Button>
+                    {isGroupAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                        onClick={() => handleRemoveGroupMember(p.phone)}
+                      >
+                        <UserMinus className="w-3 h-3" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
