@@ -19,6 +19,7 @@ interface Props {
   orgId: string | null;
   isSuperAdmin: boolean;
   autoOpen?: boolean;
+  forNewNumber?: boolean;
   onConfigChange?: () => void;
 }
 
@@ -167,7 +168,7 @@ const RateLimitPanel = ({ configId, initialSettings }: RateLimitPanelProps) => {
   );
 };
 
-const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigChange }: Props) => {
+const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumber = false, onConfigChange }: Props) => {
   const [showSetup, setShowSetup] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -192,10 +193,18 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, onConfigCha
 
   useEffect(() => {
     if (!orgId) return;
+    if (forNewNumber) {
+      // Skip loading existing config — start fresh
+      setIsLoadingConfig(false);
+      setExistingConfig(null);
+      setInstanceName("");
+      setInstanceStatus("idle");
+      return;
+    }
     loadExistingConfig();
     loadUnofficialLimits();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [orgId]);
+  }, [orgId, forNewNumber]);
 
   useEffect(() => {
     if (autoOpen) setShowSetup(true);

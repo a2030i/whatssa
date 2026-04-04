@@ -1193,7 +1193,7 @@ const IntegrationsPage = () => {
                     <p className="text-[11px] text-muted-foreground mt-0.5">ربط عبر مسح QR — بدون حساب بزنس رسمي</p>
                   </div>
                 </div>
-                <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} autoOpen onConfigChange={loadConfigs} />
+                <WhatsAppWebSection orgId={orgId} isSuperAdmin={isSuperAdmin} autoOpen forNewNumber onConfigChange={() => { loadConfigs(); setShowWhatsAppChoice(false); }} />
               </div>
             </div>
           </DialogContent>

@@ -402,6 +402,24 @@ const TeamPage = () => {
                   <div>
                     <p className="font-medium text-sm">{profile.full_name || "بدون اسم"}</p>
                     <div className="flex items-center gap-2 flex-wrap">
+                      {/* Last seen */}
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                        {(profile.is_online || (profile.last_seen_at && Date.now() - new Date(profile.last_seen_at).getTime() < 2.5 * 60 * 1000))
+                          ? <span className="text-success font-medium">🟢 متصل الآن</span>
+                          : profile.last_seen_at
+                            ? (() => {
+                                const diff = Date.now() - new Date(profile.last_seen_at).getTime();
+                                const mins = Math.floor(diff / 60000);
+                                if (mins < 1) return "آخر ظهور: الآن";
+                                if (mins < 60) return `آخر ظهور: منذ ${mins} دقيقة`;
+                                const hours = Math.floor(mins / 60);
+                                if (hours < 24) return `آخر ظهور: منذ ${hours} ساعة`;
+                                const days = Math.floor(hours / 24);
+                                return `آخر ظهور: منذ ${days} يوم`;
+                              })()
+                            : "لم يسجل دخول بعد"
+                        }
+                      </span>
                       {team && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{team.name}</span>}
                       {profile.is_supervisor && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">مشرف</span>}
                       {profile.work_start && (
