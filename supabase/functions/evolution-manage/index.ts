@@ -548,6 +548,19 @@ serve(async (req) => {
         return json({ success: true }); // Nothing to mark
       }
 
+      // Resolve instance from channel_id if provided
+      let readInstanceName = instanceName;
+      if (channel_id) {
+        const { data: chConf } = await adminClient
+          .from("whatsapp_config")
+          .select("evolution_instance_name")
+          .eq("id", channel_id)
+          .maybeSingle();
+        if (chConf?.evolution_instance_name) {
+          readInstanceName = chConf.evolution_instance_name;
+        }
+      }
+
       // Resolve correct remoteJid by looking up the stored message in Evolution
       // The frontend sends @s.whatsapp.net but the actual JID might be @lid format
       const resolvedKeys: Array<{ remoteJid: string; fromMe: boolean; id: string }> = [];
@@ -561,7 +574,7 @@ serve(async (req) => {
 
         // Look up the actual JID from Evolution's stored messages
         try {
-          const findRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${instanceName}`, {
+          const findRes = await fetch(`${EVOLUTION_URL}/chat/findStatusMessage/${readInstanceName}`, {
             method: "POST",
             headers: evoHeaders,
             body: JSON.stringify({ where: { id: msgId }, limit: 1 }),
@@ -594,7 +607,7 @@ serve(async (req) => {
 
       try {
         // Try POST first (v2.3.7+), then PUT as fallback
-        let readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
+        let readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${readInstanceName}`, {
           method: "POST",
           headers: evoHeaders,
           body: JSON.stringify({
@@ -604,7 +617,7 @@ serve(async (req) => {
 
         // Fallback to PUT if POST returns 404/405
         if (readRes.status === 404 || readRes.status === 405) {
-          readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${instanceName}`, {
+          readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${readInstanceName}`, {
             method: "PUT",
             headers: evoHeaders,
             body: JSON.stringify({
