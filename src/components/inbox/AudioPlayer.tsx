@@ -1,5 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Pause, Download } from "lucide-react";
+
+// Global registry: only one audio plays at a time
+const activeAudioSet = new Set<HTMLAudioElement>();
+const pauseAllExcept = (current: HTMLAudioElement) => {
+  activeAudioSet.forEach((audio) => {
+    if (audio !== current && !audio.paused) audio.pause();
+  });
+};
 import { cn } from "@/lib/utils";
 
 interface AudioPlayerProps {
