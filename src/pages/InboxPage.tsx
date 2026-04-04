@@ -482,6 +482,7 @@ const InboxPage = () => {
       status: "sent",
       type: "text",
       createdAt: new Date().toISOString(),
+      senderName: agentDisplayName,
       quoted: replyTo ? { message_id: replyTo.id, sender_name: replyTo.senderName || "أنت", text: replyTo.text } : undefined,
     };
     setAllMessages((prev) => ({
