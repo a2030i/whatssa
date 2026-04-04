@@ -419,10 +419,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                 }}
                 className={cn(
                   "w-full text-right px-3 py-3 transition-all border-b border-border/20 hover:bg-accent/50 group relative",
-                  isSelected && "bg-primary/5 border-r-2 border-r-primary"
+                  isSelected && !bulkMode && "bg-primary/5 border-r-2 border-r-primary",
+                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/10"
                 )}
               >
                 <div className="flex items-start gap-3">
+                  {bulkMode && (
+                    <div className="flex items-center pt-3 shrink-0">
+                      {bulkSelected.has(conv.id) ? (
+                        <CheckSquare className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Square className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  )}
                   {/* Avatar */}
                   <div className="relative shrink-0">
                     {conv.profilePic ? (
