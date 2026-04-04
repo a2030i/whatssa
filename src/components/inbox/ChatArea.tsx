@@ -40,6 +40,8 @@ interface ChatAreaProps {
   onEditMessage?: (msgId: string, waMessageId: string, newText: string, convPhone: string) => void;
   onDeleteMessage?: (msgId: string, waMessageId: string, convPhone: string) => void;
   onShowCustomerInfo?: () => void;
+  scrollToMessageId?: string | null;
+  onScrollToMessageDone?: () => void;
 }
 
 const MessageStatus = ({ status, isGroup, readBy, groupSize }: { status?: string; isGroup?: boolean; readBy?: string[]; groupSize?: number }) => {
