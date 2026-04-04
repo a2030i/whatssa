@@ -134,7 +134,7 @@ const extractParticipantName = (participant: any, phone: string) => {
   return "عضو بالقروب";
 };
 
-
+const scrollToMessage = (messageId?: string) => {
   if (!messageId) return;
   const el = document.querySelector(`[data-message-id="${messageId}"]`) || document.querySelector(`[data-wa-message-id="${messageId}"]`);
   if (!el) return;
