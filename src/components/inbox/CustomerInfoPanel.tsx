@@ -77,12 +77,15 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
       setGroupInfo(info);
       const participants = info?.participants || [];
       const mapped = participants.map((p: any) => {
-        const phone = (p.id || p.jid || "").replace(/@.*/, "");
+        const rawId = p.id || p.jid || "";
+        const isLid = rawId.includes("@lid");
+        const phone = isLid ? "" : rawId.replace(/@.*/, "");
         return {
-          id: p.id || p.jid || phone,
-          name: p.pushName || p.name || phone,
+          id: rawId,
+          name: p.pushName || p.name || phone || rawId.replace(/@.*/, ""),
           phone,
           admin: p.admin === "admin" || p.admin === "superadmin" || p.isAdmin || p.isSuperAdmin,
+          isLid,
         };
       });
 
@@ -376,7 +379,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                           {p.admin && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
                           {p.isSaved && !p.admin && <User className="w-3 h-3 text-primary shrink-0" />}
                         </p>
-                        <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>
+                        {p.phone && <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>}
                       </div>
                     </div>
                     {isGroupAdmin && (

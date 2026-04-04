@@ -737,8 +737,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       });
       const participants = data?.data?.participants || data?.data?.data?.participants || [];
       setGroupParticipants(participants.map((p: any) => {
-        const ph = (p.id || p.jid || "").replace(/@.*/, "");
-        return { id: p.id || p.jid || ph, name: p.pushName || p.name || ph, phone: ph };
+        const rawId = p.id || p.jid || "";
+        const isLid = rawId.includes("@lid");
+        const ph = isLid ? "" : rawId.replace(/@.*/, "");
+        return { id: rawId, name: p.pushName || p.name || ph || rawId.replace(/@.*/, ""), phone: ph };
       }));
     } catch (err: any) {
       toast.error("فشل إضافة العضو: " + (err.message || ""));
@@ -862,8 +864,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         if (error) return;
         const participants = data?.data?.participants || data?.data?.data?.participants || [];
         const mapped = participants.map((p: any) => {
-          const phone = (p.id || p.jid || "").replace(/@.*/, "");
-          return { id: p.id || p.jid || phone, name: p.pushName || p.name || phone, phone };
+          const rawId = p.id || p.jid || "";
+          const isLid = rawId.includes("@lid");
+          const phone = isLid ? "" : rawId.replace(/@.*/, "");
+          return { id: rawId, name: p.pushName || p.name || phone || rawId.replace(/@.*/, ""), phone };
         });
 
         // Enrich with saved customer names from DB
