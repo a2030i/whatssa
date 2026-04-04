@@ -365,30 +365,58 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
               <Plus className="w-4 h-4 text-primary" />
             </div>
-            محادثة جديدة
+            {dialogMode === "group" ? "إنشاء قروب" : "محادثة جديدة"}
           </DialogTitle>
-          <div className="flex items-center gap-2 mt-3">
-            {(["contact", "channel", "message"] as Step[]).map((s, i) => {
-              const labels = ["جهة الاتصال", "القناة", "الرسالة"];
-              const isActive = s === step;
-              const isDone = (step === "channel" && i === 0) || (step === "message" && i < 2);
-              return (
-                <div key={s} className="flex items-center gap-1.5 flex-1">
-                  <div className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
-                    isActive ? "bg-primary text-primary-foreground" :
-                    isDone ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                  )}>
-                    {i + 1}
+
+          {/* Mode toggle - only show if evolution channels exist */}
+          {hasEvolution && (
+            <div className="flex items-center gap-1 mt-3 bg-muted rounded-lg p-1">
+              <button
+                onClick={() => setDialogMode("private")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors",
+                  dialogMode === "private" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <MessageSquare className="w-3.5 h-3.5" /> محادثة
+              </button>
+              <button
+                onClick={() => setDialogMode("group")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors",
+                  dialogMode === "group" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Users className="w-3.5 h-3.5" /> قروب
+              </button>
+            </div>
+          )}
+
+          {/* Stepper - only for private mode */}
+          {dialogMode === "private" && (
+            <div className="flex items-center gap-2 mt-3">
+              {(["contact", "channel", "message"] as Step[]).map((s, i) => {
+                const labels = ["جهة الاتصال", "القناة", "الرسالة"];
+                const isActive = s === step;
+                const isDone = (step === "channel" && i === 0) || (step === "message" && i < 2);
+                return (
+                  <div key={s} className="flex items-center gap-1.5 flex-1">
+                    <div className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
+                      isActive ? "bg-primary text-primary-foreground" :
+                      isDone ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                    )}>
+                      {i + 1}
+                    </div>
+                    <span className={cn("text-[11px]", isActive ? "text-foreground font-medium" : "text-muted-foreground")}>
+                      {labels[i]}
+                    </span>
+                    {i < 2 && <div className="flex-1 h-px bg-border/60" />}
                   </div>
-                  <span className={cn("text-[11px]", isActive ? "text-foreground font-medium" : "text-muted-foreground")}>
-                    {labels[i]}
-                  </span>
-                  {i < 2 && <div className="flex-1 h-px bg-border/60" />}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </DialogHeader>
 
         {/* Step: Contact */}
