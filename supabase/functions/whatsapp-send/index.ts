@@ -136,6 +136,7 @@ serve(async (req) => {
       // Edit/Delete
       edit_message_id,
       delete_message_id,
+      sender_name,
     } = body;
 
     if (!to || typeof to !== "string") {
@@ -545,6 +546,9 @@ serve(async (req) => {
           media_url: media_url || null,
           status: "sent",
         };
+        if (sender_name) {
+          msgMetadata.sender_name = sender_name;
+        }
         if (Object.keys(msgMetadata).length > 0) {
           msgInsert.metadata = msgMetadata;
         }

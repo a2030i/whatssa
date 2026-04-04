@@ -441,6 +441,7 @@ const InboxPage = () => {
   const currentMessages = selectedId ? allMessages[selectedId] || [] : [];
 
   const handleSendMessage = useCallback(async (convId: string, text: string, type: "text" | "note" = "text", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }) => {
+    const agentDisplayName = profile?.full_name || "النظام";
     if (type === "note") {
       const { error } = await supabase.from("messages").insert({
         conversation_id: convId,
@@ -448,7 +449,10 @@ const InboxPage = () => {
         sender: "agent",
         message_type: "note",
         status: "sent",
-        metadata: replyTo ? { quoted: { message_id: replyTo.id, sender_name: replyTo.senderName || "أنت", text: replyTo.text } } : {},
+        metadata: {
+          ...(replyTo ? { quoted: { message_id: replyTo.id, sender_name: replyTo.senderName || "أنت", text: replyTo.text } } : {}),
+          sender_name: agentDisplayName,
+        },
       });
 
       if (error) {
@@ -478,6 +482,7 @@ const InboxPage = () => {
       status: "sent",
       type: "text",
       createdAt: new Date().toISOString(),
+      senderName: agentDisplayName,
       quoted: replyTo ? { message_id: replyTo.id, sender_name: replyTo.senderName || "أنت", text: replyTo.text } : undefined,
     };
     setAllMessages((prev) => ({
@@ -490,6 +495,7 @@ const InboxPage = () => {
         to: conversation.customerPhone,
         message: text,
         conversation_id: convId,
+        sender_name: agentDisplayName,
         reply_to: replyTo ? { wa_message_id: replyTo.waMessageId, sender_name: replyTo.senderName, text: replyTo.text, message_id: replyTo.id } : undefined,
       },
     });
@@ -719,6 +725,7 @@ const InboxPage = () => {
         status: "sent" as const,
         type: "template" as const,
         createdAt: new Date().toISOString(),
+        senderName: profile?.full_name || "النظام",
       }],
     }));
 
@@ -731,6 +738,7 @@ const InboxPage = () => {
         template_language: template.language,
         template_components: buildTemplateComponents(template, variables),
         conversation_id: convId,
+        sender_name: profile?.full_name || "النظام",
       },
     });
 
