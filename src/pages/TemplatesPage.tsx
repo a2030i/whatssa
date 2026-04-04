@@ -578,10 +578,12 @@ const TemplatesPage = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsReviewMode((prev) => !prev)}>
-            <Globe className="w-4 h-4" />
-            {isReviewMode ? "Arabic mode" : "Meta Review Mode"}
-          </Button>
+          {isSuperAdmin && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsReviewMode((prev) => !prev)}>
+              <Globe className="w-4 h-4" />
+              {isReviewMode ? "Arabic mode" : "Meta Review Mode"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="gap-2" onClick={() => loadTemplates(true)} disabled={isRefreshing}>
             {isRefreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             {isReviewMode ? "Refresh" : "تحديث"}
