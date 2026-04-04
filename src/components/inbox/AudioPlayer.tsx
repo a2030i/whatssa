@@ -16,6 +16,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   // Generate fake waveform bars (deterministic based on src)
   const bars = useRef<number[]>([]);
@@ -37,15 +38,24 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
       setIsLoaded(true);
     };
     const onTime = () => setCurrentTime(audio.currentTime);
-    const onEnded = () => setIsPlaying(false);
+    const onEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      if (audio) audio.currentTime = 0;
+    };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
+    const onError = () => {
+      setHasError(true);
+      setIsPlaying(false);
+    };
 
     audio.addEventListener("loadedmetadata", onLoaded);
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
+    audio.addEventListener("error", onError);
 
     return () => {
       audio.removeEventListener("loadedmetadata", onLoaded);
@@ -53,6 +63,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("error", onError);
     };
   }, []);
 
@@ -93,13 +104,28 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
 
   const progress = duration > 0 ? currentTime / duration : 0;
 
+  if (hasError) {
+    return (
+      <div className={cn(
+        "flex items-center gap-2 rounded-2xl px-3 py-2.5 min-w-[180px]",
+        isAgent ? "bg-secondary/60" : "bg-white/15",
+        className
+      )}>
+        <a href={src} target="_blank" rel="noreferrer" download className={cn("flex items-center gap-2 text-xs", isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white")}>
+          <Download className="w-4 h-4" />
+          <span>تحميل الصوتية</span>
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className={cn(
       "flex items-center gap-2 rounded-2xl px-3 py-2 min-w-[220px] max-w-[320px]",
       isAgent ? "bg-secondary/60" : "bg-white/15",
       className
     )}>
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} src={src} preload="metadata" crossOrigin="anonymous" />
 
       {/* Play/Pause button */}
       <button
