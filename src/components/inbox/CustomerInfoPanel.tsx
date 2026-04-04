@@ -132,20 +132,28 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           .not("metadata", "is", null)
           .limit(500);
         
-        // Build lid → name mapping from messages
+        // Build lid → name & lid → real phone mapping from messages
         const lidNameMap = new Map<string, string>();
+        const lidPhoneMap = new Map<string, string>();
         (msgRows || []).forEach((row: any) => {
           const meta = row.metadata;
           if (meta?.participant && typeof meta.participant === "string" && meta.participant.includes("@lid")) {
             const lid = meta.participant;
             const name = meta.sender_name || meta.senderName || meta.pushName;
             if (name && !lidNameMap.has(lid)) lidNameMap.set(lid, name);
+            // sender_pn contains the real phone number
+            const realPhone = meta.sender_pn;
+            if (realPhone && !lidPhoneMap.has(lid)) lidPhoneMap.set(lid, String(realPhone));
           }
         });
 
         lidParticipants.forEach((m: any) => {
           const resolvedName = lidNameMap.get(m.id);
           if (resolvedName) m.name = resolvedName;
+          const resolvedPhone = lidPhoneMap.get(m.id);
+          if (resolvedPhone) {
+            m.phone = resolvedPhone;
+          }
         });
       }
 
