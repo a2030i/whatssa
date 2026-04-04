@@ -1050,7 +1050,7 @@ serve(async (req) => {
                   phone: senderPhone,
                   name: senderName,
                   source: "whatsapp_group",
-                }, { onConflict: "org_id,phone", ignoreDuplicates: false });
+                }, { onConflict: "org_id,phone", ignoreDuplicates: true });
               } catch (_e) { /* ignore upsert errors */ }
             }
           }
