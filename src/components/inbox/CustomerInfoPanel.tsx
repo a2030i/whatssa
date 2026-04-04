@@ -86,8 +86,9 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
         };
       });
 
-      // Enrich names from customers table
+      // Enrich names from customers table & detect saved contacts
       const phones = mapped.map((m: any) => m.phone).filter(Boolean);
+      const savedPhones = new Set<string>();
       if (phones.length > 0 && orgId) {
         const { data: customers } = await supabase
           .from("customers")
@@ -98,15 +99,37 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           const nameMap = new Map(customers.map((c: any) => [c.phone, c.name]));
           mapped.forEach((m: any) => {
             const savedName = nameMap.get(m.phone);
-            if (savedName) m.name = savedName;
+            if (savedName) {
+              m.name = savedName;
+              m.isSaved = true;
+              savedPhones.add(m.phone);
+            }
           });
         }
       }
 
-      // Sort: admins first, then alphabetically
+      // Check if our channel phone is admin in this group
+      if (conversation.channelId && orgId) {
+        const { data: channelData } = await supabase
+          .from("whatsapp_config_safe")
+          .select("phone_number")
+          .eq("id", conversation.channelId)
+          .maybeSingle();
+        if (channelData?.phone_number) {
+          const ourPhone = channelData.phone_number.replace(/\D/g, "");
+          const ourEntry = mapped.find((m: any) => m.phone === ourPhone);
+          setIsGroupAdmin(ourEntry?.admin === true);
+        }
+      }
+
+      // Sort: admins first → saved contacts → others, then alphabetically
       mapped.sort((a: any, b: any) => {
         if (a.admin && !b.admin) return -1;
         if (!a.admin && b.admin) return 1;
+        if (!a.admin && !b.admin) {
+          if (a.isSaved && !b.isSaved) return -1;
+          if (!a.isSaved && b.isSaved) return 1;
+        }
         return (a.name || "").localeCompare(b.name || "");
       });
 
