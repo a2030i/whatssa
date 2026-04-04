@@ -696,6 +696,68 @@ serve(async (req) => {
             })),
           };
         } else if (messageContent.pollUpdateMessage) {
+          // Handle poll vote updates
+          const pollUpdate = messageContent.pollUpdateMessage;
+          const pollCreationMsgKey = pollUpdate.pollCreationMessageKey;
+          const targetPollWaId = pollCreationMsgKey?.id;
+          
+          if (targetPollWaId) {
+            try {
+              // Decode vote from pollUpdateMessage
+              const vote = pollUpdate.vote || {};
+              const selectedOptions: string[] = (vote.selectedOptions || []).map((o: any) => {
+                if (typeof o === "string") return o;
+                // Binary data — try to decode UTF-8
+                if (o instanceof Uint8Array || (o && o.type === "Buffer")) {
+                  const bytes = o instanceof Uint8Array ? o : new Uint8Array(o.data || []);
+                  return new TextDecoder().decode(bytes);
+                }
+                return String(o);
+              });
+
+              const voterJid = key.participant || remoteJid || "";
+              const voterPhone = voterJid.replace("@s.whatsapp.net", "").replace("@lid", "").replace("@g.us", "");
+
+              // Find the original poll message in DB
+              const { data: pollMsg } = await supabase
+                .from("messages")
+                .select("id, metadata")
+                .eq("wa_message_id", targetPollWaId)
+                .maybeSingle();
+
+              if (pollMsg) {
+                const meta = (pollMsg.metadata as any) || {};
+                const poll = meta.poll || {};
+                const existingVotes: Record<string, string[]> = poll.votes || {};
+
+                // Remove voter from all previous options
+                for (const optId of Object.keys(existingVotes)) {
+                  existingVotes[optId] = (existingVotes[optId] || []).filter((v: string) => v !== voterPhone);
+                }
+
+                // Add voter to selected options (match by title)
+                const options: Array<{ id: string; title: string }> = poll.options || [];
+                for (const selOpt of selectedOptions) {
+                  const matchedOpt = options.find((o) => o.title === selOpt);
+                  if (matchedOpt) {
+                    if (!existingVotes[matchedOpt.id]) existingVotes[matchedOpt.id] = [];
+                    if (!existingVotes[matchedOpt.id].includes(voterPhone)) {
+                      existingVotes[matchedOpt.id].push(voterPhone);
+                    }
+                  }
+                }
+
+                // Update the message metadata with new votes
+                await supabase.from("messages").update({
+                  metadata: { ...meta, poll: { ...poll, votes: existingVotes } },
+                }).eq("id", pollMsg.id);
+              }
+            } catch (pollErr: any) {
+              await logToSystem(supabase, "error", "خطأ في معالجة تحديث التصويت", {
+                error: pollErr.message, targetPollWaId,
+              }, orgId);
+            }
+          }
           continue;
         }
 
