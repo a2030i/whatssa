@@ -418,6 +418,19 @@ serve(async (req) => {
       // ── Send text message ──
       const sendBody: Record<string, unknown> = { number: to, text: message };
 
+      // Support mentions in group messages
+      if (isGroup && message) {
+        const mentionPattern = /@(\d+)/g;
+        const mentionedNumbers: string[] = [];
+        let match;
+        while ((match = mentionPattern.exec(message)) !== null) {
+          mentionedNumbers.push(`${match[1]}@s.whatsapp.net`);
+        }
+        if (mentionedNumbers.length > 0) {
+          sendBody.mentioned = mentionedNumbers;
+        }
+      }
+
       if (reply_to?.wa_message_id) {
         sendBody.quoted = {
           key: { remoteJid, fromMe: false, id: reply_to.wa_message_id },
