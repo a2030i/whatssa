@@ -1472,7 +1472,7 @@ const IntegrationsPage = () => {
                 </button>
               );
             })}
-            <Button variant="ghost" size="sm" className="text-xs mt-2" onClick={resetFlow}>← رجوع</Button>
+            <Button variant="ghost" size="sm" className="text-xs mt-2" onClick={resetFlow}>{t("← رجوع", "← Back")}</Button>
           </div>
         </div>
       </div>
