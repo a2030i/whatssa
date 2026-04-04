@@ -61,6 +61,9 @@ const TeamPage = () => {
 
   useEffect(() => {
     if (orgId) load();
+    // Refresh every 30s to update online status
+    const interval = setInterval(() => { if (orgId) load(); }, 30000);
+    return () => clearInterval(interval);
   }, [orgId]);
 
   const load = async () => {
