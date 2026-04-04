@@ -1057,7 +1057,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       }
     };
     fetchGroupMembers();
-  }, [conversation.id, isGroup, isEvolutionChannel]);
+  }, [conversation.id, isGroup, isEvolutionChannel, messages.length]);
 
   const windowExpired = isMetaChannel ? windowInfo.expired : false;
   const approvedTemplates = templates.filter((template) => template.status === "approved");
