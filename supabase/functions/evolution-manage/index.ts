@@ -781,10 +781,50 @@ serve(async (req) => {
     if (action === "group_info") {
       const group_jid = asString(payload.group_jid);
       if (!group_jid) return json({ error: "معرف المجموعة مطلوب" }, 400);
-      const infoRes = await fetch(`${EVOLUTION_URL}/group/findGroupInfos/${instanceName}?groupJid=${group_jid}`, {
-        headers: evoHeaders,
-      });
+      
+      // Fetch group info and participants in parallel
+      const [infoRes, participantsRes] = await Promise.all([
+        fetch(`${EVOLUTION_URL}/group/findGroupInfos/${instanceName}?groupJid=${group_jid}`, {
+          headers: evoHeaders,
+        }),
+        fetch(`${EVOLUTION_URL}/group/participants/${instanceName}?groupJid=${group_jid}`, {
+          headers: evoHeaders,
+        }).catch(() => null),
+      ]);
+      
       const infoData = await infoRes.json();
+      
+      // Try to enrich participants with data from the participants endpoint
+      if (participantsRes?.ok) {
+        try {
+          const participantsData = await participantsRes.json();
+          const pList = participantsData?.participants || participantsData || [];
+          if (Array.isArray(pList) && pList.length > 0) {
+            // Build a map of participant data from the alternate endpoint
+            const pMap = new Map<string, any>();
+            for (const p of pList) {
+              const pid = p.id || p.jid || "";
+              if (pid) pMap.set(pid, p);
+            }
+            // Merge into the main info data
+            const mainData = infoData?.data || infoData || {};
+            const mainParticipants = mainData?.participants || [];
+            for (const mp of mainParticipants) {
+              const mpId = mp.id || mp.jid || "";
+              const alt = pMap.get(mpId);
+              if (alt) {
+                // Copy any additional fields (like phone, number, pn) from alternate endpoint
+                if (alt.phone) mp.phone = alt.phone;
+                if (alt.number) mp.number = alt.number;
+                if (alt.pn) mp.pn = alt.pn;
+                if (alt.pushName) mp.pushName = alt.pushName;
+                if (alt.name) mp.name = alt.name;
+              }
+            }
+          }
+        } catch (_) { /* ignore parse errors */ }
+      }
+      
       return json({ success: infoRes.ok, data: infoData });
     }
 

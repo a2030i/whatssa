@@ -44,7 +44,7 @@ const normalizeDigits = (value: unknown) =>
 
 const extractParticipantPhone = (participant: any) => {
   const rawId = participant?.id || participant?.jid || "";
-  const candidates = [participant?.phone, participant?.number, participant?.senderPn, participant?.participantPn]
+  const candidates = [participant?.phone, participant?.number, participant?.pn, participant?.senderPn, participant?.participantPn]
     .map(normalizeDigits)
     .filter(Boolean);
 
