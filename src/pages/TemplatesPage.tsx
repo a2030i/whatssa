@@ -325,6 +325,7 @@ const TemplateAnalytics = ({ isReviewMode }: { isReviewMode: boolean }) => {
 };
 
 const TemplatesPage = () => {
+  const { isSuperAdmin } = useAuth();
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
