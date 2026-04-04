@@ -297,7 +297,7 @@ serve(async (req) => {
       return json({ success: true, edited: true });
     }
 
-    if (!to || (!message && !media_url)) return json({ error: "الرقم والرسالة أو الوسائط مطلوبة" }, 400);
+    if (!to || (!message && !media_url && type !== "poll")) return json({ error: "الرقم والرسالة أو الوسائط مطلوبة" }, 400);
 
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
