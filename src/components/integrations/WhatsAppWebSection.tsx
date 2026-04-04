@@ -193,10 +193,18 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
 
   useEffect(() => {
     if (!orgId) return;
+    if (forNewNumber) {
+      // Skip loading existing config — start fresh
+      setIsLoadingConfig(false);
+      setExistingConfig(null);
+      setInstanceName("");
+      setInstanceStatus("idle");
+      return;
+    }
     loadExistingConfig();
     loadUnofficialLimits();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [orgId]);
+  }, [orgId, forNewNumber]);
 
   useEffect(() => {
     if (autoOpen) setShowSetup(true);
