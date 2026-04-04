@@ -24,6 +24,7 @@ interface Channel {
   business_name: string | null;
   is_connected?: boolean | null;
   created_at?: string | null;
+  channel_label?: string | null;
 }
 
 interface Customer {
