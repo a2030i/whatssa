@@ -4,6 +4,7 @@ import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
 import ProductPicker from "./ProductPicker";
+import InternalProductPicker from "./InternalProductPicker";
 import { supabase, cloudSupabase, invokeCloud } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Conversation, Message } from "@/data/mockData";
@@ -570,6 +571,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
+  const [showInternalProductPicker, setShowInternalProductPicker] = useState(false);
   const [isBlocked, setIsBlocked] = useState(conversation.isBlocked || false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
@@ -1590,10 +1592,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <FileText className="w-4 h-4" />
               </button>
             )}
-            {/* Send Product from Catalog */}
+            {/* Send Product from Catalog — Meta */}
             {!isNoteMode && !windowExpired && isMetaChannel && (
               <button
                 onClick={() => setShowProductPicker(true)}
+                className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+                title="إرسال منتج من الكتالوج"
+              >
+                <ShoppingBag className="w-4 h-4" />
+              </button>
+            )}
+            {/* Send Product — Evolution (internal products) */}
+            {!isNoteMode && !isMetaChannel && (
+              <button
+                onClick={() => setShowInternalProductPicker(true)}
                 className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
                 title="إرسال منتج"
               >
@@ -1920,7 +1932,39 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         }}
       />
 
-      {/* Image Lightbox */}
+      <InternalProductPicker
+        open={showInternalProductPicker}
+        onOpenChange={setShowInternalProductPicker}
+        onSendProduct={async ({ sendMode, product }) => {
+          const displayName = product.name_ar || product.name;
+          const priceText = `${product.price.toFixed(2)} ${product.currency || "SAR"}`;
+          const caption = `🛍️ *${displayName}*\n💰 ${priceText}${product.description ? `\n📝 ${product.description}` : ""}${product.sku ? `\n🔖 SKU: ${product.sku}` : ""}`;
+
+          if (sendMode === "image" && product.image_url) {
+            await invokeCloud("evolution-send", {
+              body: {
+                to: conversation.customerPhone,
+                conversation_id: conversation.id,
+                message: caption,
+                media_url: product.image_url,
+                media_type: "image",
+                channel_id: conversation.channelId,
+              },
+            });
+          } else {
+            await invokeCloud("evolution-send", {
+              body: {
+                to: conversation.customerPhone,
+                conversation_id: conversation.id,
+                message: caption,
+                channel_id: conversation.channelId,
+              },
+            });
+          }
+          toast.success("تم إرسال المنتج بنجاح");
+        }}
+      />
+
       {lightboxSrc && (
         <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       )}
