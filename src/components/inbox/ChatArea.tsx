@@ -1697,14 +1697,23 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">
             {isGroupMentionMode ? "اذكر عضو في القروب" : "اذكر موظف"}
           </p>
-          <div className="flex gap-2 overflow-x-auto">
+          <div className="flex flex-col gap-1 max-h-[180px] overflow-y-auto">
             {filteredMentionAgents.map((a: any) => {
               const displayName = a.full_name || a.name || a.phone || "";
+              const isPhoneOnly = !a.full_name && (!a.name || a.name === a.phone);
               const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2);
               return (
-                <button key={a.id} onClick={() => insertMention(displayName, a.phone)} className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-accent transition-colors">
-                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">{initials}</div>
-                  {displayName}
+                <button key={a.id} onClick={() => insertMention(displayName, a.phone)} className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-secondary hover:bg-accent transition-colors text-right">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{initials}</div>
+                  <div className="flex flex-col items-start min-w-0">
+                    <span className="font-medium truncate">{displayName}</span>
+                    {isGroupMentionMode && a.phone && (
+                      <span className="text-[10px] text-muted-foreground" dir="ltr">+{a.phone}</span>
+                    )}
+                  </div>
+                  {!isPhoneOnly && isGroupMentionMode && (
+                    <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 mr-auto shrink-0">جهة اتصال</Badge>
+                  )}
                 </button>
               );
             })}
