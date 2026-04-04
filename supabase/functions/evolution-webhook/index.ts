@@ -540,6 +540,9 @@ serve(async (req) => {
 
         const isFromMe = !!key.fromMe;
 
+        // Extract senderPn — real phone number for @lid participants
+        const senderPn: string = key.senderPn || msg.senderPn || "";
+
         const remoteJid = key.remoteJid || "";
         let conversationType = "private";
         let phone = "";
@@ -550,7 +553,9 @@ serve(async (req) => {
           conversationType = "broadcast";
           phone = remoteJid.replace("@broadcast", "");
         } else {
-          phone = remoteJid.replace("@s.whatsapp.net", "");
+          // For private chats with @lid, use senderPn if available
+          const rawPhone = remoteJid.replace("@s.whatsapp.net", "").replace("@lid", "");
+          phone = (remoteJid.includes("@lid") && senderPn) ? senderPn.replace(/\D/g, "") : rawPhone;
         }
         if (!phone || phone.includes("status")) continue;
 
@@ -1017,7 +1022,12 @@ serve(async (req) => {
         try {
           if (conversationType === "group") {
             // For groups, save the actual sender (participant) as a customer, not the group JID
-            const senderPhone = (key.participant || "").replace("@s.whatsapp.net", "").replace("@lid", "");
+            const participantRaw = key.participant || "";
+            const isLidParticipant = participantRaw.includes("@lid");
+            // Use senderPn (real phone) for @lid participants, otherwise strip JID suffix
+            const senderPhone = (isLidParticipant && senderPn)
+              ? senderPn.replace(/\D/g, "")
+              : participantRaw.replace("@s.whatsapp.net", "").replace("@lid", "");
             const senderPushName = msg.pushName || "";
             if (senderPhone && senderPhone.length > 5) {
               const { data: existingParticipant } = await supabase
@@ -1148,19 +1158,24 @@ serve(async (req) => {
         if (senderName) metadata.sender_name = senderName;
         if (conversationType === "group") {
           metadata.participant = participant;
+          // Store senderPn (real phone) for @lid resolution
+          if (senderPn) metadata.sender_pn = senderPn.replace(/\D/g, "");
           // Store mentioned JIDs for proper mention rendering
           const mentionedJid = contextInfo?.mentionedJid || [];
           if (Array.isArray(mentionedJid) && mentionedJid.length > 0) {
             metadata.mentioned = mentionedJid.map((jid: string) => jid.replace("@s.whatsapp.net", "").replace("@lid", ""));
           }
-          // Auto-save group sender as customer if not exists
+          // Auto-save group sender as customer with real phone
           if (participant && senderName) {
-            const senderPhone = participant.replace("@s.whatsapp.net", "").replace("@lid", "");
-            if (senderPhone) {
+            const isLidPart = participant.includes("@lid");
+            const realPhone = (isLidPart && senderPn)
+              ? senderPn.replace(/\D/g, "")
+              : participant.replace("@s.whatsapp.net", "").replace("@lid", "");
+            if (realPhone && realPhone.length > 5) {
               try {
                 await supabase.from("customers").upsert({
                   org_id: orgId,
-                  phone: senderPhone,
+                  phone: realPhone,
                   name: senderName,
                   source: "whatsapp_group",
                 }, { onConflict: "org_id,phone", ignoreDuplicates: true });
