@@ -546,6 +546,9 @@ serve(async (req) => {
           media_url: media_url || null,
           status: "sent",
         };
+        if (sender_name) {
+          msgMetadata.sender_name = sender_name;
+        }
         if (Object.keys(msgMetadata).length > 0) {
           msgInsert.metadata = msgMetadata;
         }
