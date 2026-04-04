@@ -69,6 +69,7 @@ const COUNTRY_CODES = [
 const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCreated }: NewConversationDialogProps) => {
   const { orgId } = useAuth();
   const [step, setStep] = useState<Step>("contact");
+  const [dialogMode, setDialogMode] = useState<DialogMode>("private");
   const [channels, setChannels] = useState<Channel[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,6 +85,11 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [saveCustomer, setSaveCustomer] = useState(false);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [isExistingCustomer, setIsExistingCustomer] = useState(false);
+  // Group state
+  const [groupName, setGroupName] = useState("");
+  const [groupMembers, setGroupMembers] = useState<string[]>([]);
+  const [groupMemberInput, setGroupMemberInput] = useState("");
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
   const fullPhone = `${countryCode}${localNumber.replace(/^0+/, "")}`;
