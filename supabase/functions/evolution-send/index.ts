@@ -522,6 +522,13 @@ serve(async (req) => {
           text: reply_to.text || "",
         };
       }
+      if (type === "poll" && poll_name && poll_options) {
+        msgMetadata.poll = {
+          question: poll_name,
+          options: poll_options.map((opt: string, i: number) => ({ id: `opt_${i}`, title: opt })),
+          votes: {},
+        };
+      }
 
       // Parallel: insert message + update conversation simultaneously
       await Promise.all([
