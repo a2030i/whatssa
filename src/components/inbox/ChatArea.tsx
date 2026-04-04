@@ -404,6 +404,16 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 <DropdownMenuItem onClick={() => onCopyLink(msg.id)} className="text-xs gap-2">
                   <Link2 className="w-3.5 h-3.5" /> نسخ رابط الرسالة
                 </DropdownMenuItem>
+               )}
+              {onForward && msg.type === "text" && !msg.isDeleted && (
+                <DropdownMenuItem onClick={() => onForward(msg)} className="text-xs gap-2">
+                  <Forward className="w-3.5 h-3.5" /> إعادة توجيه
+                </DropdownMenuItem>
+              )}
+              {onStar && !msg.isDeleted && (
+                <DropdownMenuItem onClick={() => onStar(msg)} className="text-xs gap-2">
+                  <Star className={cn("w-3.5 h-3.5", (msg as any).isStarred ? "text-amber-500 fill-amber-500" : "")} /> {(msg as any).isStarred ? "إلغاء التمييز" : "تمييز ⭐"}
+                </DropdownMenuItem>
               )}
               {hasAiConfig && msg.sender === "customer" && msg.type === "text" && (
                 <DropdownMenuItem onClick={handleTranslate} className="text-xs gap-2">
