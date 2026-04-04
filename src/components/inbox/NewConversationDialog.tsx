@@ -766,7 +766,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         )}
 
         {/* Step: Message */}
-        {step === "message" && selectedChannel && (
+        {dialogMode === "private" && step === "message" && selectedChannel && (
           <div className="flex flex-col">
             {/* Summary bar */}
             <div className="p-3 border-b border-border/30 flex items-center gap-2 text-xs text-muted-foreground bg-muted/30">
