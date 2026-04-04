@@ -1213,6 +1213,41 @@ serve(async (req) => {
           }, orgId);
         }
 
+        // ── Detect if our channel phone was mentioned in group ──
+        if (conversationType === "group" && Array.isArray(metadata.mentioned) && (metadata.mentioned as string[]).length > 0) {
+          const channelPhone = config.display_phone?.replace(/\D/g, "") || "";
+          const mentionedList = metadata.mentioned as string[];
+          const wasMentioned = channelPhone && mentionedList.some((m: string) => {
+            const normalized = String(m).replace(/\D/g, "");
+            return normalized === channelPhone || channelPhone.endsWith(normalized) || normalized.endsWith(channelPhone);
+          });
+          if (wasMentioned) {
+            // Increment mention counter
+            await supabase.rpc("increment_mention_count", { conv_id: conversation.id });
+            // Create notification for assigned agent or all org agents
+            const notifTargets: string[] = [];
+            if (conversation.assigned_to_id) {
+              notifTargets.push(conversation.assigned_to_id);
+            } else {
+              const { data: orgProfiles } = await supabase.from("profiles").select("id").eq("org_id", orgId).eq("is_active", true).limit(20);
+              if (orgProfiles) notifTargets.push(...orgProfiles.map((p: any) => p.id));
+            }
+            for (const uid of notifTargets) {
+              try {
+                await supabase.from("notifications").insert({
+                  org_id: orgId,
+                  user_id: uid,
+                  type: "mention",
+                  title: `تم ذكرك في ${conversation.customer_name || "قروب"}`,
+                  body: content.length > 100 ? content.slice(0, 100) + "..." : content,
+                  reference_type: "conversation",
+                  reference_id: conversation.id,
+                });
+              } catch (_e) { /* ignore */ }
+            }
+          }
+        }
+
         await supabase
           .from("conversations")
           .update({
