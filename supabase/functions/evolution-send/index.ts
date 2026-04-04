@@ -78,7 +78,78 @@ serve(async (req) => {
 
     const orgId = profile.org_id;
 
-    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id } = body;
+    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id, action, group_name, members } = body;
+
+    // ── Create Group (Evolution API) ──
+    if (action === "create_group") {
+      const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
+      const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
+      if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
+
+      if (!group_name || !members || !Array.isArray(members) || members.length < 1) {
+        return json({ error: "اسم القروب وعضو واحد على الأقل مطلوبين" }, 400);
+      }
+
+      // Resolve channel config
+      let configQuery = adminClient.from("whatsapp_config")
+        .select("id, evolution_instance_name, display_phone")
+        .eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true);
+      if (channel_id) configQuery = configQuery.eq("id", channel_id);
+      const { data: config } = await configQuery.limit(1).maybeSingle();
+
+      if (!config?.evolution_instance_name) {
+        return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
+      }
+
+      const instanceName = config.evolution_instance_name;
+      const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
+
+      // Format member numbers for Evolution API
+      const formattedMembers = members.map((m: string) => m.replace(/\D/g, ""));
+
+      // Call Evolution API to create group
+      const createRes = await fetch(`${EVOLUTION_URL}/group/create/${instanceName}`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          subject: group_name,
+          participants: formattedMembers,
+        }),
+      });
+
+      const createData = await createRes.json().catch(() => ({}));
+
+      if (!createRes.ok) {
+        logToSystem(adminClient, "error", "فشل إنشاء قروب Evolution", {
+          error: createData, group_name, members: formattedMembers,
+        }, orgId, user.id);
+        return json({ error: createData?.message || createData?.response?.message || "فشل إنشاء القروب" }, createRes.status);
+      }
+
+      // Extract group JID from response
+      const groupJid = createData?.id || createData?.groupId || createData?.jid || createData?.groupMetadata?.id || "";
+      const groupPhone = groupJid.replace("@g.us", "");
+
+      if (groupPhone) {
+        // Create conversation entry for this group
+        await adminClient.from("conversations").upsert({
+          customer_phone: groupPhone,
+          customer_name: group_name,
+          org_id: orgId,
+          channel_id: config.id,
+          conversation_type: "group",
+          status: "open",
+          last_message: `تم إنشاء القروب "${group_name}"`,
+          last_message_at: new Date().toISOString(),
+        }, { onConflict: "customer_phone,org_id" });
+      }
+
+      logToSystem(adminClient, "info", `تم إنشاء قروب "${group_name}" بنجاح`, {
+        group_jid: groupJid, members: formattedMembers, instance: instanceName,
+      }, orgId, user.id);
+
+      return json({ success: true, group_jid: groupJid, group_name });
+    }
 
     // ── Delete message (Evolution API) ──
     if (delete_message_id && to) {
