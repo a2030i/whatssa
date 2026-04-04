@@ -397,7 +397,7 @@ const TeamPage = () => {
                     <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
                       {profile.full_name?.slice(0, 2) || "؟"}
                     </div>
-                    <div className={cn("absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-card", (profile.is_online || (profile.last_seen_at && Date.now() - new Date(profile.last_seen_at).getTime() < 5 * 60 * 1000)) ? "bg-success" : "bg-muted-foreground/40")} />
+                    <div className={cn("absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-card", (profile.is_online || (profile.last_seen_at && Date.now() - new Date(profile.last_seen_at).getTime() <div className={cn("absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-card", (profile.is_online || (profile.last_seen_at && Date.now() - new Date(profile.last_seen_at).getTime() < 2.5 * 60 * 1000)) ? "bg-success" : "bg-muted-foreground/40")} /> : "bg-muted-foreground/40")} />
                   </div>
                   <div>
                     <p className="font-medium text-sm">{profile.full_name || "بدون اسم"}</p>
