@@ -61,6 +61,8 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const [activeCustomInbox, setActiveCustomInbox] = useState<string | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingInbox, setEditingInbox] = useState<CustomInbox | null>(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const isMobile = useIsMobile();
 
   const loadCustomInboxes = async () => {
