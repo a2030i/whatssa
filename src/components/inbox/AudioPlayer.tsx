@@ -49,10 +49,13 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
       setHasError(true);
       setIsPlaying(false);
     };
+
+    audio.addEventListener("loadedmetadata", onLoaded);
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
+    audio.addEventListener("error", onError);
 
     return () => {
       audio.removeEventListener("loadedmetadata", onLoaded);
@@ -60,6 +63,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("error", onError);
     };
   }, []);
 
