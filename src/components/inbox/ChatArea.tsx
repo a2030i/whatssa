@@ -1826,6 +1826,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 hasAiConfig={hasAiConfig}
                 groupParticipants={isGroup ? groupParticipants : undefined}
                 onCopyLink={copyMessageLink}
+                onForward={(m) => setForwardMsg(m)}
+                onStar={(m) => {
+                  const starred = !(m as any).isStarred;
+                  onStarMessage?.(m.id, starred);
+                  toast.success(starred ? "⭐ تم تمييز الرسالة" : "تم إلغاء التمييز");
+                }}
               />
             )}
           </div>
