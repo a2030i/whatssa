@@ -518,7 +518,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
 
         // Timestamp element
         const timestampEl = (
-          <div className={cn("flex items-center gap-1.5 mt-1", msg.type === "note" ? "text-amber-500/50" : msg.sender === "agent" ? "text-muted-foreground/40" : "text-muted-foreground/40")}>
+          <div className={cn("flex items-center gap-1.5 mt-1",
+            msg.type === "note" ? "text-amber-500/50"
+            : msg.sender === "customer" ? "text-white/55"
+            : "text-muted-foreground/50"
+          )}>
             <span className="text-[10px] tracking-tight">{msg.timestamp}</span>
             {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
             {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
