@@ -16,6 +16,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import CustomerProfile from "@/components/customers/CustomerProfile";
 
+const isLikelyRealCustomerPhone = (phone?: string | null) => {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (!digits) return false;
+  if (digits.length < 8 || digits.length > 15) return false;
+  if (digits.startsWith("120363") || digits.startsWith("1440")) return false;
+  return true;
+};
+
 const LIFECYCLE_STAGES = [
   { value: "lead", label: "عميل محتمل", icon: User, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
   { value: "qualified", label: "مؤهل", icon: UserCheck, color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
@@ -99,7 +107,7 @@ const CustomersPage = () => {
   const handleExport = () => {
     const csv = [
       "الاسم,الجوال,الإيميل,التصنيفات,المرحلة,الشركة,المصدر,ملاحظات",
-      ...customers.map((c) => `"${c.name || ""}","${c.phone}","${c.email || ""}","${(c.tags || []).join(";")}","${c.lifecycle_stage || "lead"}","${c.company || ""}","${c.source || ""}","${c.notes || ""}"`),
+      ...customers.filter((c) => isLikelyRealCustomerPhone(c.phone)).map((c) => `"${c.name || ""}","${c.phone}","${c.email || ""}","${(c.tags || []).join(";")}","${c.lifecycle_stage || "lead"}","${c.company || ""}","${c.source || ""}","${c.notes || ""}"`),
     ].join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -250,7 +258,9 @@ const CustomersPage = () => {
     load();
   };
 
-  const filtered = customers.filter((c) => {
+  const visibleCustomers = customers.filter((c) => isLikelyRealCustomerPhone(c.phone));
+
+  const filtered = visibleCustomers.filter((c) => {
     const matchesSearch = (c.name || "").includes(search) || c.phone.includes(search) || (c.email || "").includes(search);
     const matchesStage = stageFilter === "all" || (c.lifecycle_stage || "lead") === stageFilter;
     return matchesSearch && matchesStage;
@@ -259,7 +269,7 @@ const CustomersPage = () => {
   // Stage summary counts
   const stageCounts = LIFECYCLE_STAGES.map((s) => ({
     ...s,
-    count: customers.filter((c) => (c.lifecycle_stage || "lead") === s.value).length,
+    count: visibleCustomers.filter((c) => (c.lifecycle_stage || "lead") === s.value).length,
   }));
 
   if (selectedCustomerId) {
@@ -279,7 +289,7 @@ const CustomersPage = () => {
           </div>
           <div>
             <h1 className="text-xl font-black text-foreground tracking-tight">العملاء</h1>
-            <p className="text-sm text-muted-foreground">{customers.length} عميل مسجّل</p>
+             <p className="text-sm text-muted-foreground">{visibleCustomers.length} عميل مسجّل</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
