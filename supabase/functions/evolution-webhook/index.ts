@@ -404,7 +404,7 @@ serve(async (req) => {
 
     const instanceName = body.instance || body.instanceName || "";
 
-    console.log(`[evolution-webhook] event=${event} instance=${instanceName} DB_URL=${(Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL") || "").slice(0, 40)}`);
+    console.log(`[evolution-webhook] event=${event} instance=${instanceName} DB_URL=${(Deno.env.get("SUPABASE_URL") || Deno.env.get("EXTERNAL_SUPABASE_URL") || "").slice(0, 40)}`);
 
     // Find the config for this instance
     const { data: config, error: configError } = await supabase
