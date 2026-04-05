@@ -163,7 +163,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
                   "flex-1 rounded-full transition-colors duration-150",
                   isPlayed
                     ? isAgent ? "bg-primary" : "bg-white"
-                    : isAgent ? "bg-muted-foreground/25" : "bg-white/30"
+                    : isAgent ? "bg-muted-foreground/25" : "bg-white/50"
                 )}
                 style={{ height: `${h * 100}%`, minWidth: 1.5, maxWidth: 3 }}
               />
