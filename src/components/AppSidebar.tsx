@@ -113,8 +113,17 @@ const AppSidebar = () => {
 
   const navSections = buildGroups(isEcommerce, hasMetaApi);
 
+  const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
+  const roleHierarchy: Record<string, number> = { member: 0, supervisor: 1, admin: 2 };
+  const userLevel = roleHierarchy[effectiveRole] ?? 0;
+
+  const hasAccess = (item: NavItem): boolean => {
+    if (isSuperAdmin) return true;
+    if (!item.minRole) return true;
+    return userLevel >= (roleHierarchy[item.minRole] ?? 0);
+  };
+
   const isLocked = (item: NavItem): boolean => {
-    // Super admin always has full access
     if (isSuperAdmin) return false;
     if (item.metaApiOnly && !hasMetaApi) return true;
     if (item.ecommerceOnly && !isEcommerce) return true;
