@@ -480,14 +480,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       />
                     ) : null}
                     <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-semibold",
+                      "w-11 h-11 rounded-full flex items-center justify-center text-[14px] font-semibold",
                       conv.profilePic ? "hidden" : "",
                       isSelected
-                        ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground"
+                        ? "bg-primary/12 text-primary"
+                        : "bg-secondary text-secondary-foreground"
                     )}>
                       {conv.conversationType === "group" ? (
-                        <Users className="w-4 h-4" />
+                        <Users className="w-4.5 h-4.5" />
                       ) : (
                         displayName.charAt(0)
                       )}
