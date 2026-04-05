@@ -93,8 +93,9 @@ const TasksPage = () => {
   const [newType, setNewType] = useState("general");
   const [newPriority, setNewPriority] = useState("medium");
   const [newAssignee, setNewAssignee] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newCustomerName, setNewCustomerName] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customers, setCustomers] = useState<{ id: string; name: string | null; phone: string }[]>([]);
+  const [customerSearch, setCustomerSearch] = useState("");
 
   // New config form
   const [cfgName, setCfgName] = useState("");
@@ -105,9 +106,10 @@ const TasksPage = () => {
 
   useEffect(() => {
     if (profile?.org_id) {
-      fetchTasks();
-      fetchConfigs();
-      fetchAgents();
+    fetchTasks();
+    fetchConfigs();
+    fetchAgents();
+    fetchCustomers();
     }
   }, [profile?.org_id]);
 
@@ -132,6 +134,16 @@ const TasksPage = () => {
     setConfigs((data as unknown as ForwardConfig[]) || []);
   };
 
+  const fetchCustomers = async () => {
+    if (!profile?.org_id) return;
+    const { data } = await supabase
+      .from("customers")
+      .select("id, name, phone")
+      .eq("org_id", profile.org_id)
+      .order("name");
+    setCustomers(data || []);
+  };
+
   const fetchAgents = async () => {
     let query = supabase
       .from("profiles")
@@ -151,6 +163,7 @@ const TasksPage = () => {
   const createTask = async () => {
     if (!newTitle.trim()) return toast.error("أدخل عنوان المهمة");
     const assignee = effectiveRole === "member" ? profile!.id : (newAssignee || null);
+    const selectedCust = customers.find(c => c.id === selectedCustomerId);
     const { error } = await supabase.from("tasks").insert({
       org_id: profile!.org_id!,
       title: newTitle.trim(),
@@ -158,8 +171,8 @@ const TasksPage = () => {
       task_type: newType,
       priority: newPriority,
       assigned_to: assignee,
-      customer_phone: newPhone || null,
-      customer_name: newCustomerName || null,
+      customer_phone: selectedCust?.phone || null,
+      customer_name: selectedCust?.name || null,
       created_by_type: "agent",
       created_by: profile!.id,
     } as any);
@@ -169,7 +182,7 @@ const TasksPage = () => {
     }
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
-    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setNewPhone(""); setNewCustomerName("");
+    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setSelectedCustomerId(""); setCustomerSearch("");
     fetchTasks();
   };
 
@@ -494,15 +507,34 @@ const TasksPage = () => {
                 </Select>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>اسم العميل</Label>
-                <Input value={newCustomerName} onChange={e => setNewCustomerName(e.target.value)} />
-              </div>
-              <div>
-                <Label>رقم العميل</Label>
-                <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} dir="ltr" />
-              </div>
+            <div>
+              <Label>العميل</Label>
+              <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                <SelectTrigger><SelectValue placeholder="اختر عميل" /></SelectTrigger>
+                <SelectContent>
+                  <div className="p-2">
+                    <Input
+                      placeholder="بحث بالاسم أو الرقم..."
+                      value={customerSearch}
+                      onChange={e => setCustomerSearch(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <SelectItem value="">بدون عميل</SelectItem>
+                  {customers
+                    .filter(c => {
+                      if (!customerSearch) return true;
+                      const q = customerSearch.toLowerCase();
+                      return (c.name?.toLowerCase().includes(q)) || c.phone.includes(q);
+                    })
+                    .slice(0, 50)
+                    .map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name || "بدون اسم"} — {c.phone}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={createTask} className="w-full">إنشاء المهمة</Button>
           </div>
