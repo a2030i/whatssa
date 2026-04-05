@@ -824,7 +824,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           return acc;
         }, {} as Record<string, typeof msg.reactions>);
         return (
-          <div className={cn("flex -mt-2 mb-1", msg.sender === "agent" ? "justify-end mr-2" : "justify-start ml-2")}>
+          <div className={cn("flex -mt-2 mb-1", msg.sender === "agent" ? "justify-start ml-2" : "justify-end mr-2")}>
             <button
               onClick={() => {
                 window.dispatchEvent(new CustomEvent("show-reaction-details", {
