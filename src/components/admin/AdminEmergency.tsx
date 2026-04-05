@@ -41,8 +41,8 @@ const AdminEmergency = () => {
   // Load emergency settings from system_settings
   useEffect(() => {
     Promise.all([
-      supabase.from("system_settings").select("value").eq("key", "emergency_phone").maybeSingle(),
-      supabase.from("system_settings").select("value").eq("key", "alert_evolution_instance").maybeSingle(),
+      cloudSupabase.from("system_settings").select("value").eq("key", "emergency_phone").maybeSingle(),
+      cloudSupabase.from("system_settings").select("value").eq("key", "alert_evolution_instance").maybeSingle(),
     ]).then(([phoneRes, instanceRes]) => {
       if (phoneRes.data?.value) setEmergencyPhone(String(phoneRes.data.value));
       if (instanceRes.data?.value) setAlertInstance(String(instanceRes.data.value));
