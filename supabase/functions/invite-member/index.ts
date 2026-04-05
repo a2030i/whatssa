@@ -76,11 +76,9 @@ Deno.serve(async (req) => {
       is_supervisor: isSupervisor,
     }).eq("id", userId);
 
-    // Set role
-    if (role === "admin") {
-      await adminClient.from("user_roles").upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
-    }
-    // member and supervisor both use 'member' role in user_roles (supervisor is a profile flag)
+    // Set role — always insert a role so userRole is never null
+    const dbRole = role === "admin" ? "admin" : "member";
+    await adminClient.from("user_roles").upsert({ user_id: userId, role: dbRole }, { onConflict: "user_id,role" });
 
     // If multiple teams, insert into team_members junction table if it exists,
     // otherwise we just use primary team_id

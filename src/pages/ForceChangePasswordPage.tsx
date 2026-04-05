@@ -35,9 +35,10 @@ const ForceChangePasswordPage = () => {
       });
       if (metaError) throw metaError;
 
-      toast.success("تم تغيير كلمة المرور بنجاح");
-      // Small delay then reload to let context pick up the change
-      setTimeout(() => window.location.reload(), 500);
+      toast.success("تم تغيير كلمة المرور بنجاح — سجّل دخولك بالكلمة الجديدة");
+      // Sign out and redirect to login page
+      await supabase.auth.signOut();
+      setTimeout(() => window.location.href = "/auth", 500);
     } catch (err: any) {
       toast.error(err.message || "حدث خطأ");
     }
