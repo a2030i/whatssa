@@ -518,12 +518,45 @@ serve(async (req) => {
 
           let { data: conversation } = await supabase
             .from("conversations")
-            .select("id, unread_count")
+            .select("id, unread_count, status")
             .eq("customer_phone", customerPhone)
             .eq("org_id", orgId)
             .neq("status", "closed")
             .limit(1)
             .maybeSingle();
+
+          // If no open conversation, check for a closed one to reopen
+          if (!conversation) {
+            const { data: closedConv } = await supabase
+              .from("conversations")
+              .select("id, unread_count, status")
+              .eq("customer_phone", customerPhone)
+              .eq("org_id", orgId)
+              .eq("status", "closed")
+              .order("closed_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (closedConv) {
+              await supabase.from("conversations").update({
+                status: "active",
+                closed_at: null,
+                closed_by: null,
+                closure_reason_id: null,
+                unread_count: 1,
+                last_message: messageContent,
+                last_message_at: new Date().toISOString(),
+              }).eq("id", closedConv.id);
+              conversation = { ...closedConv, status: "active", unread_count: 1 };
+              await supabase.from("messages").insert({
+                conversation_id: closedConv.id,
+                content: "تم إعادة فتح المحادثة تلقائياً بعد رسالة جديدة من العميل",
+                sender: "system",
+                message_type: "text",
+              });
+              await logToSystem(supabase, "info", `تم إعادة فتح محادثة مغلقة للعميل ${customerPhone}`, { conversation_id: closedConv.id }, orgId);
+            }
+          }
 
           if (!conversation) {
             // Build initial routing from channel config
