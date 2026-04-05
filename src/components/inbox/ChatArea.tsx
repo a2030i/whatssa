@@ -1923,7 +1923,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                       {(() => {
                         // In groups, resolve per-sender avatar
                         if (isGroup) {
-                          const rawPhone = msg.senderPhone || (msg.senderJid ? msg.senderJid.replace(/@.*/, "").replace(/\D/g, "") : "");
+                          const jidIsLid = msg.senderJid?.includes("@lid") || false;
+                          const rawPhone = msg.senderPhone || (!jidIsLid && msg.senderJid ? msg.senderJid.replace(/@.*/, "").replace(/\D/g, "") : "");
                           const participant = rawPhone ? groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone)))) : undefined;
                           const displayName = participant?.name || msg.senderName || rawPhone || "؟";
                           const initials = displayName.slice(0, 2);
