@@ -710,10 +710,10 @@ const TeamPage = () => {
             </div>
             <div className="space-y-2">
               <Label className="text-xs">الفريق</Label>
-              <Select value={formTeam} onValueChange={setFormTeam}>
+              <Select value={formTeam || "none"} onValueChange={(v) => setFormTeam(v === "none" ? "" : v)}>
                 <SelectTrigger className="bg-secondary border-0"><SelectValue placeholder="بدون فريق" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">بدون فريق</SelectItem>
+                  <SelectItem value="none">بدون فريق</SelectItem>
                   {teams.map((t) => (
                     <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                   ))}
