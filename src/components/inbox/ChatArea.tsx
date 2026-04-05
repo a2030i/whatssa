@@ -206,23 +206,26 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
     return <img src={resolvedUrl} alt="ملصق" className="max-w-[140px] max-h-[140px] object-contain mb-1" />;
   }
   if (isImage) {
-    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-lg max-w-[240px] max-h-[200px] object-cover mb-1 cursor-pointer active:scale-95 transition-transform" onClick={() => onImageClick?.(resolvedUrl)} />;
+    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-xl max-w-[260px] max-h-[220px] object-cover mb-1.5 cursor-pointer active:scale-[0.98] transition-transform shadow-sm" onClick={() => onImageClick?.(resolvedUrl)} />;
   }
   if (type === "audio") {
     return <AudioPlayer src={resolvedUrl} isAgent={isAgent} className="mb-1" />;
   }
   if (type === "video") {
     return (
-      <div className="mb-1 min-w-[220px] rounded-lg bg-background/40 p-2">
-        <div className="mb-2 flex items-center gap-2 text-xs font-medium"><Video className="h-3.5 w-3.5" /><span>مقطع فيديو</span></div>
-        <video controls preload="metadata" className="max-h-[240px] w-full rounded-md"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الفيديو.</video>
+      <div className="mb-1.5 min-w-[240px] rounded-xl bg-background/50 p-2.5 border border-border/10">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold"><Video className="h-4 w-4 text-primary" /><span>مقطع فيديو</span></div>
+        <video controls preload="metadata" className="max-h-[260px] w-full rounded-lg"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الفيديو.</video>
       </div>
     );
   }
   if (type === "document") {
     return (
-      <a href={resolvedUrl} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 rounded-lg bg-background/40 p-2 text-xs font-medium hover:bg-background/60">
-        <FileText className="h-4 w-4" /><span>فتح الملف المرفق</span>
+      <a href={resolvedUrl} target="_blank" rel="noreferrer" className="mb-1.5 flex items-center gap-3 rounded-xl bg-background/50 p-3 text-xs font-semibold hover:bg-background/70 transition-colors border border-border/10">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <FileText className="h-5 w-5 text-primary" />
+        </div>
+        <span className="flex-1 truncate">فتح الملف المرفق</span>
       </a>
     );
   }
@@ -452,17 +455,17 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         </div>
       )}
       <div className={cn(
-        "rounded-2xl px-4 py-2.5 text-sm leading-relaxed max-w-full",
-        msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3",
+        "rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-full",
+        msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3.5",
         msg.isDeleted
-          ? "bg-muted/40 border border-border/20 text-muted-foreground italic"
+          ? "bg-muted/30 border border-dashed border-border/30 text-muted-foreground italic"
           : msg.type === "note"
-            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-foreground rounded-bl-sm"
+            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 text-foreground rounded-bl-sm shadow-sm"
             : msg.sender === "agent"
-              ? "bg-card border border-border/20 shadow-sm text-foreground rounded-bl-sm"
+              ? "bg-card border border-border/15 shadow-[0_1px_3px_rgba(0,0,0,0.06)] text-foreground rounded-bl-sm"
               : msg.mentioned && msg.mentioned.length > 0
                 ? "bg-primary text-primary-foreground rounded-br-sm shadow-md ring-2 ring-primary/30"
-                : "bg-primary text-primary-foreground rounded-br-sm shadow-sm"
+                : "bg-primary text-primary-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.1)]"
       )}>
         {msg.isDeleted ? (
           <div className="flex items-center gap-1.5 text-xs opacity-70">
@@ -624,8 +627,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               </div>
             )}
             {/* Timestamp + status */}
-            <div className={cn("flex items-center gap-1 mt-1.5", msg.type === "note" ? "text-amber-500/60" : msg.sender === "agent" ? "text-muted-foreground/70" : "text-white/55")}>
-              <span className="text-[10px] font-medium">{msg.timestamp}</span>
+            <div className={cn("flex items-center gap-1.5 mt-2", msg.type === "note" ? "text-amber-500/50" : msg.sender === "agent" ? "text-muted-foreground/50" : "text-white/45")}>
+              <span className="text-[10px] font-medium tracking-tight">{msg.timestamp}</span>
               {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
               {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
             </div>
@@ -1536,12 +1539,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden">
-      {/* Header - modern glass */}
-      <div className="shrink-0 border-b border-border/30 bg-card/80 backdrop-blur-xl">
-        <div className="h-14 md:h-[68px] flex items-center justify-between px-2.5 md:px-5">
-          <div className="flex items-center gap-3">
-            <button className="w-8 h-8 md:w-9 md:h-9 rounded-xl hover:bg-secondary/80 transition-all flex items-center justify-center shrink-0" onClick={onBack}>
+    <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-background">
+      {/* Header - elevated glass */}
+      <div className="shrink-0 border-b border-border/20 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="h-[60px] md:h-[72px] flex items-center justify-between px-3 md:px-5">
+          <div className="flex items-center gap-3 min-w-0">
+            <button className="w-9 h-9 md:w-10 md:h-10 rounded-xl hover:bg-secondary transition-all flex items-center justify-center shrink-0" onClick={onBack}>
               <ArrowRight className="w-5 h-5 text-foreground" />
             </button>
             <button
@@ -1550,9 +1553,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             >
             <div className="relative shrink-0">
               {groupPicture ? (
-                <img src={groupPicture} alt={conversation.customerName} className="w-10 h-10 md:w-11 md:h-11 rounded-2xl object-cover shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                <img src={groupPicture} alt={conversation.customerName} className="w-11 h-11 md:w-12 md:h-12 rounded-2xl object-cover ring-2 ring-background shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
               ) : null}
-              <div className={cn("w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-gradient-to-br from-primary/25 to-primary/10 flex items-center justify-center text-sm font-bold text-primary shadow-sm", groupPicture ? "hidden" : "")}>
+              <div className={cn("w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-base font-bold text-primary shadow-sm ring-2 ring-background", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
@@ -1853,43 +1856,47 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4 bg-gradient-to-b from-secondary/15 to-secondary/30">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-2 md:space-y-3" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, hsl(var(--secondary) / 0.3), transparent 70%)' }}>
         {messages.map((msg, msgIdx) => {
           // Check if next message is from same sender to avoid repeating avatar
           const nextMsg = messages[msgIdx + 1];
           const showAvatar = !nextMsg || nextMsg.sender !== msg.sender || nextMsg.sender === "system";
+          // Check if this is the first message in a group from same sender
+          const prevMsg = messages[msgIdx - 1];
+          const isFirstInGroup = !prevMsg || prevMsg.sender !== msg.sender || prevMsg.sender === "system";
           return (
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
-            msg.sender === "agent" ? "justify-start" : msg.sender === "system" ? "justify-center" : "justify-end"
+            msg.sender === "agent" ? "justify-start" : msg.sender === "system" ? "justify-center" : "justify-end",
+            !isFirstInGroup && "mt-0.5"
           )}>
             {msg.sender === "system" ? (
-              <div className="bg-muted/60 text-muted-foreground text-[11px] px-4 py-1.5 rounded-full font-medium shadow-sm">
+              <div className="bg-secondary/80 text-muted-foreground text-[11px] px-4 py-1.5 rounded-full font-medium shadow-sm backdrop-blur-sm">
                 {msg.text}
               </div>
             ) : (
-              <div className={cn("flex items-end gap-1.5", msg.sender === "agent" ? "flex-row" : "flex-row-reverse")}>
+              <div className={cn("flex items-end gap-2", msg.sender === "agent" ? "flex-row" : "flex-row-reverse")}>
                 {/* Avatar */}
                 {showAvatar ? (
                   msg.sender === "customer" ? (
                     <div className="shrink-0 mb-1">
                       {conversation.profilePic ? (
-                        <img src={conversation.profilePic} alt="" className="w-7 h-7 rounded-full object-cover" />
+                        <img src={conversation.profilePic} alt="" className="w-8 h-8 rounded-xl object-cover ring-1 ring-border/20 shadow-sm" />
                       ) : (
-                        <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-[10px] font-bold text-primary">
+                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary ring-1 ring-primary/10">
                           {(conversation.customerName || "؟").slice(0, 1)}
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="shrink-0 mb-1">
-                      <div className="w-7 h-7 rounded-full bg-secondary border border-border/40 flex items-center justify-center text-[10px] font-bold text-muted-foreground" title={msg.senderName || "موظف"}>
+                      <div className="w-8 h-8 rounded-xl bg-secondary border border-border/30 flex items-center justify-center text-[11px] font-bold text-muted-foreground shadow-sm" title={msg.senderName || "موظف"}>
                         {(msg.senderName || "م").slice(0, 1)}
                       </div>
                     </div>
                   )
                 ) : (
-                  <div className="w-7 shrink-0" />
+                  <div className="w-8 shrink-0" />
                 )}
                 <div className="flex flex-col">
                   <SwipeableMessageBubble
@@ -1912,7 +1919,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   />
                   {/* Agent name label below bubble */}
                   {msg.sender === "agent" && msg.senderName && showAvatar && conversation.conversationType !== "group" && (
-                    <span className="text-[10px] text-muted-foreground/70 mt-0.5 mr-1 font-medium">{msg.senderName}</span>
+                    <span className="text-[10px] text-muted-foreground/60 mt-0.5 mr-1 font-medium">{msg.senderName}</span>
                   )}
                 </div>
               </div>
@@ -2329,7 +2336,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
-                className={cn("flex-1 border-0 rounded-xl h-10 md:h-11 text-sm", isNoteMode ? "bg-amber-500/5" : "bg-secondary/60 focus:bg-secondary")}
+                className={cn("flex-1 border-0 rounded-2xl h-11 md:h-12 text-sm", isNoteMode ? "bg-amber-500/5 ring-1 ring-amber-500/20" : "bg-secondary/50 focus:bg-secondary focus:ring-1 focus:ring-primary/20 transition-all")}
               />
             )}
             {(isNoteMode || !windowExpired) && (
