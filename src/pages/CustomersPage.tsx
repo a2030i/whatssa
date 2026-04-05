@@ -307,7 +307,6 @@ const CustomersPage = () => {
           </thead>
           <tbody>
             {filtered.map((c) => {
-              const stage = LIFECYCLE_STAGES.find((s) => s.value === (c.lifecycle_stage || "lead")) || LIFECYCLE_STAGES[0];
               return (
                 <tr key={c.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => setSelectedCustomerId(c.id)}>
                   <td className="p-3">
