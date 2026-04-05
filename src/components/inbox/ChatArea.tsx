@@ -1184,8 +1184,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const handleSend = () => {
     if (!inputText.trim()) return;
     if (isNoteMode) {
-      onSendMessage(conversation.id, inputText.trim(), "note");
+      const noteReplyData = replyTo ? { id: replyTo.id, waMessageId: replyTo.waMessageId, senderName: replyTo.sender === "agent" ? "أنت" : (replyTo.senderName || conversation.customerName), text: replyTo.text } : undefined;
+      onSendMessage(conversation.id, inputText.trim(), "note", noteReplyData);
       setInputText("");
+      setReplyTo(null);
       setIsNoteMode(false);
       toast.success("تم إضافة الملاحظة الداخلية");
       return;
