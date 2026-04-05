@@ -1654,7 +1654,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{conversation.lastSeen || conversation.customerPhone}</p>
+              <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5 font-light">{conversation.lastSeen || conversation.customerPhone}</p>
             </div>
             </button>
           </div>
