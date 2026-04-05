@@ -1805,10 +1805,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </button>
                   <button
                     onClick={() => setShowClosureReason(true)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-destructive/10 transition-colors"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/15 transition-colors"
                     title="إغلاق"
                   >
-                    <XCircle className="w-4 h-4 text-destructive" />
+                    <XCircle className="w-4 h-4 text-primary-foreground/80" />
                   </button>
                 </>
               )}
