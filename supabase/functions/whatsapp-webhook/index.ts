@@ -458,6 +458,7 @@ serve(async (req) => {
         channelConfigId = config?.id || null;
         var channelDefaultTeamId = config?.default_team_id || null;
         var channelDefaultAgentId = config?.default_agent_id || null;
+        var channelExcludeSupervisors = !!(config as any)?.exclude_supervisors;
       }
 
       if (!orgId) {
