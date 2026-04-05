@@ -68,7 +68,7 @@ const COUNTRY_CODES = [
 ];
 
 const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCreated }: NewConversationDialogProps) => {
-  const { orgId } = useAuth();
+  const { orgId, profile } = useAuth();
   const [step, setStep] = useState<Step>("contact");
   const [dialogMode, setDialogMode] = useState<DialogMode>("private");
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -370,6 +370,18 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             last_message: messagePreview,
             last_message_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+          })
+          .eq("id", conversationId);
+      }
+
+      // Auto-assign private conversations to the creator
+      if (conversationId && dialogMode === "private" && profile?.id) {
+        await supabase
+          .from("conversations")
+          .update({
+            assigned_to: profile.full_name || "موظف",
+            assigned_to_id: profile.id,
+            assigned_at: new Date().toISOString(),
           })
           .eq("id", conversationId);
       }
