@@ -1612,7 +1612,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-background">
       {/* Header */}
-      <div className="shrink-0 border-b border-border/15 bg-card/80 backdrop-blur-xl">
+      <div className="shrink-0 bg-card/90 backdrop-blur-xl" style={{ boxShadow: 'var(--shadow-xs)' }}>
         <div className="h-[56px] md:h-[64px] flex items-center justify-between px-3 md:px-4">
           <div className="flex items-center gap-2.5 min-w-0">
             <button className="w-8 h-8 md:w-9 md:h-9 rounded-lg hover:bg-secondary transition-all flex items-center justify-center shrink-0" onClick={onBack}>
