@@ -211,50 +211,50 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   return (
     <div className={cn(
-      "flex flex-col bg-background",
+      "flex flex-col",
       hasSelection ? "hidden md:flex md:w-[340px] lg:w-[370px]" : "w-full md:w-[340px] lg:w-[370px]"
     )}>
       {/* Header */}
-      <div className="px-5 pt-6 pb-4 space-y-4 shrink-0">
+      <div className="px-4 pt-5 pb-3 space-y-3 shrink-0 bg-card border-b border-border/30">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-foreground tracking-tight">
+          <h1 className="text-lg font-bold text-foreground tracking-tight">
             {activeInbox ? activeInbox.name : "المحادثات"}
           </h1>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {onNewConversation && (
               <button
                 onClick={onNewConversation}
-                className="w-8 h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center"
+                className="w-9 h-9 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-[0_2px_6px_hsl(var(--primary)/0.25)]"
                 title="محادثة جديدة"
               >
-                <MessageSquare className="w-3.5 h-3.5" />
+                <MessageSquare className="w-4 h-4" />
               </button>
             )}
             <button
               onClick={() => { setEditingInbox(null); setBuilderOpen(true); }}
-              className="w-8 h-8 rounded-full hover:bg-muted text-muted-foreground transition-all flex items-center justify-center"
+              className="w-9 h-9 rounded-xl border border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground transition-all flex items-center justify-center"
               title="صندوق مخصص"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
             </button>
             <button
               onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); }}
-              className={cn("w-8 h-8 rounded-full transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground")}
+              className={cn("w-9 h-9 rounded-xl border transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary border-primary/30" : "border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground")}
               title="تحديد متعدد"
             >
-              <CheckSquare className="w-3.5 h-3.5" />
+              <CheckSquare className="w-4 h-4" />
             </button>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="w-8 h-8 rounded-full hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
-                <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />
+              <button onClick={clearFilters} className="w-9 h-9 rounded-xl border border-border/50 bg-background hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
+                <RotateCcw className="w-4 h-4 text-foreground/70" />
               </button>
             )}
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={cn("w-8 h-8 rounded-full transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground")}
+              className={cn("w-9 h-9 rounded-xl border transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary border-primary/30" : "border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground")}
             >
-              <Filter className="w-3.5 h-3.5" />
-              {hasActiveFilters && <span className="absolute top-1.5 left-1.5 w-1.5 h-1.5 rounded-full bg-primary" />}
+              <Filter className="w-4 h-4" />
+              {hasActiveFilters && <span className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-primary" />}
             </button>
           </div>
         </div>
@@ -270,10 +270,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                     else { setActiveCustomInbox(inbox.id); setActiveQuickFilter("all"); }
                   }}
                   className={cn(
-                    "text-[11px] px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all flex items-center gap-1.5",
+                    "text-[11px] px-3.5 py-1.5 rounded-xl whitespace-nowrap font-semibold transition-all flex items-center gap-1.5 border",
                     activeCustomInbox === inbox.id
-                      ? "bg-foreground text-background"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border/50 hover:border-primary/30 hover:text-foreground"
                   )}
                 >
                   <Inbox className="w-3 h-3" />
@@ -292,12 +292,12 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
+          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
           <Input
             placeholder="بحث..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-10 bg-muted/60 border-0 text-sm h-10 rounded-xl focus:bg-card focus:ring-1 focus:ring-border transition-all placeholder:text-muted-foreground/40"
+            className="pr-10 bg-background border border-border/50 text-sm h-10 rounded-xl focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/40"
           />
         </div>
       </div>
