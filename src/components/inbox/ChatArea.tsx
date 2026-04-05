@@ -2594,7 +2594,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </ScheduleMessagePopover>
               )}
               {/* Link */}
-              <button onClick={copyConversationLink} <button onClick={copyConversationLink} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-red-500 shrink-0" title="نسخ رابط المحادثة"> title="نسخ رابط المحادثة">
+              <button onClick={copyConversationLink} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-red-500 shrink-0" title="نسخ رابط المحادثة">
                 <Link2 className="w-4 h-4" />
               </button>
             </div>
