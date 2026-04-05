@@ -73,27 +73,31 @@ const MobileBottomNav = () => {
           <span className="text-[10px] font-medium">المحادثات</span>
         </NavLink>
 
-        <NavLink
-          to="/"
-          className={cn(
-            "flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-colors",
-            isActive("/") ? "text-primary" : "text-muted-foreground"
-          )}
-        >
-          <LayoutDashboard className="w-5 h-5" />
-          <span className="text-[10px] font-medium">الرئيسية</span>
-        </NavLink>
+        {effectiveRole === "admin" && (
+          <NavLink
+            to="/"
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-colors",
+              isActive("/") ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span className="text-[10px] font-medium">الرئيسية</span>
+          </NavLink>
+        )}
 
-        <NavLink
-          to="/customers"
-          className={cn(
-            "flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-colors",
-            isActive("/customers") ? "text-primary" : "text-muted-foreground"
-          )}
-        >
-          <UserCircle className="w-5 h-5" />
-          <span className="text-[10px] font-medium">العملاء</span>
-        </NavLink>
+        {effectiveRole === "admin" && (
+          <NavLink
+            to="/customers"
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-colors",
+              isActive("/customers") ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <UserCircle className="w-5 h-5" />
+            <span className="text-[10px] font-medium">العملاء</span>
+          </NavLink>
+        )}
 
         {/* More menu */}
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
