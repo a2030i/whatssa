@@ -31,9 +31,9 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
   if (bars.current.length === 0) {
     let seed = 0;
     for (let i = 0; i < src.length; i++) seed = ((seed << 5) - seed + src.charCodeAt(i)) | 0;
-    bars.current = Array.from({ length: 40 }, (_, i) => {
+    bars.current = Array.from({ length: 32 }, (_, i) => {
       seed = (seed * 16807 + 7) % 2147483647;
-      return 0.15 + (Math.abs(seed) % 70) / 100;
+      return 0.2 + (Math.abs(seed) % 65) / 100;
     });
   }
 
@@ -144,7 +144,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
   if (hasError) {
     return (
       <div className={cn(
-        "flex items-center gap-2 rounded-2xl px-3 py-2.5 min-w-[180px]",
+        "flex items-center gap-2 rounded-2xl px-3 py-2",
         isAgent ? "bg-secondary/60" : "bg-white/15",
         className
       )}>
@@ -158,7 +158,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
 
   return (
     <div className={cn(
-      "flex items-center gap-2 rounded-2xl px-3 py-2 min-w-[220px] max-w-[320px]",
+      "flex items-center gap-2 rounded-2xl px-2.5 py-1.5 w-[200px] md:w-[260px]",
       isAgent ? "bg-secondary/60" : "bg-white/15",
       className
     )}>
@@ -168,24 +168,24 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
       <button
         onClick={togglePlay}
         className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95",
+          "w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95",
           isAgent
-            ? "bg-primary text-primary-foreground shadow-md"
+            ? "bg-primary text-primary-foreground shadow-sm"
             : "bg-white/25 text-white"
         )}
       >
         {isPlaying ? (
-          <Pause className="w-4 h-4" fill="currentColor" />
+          <Pause className="w-3.5 h-3.5" fill="currentColor" />
         ) : (
-          <Play className="w-4 h-4 mr-[-2px]" fill="currentColor" />
+          <Play className="w-3.5 h-3.5 mr-[-1px]" fill="currentColor" />
         )}
       </button>
 
       {/* Waveform + progress */}
-      <div className="flex-1 min-w-0 flex flex-col gap-1">
+      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
         <div
           ref={progressRef}
-          className="flex items-end gap-[2px] h-7 cursor-pointer py-0.5"
+          className="flex items-center gap-[1.5px] h-6 cursor-pointer"
           onClick={seekTo}
           onTouchStart={seekTo}
         >
@@ -204,7 +204,8 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
                 )}
                 style={{
                   height: `${h * 100}%`,
-                  minWidth: 2,
+                  minWidth: 1.5,
+                  maxWidth: 3,
                   transition: "background-color 0.15s",
                   ...(isNearPlayhead ? {
                     animation: `wavePulse 0.4s ease-in-out infinite alternate`,
@@ -219,16 +220,16 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
         {/* Time + speed */}
         <div className="flex items-center justify-between">
           <span className={cn(
-            "text-[10px] font-mono tabular-nums",
+            "text-[9px] font-mono tabular-nums",
             isAgent ? "text-muted-foreground" : "text-white/70"
           )}>
             {isPlaying || currentTime > 0 ? formatTime(currentTime) : formatTime(duration)}
           </span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <button
               onClick={cycleSpeed}
               className={cn(
-                "text-[9px] font-bold px-1.5 py-0.5 rounded-md transition-colors",
+                "text-[8px] font-bold px-1 py-0.5 rounded transition-colors",
                 isAgent
                   ? "bg-muted text-muted-foreground hover:bg-accent"
                   : "bg-white/15 text-white/80 hover:bg-white/25"
@@ -246,7 +247,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
                 isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/60 hover:text-white"
               )}
             >
-              <Download className="w-3 h-3" />
+              <Download className="w-2.5 h-2.5" />
             </a>
           </div>
         </div>
