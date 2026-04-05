@@ -17,6 +17,13 @@ const MobileBottomNav = () => {
   const location = useLocation();
   const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const displayRole = userRole === "super_admin"
+    ? "super_admin"
+    : userRole === "admin"
+      ? "admin"
+      : profile?.is_supervisor
+        ? "supervisor"
+        : "member";
 
   const isActive = (path: string) => location.pathname === path;
 
