@@ -292,12 +292,12 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
           <Input
             placeholder="بحث بالاسم أو الرقم..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-10 bg-secondary/60 border-0 text-sm h-11 rounded-2xl focus:bg-secondary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/40"
+            className="pr-10 bg-secondary/40 border-border/20 text-sm h-10 rounded-xl focus:bg-background focus:ring-1 focus:ring-primary/20 focus:border-primary/30 transition-all placeholder:text-muted-foreground/40"
           />
         </div>
       </div>
