@@ -49,6 +49,7 @@ interface ChatAreaProps {
   onStarMessage?: (msgId: string, starred: boolean) => void;
   onForwardMessage?: (msg: Message) => void;
   onConversationMerged?: (sourceConversationId: string, targetConversationId: string) => void;
+  onDeleteConversation?: (convId: string) => void;
 }
 
 const MessageStatus = ({ status, isGroup, readBy, groupSize }: { status?: string; isGroup?: boolean; readBy?: string[]; groupSize?: number }) => {
@@ -663,7 +664,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   );
 };
 
-const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo, scrollToMessageId, onScrollToMessageDone, onStarMessage, onForwardMessage, onConversationMerged }: ChatAreaProps) => {
+const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo, scrollToMessageId, onScrollToMessageDone, onStarMessage, onForwardMessage, onConversationMerged, onDeleteConversation }: ChatAreaProps) => {
   const { orgId, user, profile } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -1680,8 +1681,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <DropdownMenuItem onClick={() => setShowTransfer(true)} className="md:hidden">
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowMergeDialog(true)}>
-                  <GitMerge className="w-4 h-4 ml-2 text-primary" /> دمج المحادثة
+                <DropdownMenuItem
+                  onClick={() => {
+                    const confirm = window.confirm("هل أنت متأكد من حذف هذه المحادثة وجميع رسائلها؟ هذا الإجراء لا يمكن التراجع عنه.");
+                    if (confirm) onDeleteConversation?.(conversation.id);
+                  }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 ml-2" /> حذف المحادثة
                 </DropdownMenuItem>
                 {isEvolutionChannel && (
                   <DropdownMenuItem onClick={() => setShowDisappearingMenu(!showDisappearingMenu)}>
@@ -2549,16 +2556,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         conversationId={conversation.id}
         channelId={conversation.channelId}
         orgId={orgId}
-      />
-
-      {/* Merge Conversation Dialog */}
-      <MergeConversationDialog
-        open={showMergeDialog}
-        onOpenChange={setShowMergeDialog}
-        sourceConversationId={conversation.id}
-        sourceCustomerPhone={conversation.customerPhone}
-        sourceCustomerName={conversation.customerName}
-        onMerged={(targetConversationId) => onConversationMerged?.(conversation.id, targetConversationId)}
       />
 
       {/* Disappearing Messages Submenu */}
