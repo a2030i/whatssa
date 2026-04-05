@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const { conversation_id, org_id, message_text } = await req.json();
+    const { conversation_id, org_id, message_text, exclude_supervisors } = await req.json();
     if (!conversation_id || !org_id) {
       return json({ error: "Missing conversation_id or org_id" }, 400);
     }
