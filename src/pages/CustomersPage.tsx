@@ -300,7 +300,6 @@ const CustomersPage = () => {
             <tr className="border-b border-border/30 text-muted-foreground text-[11px] bg-secondary/20">
               <th className="text-right p-3.5 font-semibold">الاسم</th>
               <th className="text-right p-3.5 font-semibold">الجوال</th>
-              <th className="text-right p-3.5 font-semibold">المرحلة</th>
               <th className="text-right p-3.5 font-semibold hidden md:table-cell">الإيميل</th>
               <th className="text-right p-3.5 font-semibold">التصنيفات</th>
               <th className="text-right p-3.5 font-semibold w-20">إجراء</th>
