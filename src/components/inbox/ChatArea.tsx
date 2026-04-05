@@ -656,11 +656,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                         }
                         return (
                           <span key={i} className={cn(
-                            "font-semibold px-1 rounded",
-                            msg.sender === "customer"
-                              ? "bg-white/20 text-white underline underline-offset-2"
-                              : "bg-primary/10 text-primary"
-                          )}>{displayLabel}</span>
+                             "font-semibold px-1 rounded",
+                             msg.sender === "customer"
+                               ? "bg-white/15 text-white"
+                               : "bg-primary/8 text-primary"
+                           )}>{displayLabel}</span>
                         );
                       })}
                     </p>
