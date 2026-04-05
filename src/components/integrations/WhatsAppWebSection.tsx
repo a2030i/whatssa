@@ -706,6 +706,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
                   orgId={orgId}
                   defaultTeamId={existingConfig.default_team_id}
                   defaultAgentId={existingConfig.default_agent_id}
+                  excludeSupervisors={(existingConfig as any).exclude_supervisors}
                 />
               )}
 
