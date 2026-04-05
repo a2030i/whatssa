@@ -182,7 +182,7 @@ const TasksPage = () => {
     }
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
-    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setNewPhone(""); setNewCustomerName("");
+    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setSelectedCustomerId(""); setCustomerSearch("");
     fetchTasks();
   };
 
