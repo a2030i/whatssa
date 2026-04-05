@@ -22,6 +22,7 @@ interface NavItem {
   ecommerceOnly?: boolean;
   metaApiOnly?: boolean;
   lockedMessage?: string;
+  minRole?: "admin" | "supervisor" | "member";
 }
 
 interface NavGroup {
@@ -35,7 +36,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     section: "الرئيسية",
     emoji: "🏠",
     items: [
-      { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊" },
+      { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
       { label: "صندوق الوارد", icon: MessageSquare, path: "/inbox", emoji: "💬" },
       { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
     ],
@@ -44,43 +45,43 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     section: "التسويق",
     emoji: "📣",
     items: [
-      { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "🚀" },
-      { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰" },
-      { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب" },
-      { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡" },
+      { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "🚀", minRole: "admin" },
+      { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰", minRole: "admin" },
+      { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب", minRole: "admin" },
+      { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡", minRole: "admin" },
     ],
   },
   {
     section: "المبيعات",
     emoji: "🛍️",
     items: [
-      { label: "العملاء", icon: UserCircle, path: "/customers", emoji: "👥" },
-      { label: "الطلبات", icon: ShoppingCart, path: "/orders", emoji: "🛒", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً" },
-      { label: "السلل المهجورة", icon: ShoppingBag, path: "/abandoned-carts", emoji: "🛒", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً" },
-      { label: "الكتالوج", icon: Package, path: "/catalog", emoji: "📦" },
+      { label: "العملاء", icon: UserCircle, path: "/customers", emoji: "👥", minRole: "admin" },
+      { label: "الطلبات", icon: ShoppingCart, path: "/orders", emoji: "🛒", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً", minRole: "admin" },
+      { label: "السلل المهجورة", icon: ShoppingBag, path: "/abandoned-carts", emoji: "🛒", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً", minRole: "admin" },
+      { label: "الكتالوج", icon: Package, path: "/catalog", emoji: "📦", minRole: "admin" },
     ],
   },
   {
     section: "الذكاء",
     emoji: "🤖",
     items: [
-      { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖" },
-      { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows", emoji: "📋" },
-      { label: "التحليلات", icon: BarChart3, path: "/analytics", emoji: "📈" },
-      { label: "تكاليف المحادثات", icon: DollarSign, path: "/conversation-analytics", emoji: "💰", metaApiOnly: true },
-      { label: "تقارير المتجر", icon: TrendingUp, path: "/store-analytics", emoji: "📊", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً" },
+      { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖", minRole: "admin" },
+      { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows", emoji: "📋", minRole: "admin" },
+      { label: "التحليلات", icon: BarChart3, path: "/analytics", emoji: "📈", minRole: "supervisor" },
+      { label: "تكاليف المحادثات", icon: DollarSign, path: "/conversation-analytics", emoji: "💰", metaApiOnly: true, minRole: "admin" },
+      { label: "تقارير المتجر", icon: TrendingUp, path: "/store-analytics", emoji: "📊", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً", minRole: "admin" },
     ],
   },
   {
     section: "الإعدادات",
     emoji: "⚙️",
     items: [
-      { label: "التكاملات", icon: Plug, path: "/integrations", emoji: "🔗" },
-      { label: "الفريق والصلاحيات", icon: Users, path: "/team", emoji: "👤" },
-      { label: "الإشعارات", icon: Bell, path: "/settings", emoji: "🔔" },
-      { label: "الأمان", icon: Shield, path: "/conversation-settings", emoji: "🛡️" },
-      { label: "مفاتيح API", icon: Code2, path: "/api-tokens", emoji: "🔑" },
-      { label: "الباقة والفواتير", icon: CreditCard, path: "/plans", emoji: "💳" },
+      { label: "التكاملات", icon: Plug, path: "/integrations", emoji: "🔗", minRole: "admin" },
+      { label: "الفريق والصلاحيات", icon: Users, path: "/team", emoji: "👤", minRole: "supervisor" },
+      { label: "الإشعارات", icon: Bell, path: "/settings", emoji: "🔔", minRole: "admin" },
+      { label: "الأمان", icon: Shield, path: "/conversation-settings", emoji: "🛡️", minRole: "admin" },
+      { label: "مفاتيح API", icon: Code2, path: "/api-tokens", emoji: "🔑", minRole: "admin" },
+      { label: "الباقة والفواتير", icon: CreditCard, path: "/plans", emoji: "💳", minRole: "admin" },
     ],
   },
 ];
@@ -112,8 +113,17 @@ const AppSidebar = () => {
 
   const navSections = buildGroups(isEcommerce, hasMetaApi);
 
+  const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
+  const roleHierarchy: Record<string, number> = { member: 0, supervisor: 1, admin: 2 };
+  const userLevel = roleHierarchy[effectiveRole] ?? 0;
+
+  const hasAccess = (item: NavItem): boolean => {
+    if (isSuperAdmin) return true;
+    if (!item.minRole) return true;
+    return userLevel >= (roleHierarchy[item.minRole] ?? 0);
+  };
+
   const isLocked = (item: NavItem): boolean => {
-    // Super admin always has full access
     if (isSuperAdmin) return false;
     if (item.metaApiOnly && !hasMetaApi) return true;
     if (item.ecommerceOnly && !isEcommerce) return true;
@@ -124,6 +134,7 @@ const AppSidebar = () => {
 
   const renderItem = (item: NavItem | NavGroup) => {
     if (isGroup(item)) return null;
+    if (!hasAccess(item)) return null;
     const active = isActive(item.path);
     const locked = isLocked(item);
 
