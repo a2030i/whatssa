@@ -18,6 +18,15 @@ Deno.serve(async (req) => {
 
   const cloudSupabase = createClient(CLOUD_URL, CLOUD_SERVICE_KEY);
 
+  // Parse request body early (can only read once)
+  let isTest = false;
+  try {
+    const body = await req.json();
+    isTest = body?.test === true;
+  } catch {
+    // no body or not JSON
+  }
+
   const results: Record<string, any> = {
     checked_at: new Date().toISOString(),
     db_reachable: false,
