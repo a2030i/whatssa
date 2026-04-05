@@ -511,25 +511,40 @@ const TasksPage = () => {
             )}
             <div>
               <Label>العميل</Label>
-              <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                <SelectTrigger><SelectValue placeholder="اختر عميل" /></SelectTrigger>
-                <SelectContent>
-                  <div className="p-2">
-                    <Input
-                      placeholder="بحث بالاسم أو الرقم..."
-                      value={customerSearch}
-                      onChange={e => setCustomerSearch(e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <SelectItem value="">بدون عميل</SelectItem>
-                  {customers
-                    .filter(c => {
-                      if (!customerSearch) return true;
-                      const q = customerSearch.toLowerCase();
-                      return (c.name?.toLowerCase().includes(q)) || c.phone.includes(q);
-                    })
-                    .slice(0, 50)
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                    {selectedCustomerId
+                      ? (() => { const c = customers.find(c => c.id === selectedCustomerId); return c ? `${c.name || "بدون اسم"} — ${c.phone}` : "اختر عميل"; })()
+                      : "اختر عميل"}
+                    <ChevronsUpDown className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="بحث بالاسم أو الرقم..." />
+                    <CommandList>
+                      <CommandEmpty>لا يوجد عملاء</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem value="none" onSelect={() => setSelectedCustomerId("")}>
+                          بدون عميل
+                        </CommandItem>
+                        {customers.map(c => (
+                          <CommandItem
+                            key={c.id}
+                            value={`${c.name || ""} ${c.phone}`}
+                            onSelect={() => setSelectedCustomerId(c.id)}
+                          >
+                            <Check className={cn("ml-2 h-4 w-4", selectedCustomerId === c.id ? "opacity-100" : "opacity-0")} />
+                            {c.name || "بدون اسم"} — {c.phone}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
                     .map(c => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name || "بدون اسم"} — {c.phone}
