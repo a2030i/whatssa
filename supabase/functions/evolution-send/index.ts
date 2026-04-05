@@ -164,12 +164,15 @@ serve(async (req) => {
       const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
       if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
 
-      // Parallel: fetch config + update DB immediately
+      // Resolve instance from channel_id or fallback to first connected
+      let configQuery = adminClient.from("whatsapp_config")
+        .select("evolution_instance_name")
+        .eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true);
+      if (channel_id) {
+        configQuery = configQuery.eq("id", channel_id);
+      }
       const [configResult] = await Promise.all([
-        adminClient.from("whatsapp_config")
-          .select("evolution_instance_name")
-          .eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true)
-          .limit(1).maybeSingle(),
+        configQuery.limit(1).maybeSingle(),
         adminClient.from("messages").update({
           content: "تم حذف هذه الرسالة",
           metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
@@ -180,22 +183,57 @@ serve(async (req) => {
       if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
 
       const remoteJid = to.includes("@") ? to : `${to}@s.whatsapp.net`;
-      // Fire-and-forget: call Evolution API in background, respond immediately
-      const deletePromise = fetch(`${EVOLUTION_URL}/chat/deleteMessageForEveryone/${config.evolution_instance_name}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY },
-        body: JSON.stringify({ id: delete_message_id, remoteJid, fromMe: true }),
-      }).then(async (res) => {
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          logToSystem(adminClient, "error", `فشل حذف رسالة Evolution`, { error: errData, to, id: delete_message_id }, orgId, user.id);
-        }
-      }).catch((e) => {
-        logToSystem(adminClient, "error", `خطأ في حذف رسالة Evolution`, { error: e.message }, orgId, user.id);
-      });
+      const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
+      const instanceName = config.evolution_instance_name;
 
-      // Don't await — respond immediately
-      // Use waitUntil-like pattern: edge runtime will keep the promise alive
+      // Try multiple endpoints/methods for max compatibility with Evolution API versions
+      const deleteAttempts = [
+        {
+          url: `${EVOLUTION_URL}/chat/deleteMessageForEveryone/${instanceName}`,
+          method: "DELETE",
+          body: { id: delete_message_id, remoteJid, fromMe: true },
+        },
+        {
+          url: `${EVOLUTION_URL}/chat/deleteMessageForEveryone/${instanceName}`,
+          method: "DELETE",
+          body: { key: { id: delete_message_id, remoteJid, fromMe: true } },
+        },
+        {
+          url: `${EVOLUTION_URL}/message/deleteMessage/${instanceName}`,
+          method: "DELETE",
+          body: { number: to.replace(/\D/g, ""), key: { id: delete_message_id, fromMe: true, remoteJid } },
+        },
+        {
+          url: `${EVOLUTION_URL}/chat/deleteMessageForEveryone/${instanceName}`,
+          method: "POST",
+          body: { id: delete_message_id, remoteJid, fromMe: true },
+        },
+      ];
+
+      const deletePromise = (async () => {
+        for (const attempt of deleteAttempts) {
+          try {
+            const res = await fetch(attempt.url, {
+              method: attempt.method,
+              headers: evoHeaders,
+              body: JSON.stringify(attempt.body),
+            });
+            if (res.ok) {
+              logToSystem(adminClient, "info", `تم حذف رسالة بنجاح`, { to, id: delete_message_id, url: attempt.url }, orgId, user.id);
+              return;
+            }
+            const errData = await res.json().catch(() => ({}));
+            // Try next if 404/405
+            if (res.status === 404 || res.status === 405) continue;
+            logToSystem(adminClient, "error", `فشل حذف رسالة Evolution`, { error: errData, to, id: delete_message_id, url: attempt.url, status: res.status }, orgId, user.id);
+            return;
+          } catch (e) {
+            continue;
+          }
+        }
+        logToSystem(adminClient, "error", `فشل حذف رسالة — جميع المحاولات فشلت`, { to, id: delete_message_id }, orgId, user.id);
+      })();
+
       deletePromise;
 
       return json({ success: true, deleted: true });
