@@ -619,7 +619,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === NOTE MESSAGE ===
         if (msg.type === "note") {
           return (
-            <div className="rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-bl-sm min-w-[160px] max-w-[75%] w-fit [overflow-wrap:break-word]">
+            <div className="rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-br-sm min-w-[160px] max-w-[75%] w-fit [overflow-wrap:break-word]">
               <div className="flex items-center gap-1 mb-1 text-amber-500 whitespace-nowrap">
                 <StickyNote className="w-3 h-3 shrink-0" />
                 <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
@@ -2068,7 +2068,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           return (
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
-            msg.type === "note" ? "justify-start" : msg.sender === "agent" ? "justify-end" : msg.sender === "system" ? "justify-center" : "justify-start",
+            msg.sender === "agent" ? "justify-end" : msg.sender === "system" ? "justify-center" : "justify-start",
             !isFirstInGroup && "mt-0.5"
           )}>
             {msg.sender === "system" ? (
@@ -2076,7 +2076,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {msg.text}
               </div>
             ) : (
-              <div className={cn("flex items-end gap-2", msg.type === "note" ? "flex-row" : msg.sender === "agent" ? "flex-row-reverse" : "flex-row")}>
+              <div className={cn("flex items-end gap-2", msg.sender === "agent" ? "flex-row-reverse" : "flex-row")}>
                 {/* Avatar */}
                 {showAvatar ? (
                   msg.sender === "customer" ? (
@@ -2166,7 +2166,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 ) : (
                   <div className="w-8 shrink-0" />
                 )}
-                <div className={cn("flex flex-col w-fit max-w-full", msg.type === "note" ? "items-start" : msg.sender === "agent" ? "items-end" : "items-start")}>
+                <div className={cn("flex flex-col w-fit max-w-full", msg.sender === "agent" ? "items-end" : "items-start")}>
                   <SwipeableMessageBubble
                     msg={msg}
                     conversation={conversation}
