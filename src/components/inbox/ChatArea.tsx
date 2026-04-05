@@ -737,7 +737,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               )}
               {isAudio && mediaUrl && (
                 <div className={cn(
-                  "rounded-2xl px-3.5 py-2.5",
+                  "rounded-2xl px-3.5 py-2.5 max-w-[300px] overflow-hidden",
                   msg.sender === "agent"
                     ? "bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                     : "bg-[hsl(158,45%,42%)]"
