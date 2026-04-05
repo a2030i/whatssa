@@ -1738,8 +1738,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       <div className="shrink-0 bg-primary border-b border-primary/20">
         <div className="h-[56px] md:h-[60px] flex items-center justify-between px-4 md:px-5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <button className="w-8 h-8 md:w-9 md:h-9 rounded-full hover:bg-muted transition-all flex items-center justify-center shrink-0" onClick={onBack}>
-              <ArrowRight className="w-4.5 h-4.5 text-foreground" />
+            <button className="w-8 h-8 md:w-9 md:h-9 rounded-full hover:bg-white/15 transition-all flex items-center justify-center shrink-0" onClick={onBack}>
+              <ArrowRight className="w-4.5 h-4.5 text-primary-foreground" />
             </button>
             <button
               className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
