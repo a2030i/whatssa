@@ -1922,7 +1922,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-1 md:space-y-1.5 bg-background">
+      <div className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-6 space-y-0.5 md:space-y-1 bg-background">
         {messages.map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";
