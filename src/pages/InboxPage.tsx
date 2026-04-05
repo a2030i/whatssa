@@ -932,7 +932,7 @@ const InboxPage = () => {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-3rem)] overflow-hidden" dir="rtl">
+    <div className="flex h-[calc(100dvh-3rem)] overflow-hidden bg-background" dir="rtl">
       {/* On mobile: show list when no selection, show chat when selected */}
       {(!isMobile || !selected) && (
         <ConversationList
