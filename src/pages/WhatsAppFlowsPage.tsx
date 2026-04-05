@@ -47,6 +47,9 @@ interface WaFlow {
   success_message: string;
   meta_flow_id: string | null;
   webhook_url: string | null;
+  forward_to_phone: string | null;
+  forward_to_group_jid: string | null;
+  forward_channel_id: string | null;
   created_at: string;
   updated_at: string;
 }
