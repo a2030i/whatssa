@@ -27,6 +27,7 @@ export interface Conversation {
   unreadMentionCount?: number;
   isPinned?: boolean;
   isArchived?: boolean;
+  dedicatedAgentId?: string | null;
 }
 
 export interface MessageTemplate {

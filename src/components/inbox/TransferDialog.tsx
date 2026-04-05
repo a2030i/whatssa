@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, Circle, AlertCircle } from "lucide-react";
+import { UserPlus, Circle, AlertCircle, Pin, PinOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 
 interface Agent {
   id: string;
@@ -22,12 +23,18 @@ interface TransferDialogProps {
   currentAssigneeId?: string;
   currentAssigneeName?: string;
   onTransfer: (convId: string, agentName: string) => void;
+  currentDedicatedAgentId?: string | null;
 }
 
-const TransferDialog = ({ open, onOpenChange, conversationId, currentAssigneeId, currentAssigneeName, onTransfer }: TransferDialogProps) => {
+const TransferDialog = ({ open, onOpenChange, conversationId, currentAssigneeId, currentAssigneeName, onTransfer, currentDedicatedAgentId }: TransferDialogProps) => {
   const { orgId, user } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDedicated, setIsDedicated] = useState(false);
+
+  useEffect(() => {
+    setIsDedicated(!!currentDedicatedAgentId);
+  }, [currentDedicatedAgentId, open]);
 
   useEffect(() => {
     if (!open || !orgId) return;
@@ -65,9 +72,21 @@ const TransferDialog = ({ open, onOpenChange, conversationId, currentAssigneeId,
   }, [open, orgId, currentAssigneeId]);
 
   const handleTransfer = (agent: Agent) => {
+    // Update dedicated agent fields based on toggle
+    if (isDedicated) {
+      supabase.from("conversations").update({
+        dedicated_agent_id: agent.id,
+        dedicated_agent_name: agent.full_name,
+      }).eq("id", conversationId).then();
+    } else {
+      supabase.from("conversations").update({
+        dedicated_agent_id: null,
+        dedicated_agent_name: null,
+      }).eq("id", conversationId).then();
+    }
     onTransfer(conversationId, agent.full_name || "غير معروف");
     onOpenChange(false);
-    toast.success(`تم تحويل المحادثة إلى ${agent.full_name}`);
+    toast.success(`تم تحويل المحادثة إلى ${agent.full_name}${isDedicated ? ' (تعيين خاص)' : ''}`);
   };
 
   const formatLastSeen = (dt: string | null) => {
@@ -100,8 +119,28 @@ const TransferDialog = ({ open, onOpenChange, conversationId, currentAssigneeId,
             <AlertCircle className="w-4 h-4 text-primary shrink-0" />
             <span className="text-muted-foreground">مُسندة حالياً إلى:</span>
             <span className="font-semibold text-foreground">{currentAssigneeName}</span>
+            {currentDedicatedAgentId && (
+              <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-600">
+                <Pin className="w-3 h-3 ml-0.5" />
+                خاص
+              </Badge>
+            )}
           </div>
         )}
+
+        {/* Dedicated/Sticky assignment toggle */}
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-secondary/50 border text-sm">
+          <div className="flex items-center gap-2">
+            {isDedicated ? <Pin className="w-4 h-4 text-amber-500" /> : <PinOff className="w-4 h-4 text-muted-foreground" />}
+            <div>
+              <p className="font-medium text-foreground text-xs">تعيين خاص</p>
+              <p className="text-[10px] text-muted-foreground">
+                {isDedicated ? "العميل يعود لنفس الموظف بعد إغلاق المحادثة" : "العميل يعود لغير معين بعد الإغلاق"}
+              </p>
+            </div>
+          </div>
+          <Switch checked={isDedicated} onCheckedChange={setIsDedicated} />
+        </div>
 
         {loading ? (
           <div className="py-8 text-center text-sm text-muted-foreground">جاري التحميل...</div>

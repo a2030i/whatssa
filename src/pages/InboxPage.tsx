@@ -171,6 +171,7 @@ const InboxPage = () => {
           unreadMentionCount: conversation.unread_mention_count || 0,
           isPinned: conversation.is_pinned || false,
           isArchived: conversation.is_archived || false,
+          dedicatedAgentId: conversation.dedicated_agent_id || null,
         };
       });
 

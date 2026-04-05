@@ -994,6 +994,8 @@ export type Database = {
           customer_name: string | null
           customer_phone: string
           customer_profile_pic: string | null
+          dedicated_agent_id: string | null
+          dedicated_agent_name: string | null
           escalated: boolean | null
           escalated_at: string | null
           first_response_at: string | null
@@ -1028,6 +1030,8 @@ export type Database = {
           customer_name?: string | null
           customer_phone: string
           customer_profile_pic?: string | null
+          dedicated_agent_id?: string | null
+          dedicated_agent_name?: string | null
           escalated?: boolean | null
           escalated_at?: string | null
           first_response_at?: string | null
@@ -1062,6 +1066,8 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string
           customer_profile_pic?: string | null
+          dedicated_agent_id?: string | null
+          dedicated_agent_name?: string | null
           escalated?: boolean | null
           escalated_at?: string | null
           first_response_at?: string | null
@@ -1121,6 +1127,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_dedicated_agent_id_fkey"
+            columns: ["dedicated_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {

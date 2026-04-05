@@ -2461,6 +2461,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         currentAssigneeId={conversation.assignedToId}
         currentAssigneeName={conversation.assignedTo}
         onTransfer={onTransfer}
+        currentDedicatedAgentId={conversation.dedicatedAgentId}
       />
 
       {/* Closure Reason Dialog */}
