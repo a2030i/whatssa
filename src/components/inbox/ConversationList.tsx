@@ -315,7 +315,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all border",
                   isActive
                     ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_hsl(var(--primary)/0.25)]"
-                    : "bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:text-foreground hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                    : "bg-card text-muted-foreground border-primary/20 hover:border-primary/40 hover:text-foreground hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
                 )}
               >
                 <qf.icon className="w-3.5 h-3.5" />
