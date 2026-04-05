@@ -303,33 +303,36 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       </div>
 
       {/* Quick Filters */}
-      <div className="shrink-0 px-5 pb-3 overflow-x-auto scrollbar-none">
-        <div className="flex gap-1 w-max">
-          {quickFilters.map((qf) => (
-            <button
-              key={qf.id}
-              onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all",
-                activeQuickFilter === qf.id && !activeCustomInbox
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-muted"
-              )}
-            >
-              <qf.icon className="w-3 h-3" />
-              <span>{qf.label}</span>
-              {(qf.count ?? 0) > 0 && (
-                <span className={cn(
-                  "text-[9px] min-w-[16px] h-4 rounded-full flex items-center justify-center font-semibold px-1",
-                  activeQuickFilter === qf.id && !activeCustomInbox
-                    ? "bg-background/20"
-                    : "bg-muted text-foreground/60"
-                )}>
-                  {qf.count}
-                </span>
-              )}
-            </button>
-          ))}
+      <div className="shrink-0 px-4 pb-3 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1.5 w-max">
+          {quickFilters.map((qf) => {
+            const isActive = activeQuickFilter === qf.id && !activeCustomInbox;
+            return (
+              <button
+                key={qf.id}
+                onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all border",
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_hsl(var(--primary)/0.25)]"
+                    : "bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:text-foreground hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                )}
+              >
+                <qf.icon className="w-3.5 h-3.5" />
+                <span>{qf.label}</span>
+                {(qf.count ?? 0) > 0 && (
+                  <span className={cn(
+                    "text-[9px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1",
+                    isActive
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-primary/10 text-primary"
+                  )}>
+                    {qf.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -385,10 +388,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       )}
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto px-3 pt-1">
+      <div className="flex-1 overflow-y-auto px-3 pt-1 pb-2">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+            <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center mb-3">
               <MessageSquare className="w-6 h-6 opacity-25" />
             </div>
             <p className="text-sm font-medium">{hasListConstraints ? "لا توجد محادثات مطابقة" : "لا توجد محادثات"}</p>
@@ -396,14 +399,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             {hasListConstraints && (
               <button
                 onClick={resetListView}
-                className="mt-3 text-xs px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all font-medium"
+                className="mt-3 text-xs px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all font-medium"
               >
                 عرض كل المحادثات
               </button>
             )}
           </div>
         ) : (
-          <div className="divide-y divide-border/40">
+          <div className="space-y-1">
           {filtered.map((conv) => {
             const isSelected = conv.id === selectedId;
             const countdown = conv.channelType === "meta_api" ? get24hCountdown(conv.lastCustomerMessageAt) : null;
@@ -446,16 +449,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   setTimeout(() => document.addEventListener("click", dismiss), 0);
                 }}
                 className={cn(
-                  "w-full text-right px-3 py-3 transition-all group relative",
+                  "w-full text-right px-3 py-3 rounded-xl transition-all group relative border",
                   isSelected && !bulkMode
-                    ? "bg-primary/[0.07]"
-                    : "hover:bg-muted/60",
-                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/5"
+                    ? "bg-primary/[0.06] border-primary/20 shadow-[0_1px_6px_hsl(var(--primary)/0.08)]"
+                    : "border-transparent hover:bg-card hover:border-border/40 hover:shadow-[0_1px_4px_rgba(0,0,0,0.04)]",
+                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/5 border-primary/15",
+                  hasUnread && !isSelected && "bg-primary/[0.03]"
                 )}
               >
-                {/* 3-part grid: avatar | content | meta */}
                 <div className="flex items-start gap-3">
-                  {/* Bulk checkbox */}
                   {bulkMode && (
                     <div className="flex items-center pt-1.5 shrink-0">
                       {bulkSelected.has(conv.id) ? (
@@ -466,13 +468,16 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                     </div>
                   )}
 
-                  {/* RIGHT: Avatar */}
+                  {/* Avatar */}
                   <div className="relative shrink-0">
                     {conv.profilePic ? (
                       <img
                         src={conv.profilePic}
                         alt={displayName}
-                        className="w-11 h-11 rounded-full object-cover ring-1 ring-border/30"
+                        className={cn(
+                          "w-11 h-11 rounded-full object-cover ring-2 transition-all",
+                          isSelected ? "ring-primary/30" : "ring-border/20"
+                        )}
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                           (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
@@ -480,11 +485,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       />
                     ) : null}
                     <div className={cn(
-                      "w-11 h-11 rounded-full flex items-center justify-center text-[14px] font-semibold",
+                      "w-11 h-11 rounded-full flex items-center justify-center text-[14px] font-semibold transition-all",
                       conv.profilePic ? "hidden" : "",
                       isSelected
-                        ? "bg-primary/12 text-primary"
-                        : "bg-secondary text-secondary-foreground"
+                        ? "bg-primary/12 text-primary ring-2 ring-primary/20"
+                        : "bg-muted text-muted-foreground ring-2 ring-border/20"
                     )}>
                       {conv.conversationType === "group" ? (
                         <Users className="w-4.5 h-4.5" />
@@ -492,49 +497,49 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                         displayName.charAt(0)
                       )}
                     </div>
+                    {hasUnread && (
+                      <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary border-2 border-background" />
+                    )}
                   </div>
 
-                  {/* CENTER: Name + preview */}
+                  {/* Content */}
                   <div className="flex-1 min-w-0">
-                    {/* Row 1: Name */}
                     <p className={cn(
-                      "text-[14px] font-semibold truncate leading-tight flex items-center gap-1",
-                      hasUnread ? "text-foreground" : "text-foreground/80"
+                      "text-[13.5px] truncate leading-tight flex items-center gap-1",
+                      hasUnread ? "font-bold text-foreground" : "font-semibold text-foreground/80"
                     )}>
                       {conv.isPinned && <Pin className="w-2.5 h-2.5 text-primary/50 shrink-0 rotate-45" />}
                       {displayName}
                     </p>
-                    {/* Row 2: Last message preview */}
                     <p className={cn(
-                      "text-[12.5px] truncate leading-snug mt-0.5",
-                      hasUnread ? "text-foreground/60 font-medium" : "text-muted-foreground/70"
+                      "text-[12px] truncate leading-snug mt-1",
+                      hasUnread ? "text-foreground/65 font-medium" : "text-muted-foreground/60"
                     )}>
                       {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                     </p>
-                    {/* Row 3: Channel label */}
                     {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                      <span className="text-[10px] text-primary/50 leading-none mt-1 block truncate max-w-[100px] font-medium">
+                      <span className="text-[10px] text-primary/60 leading-none mt-1 block truncate max-w-[100px] font-medium">
                         {conv.assignedTo.split(" ")[0]}
                       </span>
                     )}
                   </div>
 
-                  {/* LEFT: Timestamp + indicators */}
+                  {/* Meta */}
                   <div className="flex flex-col items-start gap-1.5 shrink-0 pt-0.5 min-w-[50px]">
                     <span className={cn(
-                      "text-[11px] leading-none",
-                      hasUnread ? "text-primary font-semibold" : "text-muted-foreground/50"
+                      "text-[10.5px] leading-none",
+                      hasUnread ? "text-primary font-bold" : "text-muted-foreground/45"
                     )}>
                       {conv.timestamp}
                     </span>
                     <div className="flex items-center gap-1">
                       {hasUnread && (
-                        <span className="min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                        <span className="min-w-[20px] h-[20px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1.5 shadow-[0_1px_4px_hsl(var(--primary)/0.3)]">
                           {conv.unread}
                         </span>
                       )}
                       {hasMention && (
-                        <span className="w-[18px] h-[18px] rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">@</span>
+                        <span className="w-[20px] h-[20px] rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">@</span>
                       )}
                     </div>
                   </div>
