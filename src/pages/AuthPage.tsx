@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,22 @@ const AuthPage = () => {
   const handleEmailNext = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
-    setStep("password");
+    setIsLoading(true);
+    try {
+      const { data, error } = await invokeCloud("check-email-exists", {
+        body: { email: email.trim() },
+      });
+      if (!data?.exists) {
+        toast.error("هذا البريد غير مسجل في النظام — تواصل مع المدير لإضافتك");
+        setIsLoading(false);
+        return;
+      }
+      setStep("password");
+    } catch {
+      // If check fails, proceed anyway
+      setStep("password");
+    }
+    setIsLoading(false);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
