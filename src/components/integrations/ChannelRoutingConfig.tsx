@@ -35,13 +35,14 @@ const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId, 
     load();
   }, [orgId]);
 
-  const handleSave = async (teamId: string | null, agentId: string | null) => {
+  const save = async (teamId: string | null, agentId: string | null, exclSup: boolean) => {
     setSaving(true);
     const { error } = await supabase
       .from("whatsapp_config")
       .update({
         default_team_id: teamId || null,
         default_agent_id: agentId || null,
+        exclude_supervisors: exclSup,
       } as any)
       .eq("id", configId);
     setSaving(false);
