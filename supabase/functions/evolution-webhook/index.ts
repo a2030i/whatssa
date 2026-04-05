@@ -1295,9 +1295,12 @@ serve(async (req) => {
           // Auto-save group sender as customer with real phone
           if (participant && senderName) {
             const isLidPart = participant.includes("@lid");
+            // Only save real phone numbers, never LID identifiers
             const realPhone = (isLidPart && senderPn)
               ? senderPn.replace(/\D/g, "")
-              : participant.replace("@s.whatsapp.net", "").replace("@lid", "");
+              : isLidPart
+                ? "" // Skip — no real phone for this LID
+                : participant.replace("@s.whatsapp.net", "");
             if (realPhone && realPhone.length > 5) {
               try {
                 await supabase.from("customers").upsert({
