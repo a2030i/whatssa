@@ -26,31 +26,65 @@ const AdminEmergency = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
   const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [alertInstance, setAlertInstance] = useState("");
+  const [evolutionChannels, setEvolutionChannels] = useState<{instance: string; phone: string; name: string}[]>([]);
   const [savingPhone, setSavingPhone] = useState(false);
+  const [savingInstance, setSavingInstance] = useState(false);
 
   const EXTERNAL_URL = "https://ovbrrumnqfvtgmqsscat.supabase.co";
   const EXTERNAL_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92YnJydW1ucWZ2dGdtcXNzY2F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzc4ODQsImV4cCI6MjA5MDY1Mzg4NH0.-ed8-nrAbfO1lMm9Rc5bjwsIzmonunVKkcwRY586SrQ";
   const CLOUD_URL = import.meta.env.VITE_SUPABASE_URL;
   const CLOUD_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  // Load emergency phone from system_settings
+  // Load emergency settings from system_settings
   useEffect(() => {
-    supabase.from("system_settings").select("value").eq("key", "emergency_phone").maybeSingle()
+    Promise.all([
+      supabase.from("system_settings").select("value").eq("key", "emergency_phone").maybeSingle(),
+      supabase.from("system_settings").select("value").eq("key", "alert_evolution_instance").maybeSingle(),
+    ]).then(([phoneRes, instanceRes]) => {
+      if (phoneRes.data?.value) setEmergencyPhone(String(phoneRes.data.value));
+      if (instanceRes.data?.value) setAlertInstance(String(instanceRes.data.value));
+    });
+
+    // Load Evolution channels for selection
+    supabase.from("whatsapp_config")
+      .select("evolution_instance_name, display_phone, business_name")
+      .eq("channel_type", "evolution")
+      .eq("is_connected", true)
       .then(({ data }) => {
-        if (data?.value) setEmergencyPhone(String(data.value));
+        setEvolutionChannels(
+          (data || [])
+            .filter((c: any) => c.evolution_instance_name)
+            .map((c: any) => ({
+              instance: c.evolution_instance_name,
+              phone: c.display_phone || "—",
+              name: c.business_name || "",
+            }))
+        );
       });
   }, []);
 
+  const saveSetting = async (key: string, value: string, description: string) => {
+    const { data: existing } = await supabase.from("system_settings").select("key").eq("key", key).maybeSingle();
+    if (existing) {
+      await supabase.from("system_settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key);
+    } else {
+      await supabase.from("system_settings").insert({ key, value, description });
+    }
+  };
+
   const saveEmergencyPhone = async () => {
     setSavingPhone(true);
-    const { data: existing } = await supabase.from("system_settings").select("key").eq("key", "emergency_phone").maybeSingle();
-    if (existing) {
-      await supabase.from("system_settings").update({ value: emergencyPhone, updated_at: new Date().toISOString() }).eq("key", "emergency_phone");
-    } else {
-      await supabase.from("system_settings").insert({ key: "emergency_phone", value: emergencyPhone, description: "رقم الطوارئ لتنبيهات تعطل النظام" });
-    }
+    await saveSetting("emergency_phone", emergencyPhone, "رقم الطوارئ لتنبيهات تعطل النظام");
     toast.success("تم حفظ رقم الطوارئ");
     setSavingPhone(false);
+  };
+
+  const saveAlertInstance = async () => {
+    setSavingInstance(true);
+    await saveSetting("alert_evolution_instance", alertInstance, "اسم Instance الواتساب لإرسال تنبيهات الطوارئ");
+    toast.success("تم حفظ رقم الإرسال");
+    setSavingInstance(false);
   };
 
   const checkExternalDB = async () => {

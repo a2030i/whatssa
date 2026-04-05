@@ -74,19 +74,28 @@ Deno.serve(async (req) => {
     // table might not exist yet, that's fine
   }
 
-  // If external DB is DOWN, send alert via Evolution API (WhatsApp) if configured
+  // If external DB is DOWN, send alert via Evolution API (WhatsApp)
   if (!results.db_reachable || !results.auth_reachable) {
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
 
     if (EVOLUTION_URL && EVOLUTION_KEY) {
-      // Try to get admin phone from external DB (will fail if DB is down)
-      // So we use a hardcoded alert phone if available
-      const ALERT_PHONE = Deno.env.get("ALERT_PHONE_NUMBER");
-      const ALERT_INSTANCE = Deno.env.get("ALERT_EVOLUTION_INSTANCE");
+      try {
+        // Read alert phone and instance from Cloud system_settings
+        const { data: settings } = await cloudSupabase
+          .from("system_settings")
+          .select("key, value")
+          .in("key", ["emergency_phone", "alert_evolution_instance"]);
 
-      if (ALERT_PHONE && ALERT_INSTANCE) {
-        try {
+        const settingsMap: Record<string, string> = {};
+        for (const s of settings || []) {
+          settingsMap[s.key] = String(s.value);
+        }
+
+        const alertPhone = settingsMap["emergency_phone"];
+        const alertInstance = settingsMap["alert_evolution_instance"];
+
+        if (alertPhone && alertInstance) {
           const message = `🚨 تنبيه طوارئ - النظام متوقف!\n\n` +
             `⏰ الوقت: ${new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}\n` +
             `🔴 قاعدة البيانات: ${results.db_reachable ? "تعمل" : "متوقفة"}\n` +
@@ -94,20 +103,28 @@ Deno.serve(async (req) => {
             `⏱️ زمن الفحص: ${results.latency_ms}ms\n\n` +
             `يرجى التحقق فوراً من لوحة Supabase.`;
 
-          await fetch(`${EVOLUTION_URL}/message/sendText/${ALERT_INSTANCE}`, {
+          await fetch(`${EVOLUTION_URL}/message/sendText/${alertInstance}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               apikey: EVOLUTION_KEY,
             },
             body: JSON.stringify({
-              number: ALERT_PHONE,
+              number: alertPhone,
               text: message,
             }),
           });
-        } catch {
-          // Alert sending failed too
+
+          results.alert_sent = true;
+          results.alert_phone = alertPhone;
+          results.alert_instance = alertInstance;
+        } else {
+          results.alert_sent = false;
+          results.alert_reason = !alertPhone ? "no_emergency_phone" : "no_alert_instance";
         }
+      } catch (e: any) {
+        results.alert_sent = false;
+        results.alert_error = e.message;
       }
     }
   }
