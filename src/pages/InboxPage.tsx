@@ -44,6 +44,7 @@ const InboxPage = () => {
   const [loading, setLoading] = useState(true);
   const [newConvOpen, setNewConvOpen] = useState(false);
   const [mobileCustomerInfoOpen, setMobileCustomerInfoOpen] = useState(false);
+  const [desktopInfoOpen, setDesktopInfoOpen] = useState(false);
   const selectedIdRef = useRef<string | null>(null);
   const deepLinkApplied = useRef(false);
 
