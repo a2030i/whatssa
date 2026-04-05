@@ -87,8 +87,11 @@ const TeamPage = () => {
   };
 
   const getStoredRole = (userId: string) => {
-    const r = roles.find((x) => x.user_id === userId);
-    return r?.role || null;
+    const userRoles = roles.filter((x) => x.user_id === userId).map((x) => x.role);
+    if (userRoles.includes("super_admin")) return "super_admin";
+    if (userRoles.includes("admin")) return "admin";
+    if (userRoles.includes("member")) return "member";
+    return null;
   };
 
   const getDisplayRole = (profile: any) => {
