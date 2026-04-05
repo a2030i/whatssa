@@ -49,7 +49,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
-      <AppSidebar />
+      {isAdmin && <AppSidebar />}
 
       {/* Impersonation Banner */}
       {isImpersonating && (
