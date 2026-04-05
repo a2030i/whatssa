@@ -1402,9 +1402,12 @@ serve(async (req) => {
       });
       const delData = await delRes.json();
       if (delRes.ok) {
+        // Merge with existing metadata
+        const { data: delMsgData } = await adminClient.from("messages").select("metadata").eq("wa_message_id", delMsgId).maybeSingle();
+        const delExistingMeta = (delMsgData?.metadata as Record<string, unknown>) || {};
         await adminClient.from("messages").update({
           content: "تم حذف هذه الرسالة",
-          metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
+          metadata: { ...delExistingMeta, is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: profile?.full_name || userId },
         }).eq("wa_message_id", delMsgId);
         await logToSystem(adminClient, "info", `تم حذف رسالة`, { message_id: delMsgId }, orgId, userId);
       }
