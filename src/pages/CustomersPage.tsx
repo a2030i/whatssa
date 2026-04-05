@@ -288,26 +288,6 @@ const CustomersPage = () => {
         </div>
       </div>
 
-      {/* Stage summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in">
-        {stageCounts.map((s) => (
-          <button
-            key={s.value}
-            onClick={() => setStageFilter(stageFilter === s.value ? "all" : s.value)}
-            className={`group rounded-2xl p-4 text-right transition-all duration-200 border backdrop-blur-sm ${
-              stageFilter === s.value ? "ring-2 ring-primary border-primary/30 bg-primary/5" : "border-border/40 hover:border-primary/30 bg-card/70"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-xl bg-secondary/60 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <s.icon className="w-4 h-4 text-muted-foreground" />
-              </div>
-              <span className="text-2xl font-black">{s.count}</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2 font-medium">{s.label}</p>
-          </button>
-        ))}
-      </div>
 
       <div className="relative max-w-sm">
         <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
