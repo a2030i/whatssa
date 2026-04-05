@@ -10,7 +10,7 @@ const roleLabels: Record<string, string> = {
   admin: "مدير",
   super_admin: "مدير النظام",
   supervisor: "مشرف",
-  member: "عضو",
+  member: "موظف",
 };
 
 const MobileBottomNav = () => {
