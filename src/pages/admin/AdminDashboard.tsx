@@ -47,6 +47,7 @@ const AdminDashboard = () => {
       case "baileys": return <AdminBaileys />;
       case "logs": return <AdminLogs />;
       case "settings": return <AdminSettings />;
+      case "emergency": return <AdminEmergency />;
       default: return <AdminOverview />;
     }
   };
