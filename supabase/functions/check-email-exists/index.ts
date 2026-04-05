@@ -24,7 +24,25 @@ Deno.serve(async (req) => {
     
     const found = users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase().trim());
 
-    return new Response(JSON.stringify({ exists: !!found }), {
+    if (!found) {
+      return new Response(JSON.stringify({ exists: false }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Fetch profile and roles for richer info
+    const [profileRes, rolesRes] = await Promise.all([
+      adminClient.from("profiles").select("full_name, org_id, is_supervisor, team_id, is_active").eq("id", found.id).maybeSingle(),
+      adminClient.from("user_roles").select("role").eq("user_id", found.id),
+    ]);
+
+    return new Response(JSON.stringify({
+      exists: true,
+      user_id: found.id,
+      email: found.email,
+      profile: profileRes.data || null,
+      roles: (rolesRes.data || []).map((r: any) => r.role),
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
