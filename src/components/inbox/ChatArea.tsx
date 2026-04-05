@@ -523,12 +523,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             {msg.quoted && msg.quoted.text && (
               <div
                 onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
-                className={cn(
-                  "rounded-xl px-3 py-2 mb-2 border-r-4 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity",
-                  msg.sender === "customer"
-                    ? "bg-white/15 border-white/50"
-                    : "bg-secondary/80 border-primary/40"
-                )}>
+                 className={cn(
+                   "rounded-lg px-3 py-2 mb-2 border-r-3 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity",
+                   msg.sender === "customer"
+                     ? "bg-white/12 border-white/40"
+                     : "bg-secondary/60 border-primary/30"
+                 )}>
                 {msg.quoted.sender_name && (
                   <p className={cn(
                     "text-[11px] font-bold mb-0.5",
