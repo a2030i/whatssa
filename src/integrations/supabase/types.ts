@@ -1582,6 +1582,33 @@ export type Database = {
           },
         ]
       }
+      health_check_logs: {
+        Row: {
+          created_at: string
+          id: string
+          latency_ms: number | null
+          metadata: Json | null
+          service: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json | null
+          service?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json | null
+          service?: string
+          status?: string
+        }
+        Relationships: []
+      }
       internal_notes: {
         Row: {
           author_id: string
