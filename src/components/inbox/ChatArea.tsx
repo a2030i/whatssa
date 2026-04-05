@@ -1920,13 +1920,31 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {showAvatar ? (
                   msg.sender === "customer" ? (
                     <div className="shrink-0 mb-1">
-                      {conversation.profilePic ? (
-                        <img src={conversation.profilePic} alt="" className="w-8 h-8 rounded-xl object-cover ring-1 ring-border/20 shadow-sm" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary ring-1 ring-primary/10">
-                          {(conversation.customerName || "؟").slice(0, 1)}
-                        </div>
-                      )}
+                      {(() => {
+                        // In groups, resolve per-sender avatar
+                        if (isGroup) {
+                          const rawPhone = msg.senderPhone || (msg.senderJid ? msg.senderJid.replace(/@.*/, "").replace(/\D/g, "") : "");
+                          const participant = rawPhone ? groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone)))) : undefined;
+                          const displayName = participant?.name || msg.senderName || rawPhone || "؟";
+                          const initials = displayName.slice(0, 2);
+                          // Generate a consistent color based on phone/name
+                          const hash = (rawPhone || displayName).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+                          const hue = hash % 360;
+                          return (
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold text-white ring-1 ring-border/20 shadow-sm" style={{ backgroundColor: `hsl(${hue}, 50%, 45%)` }}>
+                              {initials}
+                            </div>
+                          );
+                        }
+                        // Non-group: use conversation profile pic
+                        return conversation.profilePic ? (
+                          <img src={conversation.profilePic} alt="" className="w-8 h-8 rounded-xl object-cover ring-1 ring-border/20 shadow-sm" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary ring-1 ring-primary/10">
+                            {(conversation.customerName || "؟").slice(0, 1)}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div className="shrink-0 mb-1">
