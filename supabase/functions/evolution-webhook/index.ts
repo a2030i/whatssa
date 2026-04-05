@@ -1124,7 +1124,7 @@ serve(async (req) => {
                         ? String(rawParticipantId).replace(/\D/g, "")
                         : "");
                     const memberName = chooseBestContactName(p.pushName, p.name, p.notify) || null;
-                    if (memberPhone && memberPhone.length >= 8 && memberPhone.length <= 15) {
+                    if (memberPhone && memberPhone.length === 12) {
                       try {
                         await supabase.from("customers").upsert({
                           org_id: orgId,
