@@ -182,7 +182,8 @@ serve(async (req) => {
       const config = configResult.data;
       if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
 
-      const remoteJid = to.includes("@") ? to : `${to}@s.whatsapp.net`;
+      const isGroup = to.includes("@g.us") || (!to.includes("@") && to.length > 15);
+      const remoteJid = to.includes("@") ? to : isGroup ? `${to}@g.us` : `${to.replace(/\D/g, "")}@s.whatsapp.net`;
       const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
       const instanceName = config.evolution_instance_name;
 
@@ -252,7 +253,8 @@ serve(async (req) => {
       if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
 
       const cleanPhone = to.replace(/\D/g, "");
-      let remoteJid = to.includes("@") ? to : `${cleanPhone}@s.whatsapp.net`;
+      const isGroupEdit = to.includes("@g.us") || (!to.includes("@") && cleanPhone.length > 15);
+      let remoteJid = to.includes("@") ? to : isGroupEdit ? `${cleanPhone}@g.us` : `${cleanPhone}@s.whatsapp.net`;
 
       try {
         const statusEndpoints = [
@@ -364,8 +366,8 @@ serve(async (req) => {
     const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
 
     // Determine the correct remoteJid for groups
-    const isGroup = to.includes("@g.us");
-    const remoteJid = isGroup ? to : to.includes("@") ? to : `${to}@s.whatsapp.net`;
+    const isGroup = to.includes("@g.us") || (!to.includes("@") && to.replace(/\D/g, "").length > 15);
+    const remoteJid = isGroup ? (to.includes("@") ? to : `${to}@g.us`) : to.includes("@") ? to : `${to.replace(/\D/g, "")}@s.whatsapp.net`;
 
     let waMessageId: string | null = null;
     let sentContent = message || "";
