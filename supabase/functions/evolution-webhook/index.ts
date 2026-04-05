@@ -411,7 +411,7 @@ serve(async (req) => {
     const instanceName = body.instance || body.instanceName || "";
 
     // Find the config for this instance — try primary DB first
-    const { data: config, error: configError } = await supabase
+    const { data: primaryConfig, error: configError } = await supabase
       .from("whatsapp_config")
       .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
       .eq("evolution_instance_name", instanceName)
@@ -419,8 +419,8 @@ serve(async (req) => {
       .maybeSingle();
 
     // If not found on primary DB, try the other DB
-    let finalConfig = config;
-    if (!config && externalUrl && cloudUrl && externalUrl !== cloudUrl) {
+    let resolvedConfig = primaryConfig;
+    if (!primaryConfig && externalUrl && cloudUrl && externalUrl !== cloudUrl) {
       const fallbackClient = createClient(cloudUrl, cloudKey);
       const { data: fallbackConfig } = await fallbackClient
         .from("whatsapp_config")
@@ -429,15 +429,15 @@ serve(async (req) => {
         .eq("channel_type", "evolution")
         .maybeSingle();
       if (fallbackConfig) {
-        // Use Cloud DB as the main client for this request
         supabase = fallbackClient;
-        finalConfig = fallbackConfig;
+        resolvedConfig = fallbackConfig;
         console.log(`[evolution-webhook] Config found in Cloud DB for instance: ${instanceName}`);
       }
     }
 
-    if (!finalConfig) {
+    if (!resolvedConfig) {
       const dbUsed = externalUrl ? externalUrl.replace(/https?:\/\//, "").split(".")[0] : "cloud";
+      console.error(`[evolution-webhook] Config NOT found for ${instanceName}. DB: ${dbUsed}, error: ${configError?.message || "none"}`);
       await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, {
         event, instance: instanceName,
         db_used: dbUsed,
@@ -448,7 +448,7 @@ serve(async (req) => {
       });
     }
 
-    const config = finalConfig!;
+    const config = resolvedConfig;
 
     const orgId = config.org_id;
 
