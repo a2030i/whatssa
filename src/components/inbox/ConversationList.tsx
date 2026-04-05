@@ -315,7 +315,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all border",
                   isActive
                     ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_hsl(var(--primary)/0.25)]"
-                    : "bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:text-foreground hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                    : "bg-card text-muted-foreground border-primary/20 hover:border-primary/40 hover:text-foreground hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
                 )}
               >
                 <qf.icon className="w-3.5 h-3.5" />
@@ -388,7 +388,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       )}
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto px-3 pt-1 pb-2 border-t border-border/40">
+      <div className="flex-1 overflow-y-auto px-3 pt-1 pb-2 border-t border-primary/15">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center mb-3">
@@ -406,7 +406,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             )}
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-primary/15">
           {filtered.map((conv) => {
             const isSelected = conv.id === selectedId;
             const countdown = conv.channelType === "meta_api" ? get24hCountdown(conv.lastCustomerMessageAt) : null;
