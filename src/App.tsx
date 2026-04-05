@@ -44,6 +44,8 @@ import LockedFeaturesPage from "./pages/LockedFeaturesPage";
 import LandingPage from "./pages/LandingPage";
 import TasksPage from "./pages/TasksPage";
 import ForceChangePasswordPage from "./pages/ForceChangePasswordPage";
+import SystemStatusPage from "./pages/SystemStatusPage";
+import EmergencyAdminPage from "./pages/EmergencyAdminPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -136,6 +138,8 @@ const AppRoutes = () => {
       <Route path="/locked-features" element={<ProtectedRoute><AppLayout><LockedFeaturesPage /></AppLayout></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><AppLayout><TasksPage /></AppLayout></ProtectedRoute>} />
       <Route path="/tracking" element={<TrackingPage />} />
+      <Route path="/system-status" element={<SystemStatusPage />} />
+      <Route path="/emergency-admin" element={<EmergencyAdminPage />} />
       
       <Route path="*" element={<NotFound />} />
       <Route path="*" element={<NotFound />} />
