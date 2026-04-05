@@ -485,18 +485,18 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         </div>
       )}
       <div className={cn(
-        "rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-full backdrop-blur-sm",
+        "rounded-2xl px-4 py-3 text-[14px] leading-relaxed max-w-full",
         msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3.5",
         msg.isDeleted
-          ? "bg-muted/30 border border-dashed border-border/30 text-muted-foreground italic"
+          ? "bg-muted/30 border border-dashed border-border/20 text-muted-foreground italic"
           : msg.type === "note"
-            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 text-foreground rounded-bl-sm shadow-sm"
+            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/40 dark:border-amber-500/15 text-foreground rounded-bl-sm"
             : msg.sender === "agent"
-              ? "bg-card border border-border/30 shadow-sm text-foreground rounded-bl-sm"
+              ? "bg-card text-foreground rounded-bl-sm"
               : msg.mentioned && msg.mentioned.length > 0
-                ? "bg-primary text-primary-foreground rounded-br-sm shadow-md ring-2 ring-primary/30"
-                : "bg-primary text-primary-foreground rounded-br-sm shadow-md border border-primary/20"
-      )}>
+                ? "bg-primary/90 text-primary-foreground rounded-br-sm"
+                : "bg-primary/90 text-primary-foreground rounded-br-sm"
+      )} style={msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" ? { boxShadow: 'var(--shadow-xs)' } : undefined}>
         {msg.isDeleted ? (
           <div className="flex items-center gap-1.5 text-xs opacity-70">
             <XCircle className="w-3.5 h-3.5" />
