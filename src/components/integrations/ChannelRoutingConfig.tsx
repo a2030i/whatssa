@@ -57,14 +57,19 @@ const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId, 
     const v = val === "none" ? "" : val;
     setSelectedTeamId(v);
     if (v) setSelectedAgentId("");
-    handleSave(v || null, v ? null : selectedAgentId || null);
+    save(v || null, v ? null : selectedAgentId || null, excludeSupervisors);
   };
 
   const handleAgentChange = (val: string) => {
     const v = val === "none" ? "" : val;
     setSelectedAgentId(v);
-    if (v) setSelectedTeamId("");
-    handleSave(v ? null : selectedTeamId || null, v || null);
+    if (v) { setSelectedTeamId(""); setExcludeSupervisors(false); }
+    save(v ? null : selectedTeamId || null, v || null, v ? false : excludeSupervisors);
+  };
+
+  const handleExcludeToggle = (checked: boolean) => {
+    setExcludeSupervisors(checked);
+    save(selectedTeamId || null, selectedAgentId || null, checked);
   };
 
   return (
