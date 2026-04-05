@@ -1566,7 +1566,7 @@ serve(async (req) => {
 
           // Delay between messages to avoid ban
           if (groupIds.indexOf(groupId) < groupIds.length - 1) {
-            await delay(delayMs);
+            await groupDelay(delayMs);
           }
         } catch (e) {
           results.push({ group_id: groupId, success: false, error: (e as Error).message });
