@@ -694,6 +694,7 @@ const IntegrationsPage = () => {
                   orgId={orgId}
                   defaultTeamId={(config as any).default_team_id}
                   defaultAgentId={(config as any).default_agent_id}
+                  excludeSupervisors={(config as any).exclude_supervisors}
                 />
               </div>
             )}
