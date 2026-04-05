@@ -1948,6 +1948,51 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         )}
       </div>
 
+      {/* Mobile Quick Action Toolbar */}
+      <div className="md:hidden flex items-center overflow-x-auto scrollbar-none border-b border-border/20 bg-card/80 shrink-0">
+        {conversation.status !== "closed" ? (
+          <button
+            onClick={() => setShowClosureReason(true)}
+            className="flex items-center gap-1 px-3 py-2 text-[11px] font-medium text-destructive whitespace-nowrap hover:bg-destructive/5 transition-colors border-l border-border/20"
+          >
+            <XCircle className="w-3.5 h-3.5" />
+            <span>إغلاق المحادثة</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => { onStatusChange(conversation.id, "active"); toast.success("تم إعادة فتح المحادثة"); }}
+            className="flex items-center gap-1 px-3 py-2 text-[11px] font-medium text-success whitespace-nowrap hover:bg-success/5 transition-colors border-l border-border/20"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>إعادة فتح</span>
+          </button>
+        )}
+        {onShowCustomerInfo && (
+          <button onClick={onShowCustomerInfo} className="px-3 py-2 text-muted-foreground hover:bg-secondary transition-colors">
+            <Contact className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <button
+          onClick={() => setShowMessageSearch(!showMessageSearch)}
+          className={cn("px-3 py-2 transition-colors", showMessageSearch ? "text-primary bg-primary/5" : "text-muted-foreground hover:bg-secondary")}
+        >
+          <SearchIcon className="w-3.5 h-3.5" />
+        </button>
+        <button onClick={() => setShowTagInput(!showTagInput)} className="px-3 py-2 text-muted-foreground hover:bg-secondary transition-colors">
+          <Tag className="w-3.5 h-3.5" />
+        </button>
+        {conversation.status !== "closed" && (
+          <>
+            <button onClick={() => setShowTransfer(true)} className="px-3 py-2 text-muted-foreground hover:bg-secondary transition-colors">
+              <UserPlus className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => setShowFollowUp(true)} className="px-3 py-2 text-muted-foreground hover:bg-secondary transition-colors">
+              <Clock className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Message Search Bar */}
       {showMessageSearch && (
         <MessageSearch
