@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Search, Plus, Upload, Download, UserPlus, X, Tag, Edit2, Trash2, Filter, User, UserCheck, UserX, Users } from "lucide-react";
+import { Search, Plus, Upload, Download, UserPlus, X, Tag, Edit2, Trash2, Filter, Users } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
