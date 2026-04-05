@@ -1927,11 +1927,46 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                           const participant = rawPhone ? groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone)))) : undefined;
                           const displayName = participant?.name || msg.senderName || rawPhone || "؟";
                           const initials = displayName.slice(0, 2);
-                          // Generate a consistent color based on phone/name
                           const hash = (rawPhone || displayName).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
                           const hue = hash % 360;
+                          const handleAvatarClick = async () => {
+                            if (!rawPhone) return;
+                            // Try to find existing private conversation with this phone
+                            const { data: existingConv } = await supabase
+                              .from("conversations")
+                              .select("id")
+                              .eq("org_id", orgId)
+                              .eq("customer_phone", rawPhone)
+                              .eq("conversation_type", "private")
+                              .limit(1)
+                              .maybeSingle();
+                            if (existingConv) {
+                              // Navigate to existing conversation
+                              window.location.href = `/inbox?conversation=${existingConv.id}`;
+                            } else {
+                              // Try with + prefix or suffix matching
+                              const { data: altConv } = await supabase
+                                .from("conversations")
+                                .select("id, customer_phone")
+                                .eq("org_id", orgId)
+                                .eq("conversation_type", "private")
+                                .like("customer_phone", `%${rawPhone.slice(-9)}%`)
+                                .limit(1)
+                                .maybeSingle();
+                              if (altConv) {
+                                window.location.href = `/inbox?conversation=${altConv.id}`;
+                              } else {
+                                toast.info(`لا توجد محادثة خاصة مع ${displayName} (${rawPhone})`);
+                              }
+                            }
+                          };
                           return (
-                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold text-white ring-1 ring-border/20 shadow-sm" style={{ backgroundColor: `hsl(${hue}, 50%, 45%)` }}>
+                            <div
+                              onClick={handleAvatarClick}
+                              className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold text-white ring-1 ring-border/20 shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                              style={{ backgroundColor: `hsl(${hue}, 50%, 45%)` }}
+                              title={`${displayName}${rawPhone ? ` • +${rawPhone}` : ""}`}
+                            >
                               {initials}
                             </div>
                           );
