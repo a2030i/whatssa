@@ -543,45 +543,55 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         );
 
         // Text rendering function
-        const renderText = (text: string) => (
-          <p className="whitespace-pre-wrap leading-[1.65]">
-            {text.split(/((?:^|(?<=\s))@\+?[\u0600-\u06FF\w\d]+)/g).map((part, i) => {
-              if (!part.startsWith("@") && !part.startsWith(" @") && !part.startsWith("\n@")) return <span key={i}>{part}</span>;
-              const trimmed = part.trimStart();
-              if (!trimmed.startsWith("@")) return <span key={i}>{part}</span>;
-              const mentionRaw = trimmed.slice(1).replace(/^\+/, "");
-              const isPhone = /^\d{6,}$/.test(mentionRaw);
-              // Skip if it looks like part of an email
-              if (!isPhone && /^[a-zA-Z0-9._-]+$/.test(mentionRaw) && !mentionRaw.match(/[\u0600-\u06FF]/)) {
-                return <span key={i}>{part}</span>;
-              }
-              let displayLabel = trimmed;
-              if (isPhone) {
-                if (conversation.conversationType === "group" && groupParticipants?.length) {
-                  const participant = groupParticipants.find(p => p.phone === mentionRaw || p.rawDigits === mentionRaw);
-                  if (participant?.name && participant.name !== participant.phone && participant.name !== participant.rawDigits) {
-                    displayLabel = `@${participant.name}`;
-                  } else {
-                    displayLabel = `@+${mentionRaw}`;
-                  }
+        const renderText = (text: string) => {
+          // Split on mentions: @ followed by phone/name, but NOT inside emails
+          const parts: React.ReactNode[] = [];
+          // Use a regex that matches standalone mentions (not preceded by alphanumeric/dot)
+          const mentionRegex = /(?:^|(?<=[\s\n]))(@\+?[\u0600-\u06FF\w\d]+)/g;
+          let lastIndex = 0;
+          let match;
+          const textStr = text;
+          while ((match = mentionRegex.exec(textStr)) !== null) {
+            const mentionFull = match[1];
+            const mentionRaw = mentionFull.slice(1).replace(/^\+/, "");
+            // Skip email-like patterns (pure latin like @gmail, @yahoo)
+            const isPhone = /^\d{6,}$/.test(mentionRaw);
+            const isArabic = /[\u0600-\u06FF]/.test(mentionRaw);
+            if (!isPhone && !isArabic) {
+              continue; // skip, it's probably part of an email
+            }
+            // Add text before this mention
+            if (match.index > lastIndex) {
+              parts.push(<span key={`t${lastIndex}`}>{textStr.slice(lastIndex, match.index)}</span>);
+            }
+            let displayLabel = mentionFull;
+            if (isPhone) {
+              if (conversation.conversationType === "group" && groupParticipants?.length) {
+                const participant = groupParticipants.find(p => p.phone === mentionRaw || p.rawDigits === mentionRaw);
+                if (participant?.name && participant.name !== participant.phone && participant.name !== participant.rawDigits) {
+                  displayLabel = `@${participant.name}`;
                 } else {
                   displayLabel = `@+${mentionRaw}`;
                 }
+              } else {
+                displayLabel = `@+${mentionRaw}`;
               }
-              const prefix = part.slice(0, part.length - trimmed.length);
-              return (
-                <span key={i}>
-                  {prefix}
-                  <span className={cn(
-                    "font-semibold px-1 py-0.5 rounded",
-                    msg.sender === "customer"
-                      ? "bg-white/20 text-white"
-                      : "bg-primary/10 text-primary"
-                  )}>{displayLabel}</span>
-                </span>
-              );
-            })}
-          </p>
+            }
+            parts.push(
+              <span key={`m${match.index}`} className={cn(
+                "font-semibold px-1 py-0.5 rounded",
+                msg.sender === "customer"
+                  ? "bg-white/20 text-white"
+                  : "bg-primary/10 text-primary"
+              )}>{displayLabel}</span>
+            );
+            lastIndex = match.index + match[0].length;
+          }
+          if (lastIndex < textStr.length) {
+            parts.push(<span key={`t${lastIndex}`}>{textStr.slice(lastIndex)}</span>);
+          }
+          return <p className="whitespace-pre-wrap leading-[1.65]">{parts.length > 0 ? parts : text}</p>;
+        };
         );
 
         // Translation element
