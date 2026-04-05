@@ -303,33 +303,36 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       </div>
 
       {/* Quick Filters */}
-      <div className="shrink-0 px-5 pb-3 overflow-x-auto scrollbar-none">
-        <div className="flex gap-1 w-max">
-          {quickFilters.map((qf) => (
-            <button
-              key={qf.id}
-              onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all",
-                activeQuickFilter === qf.id && !activeCustomInbox
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-muted"
-              )}
-            >
-              <qf.icon className="w-3 h-3" />
-              <span>{qf.label}</span>
-              {(qf.count ?? 0) > 0 && (
-                <span className={cn(
-                  "text-[9px] min-w-[16px] h-4 rounded-full flex items-center justify-center font-semibold px-1",
-                  activeQuickFilter === qf.id && !activeCustomInbox
-                    ? "bg-background/20"
-                    : "bg-muted text-foreground/60"
-                )}>
-                  {qf.count}
-                </span>
-              )}
-            </button>
-          ))}
+      <div className="shrink-0 px-4 pb-3 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1.5 w-max">
+          {quickFilters.map((qf) => {
+            const isActive = activeQuickFilter === qf.id && !activeCustomInbox;
+            return (
+              <button
+                key={qf.id}
+                onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all border",
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_hsl(var(--primary)/0.25)]"
+                    : "bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:text-foreground hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                )}
+              >
+                <qf.icon className="w-3.5 h-3.5" />
+                <span>{qf.label}</span>
+                {(qf.count ?? 0) > 0 && (
+                  <span className={cn(
+                    "text-[9px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1",
+                    isActive
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-primary/10 text-primary"
+                  )}>
+                    {qf.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
