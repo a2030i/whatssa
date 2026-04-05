@@ -1737,6 +1737,36 @@ serve(async (req) => {
       }
     }
 
+    // ── Handle MESSAGES_DELETE (customer deleted a message) ──
+    if (event === "MESSAGES_DELETE" || event === "messages.delete") {
+      const deleteData = body.data || body;
+      // Evolution v2.3.7 sends: { key: { remoteJid, fromMe, id }, ... } or array
+      const deleteItems = Array.isArray(deleteData) ? deleteData : [deleteData];
+
+      for (const item of deleteItems) {
+        const waMessageId = item?.key?.id || item?.id || item?.messageId || item?.keyId;
+        if (!waMessageId) continue;
+
+        const { data: existingMsg } = await supabase
+          .from("messages")
+          .select("id")
+          .eq("wa_message_id", waMessageId)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingMsg) {
+          await supabase.from("messages").update({
+            content: "تم حذف هذه الرسالة",
+            metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
+          }).eq("id", existingMsg.id);
+
+          await logToSystem(supabase, "info", `رسالة محذوفة من العميل`, {
+            wa_message_id: waMessageId,
+          }, orgId);
+        }
+      }
+    }
+
     // ── Handle Reactions (v2.3.7: reactions come inside MESSAGES_UPSERT, no separate event) ──
     if (event === "MESSAGES_REACTION" || event === "messages.reaction") {
       const reactionData = body.data || body;
