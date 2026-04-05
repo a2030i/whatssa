@@ -332,10 +332,12 @@ serve(async (req) => {
         return json({ error: errData?.message || errData?.response?.message || "فشل تعديل الرسالة" }, editRes.status);
       }
 
-      // Update in DB
+      // Update in DB — merge with existing metadata
+      const { data: editMsgData } = await adminClient.from("messages").select("metadata").eq("wa_message_id", edit_message_id).maybeSingle();
+      const editExistingMeta = (editMsgData?.metadata as Record<string, unknown>) || {};
       await adminClient.from("messages").update({
         content: message,
-        metadata: { is_edited: true, edited_at: new Date().toISOString() },
+        metadata: { ...editExistingMeta, is_edited: true, edited_at: new Date().toISOString(), edited_by: profile?.full_name || user.id },
       }).eq("wa_message_id", edit_message_id);
 
       return json({ success: true, edited: true });
