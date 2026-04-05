@@ -24,12 +24,6 @@ const isLikelyRealCustomerPhone = (phone?: string | null) => {
   return true;
 };
 
-const LIFECYCLE_STAGES = [
-  { value: "lead", label: "عميل محتمل", icon: User, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  { value: "qualified", label: "مؤهل", icon: UserCheck, color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  { value: "customer", label: "عميل فعلي", icon: Users, color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  { value: "lost", label: "خسرناه", icon: UserX, color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-];
 
 const CustomersPage = () => {
   const { orgId } = useAuth();
