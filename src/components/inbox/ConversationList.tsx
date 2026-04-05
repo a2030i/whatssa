@@ -503,18 +503,18 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0" style={{ writingMode: "horizontal-tb" }}>
                     <p className={cn(
-                      "text-[13.5px] truncate leading-tight flex items-center gap-1",
+                      "text-[13.5px] leading-tight flex items-center gap-1",
                       hasUnread ? "font-bold text-foreground" : "font-semibold text-foreground/80"
-                    )}>
+                    )} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "normal", overflowWrap: "normal" }}>
                       {conv.isPinned && <Pin className="w-2.5 h-2.5 text-primary/50 shrink-0 rotate-45" />}
-                      {displayName}
+                      <span className="truncate">{displayName}</span>
                     </p>
                     <p className={cn(
                       "text-[12px] truncate leading-snug mt-1",
                       hasUnread ? "text-foreground/65 font-medium" : "text-muted-foreground/60"
-                    )}>
+                    )} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "normal", overflowWrap: "normal" }}>
                       {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                     </p>
                     {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
