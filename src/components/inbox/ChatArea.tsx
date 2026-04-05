@@ -2024,7 +2024,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                         }
                         // Non-group: use conversation profile pic
                         return conversation.profilePic ? (
-                          <img src={conversation.profilePic} alt="" className="w-8 h-8 rounded-xl object-cover ring-1 ring-border/20 shadow-sm" />
+                          <img src={conversation.profilePic} alt="" className="w-8 h-8 rounded-full object-cover" />
                         ) : (
                           <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary ring-1 ring-primary/10">
                             {(conversation.customerName || "؟").slice(0, 1)}
