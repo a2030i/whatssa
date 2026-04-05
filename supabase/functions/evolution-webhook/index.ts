@@ -1088,7 +1088,7 @@ serve(async (req) => {
             if (newConv && config.default_team_id && !config.default_agent_id) {
               try {
                 await supabase.functions.invoke("auto-assign", {
-                  body: { conversation_id: newConv.id, org_id: orgId, message_text: text || "", exclude_supervisors: !!(config as any).exclude_supervisors },
+                  body: { conversation_id: newConv.id, org_id: orgId, message_text: text || "", exclude_supervisors: false },
                 });
               } catch (_) {
                 await logToSystem(supabase, "warn", "فشل التعيين التلقائي (Evolution)", { conversation_id: newConv?.id }, orgId);
