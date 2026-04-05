@@ -702,7 +702,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             <div className="flex flex-col gap-1">
               {/* Group sender label */}
               {groupSenderEl && (
-                <span className="text-[10px] font-semibold text-muted-foreground/60 mb-0.5">{groupSenderEl}</span>
+                <span className="text-[10.5px] font-bold text-muted-foreground/70">{groupSenderEl}</span>
               )}
               {/* Quoted message */}
               {quotedEl}
