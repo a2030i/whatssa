@@ -133,11 +133,18 @@ const TasksPage = () => {
   };
 
   const fetchAgents = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("profiles")
-      .select("id, full_name")
+      .select("id, full_name, team_id")
       .eq("org_id", profile!.org_id!)
       .eq("is_active", true);
+    
+    // Supervisors only see their team members
+    if (effectiveRole === "supervisor" && profile?.team_id) {
+      query = query.eq("team_id", profile.team_id);
+    }
+    
+    const { data } = await query;
     setAgents(data || []);
   };
 
