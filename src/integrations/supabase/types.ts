@@ -3314,6 +3314,7 @@ export type Database = {
           display_phone: string | null
           evolution_instance_name: string | null
           evolution_instance_status: string | null
+          exclude_supervisors: boolean | null
           health_status: Json | null
           id: string
           is_connected: boolean | null
@@ -3361,6 +3362,7 @@ export type Database = {
           display_phone?: string | null
           evolution_instance_name?: string | null
           evolution_instance_status?: string | null
+          exclude_supervisors?: boolean | null
           health_status?: Json | null
           id?: string
           is_connected?: boolean | null
@@ -3408,6 +3410,7 @@ export type Database = {
           display_phone?: string | null
           evolution_instance_name?: string | null
           evolution_instance_status?: string | null
+          exclude_supervisors?: boolean | null
           health_status?: Json | null
           id?: string
           is_connected?: boolean | null
