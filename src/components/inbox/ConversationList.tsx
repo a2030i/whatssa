@@ -303,27 +303,27 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       </div>
 
       {/* Quick Filters */}
-      <div className="shrink-0 border-b border-border/15 px-4 pb-2.5 overflow-x-auto scrollbar-none">
+      <div className="shrink-0 px-5 pb-3 overflow-x-auto scrollbar-none">
         <div className="flex gap-1 w-max">
           {quickFilters.map((qf) => (
             <button
               key={qf.id}
               onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all",
                 activeQuickFilter === qf.id && !activeCustomInbox
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted"
               )}
             >
               <qf.icon className="w-3 h-3" />
               <span>{qf.label}</span>
               {(qf.count ?? 0) > 0 && (
                 <span className={cn(
-                  "text-[9px] min-w-[18px] h-4 rounded-md flex items-center justify-center font-bold px-1",
+                  "text-[9px] min-w-[16px] h-4 rounded-full flex items-center justify-center font-semibold px-1",
                   activeQuickFilter === qf.id && !activeCustomInbox
-                    ? "bg-primary-foreground/20"
-                    : "bg-secondary text-foreground"
+                    ? "bg-background/20"
+                    : "bg-muted text-foreground/60"
                 )}>
                   {qf.count}
                 </span>
