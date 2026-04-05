@@ -592,7 +592,6 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           }
           return <p className="whitespace-pre-wrap leading-[1.65]">{parts.length > 0 ? parts : text}</p>;
         };
-        );
 
         // Translation element
         const translationEl = translationText && msg.sender === "customer" && (
