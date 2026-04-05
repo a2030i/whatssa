@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const { conversation_id, org_id, message_text } = await req.json();
+    const { conversation_id, org_id, message_text, exclude_supervisors } = await req.json();
     if (!conversation_id || !org_id) {
       return json({ error: "Missing conversation_id or org_id" }, 400);
     }
@@ -135,9 +135,13 @@ Deno.serve(async (req) => {
     // Get members (filter by team if applicable)
     let membersQuery = supabase
       .from("profiles")
-      .select("id, full_name, is_online, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2, team_id")
+      .select("id, full_name, is_online, is_supervisor, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2, team_id")
       .eq("org_id", org_id)
       .eq("is_active", true);
+
+    if (exclude_supervisors) {
+      membersQuery = membersQuery.eq("is_supervisor", false);
+    }
 
     if (targetTeam) {
       membersQuery = membersQuery.eq("team_id", targetTeam.id);

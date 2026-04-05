@@ -3,6 +3,7 @@ import { Users, User, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -11,13 +12,15 @@ interface Props {
   orgId: string;
   defaultTeamId?: string | null;
   defaultAgentId?: string | null;
+  excludeSupervisors?: boolean;
 }
 
-const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId }: Props) => {
+const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId, excludeSupervisors: defaultExclude }: Props) => {
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [agents, setAgents] = useState<{ id: string; full_name: string }[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState(defaultTeamId || "");
   const [selectedAgentId, setSelectedAgentId] = useState(defaultAgentId || "");
+  const [excludeSupervisors, setExcludeSupervisors] = useState(defaultExclude || false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -32,13 +35,14 @@ const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId }
     load();
   }, [orgId]);
 
-  const handleSave = async (teamId: string | null, agentId: string | null) => {
+  const save = async (teamId: string | null, agentId: string | null, exclSup: boolean) => {
     setSaving(true);
     const { error } = await supabase
       .from("whatsapp_config")
       .update({
         default_team_id: teamId || null,
         default_agent_id: agentId || null,
+        exclude_supervisors: exclSup,
       } as any)
       .eq("id", configId);
     setSaving(false);
@@ -53,14 +57,19 @@ const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId }
     const v = val === "none" ? "" : val;
     setSelectedTeamId(v);
     if (v) setSelectedAgentId("");
-    handleSave(v || null, v ? null : selectedAgentId || null);
+    save(v || null, v ? null : selectedAgentId || null, excludeSupervisors);
   };
 
   const handleAgentChange = (val: string) => {
     const v = val === "none" ? "" : val;
     setSelectedAgentId(v);
-    if (v) setSelectedTeamId("");
-    handleSave(v ? null : selectedTeamId || null, v || null);
+    if (v) { setSelectedTeamId(""); setExcludeSupervisors(false); }
+    save(v ? null : selectedTeamId || null, v || null, v ? false : excludeSupervisors);
+  };
+
+  const handleExcludeToggle = (checked: boolean) => {
+    setExcludeSupervisors(checked);
+    save(selectedTeamId || null, selectedAgentId || null, checked);
   };
 
   return (
@@ -114,6 +123,17 @@ const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId }
           </Select>
         </div>
       </div>
+
+      {selectedTeamId && (
+        <div className="flex items-center justify-between pt-1">
+          <Label className="text-[10px] text-muted-foreground">استثناء المشرفين من التوزيع التلقائي</Label>
+          <Switch
+            checked={excludeSupervisors}
+            onCheckedChange={handleExcludeToggle}
+            className="scale-75"
+          />
+        </div>
+      )}
     </div>
   );
 };
