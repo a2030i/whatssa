@@ -28,6 +28,7 @@ export interface Conversation {
   isPinned?: boolean;
   isArchived?: boolean;
   dedicatedAgentId?: string | null;
+  lastMessageSender?: "agent" | "customer" | null;
 }
 
 export interface MessageTemplate {
