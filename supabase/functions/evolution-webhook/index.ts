@@ -1192,7 +1192,9 @@ serve(async (req) => {
               .eq("phone", phone)
               .maybeSingle();
 
-            if (!existingCustomer) {
+            const phoneDigits = phone.replace(/\D/g, "");
+            const isValidPhone = phoneDigits.length >= 7 && phoneDigits.length <= 15;
+            if (!existingCustomer && isValidPhone) {
               await supabase.from("customers").insert({
                 org_id: orgId,
                 phone: phone,
