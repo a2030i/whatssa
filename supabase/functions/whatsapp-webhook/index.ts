@@ -879,9 +879,21 @@ serve(async (req) => {
 
           // ── Mark as read (send read receipt to Meta) ──
           try {
-            const { data: metaCfg } = await supabase
-              .from("whatsapp_config").select("phone_number_id, access_token")
-              .eq("org_id", orgId).eq("is_connected", true).eq("channel_type", "meta_api").limit(1).maybeSingle();
+            let metaCfgQuery = supabase
+              .from("whatsapp_config")
+              .select("phone_number_id, access_token")
+              .eq("is_connected", true)
+              .eq("channel_type", "meta_api");
+
+            if (channelConfigId) {
+              metaCfgQuery = metaCfgQuery.eq("id", channelConfigId);
+            } else if (metadataPhoneId) {
+              metaCfgQuery = metaCfgQuery.eq("phone_number_id", metadataPhoneId);
+            } else {
+              metaCfgQuery = metaCfgQuery.eq("org_id", orgId).limit(1);
+            }
+
+            const { data: metaCfg } = await metaCfgQuery.maybeSingle();
             if (metaCfg) {
               await fetch(`https://graph.facebook.com/v21.0/${metaCfg.phone_number_id}/messages`, {
                 method: "POST",
