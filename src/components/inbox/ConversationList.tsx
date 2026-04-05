@@ -57,7 +57,8 @@ interface ConversationListProps {
 }
 
 const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive }: ConversationListProps) => {
-  const { orgId, profile } = useAuth();
+  const { orgId, profile, userRole, isSuperAdmin } = useAuth();
+  const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("mine");
   const [agentFilter, setAgentFilter] = useState("all");
@@ -154,16 +155,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     archived: conversations.filter(c => c.isArchived).length,
   }), [conversations, myId]);
 
-  const quickFilters: QuickFilter[] = [
+  const allQuickFilters: (QuickFilter & { minRole?: string })[] = [
     { id: "mine", label: "محادثاتي", icon: User, count: counts.mine },
     { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
     { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: counts.waitingCustomer },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
-    { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions },
+    { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions, minRole: "supervisor" },
     { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
-    { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed },
-    { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived },
+    { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed, minRole: "supervisor" },
+    { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived, minRole: "supervisor" },
   ];
+
+  const roleHierarchy: Record<string, number> = { member: 0, supervisor: 1, admin: 2 };
+  const userLevel = roleHierarchy[effectiveRole] ?? 0;
+  const quickFilters = allQuickFilters.filter(f => !f.minRole || userLevel >= (roleHierarchy[f.minRole] ?? 0));
 
   const activeInbox = customInboxes.find((i) => i.id === activeCustomInbox);
 
