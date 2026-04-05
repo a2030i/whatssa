@@ -1820,9 +1820,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
         {/* Tags row */}
         {(conversation.tags.length > 0 || true) && (
-        <div className="flex items-center gap-1 px-3 pb-2 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1.5 px-4 pb-2.5 overflow-x-auto scrollbar-none">
           {conversation.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[9px] px-1.5 py-0 gap-0.5 shrink-0 group h-5 rounded-md font-medium">
+            <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 gap-0.5 shrink-0 group h-5 rounded-full font-normal border-0">
               {tag}
               <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 transition-opacity">
                 <X className="w-2 h-2" />
