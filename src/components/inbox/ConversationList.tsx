@@ -50,9 +50,9 @@ interface ConversationListProps {
 }
 
 const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive }: ConversationListProps) => {
-  const { orgId } = useAuth();
+  const { orgId, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeQuickFilter, setActiveQuickFilter] = useState("all");
+  const [activeQuickFilter, setActiveQuickFilter] = useState("mine");
   const [agentFilter, setAgentFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
