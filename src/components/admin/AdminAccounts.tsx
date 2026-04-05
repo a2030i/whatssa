@@ -149,6 +149,30 @@ const AdminAccounts = () => {
     }
   };
 
+  const cleanupOrphanOrgs = async () => {
+    const orphans = orgs.filter((o) => {
+      if (superAdminOrgIds.has(o.id)) return false;
+      return profiles.filter((p) => p.org_id === o.id).length === 0;
+    });
+    if (orphans.length === 0) {
+      toast.info("لا توجد منظمات فارغة");
+      return;
+    }
+    setDeleting(true);
+    let deleted = 0;
+    for (const org of orphans) {
+      try {
+        const { data, error } = await invokeCloud("admin-delete-org", {
+          body: { org_id: org.id },
+        });
+        if (!error && !data?.error) deleted++;
+      } catch {}
+    }
+    toast.success(`تم حذف ${deleted} منظمة فارغة`);
+    setDeleting(false);
+    load();
+  };
+
   const { startImpersonation } = useAuth();
 
   const impersonateOrg = async (orgId: string) => {
@@ -164,23 +188,25 @@ const AdminAccounts = () => {
   };
 
   const filtered = orgs.filter((o) => {
-    // Hide super admin orgs
     if (superAdminOrgIds.has(o.id)) return false;
-    // Hide orphan orgs with 0 members (created by self-signup trigger for users who later joined another org)
-    const memberCount = profiles.filter((p) => p.org_id === o.id).length;
-    if (memberCount === 0) return false;
-    // Search filter
     return o.name?.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search);
   });
 
+  const orphanCount = filtered.filter((o) => profiles.filter((p) => p.org_id === o.id).length === 0).length;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="بحث بالاسم أو ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm" />
         </div>
         <span className="text-xs text-muted-foreground">{filtered.length} منظمة</span>
+        {orphanCount > 0 && (
+          <Button size="sm" variant="destructive" className="text-xs gap-1" onClick={cleanupOrphanOrgs} disabled={deleting}>
+            <Trash2 className="w-3 h-3" /> حذف {orphanCount} منظمة فارغة
+          </Button>
+        )}
         <Button size="sm" className="text-xs gap-1" onClick={() => setShowCreate(true)}>
           <Plus className="w-3 h-3" /> إضافة عميل
         </Button>
@@ -219,6 +245,7 @@ const AdminAccounts = () => {
           const members = profiles.filter((p) => p.org_id === org.id);
           const wallet = wallets.find((w) => w.org_id === org.id);
           const isExpanded = expandedOrg === org.id;
+          const isOrphan = members.length === 0;
 
           // Activity data
           const lastLogin = members
@@ -241,7 +268,7 @@ const AdminAccounts = () => {
           };
 
           return (
-            <div key={org.id} className="bg-card rounded-xl shadow-card overflow-hidden">
+            <div key={org.id} className={`bg-card rounded-xl shadow-card overflow-hidden ${isOrphan ? "opacity-50 border border-destructive/30" : ""}`}>
               <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors" onClick={() => setExpandedOrg(isExpanded ? null : org.id)}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
