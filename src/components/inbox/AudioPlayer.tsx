@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Pause, Download } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Global registry: only one audio plays at a time
 const activeAudioSet = new Set<HTMLAudioElement>();
@@ -8,7 +9,6 @@ const pauseAllExcept = (current: HTMLAudioElement) => {
     if (audio !== current && !audio.paused) audio.pause();
   });
 };
-import { cn } from "@/lib/utils";
 
 interface AudioPlayerProps {
   src: string;
@@ -25,64 +25,45 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const rafRef = useRef<number>();
 
   // Generate fake waveform bars (deterministic based on src)
   const bars = useRef<number[]>([]);
   if (bars.current.length === 0) {
     let seed = 0;
     for (let i = 0; i < src.length; i++) seed = ((seed << 5) - seed + src.charCodeAt(i)) | 0;
-    bars.current = Array.from({ length: 32 }, (_, i) => {
+    bars.current = Array.from({ length: 28 }, (_, i) => {
       seed = (seed * 16807 + 7) % 2147483647;
-      return 0.2 + (Math.abs(seed) % 65) / 100;
+      return 0.25 + (Math.abs(seed) % 60) / 100;
     });
   }
-
-  // Use RAF for smooth progress updates
-  const rafRef = useRef<number>();
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
     activeAudioSet.add(audio);
 
     const onLoaded = () => {
-      if (isFinite(audio.duration) && audio.duration > 0) {
-        setDuration(audio.duration);
-      }
+      if (isFinite(audio.duration) && audio.duration > 0) setDuration(audio.duration);
       setIsLoaded(true);
     };
     const onDurationChange = () => {
-      if (isFinite(audio.duration) && audio.duration > 0) {
-        setDuration(audio.duration);
-      }
+      if (isFinite(audio.duration) && audio.duration > 0) setDuration(audio.duration);
     };
-    const onEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      if (audio) audio.currentTime = 0;
-    };
+    const onEnded = () => { setIsPlaying(false); setCurrentTime(0); audio.currentTime = 0; };
     const onPlay = () => {
       setIsPlaying(true);
       const tick = () => {
         if (!audio.paused) {
           setCurrentTime(audio.currentTime);
-          if (isFinite(audio.duration) && audio.duration > 0) {
-            setDuration(audio.duration);
-          }
+          if (isFinite(audio.duration) && audio.duration > 0) setDuration(audio.duration);
           rafRef.current = requestAnimationFrame(tick);
         }
       };
       rafRef.current = requestAnimationFrame(tick);
     };
-    const onPause = () => {
-      setIsPlaying(false);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-    const onError = () => {
-      setHasError(true);
-      setIsPlaying(false);
-    };
+    const onPause = () => { setIsPlaying(false); if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+    const onError = () => { setHasError(true); setIsPlaying(false); };
 
     audio.addEventListener("loadedmetadata", onLoaded);
     audio.addEventListener("durationchange", onDurationChange);
@@ -106,12 +87,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      pauseAllExcept(audio);
-      audio.play().catch(() => {});
-    }
+    if (isPlaying) { audio.pause(); } else { pauseAllExcept(audio); audio.play().catch(() => {}); }
   }, [isPlaying]);
 
   const cycleSpeed = () => {
@@ -127,7 +103,6 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
     if (!el || !audio || !duration) return;
     const rect = el.getBoundingClientRect();
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    // RTL: right edge is start
     const ratio = Math.max(0, Math.min(1, (rect.right - clientX) / rect.width));
     audio.currentTime = ratio * duration;
   };
@@ -143,86 +118,61 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
 
   if (hasError) {
     return (
-      <div className={cn(
-        "flex items-center gap-2 rounded-2xl px-3 py-2",
-        isAgent ? "bg-secondary/60" : "bg-white/15",
-        className
-      )}>
-        <a href={src} target="_blank" rel="noreferrer" download className={cn("flex items-center gap-2 text-xs", isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white")}>
-          <Download className="w-4 h-4" />
-          <span>تحميل الصوتية</span>
-        </a>
-      </div>
+      <a href={src} target="_blank" rel="noreferrer" download
+        className={cn("flex items-center gap-2 text-xs py-1", isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white", className)}>
+        <Download className="w-3.5 h-3.5" />
+        <span>تحميل الصوتية</span>
+      </a>
     );
   }
 
   return (
-    <div className={cn(
-      "flex items-center gap-2 rounded-2xl px-2.5 py-1.5 w-[200px] md:w-[260px]",
-      isAgent ? "bg-secondary/60" : "bg-white/15",
-      className
-    )}>
+    <div className={cn("flex items-center gap-2 w-full min-w-[180px] max-w-[280px]", className)}>
       <audio ref={audioRef} src={src} preload="metadata" />
 
-      {/* Play/Pause button */}
+      {/* Play/Pause */}
       <button
         onClick={togglePlay}
         className={cn(
-          "w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95",
+          "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95",
           isAgent
             ? "bg-primary text-primary-foreground shadow-sm"
             : "bg-white/25 text-white"
         )}
       >
-        {isPlaying ? (
-          <Pause className="w-3.5 h-3.5" fill="currentColor" />
-        ) : (
-          <Play className="w-3.5 h-3.5 mr-[-1px]" fill="currentColor" />
-        )}
+        {isPlaying
+          ? <Pause className="w-3.5 h-3.5" fill="currentColor" />
+          : <Play className="w-3.5 h-3.5 mr-[-1px]" fill="currentColor" />}
       </button>
 
-      {/* Waveform + progress */}
+      {/* Waveform + meta */}
       <div className="flex-1 min-w-0 flex flex-col gap-0.5">
         <div
           ref={progressRef}
-          className="flex items-center gap-[1.5px] h-6 cursor-pointer"
+          className="flex items-center gap-[1.5px] h-5 cursor-pointer"
           onClick={seekTo}
           onTouchStart={seekTo}
         >
           {bars.current.map((h, i) => {
             const barProgress = i / bars.current.length;
             const isPlayed = barProgress <= progress;
-            const isNearPlayhead = isPlaying && Math.abs(barProgress - progress) < 0.1;
             return (
               <div
                 key={i}
                 className={cn(
-                  "flex-1 rounded-full",
+                  "flex-1 rounded-full transition-colors duration-150",
                   isPlayed
                     ? isAgent ? "bg-primary" : "bg-white"
                     : isAgent ? "bg-muted-foreground/25" : "bg-white/30"
                 )}
-                style={{
-                  height: `${h * 100}%`,
-                  minWidth: 1.5,
-                  maxWidth: 3,
-                  transition: "background-color 0.15s",
-                  ...(isNearPlayhead ? {
-                    animation: `wavePulse 0.4s ease-in-out infinite alternate`,
-                    animationDelay: `${(i % 5) * 0.05}s`,
-                  } : {}),
-                }}
+                style={{ height: `${h * 100}%`, minWidth: 1.5, maxWidth: 3 }}
               />
             );
           })}
         </div>
 
-        {/* Time + speed */}
         <div className="flex items-center justify-between">
-          <span className={cn(
-            "text-[9px] font-mono tabular-nums",
-            isAgent ? "text-muted-foreground" : "text-white/70"
-          )}>
+          <span className={cn("text-[9px] font-mono tabular-nums", isAgent ? "text-muted-foreground" : "text-white/70")}>
             {isPlaying || currentTime > 0 ? formatTime(currentTime) : formatTime(duration)}
           </span>
           <div className="flex items-center gap-1">
@@ -230,23 +180,13 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
               onClick={cycleSpeed}
               className={cn(
                 "text-[8px] font-bold px-1 py-0.5 rounded transition-colors",
-                isAgent
-                  ? "bg-muted text-muted-foreground hover:bg-accent"
-                  : "bg-white/15 text-white/80 hover:bg-white/25"
+                isAgent ? "bg-muted text-muted-foreground hover:bg-accent" : "bg-white/15 text-white/80 hover:bg-white/25"
               )}
             >
               {playbackRate}x
             </button>
-            <a
-              href={src}
-              download
-              target="_blank"
-              rel="noreferrer"
-              className={cn(
-                "p-0.5 rounded transition-colors",
-                isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/60 hover:text-white"
-              )}
-            >
+            <a href={src} download target="_blank" rel="noreferrer"
+              className={cn("p-0.5 rounded transition-colors", isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/60 hover:text-white")}>
               <Download className="w-2.5 h-2.5" />
             </a>
           </div>
