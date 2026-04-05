@@ -100,8 +100,8 @@ const CustomersPage = () => {
 
   const handleExport = () => {
     const csv = [
-      "الاسم,الجوال,الإيميل,التصنيفات,المرحلة,الشركة,المصدر,ملاحظات",
-      ...customers.filter((c) => isLikelyRealCustomerPhone(c.phone)).map((c) => `"${c.name || ""}","${c.phone}","${c.email || ""}","${(c.tags || []).join(";")}","${c.lifecycle_stage || "lead"}","${c.company || ""}","${c.source || ""}","${c.notes || ""}"`),
+      "الاسم,الجوال,الإيميل,التصنيفات,الشركة,المصدر,ملاحظات",
+      ...customers.filter((c) => isLikelyRealCustomerPhone(c.phone)).map((c) => `"${c.name || ""}","${c.phone}","${c.email || ""}","${(c.tags || []).join(";")}","${c.company || ""}","${c.source || ""}","${c.notes || ""}"`),
     ].join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
