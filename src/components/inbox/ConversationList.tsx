@@ -57,7 +57,8 @@ interface ConversationListProps {
 }
 
 const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive }: ConversationListProps) => {
-  const { orgId, profile } = useAuth();
+  const { orgId, profile, userRole, isSuperAdmin } = useAuth();
+  const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("mine");
   const [agentFilter, setAgentFilter] = useState("all");
