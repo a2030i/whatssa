@@ -2509,7 +2509,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </button>
                 </div>
               ) : !isNoteMode ? (
-                <button onClick={() => setIsRecording(true)} className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
+                <button onClick={() => setIsRecording(true)} className="w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
                   <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
               ) : (
