@@ -162,6 +162,26 @@ const AdminEmergency = () => {
     return <Clock className="w-5 h-5 text-muted-foreground animate-spin" />;
   };
 
+  const sendTestAlert = async () => {
+    setIsTesting(true);
+    try {
+      const res = await fetch(`${CLOUD_URL}/functions/v1/db-health-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${CLOUD_KEY}` },
+        body: JSON.stringify({ test: true }),
+      });
+      const data = await res.json();
+      if (data.alert_sent) {
+        toast.success("تم إرسال التنبيه التجريبي بنجاح ✅");
+      } else {
+        toast.error(`فشل الإرسال: ${data.alert_reason || data.alert_error || "خطأ غير معروف"}`);
+      }
+    } catch (e: any) {
+      toast.error("فشل الاتصال بالخادم");
+    }
+    setIsTesting(false);
+  };
+
   // Generate QR data for emergency access
   const emergencyUrl = `${window.location.origin}/emergency-admin`;
   const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(emergencyUrl)}`;
