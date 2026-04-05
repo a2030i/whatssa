@@ -409,7 +409,7 @@ serve(async (req) => {
     // Find the config for this instance
     const { data: config, error: configError } = await supabase
       .from("whatsapp_config")
-      .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
+      .select("id, org_id, default_team_id, default_agent_id")
       .eq("evolution_instance_name", instanceName)
       .eq("channel_type", "evolution")
       .maybeSingle();
