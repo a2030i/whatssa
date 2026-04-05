@@ -211,50 +211,50 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   return (
     <div className={cn(
-      "border-l border-border/40 flex flex-col bg-background",
-      hasSelection ? "hidden md:flex md:w-[360px] lg:w-[380px]" : "w-full md:w-[360px] lg:w-[380px]"
+      "border-l border-border/30 flex flex-col bg-card/50 backdrop-blur-sm",
+      hasSelection ? "hidden md:flex md:w-[340px] lg:w-[370px]" : "w-full md:w-[340px] lg:w-[370px]"
     )}>
       {/* Header */}
-      <div className="px-4 pt-4 pb-2 space-y-3 shrink-0">
+      <div className="px-4 pt-5 pb-3 space-y-3 shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-extrabold text-foreground tracking-tight">
+          <h1 className="text-lg font-bold text-foreground">
             {activeInbox ? activeInbox.name : "المحادثات"}
           </h1>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {onNewConversation && (
               <button
                 onClick={onNewConversation}
-                className="w-9 h-9 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-sm"
+                className="w-8 h-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-sm"
                 title="محادثة جديدة"
               >
-                <MessageSquare className="w-4 h-4" />
+                <MessageSquare className="w-3.5 h-3.5" />
               </button>
             )}
             <button
               onClick={() => { setEditingInbox(null); setBuilderOpen(true); }}
-              className="w-9 h-9 rounded-xl hover:bg-secondary text-muted-foreground transition-all flex items-center justify-center hover:text-foreground"
+              className="w-8 h-8 rounded-lg hover:bg-secondary text-muted-foreground transition-all flex items-center justify-center"
               title="صندوق مخصص"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); }}
-              className={cn("w-9 h-9 rounded-xl transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+              className={cn("w-8 h-8 rounded-lg transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
               title="تحديد متعدد"
             >
-              <CheckSquare className="w-4 h-4" />
+              <CheckSquare className="w-3.5 h-3.5" />
             </button>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="w-9 h-9 rounded-xl hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
-                <RotateCcw className="w-4 h-4 text-muted-foreground" />
+              <button onClick={clearFilters} className="w-8 h-8 rounded-lg hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
+                <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             )}
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={cn("w-9 h-9 rounded-xl transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+              className={cn("w-8 h-8 rounded-lg transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
             >
-              <Filter className="w-4 h-4" />
-              {hasActiveFilters && <span className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-primary animate-pulse" />}
+              <Filter className="w-3.5 h-3.5" />
+              {hasActiveFilters && <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-primary" />}
             </button>
           </div>
         </div>
