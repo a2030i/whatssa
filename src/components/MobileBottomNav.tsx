@@ -25,29 +25,39 @@ const MobileBottomNav = () => {
         ? "supervisor"
         : "member";
 
+  const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
+  const roleHierarchy: Record<string, number> = { member: 0, supervisor: 1, admin: 2 };
+  const userLevel = roleHierarchy[effectiveRole] ?? 0;
+
   const isActive = (path: string) => location.pathname === path;
 
-  const moreItems = [
-    { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊" },
+  const allMoreItems: { label: string; icon: any; path: string; emoji: string; minRole?: string }[] = [
+    { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
     { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
-    { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "🚀" },
-    { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰" },
-    ...(hasMetaApi || isSuperAdmin ? [{ label: "القوالب", icon: FileText, path: "/templates", emoji: "📝" }] : []),
-    { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡" },
-    { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖" },
-    { label: "العملاء", icon: UserCircle, path: "/customers", emoji: "👥" },
+    { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "🚀", minRole: "admin" },
+    { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰", minRole: "admin" },
+    ...(hasMetaApi || isSuperAdmin ? [{ label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", minRole: "admin" }] : []),
+    { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡", minRole: "admin" },
+    { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖", minRole: "admin" },
+    { label: "العملاء", icon: UserCircle, path: "/customers", emoji: "👥", minRole: "admin" },
     ...(isEcommerce || isSuperAdmin ? [
-      { label: "الطلبات", icon: ShoppingCart, path: "/orders", emoji: "🛒" },
-      { label: "الكتالوج", icon: ShoppingCart, path: "/catalog", emoji: "🏪" },
-      { label: "السلات المتروكة", icon: ShoppingCart, path: "/abandoned-carts", emoji: "🛒" },
+      { label: "الطلبات", icon: ShoppingCart, path: "/orders", emoji: "🛒", minRole: "admin" },
+      { label: "الكتالوج", icon: ShoppingCart, path: "/catalog", emoji: "🏪", minRole: "admin" },
+      { label: "السلات المتروكة", icon: ShoppingCart, path: "/abandoned-carts", emoji: "🛒", minRole: "admin" },
     ] : []),
-    { label: "التقارير", icon: BarChart3, path: "/analytics", emoji: "📈" },
-    { label: "الربط والتكامل", icon: Plug, path: "/integrations", emoji: "🔌" },
-    { label: "الفريق", icon: UsersIcon, path: "/team", emoji: "👨‍💼" },
-    { label: "الإعدادات", icon: Settings, path: "/settings", emoji: "⚙️" },
-    { label: "الاشتراك والفواتير", icon: CreditCard, path: "/billing", emoji: "💳" },
-    { label: "المحفظة", icon: Wallet, path: "/wallet", emoji: "💰" },
+    { label: "التقارير", icon: BarChart3, path: "/analytics", emoji: "📈", minRole: "supervisor" },
+    { label: "الربط والتكامل", icon: Plug, path: "/integrations", emoji: "🔌", minRole: "admin" },
+    { label: "الفريق", icon: UsersIcon, path: "/team", emoji: "👨‍💼", minRole: "supervisor" },
+    { label: "الإعدادات", icon: Settings, path: "/settings", emoji: "⚙️", minRole: "admin" },
+    { label: "الاشتراك والفواتير", icon: CreditCard, path: "/billing", emoji: "💳", minRole: "admin" },
+    { label: "المحفظة", icon: Wallet, path: "/wallet", emoji: "💰", minRole: "admin" },
   ];
+
+  const moreItems = allMoreItems.filter((item) => {
+    if (isSuperAdmin) return true;
+    if (!item.minRole) return true;
+    return userLevel >= (roleHierarchy[item.minRole] ?? 0);
+  });
 
   return (
     <>
