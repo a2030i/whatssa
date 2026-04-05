@@ -162,7 +162,6 @@ const CustomersPage = () => {
       tags: header.findIndex((h) => ["tags", "التصنيفات", "تصنيف", "وسم"].includes(h)),
       notes: header.findIndex((h) => ["notes", "ملاحظات", "ملاحظة"].includes(h)),
       company: header.findIndex((h) => ["company", "شركة", "الشركة"].includes(h)),
-      stage: header.findIndex((h) => ["stage", "المرحلة", "مرحلة", "lifecycle_stage"].includes(h)),
     };
 
     if (colMap.phone === -1) {
