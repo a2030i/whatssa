@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Search, GitMerge, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,34 +18,49 @@ interface MergeConversationDialogProps {
 const MergeConversationDialog = ({ open, onOpenChange, sourceConversationId, sourceCustomerPhone, sourceCustomerName, onMerged }: MergeConversationDialogProps) => {
   const { orgId, profile } = useAuth();
   const [search, setSearch] = useState("");
-  const [candidates, setCandidates] = useState<Array<{ id: string; customer_name: string; customer_phone: string; last_message: string }>>([]);
+  const [candidates, setCandidates] = useState<Array<{ id: string; customer_name: string; customer_phone: string; last_message: string; status: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [merging, setMerging] = useState(false);
 
   useEffect(() => {
     if (!open || !orgId) return;
+    setSearch("");
     setLoading(true);
-    supabase
-      .from("conversations")
-      .select("id, customer_name, customer_phone, last_message")
-      .eq("org_id", orgId)
-      .neq("id", sourceConversationId)
-      .order("last_message_at", { ascending: false })
-      .limit(100)
-      .then(({ data }) => {
-        setCandidates(data || []);
-        setLoading(false);
-      });
-  }, [open, orgId, sourceConversationId]);
+    
+    const load = async () => {
+      // First try: same phone number conversations (most common merge case)
+      const { data: samePhone, error: err1 } = await supabase
+        .from("conversations")
+        .select("id, customer_name, customer_phone, last_message, status")
+        .eq("org_id", orgId)
+        .eq("customer_phone", sourceCustomerPhone)
+        .neq("id", sourceConversationId)
+        .order("last_message_at", { ascending: false });
 
-  // Prioritize same phone
+      // Second: all other conversations for search
+      const { data: others, error: err2 } = await supabase
+        .from("conversations")
+        .select("id, customer_name, customer_phone, last_message, status")
+        .eq("org_id", orgId)
+        .neq("id", sourceConversationId)
+        .neq("customer_phone", sourceCustomerPhone)
+        .neq("status", "closed")
+        .order("last_message_at", { ascending: false })
+        .limit(50);
+
+      if (err1) console.error("Merge query error (same phone):", err1);
+      if (err2) console.error("Merge query error (others):", err2);
+
+      const all = [...(samePhone || []), ...(others || [])];
+      setCandidates(all);
+      setLoading(false);
+    };
+    
+    load();
+  }, [open, orgId, sourceConversationId, sourceCustomerPhone]);
+
   const filtered = candidates
-    .filter(c => !search || (c.customer_name || "").includes(search) || c.customer_phone.includes(search))
-    .sort((a, b) => {
-      const aMatch = a.customer_phone === sourceCustomerPhone ? -1 : 0;
-      const bMatch = b.customer_phone === sourceCustomerPhone ? -1 : 0;
-      return aMatch - bMatch;
-    });
+    .filter(c => !search || (c.customer_name || "").includes(search) || c.customer_phone.includes(search));
 
   const handleMerge = async (target: typeof candidates[0]) => {
     const confirm = window.confirm(`سيتم نقل جميع رسائل "${sourceCustomerName}" إلى محادثة "${target.customer_name || target.customer_phone}" وإغلاق المحادثة الأصلية. متأكد؟`);
@@ -54,7 +68,6 @@ const MergeConversationDialog = ({ open, onOpenChange, sourceConversationId, sou
 
     setMerging(true);
     try {
-      // Move all messages from source to target
       const { error: moveError } = await supabase
         .from("messages")
         .update({ conversation_id: target.id })
@@ -62,20 +75,26 @@ const MergeConversationDialog = ({ open, onOpenChange, sourceConversationId, sou
 
       if (moveError) throw moveError;
 
-      // Close source conversation
       await supabase.from("conversations").update({
         status: "closed",
         closed_at: new Date().toISOString(),
         last_message: `تم دمج المحادثة مع ${target.customer_name || target.customer_phone}`,
       }).eq("id", sourceConversationId);
 
-      // Log merge as system message in target
       await supabase.from("messages").insert({
         conversation_id: target.id,
         content: `تم دمج محادثة "${sourceCustomerName}" هنا بواسطة ${profile?.full_name || "النظام"}`,
         sender: "system",
         message_type: "text",
       });
+
+      // If target was closed, reopen it
+      if (target.status === "closed") {
+        await supabase.from("conversations").update({
+          status: "active",
+          closed_at: null,
+        }).eq("id", target.id);
+      }
 
       toast.success("✅ تم دمج المحادثات بنجاح");
       onOpenChange(false);
@@ -128,6 +147,9 @@ const MergeConversationDialog = ({ open, onOpenChange, sourceConversationId, sou
                 </p>
                 <p className="text-[10px] text-muted-foreground truncate">{c.last_message}</p>
               </div>
+              {c.status === "closed" && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">مغلقة</span>
+              )}
             </button>
           ))}
         </div>
