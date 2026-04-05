@@ -529,7 +529,7 @@ serve(async (req) => {
           if (!conversation) {
             const { data: closedConv } = await supabase
               .from("conversations")
-              .select("id, unread_count, status")
+              .select("id, unread_count, status, dedicated_agent_id, dedicated_agent_name")
               .eq("customer_phone", customerPhone)
               .eq("org_id", orgId)
               .eq("status", "closed")
@@ -538,7 +538,8 @@ serve(async (req) => {
               .maybeSingle();
 
             if (closedConv) {
-              await supabase.from("conversations").update({
+              // Determine assignment: sticky (dedicated) or reset to unassigned
+              const reopenUpdate: Record<string, any> = {
                 status: "active",
                 closed_at: null,
                 closed_by: null,
@@ -546,7 +547,21 @@ serve(async (req) => {
                 unread_count: 1,
                 last_message: messageContent,
                 last_message_at: new Date().toISOString(),
-              }).eq("id", closedConv.id);
+              };
+              if (closedConv.dedicated_agent_id) {
+                // Sticky assignment: reassign to dedicated agent
+                reopenUpdate.assigned_to_id = closedConv.dedicated_agent_id;
+                reopenUpdate.assigned_to = closedConv.dedicated_agent_name;
+                reopenUpdate.assigned_at = new Date().toISOString();
+              } else {
+                // Normal assignment: reset to unassigned
+                reopenUpdate.assigned_to_id = null;
+                reopenUpdate.assigned_to = null;
+                reopenUpdate.assigned_team_id = null;
+                reopenUpdate.assigned_team = null;
+                reopenUpdate.assigned_at = null;
+              }
+              await supabase.from("conversations").update(reopenUpdate).eq("id", closedConv.id);
               conversation = { ...closedConv, status: "active", unread_count: 1 };
               await supabase.from("messages").insert({
                 conversation_id: closedConv.id,
