@@ -211,20 +211,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   return (
     <div className={cn(
-      "border-l border-border/30 flex flex-col bg-card/50 backdrop-blur-sm",
+      "flex flex-col bg-background",
       hasSelection ? "hidden md:flex md:w-[340px] lg:w-[370px]" : "w-full md:w-[340px] lg:w-[370px]"
     )}>
       {/* Header */}
-      <div className="px-4 pt-5 pb-3 space-y-3 shrink-0">
+      <div className="px-5 pt-6 pb-4 space-y-4 shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold text-foreground">
+          <h1 className="text-xl font-semibold text-foreground tracking-tight">
             {activeInbox ? activeInbox.name : "المحادثات"}
           </h1>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             {onNewConversation && (
               <button
                 onClick={onNewConversation}
-                className="w-8 h-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-sm"
+                className="w-8 h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center"
                 title="محادثة جديدة"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
@@ -232,36 +232,36 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             )}
             <button
               onClick={() => { setEditingInbox(null); setBuilderOpen(true); }}
-              className="w-8 h-8 rounded-lg hover:bg-secondary text-muted-foreground transition-all flex items-center justify-center"
+              className="w-8 h-8 rounded-full hover:bg-muted text-muted-foreground transition-all flex items-center justify-center"
               title="صندوق مخصص"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); }}
-              className={cn("w-8 h-8 rounded-lg transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+              className={cn("w-8 h-8 rounded-full transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground")}
               title="تحديد متعدد"
             >
               <CheckSquare className="w-3.5 h-3.5" />
             </button>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="w-8 h-8 rounded-lg hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
+              <button onClick={clearFilters} className="w-8 h-8 rounded-full hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
                 <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             )}
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={cn("w-8 h-8 rounded-lg transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+              className={cn("w-8 h-8 rounded-full transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground")}
             >
               <Filter className="w-3.5 h-3.5" />
-              {hasActiveFilters && <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-primary" />}
+              {hasActiveFilters && <span className="absolute top-1.5 left-1.5 w-1.5 h-1.5 rounded-full bg-primary" />}
             </button>
           </div>
         </div>
 
         {/* Custom Inbox Chips */}
         {customInboxes.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none">
             {customInboxes.map((inbox) => (
               <div key={inbox.id} className="flex items-center gap-0.5 group">
                 <button
@@ -270,10 +270,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                     else { setActiveCustomInbox(inbox.id); setActiveQuickFilter("all"); }
                   }}
                   className={cn(
-                    "text-[11px] px-3 py-1.5 rounded-full whitespace-nowrap font-medium transition-all flex items-center gap-1.5",
+                    "text-[11px] px-3.5 py-1.5 rounded-full whitespace-nowrap font-medium transition-all flex items-center gap-1.5",
                     activeCustomInbox === inbox.id
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "bg-secondary/70 text-muted-foreground hover:bg-accent"
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
                   )}
                 >
                   <Inbox className="w-3 h-3" />
@@ -292,38 +292,38 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
+          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
           <Input
-            placeholder="بحث بالاسم أو الرقم..."
+            placeholder="بحث..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-10 bg-secondary/40 border-border/20 text-sm h-10 rounded-xl focus:bg-background focus:ring-1 focus:ring-primary/20 focus:border-primary/30 transition-all placeholder:text-muted-foreground/40"
+            className="pr-10 bg-muted/60 border-0 text-sm h-10 rounded-xl focus:bg-card focus:ring-1 focus:ring-border transition-all placeholder:text-muted-foreground/40"
           />
         </div>
       </div>
 
       {/* Quick Filters */}
-      <div className="shrink-0 border-b border-border/15 px-4 pb-2.5 overflow-x-auto scrollbar-none">
+      <div className="shrink-0 px-5 pb-3 overflow-x-auto scrollbar-none">
         <div className="flex gap-1 w-max">
           {quickFilters.map((qf) => (
             <button
               key={qf.id}
               onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-all",
                 activeQuickFilter === qf.id && !activeCustomInbox
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted"
               )}
             >
               <qf.icon className="w-3 h-3" />
               <span>{qf.label}</span>
               {(qf.count ?? 0) > 0 && (
                 <span className={cn(
-                  "text-[9px] min-w-[18px] h-4 rounded-md flex items-center justify-center font-bold px-1",
+                  "text-[9px] min-w-[16px] h-4 rounded-full flex items-center justify-center font-semibold px-1",
                   activeQuickFilter === qf.id && !activeCustomInbox
-                    ? "bg-primary-foreground/20"
-                    : "bg-secondary text-foreground"
+                    ? "bg-background/20"
+                    : "bg-muted text-foreground/60"
                 )}>
                   {qf.count}
                 </span>
@@ -385,25 +385,26 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       )}
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto px-3 pt-2">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-            <div className="w-16 h-16 rounded-2xl bg-secondary/60 flex items-center justify-center mb-3">
-              <MessageSquare className="w-7 h-7 opacity-30" />
+            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+              <MessageSquare className="w-6 h-6 opacity-25" />
             </div>
             <p className="text-sm font-medium">{hasListConstraints ? "لا توجد محادثات مطابقة" : "لا توجد محادثات"}</p>
             <p className="text-xs text-muted-foreground/60 mt-1">{hasListConstraints ? "جرّب تغيير الفلاتر" : "ابدأ بإرسال رسالة جديدة"}</p>
             {hasListConstraints && (
               <button
                 onClick={resetListView}
-                className="mt-3 text-xs px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all font-medium"
+                className="mt-3 text-xs px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all font-medium"
               >
                 عرض كل المحادثات
               </button>
             )}
           </div>
         ) : (
-          filtered.map((conv) => {
+          <div className="space-y-1">
+          {filtered.map((conv) => {
             const isSelected = conv.id === selectedId;
             const countdown = conv.channelType === "meta_api" ? get24hCountdown(conv.lastCustomerMessageAt) : null;
             const displayName = getConversationDisplayName(conv);
@@ -443,11 +444,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   setTimeout(() => document.addEventListener("click", dismiss), 0);
                 }}
                 className={cn(
-                  "w-full text-right px-3.5 py-3 transition-all group relative border-b border-border/10",
+                  "w-full text-right px-3.5 py-3.5 transition-all group relative rounded-xl",
                   isSelected && !bulkMode
-                    ? "bg-primary/[0.05] border-r-2 border-r-primary"
-                    : "hover:bg-secondary/40 border-r-2 border-r-transparent",
-                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/10"
+                    ? "bg-card shadow-[var(--shadow-sm)]"
+                    : "hover:bg-card/60",
+                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/5"
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -466,7 +467,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       <img
                         src={conv.profilePic}
                         alt={conv.customerName}
-                        className="w-11 h-11 rounded-full object-cover ring-1 ring-border/20"
+                        className="w-12 h-12 rounded-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                           (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
@@ -474,43 +475,42 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       />
                     ) : null}
                     <div className={cn(
-                      "w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
+                      "w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
                       conv.profilePic ? "hidden" : "",
                       isSelected
                         ? "bg-primary/10 text-primary"
-                        : "bg-secondary text-muted-foreground"
+                        : "bg-muted text-muted-foreground"
                     )}>
                       {conv.conversationType === "group" ? (
-                        <Users className="w-4.5 h-4.5" />
+                        <Users className="w-5 h-5" />
                       ) : (
                         conv.customerName.charAt(0)
                       )}
                     </div>
-                    {/* Status dot */}
-                    <span className={cn(
-                      "absolute bottom-0 left-0 w-3 h-3 rounded-full border-2 border-card",
-                      statusColors[conv.status]
-                    )} />
+                    {/* Unread dot instead of status dot */}
+                    {conv.unread > 0 && (
+                      <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-primary border-2 border-background" />
+                    )}
                   </div>
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className={cn("text-[13px] font-semibold truncate flex items-center gap-1", isSelected ? "text-primary" : "text-foreground")}>
-                        {conv.isPinned && <Pin className="w-2.5 h-2.5 text-primary shrink-0 rotate-45" />}
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={cn("text-[14px] font-medium truncate flex items-center gap-1", isSelected ? "text-foreground" : "text-foreground")}>
+                        {conv.isPinned && <Pin className="w-2.5 h-2.5 text-muted-foreground shrink-0 rotate-45" />}
                          {displayName}
                       </span>
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0 mr-1">{conv.timestamp}</span>
+                      <span className="text-[11px] text-muted-foreground/50 shrink-0 mr-1 font-light">{conv.timestamp}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-1.5">
+                    <div className="flex items-center justify-between gap-2">
                        <p className={cn(
-                         "text-[11px] truncate leading-relaxed",
-                        conv.unread > 0 ? "text-foreground font-medium" : "text-muted-foreground/60"
+                         "text-[12px] truncate leading-relaxed",
+                        conv.unread > 0 ? "text-foreground/70 font-medium" : "text-muted-foreground/50"
                       )}>
                          {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                       </p>
                       <div className="flex items-center gap-1 shrink-0">
                         {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                          <span className="text-[9px] text-muted-foreground/50 max-w-[40px] truncate" title={conv.assignedTo}>
+                          <span className="text-[9px] text-muted-foreground/40 max-w-[40px] truncate font-light" title={conv.assignedTo}>
                             {conv.assignedTo.split(" ")[0]}
                           </span>
                         )}
@@ -519,18 +519,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                             @
                           </span>
                         )}
-                        {conv.unread > 0 && (
-                          <span className="min-w-[20px] h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1.5">
-                            {conv.unread}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
                 </div>
               </button>
             );
-          })
+          })}
+          </div>
         )}
       </div>
 

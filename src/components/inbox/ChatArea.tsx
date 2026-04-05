@@ -341,7 +341,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       onTouchStart={canReply ? swipe.onTouchStart : undefined}
       onTouchMove={canReply ? swipe.onTouchMove : undefined}
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
-      className="group relative max-w-[94%] md:max-w-[72%]"
+      className="group relative max-w-[85%] md:max-w-[60%]"
       data-message-id={msg.id}
       data-wa-message-id={msg.waMessageId || undefined}
     >
@@ -485,18 +485,18 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         </div>
       )}
       <div className={cn(
-        "rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-full backdrop-blur-sm",
+        "rounded-2xl px-4 py-3 text-[14px] leading-relaxed max-w-full",
         msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3.5",
         msg.isDeleted
-          ? "bg-muted/30 border border-dashed border-border/30 text-muted-foreground italic"
+          ? "bg-muted/30 border border-dashed border-border/20 text-muted-foreground italic"
           : msg.type === "note"
-            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 text-foreground rounded-bl-sm shadow-sm"
+            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/40 dark:border-amber-500/15 text-foreground rounded-bl-sm"
             : msg.sender === "agent"
-              ? "bg-card border border-border/30 shadow-sm text-foreground rounded-bl-sm"
+              ? "bg-card text-foreground rounded-bl-sm"
               : msg.mentioned && msg.mentioned.length > 0
-                ? "bg-primary text-primary-foreground rounded-br-sm shadow-md ring-2 ring-primary/30"
-                : "bg-primary text-primary-foreground rounded-br-sm shadow-md border border-primary/20"
-      )}>
+                ? "bg-primary/90 text-primary-foreground rounded-br-sm"
+                : "bg-primary/90 text-primary-foreground rounded-br-sm"
+      )} style={msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" ? { boxShadow: 'var(--shadow-xs)' } : undefined}>
         {msg.isDeleted ? (
           <div className="flex items-center gap-1.5 text-xs opacity-70">
             <XCircle className="w-3.5 h-3.5" />
@@ -1612,10 +1612,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-background">
       {/* Header */}
-      <div className="shrink-0 border-b border-border/15 bg-card/80 backdrop-blur-xl">
-        <div className="h-[56px] md:h-[64px] flex items-center justify-between px-3 md:px-4">
+      <div className="shrink-0 bg-card/90 backdrop-blur-xl" style={{ boxShadow: 'var(--shadow-xs)' }}>
+        <div className="h-[56px] md:h-[60px] flex items-center justify-between px-4 md:px-5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <button className="w-8 h-8 md:w-9 md:h-9 rounded-lg hover:bg-secondary transition-all flex items-center justify-center shrink-0" onClick={onBack}>
+            <button className="w-8 h-8 md:w-9 md:h-9 rounded-full hover:bg-muted transition-all flex items-center justify-center shrink-0" onClick={onBack}>
               <ArrowRight className="w-4.5 h-4.5 text-foreground" />
             </button>
             <button
@@ -1624,9 +1624,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             >
             <div className="relative shrink-0">
               {groupPicture ? (
-                <img src={groupPicture} alt={conversation.customerName} className="w-10 h-10 rounded-full object-cover ring-1 ring-border/20" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                <img src={groupPicture} alt={conversation.customerName} className="w-10 h-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
               ) : null}
-              <div className={cn("w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-sm font-semibold text-muted-foreground", groupPicture ? "hidden" : "")}>
+              <div className={cn("w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
@@ -1635,7 +1635,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
             <div className="min-w-0 overflow-hidden">
               <div className="flex items-center gap-1.5">
-                <p className="font-semibold text-[13px] truncate max-w-[120px] md:max-w-[250px]">{conversation.customerName}</p>
+                <p className="font-medium text-[15px] truncate max-w-[120px] md:max-w-[250px] tracking-tight">{conversation.customerName}</p>
                 {isMetaChannel ? (
                   <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-medium shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
@@ -1654,7 +1654,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{conversation.lastSeen || conversation.customerPhone}</p>
+              <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5 font-light">{conversation.lastSeen || conversation.customerPhone}</p>
             </div>
             </button>
           </div>
@@ -1820,9 +1820,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
         {/* Tags row */}
         {(conversation.tags.length > 0 || true) && (
-        <div className="flex items-center gap-1 px-3 pb-2 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1.5 px-4 pb-2.5 overflow-x-auto scrollbar-none">
           {conversation.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[9px] px-1.5 py-0 gap-0.5 shrink-0 group h-5 rounded-md font-medium">
+            <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 gap-0.5 shrink-0 group h-5 rounded-full font-normal border-0">
               {tag}
               <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 transition-opacity">
                 <X className="w-2 h-2" />
@@ -1928,7 +1928,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-5 space-y-1.5 md:space-y-2" style={{ background: 'linear-gradient(180deg, hsl(var(--secondary) / 0.15) 0%, hsl(var(--background)) 40%)' }}>
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-1 md:space-y-1.5 bg-background">
         {messages.map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";
@@ -2014,7 +2014,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                           return (
                             <div
                               onClick={handleAvatarClick}
-                              className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold text-white ring-1 ring-border/20 shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white cursor-pointer hover:opacity-80 transition-opacity"
                               style={{ backgroundColor: `hsl(${hue}, 50%, 45%)` }}
                               title={`${displayName}${rawPhone ? ` • +${rawPhone}` : ""}`}
                             >
@@ -2024,9 +2024,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                         }
                         // Non-group: use conversation profile pic
                         return conversation.profilePic ? (
-                          <img src={conversation.profilePic} alt="" className="w-8 h-8 rounded-xl object-cover ring-1 ring-border/20 shadow-sm" />
+                          <img src={conversation.profilePic} alt="" className="w-8 h-8 rounded-full object-cover" />
                         ) : (
-                          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary ring-1 ring-primary/10">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary">
                             {(conversation.customerName || "؟").slice(0, 1)}
                           </div>
                         );
@@ -2034,7 +2034,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     </div>
                   ) : (
                     <div className="shrink-0 mb-1">
-                      <div className="w-8 h-8 rounded-xl bg-secondary border border-border/30 flex items-center justify-center text-[11px] font-bold text-muted-foreground shadow-sm" title={msg.senderName || "موظف"}>
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium text-muted-foreground" title={msg.senderName || "موظف"}>
                         {(msg.senderName || "م").slice(0, 1)}
                       </div>
                     </div>
@@ -2230,7 +2230,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Input Area */}
       {!isRecording && conversation.status !== "closed" && (
-        <div className={cn("shrink-0 border-t bg-card/80 backdrop-blur-sm p-2 md:p-3", isNoteMode ? "border-amber-500/30" : isBlocked ? "border-destructive/30 opacity-60" : "border-border/30")}>
+        <div className={cn("shrink-0 bg-card/90 backdrop-blur-xl p-3 md:p-4", isNoteMode ? "border-t border-amber-500/20" : isBlocked ? "opacity-60" : "")} style={{ boxShadow: '0 -1px 2px rgba(0,0,0,0.03)' }}>
           {/* Reply Preview Bar */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
@@ -2480,12 +2480,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
-                className={cn("flex-1 border-0 rounded-2xl h-11 md:h-12 text-sm", isNoteMode ? "bg-amber-500/5 ring-1 ring-amber-500/20" : "bg-secondary/50 focus:bg-secondary focus:ring-1 focus:ring-primary/20 transition-all")}
+                className={cn("flex-1 border-0 rounded-full h-11 md:h-12 text-sm px-5", isNoteMode ? "bg-amber-500/5 ring-1 ring-amber-500/15" : "bg-muted/60 focus:bg-muted focus:ring-1 focus:ring-border transition-all")}
               />
             )}
             {(isNoteMode || !windowExpired) && (
               imagePreview ? (
-                <button onClick={handleSendImage} disabled={isUploading} className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
+                <button onClick={handleSendImage} disabled={isUploading} className="w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
                   {isUploading ? <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />}
                 </button>
               ) : inputText.trim() ? (
@@ -2500,20 +2500,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     onScheduled={() => {}}
                     onClearInput={() => setInputText("")}
                   >
-                    <button className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 bg-muted hover:bg-muted/80 transition-all" title="جدولة الإرسال">
+                    <button className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 bg-muted hover:bg-muted/80 transition-all" title="جدولة الإرسال">
                       <Clock className="w-4 h-4 text-muted-foreground" />
                     </button>
                   </ScheduleMessagePopover>
-                  <button onClick={handleSend} className={cn("w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 transition-all shadow-md", isNoteMode ? "bg-amber-500 hover:bg-amber-600" : "bg-primary hover:bg-primary/90")}>
+                  <button onClick={handleSend} className={cn("w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 transition-all", isNoteMode ? "bg-amber-500 hover:bg-amber-600" : "bg-primary hover:bg-primary/90")}>
                     <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />
                   </button>
                 </div>
               ) : !isNoteMode ? (
-                <button onClick={() => setIsRecording(true)} className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
+                <button onClick={() => setIsRecording(true)} className="w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
                   <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
               ) : (
-                <button disabled className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-muted">
+                <button disabled className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-muted">
                   <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
               )

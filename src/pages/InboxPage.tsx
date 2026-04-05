@@ -932,7 +932,7 @@ const InboxPage = () => {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-3rem)] overflow-hidden" dir="rtl">
+    <div className="flex h-[calc(100dvh-3rem)] overflow-hidden bg-background" dir="rtl">
       {/* On mobile: show list when no selection, show chat when selected */}
       {(!isMobile || !selected) && (
         <ConversationList
@@ -970,15 +970,15 @@ const InboxPage = () => {
          />
       ) : (
         !isMobile && (
-          <div className="flex flex-1 items-center justify-center bg-gradient-to-b from-background to-secondary/20">
+          <div className="flex flex-1 items-center justify-center bg-background">
             <div className="text-center text-muted-foreground">
-              <div className="w-20 h-20 rounded-3xl bg-secondary/60 flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="w-9 h-9 opacity-25" />
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-7 h-7 opacity-20" />
               </div>
-              <p className="text-base font-semibold text-foreground/70">
+              <p className="text-base font-medium text-foreground/60 tracking-tight">
                 {conversations.length === 0 ? "لا توجد محادثات بعد" : "اختر محادثة للبدء"}
               </p>
-              <p className="text-sm text-muted-foreground/50 mt-1.5">
+              <p className="text-sm text-muted-foreground/40 mt-1.5 font-light">
                 {conversations.length === 0 ? "اربط واتساب وابدأ باستقبال الرسائل" : "اختر من القائمة على اليمين"}
               </p>
             </div>
