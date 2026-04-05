@@ -246,11 +246,6 @@ const CustomersPage = () => {
     }));
   };
 
-  const updateLifecycleStage = async (customerId: string, stage: string) => {
-    await supabase.from("customers").update({ lifecycle_stage: stage }).eq("id", customerId);
-    toast.success("تم تحديث المرحلة");
-    load();
-  };
 
   const visibleCustomers = customers.filter((c) => isLikelyRealCustomerPhone(c.phone));
 
