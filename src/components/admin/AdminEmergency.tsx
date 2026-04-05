@@ -67,11 +67,11 @@ const AdminEmergency = () => {
   }, []);
 
   const saveSetting = async (key: string, value: string, description: string) => {
-    const { data: existing } = await supabase.from("system_settings").select("key").eq("key", key).maybeSingle();
+    const { data: existing } = await cloudSupabase.from("system_settings").select("key").eq("key", key).maybeSingle();
     if (existing) {
-      await supabase.from("system_settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key);
+      await cloudSupabase.from("system_settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key);
     } else {
-      await supabase.from("system_settings").insert({ key, value, description });
+      await cloudSupabase.from("system_settings").insert({ key, value, description });
     }
   };
 
