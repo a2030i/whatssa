@@ -221,8 +221,11 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   }
   if (type === "document") {
     return (
-      <a href={resolvedUrl} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 rounded-lg bg-background/40 p-2 text-xs font-medium hover:bg-background/60">
-        <FileText className="h-4 w-4" /><span>فتح الملف المرفق</span>
+      <a href={resolvedUrl} target="_blank" rel="noreferrer" className="mb-1.5 flex items-center gap-3 rounded-xl bg-background/50 p-3 text-xs font-semibold hover:bg-background/70 transition-colors border border-border/10">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <FileText className="h-5 w-5 text-primary" />
+        </div>
+        <span className="flex-1 truncate">فتح الملف المرفق</span>
       </a>
     );
   }
