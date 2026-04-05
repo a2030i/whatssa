@@ -29,7 +29,7 @@ const CustomersPage = () => {
   const { orgId } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
-  const [stageFilter, setStageFilter] = useState<string>("all");
+  
   const [tagDefs, setTagDefs] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [editCustomer, setEditCustomer] = useState<any>(null);
