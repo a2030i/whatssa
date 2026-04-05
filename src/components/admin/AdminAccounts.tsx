@@ -245,6 +245,7 @@ const AdminAccounts = () => {
           const members = profiles.filter((p) => p.org_id === org.id);
           const wallet = wallets.find((w) => w.org_id === org.id);
           const isExpanded = expandedOrg === org.id;
+          const isOrphan = members.length === 0;
 
           // Activity data
           const lastLogin = members
@@ -267,7 +268,7 @@ const AdminAccounts = () => {
           };
 
           return (
-            <div key={org.id} className="bg-card rounded-xl shadow-card overflow-hidden">
+            <div key={org.id} className={`bg-card rounded-xl shadow-card overflow-hidden ${isOrphan ? "opacity-50 border border-destructive/30" : ""}`}>
               <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors" onClick={() => setExpandedOrg(isExpanded ? null : org.id)}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
