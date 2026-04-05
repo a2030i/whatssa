@@ -253,7 +253,8 @@ serve(async (req) => {
       if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
 
       const cleanPhone = to.replace(/\D/g, "");
-      let remoteJid = to.includes("@") ? to : `${cleanPhone}@s.whatsapp.net`;
+      const isGroupEdit = to.includes("@g.us") || (!to.includes("@") && cleanPhone.length > 15);
+      let remoteJid = to.includes("@") ? to : isGroupEdit ? `${cleanPhone}@g.us` : `${cleanPhone}@s.whatsapp.net`;
 
       try {
         const statusEndpoints = [
