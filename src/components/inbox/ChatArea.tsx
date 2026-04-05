@@ -2353,7 +2353,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Input Area */}
       {!isRecording && conversation.status !== "closed" && (
-        <div className={cn("shrink-0 bg-card/90 backdrop-blur-xl p-3 md:p-4", isNoteMode ? "border-t border-amber-500/20" : isBlocked ? "opacity-60" : "")} style={{ boxShadow: '0 -1px 2px rgba(0,0,0,0.03)' }}>
+        <div className={cn("shrink-0 bg-card/90 backdrop-blur-xl border-t border-border p-3 md:p-4", isNoteMode ? "border-t border-amber-500/20" : isBlocked ? "opacity-60" : "")} style={{ boxShadow: '0 -1px 2px rgba(0,0,0,0.03)' }}>
           {/* Reply Preview Bar */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
