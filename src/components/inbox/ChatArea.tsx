@@ -2165,7 +2165,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 ) : (
                   <div className="w-8 shrink-0" />
                 )}
-                <div className={cn("flex flex-col w-fit max-w-full", msg.sender === "agent" ? "items-start" : "items-end")}>
+                <div className={cn("flex flex-col w-fit max-w-full", msg.sender === "agent" ? "items-end" : "items-start")}>
                   <SwipeableMessageBubble
                     msg={msg}
                     conversation={conversation}
