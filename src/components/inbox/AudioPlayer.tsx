@@ -172,7 +172,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
         </div>
 
         <div className="flex items-center justify-between">
-          <span className={cn("text-[9px] font-mono tabular-nums", isAgent ? "text-muted-foreground" : "text-white/70")}>
+          <span className={cn("text-[9px] font-mono tabular-nums", isAgent ? "text-muted-foreground" : "text-white/80")}>
             {isPlaying || currentTime > 0 ? formatTime(currentTime) : formatTime(duration)}
           </span>
           <div className="flex items-center gap-1">
