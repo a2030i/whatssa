@@ -449,7 +449,7 @@ serve(async (req) => {
       if (metadataPhoneId) {
         const { data: config } = await supabase
           .from("whatsapp_config")
-          .select("id, org_id, default_team_id, default_agent_id")
+          .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
           .eq("phone_number_id", metadataPhoneId)
           .eq("is_connected", true)
           .maybeSingle();
