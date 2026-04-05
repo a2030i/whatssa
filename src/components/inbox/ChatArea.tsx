@@ -213,9 +213,9 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   }
   if (type === "video") {
     return (
-      <div className="mb-1.5 min-w-[240px] rounded-xl bg-background/50 p-2.5 border border-border/10">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold"><Video className="h-4 w-4 text-primary" /><span>مقطع فيديو</span></div>
-        <video controls preload="metadata" className="max-h-[260px] w-full rounded-lg"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الفيديو.</video>
+      <div className="mb-1.5 min-w-[220px] rounded-xl bg-white dark:bg-card overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center gap-2 p-2.5 text-[12px] font-medium text-foreground"><Video className="h-4 w-4 text-primary" /><span>مقطع فيديو</span></div>
+        <video controls preload="metadata" className="max-h-[260px] w-full"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الفيديو.</video>
       </div>
     );
   }
