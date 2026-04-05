@@ -14,15 +14,15 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ exists: false }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceKey);
 
-    // Check if user exists in auth.users
-    const { data } = await adminClient.auth.admin.listUsers({ perPage: 1 });
-    // Use getUserByEmail-like approach
-    const { data: users } = await adminClient.auth.admin.listUsers();
-    const found = users?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+    // Check profiles table for this email — profiles don't have email, so check auth.users
+    const { data: { users }, error } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+    if (error) throw error;
+    
+    const found = users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase().trim());
 
     return new Response(JSON.stringify({ exists: !!found }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
