@@ -2063,7 +2063,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             !isFirstInGroup && "mt-0.5"
           )}>
             {msg.sender === "system" ? (
-              <div className="bg-secondary/80 text-muted-foreground text-[11px] px-4 py-1.5 rounded-full font-medium shadow-sm backdrop-blur-sm">
+              <div className="bg-card border border-border/30 text-muted-foreground text-[11px] px-5 py-2 rounded-xl font-medium shadow-[0_1px_3px_rgba(0,0,0,0.04)] max-w-[85%] text-center leading-relaxed">
                 {msg.text}
               </div>
             ) : (
