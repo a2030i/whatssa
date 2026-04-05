@@ -32,15 +32,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get all active Evolution channels
+    // Get ALL Evolution channels (including disconnected/refused for recovery)
     const { data: channels } = await supabase
       .from("whatsapp_config")
       .select("id, org_id, evolution_instance_name, display_phone, is_connected, business_name")
-      .eq("channel_type", "evolution")
-      .eq("is_connected", true);
+      .eq("channel_type", "evolution");
 
     if (!channels || channels.length === 0) {
-      return new Response(JSON.stringify({ checked: 0, message: "No active Evolution channels" }), {
+      return new Response(JSON.stringify({ checked: 0, message: "No Evolution channels" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
