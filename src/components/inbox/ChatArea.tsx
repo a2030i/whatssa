@@ -1635,7 +1635,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
             <div className="min-w-0 overflow-hidden">
               <div className="flex items-center gap-1.5">
-                <p className="font-semibold text-[13px] truncate max-w-[120px] md:max-w-[250px]">{conversation.customerName}</p>
+                <p className="font-medium text-[15px] truncate max-w-[120px] md:max-w-[250px] tracking-tight">{conversation.customerName}</p>
                 {isMetaChannel ? (
                   <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-medium shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
