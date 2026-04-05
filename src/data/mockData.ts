@@ -90,7 +90,9 @@ export interface Message {
   location?: MessageLocation;
   contacts?: MessageContact[];
   editedAt?: string;
+  editedBy?: string;
   isDeleted?: boolean;
+  deletedBy?: string;
   poll?: {
     question: string;
     options: { id: string; title: string }[];
