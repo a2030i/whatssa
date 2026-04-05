@@ -2504,7 +2504,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                       <Clock className="w-4 h-4 text-muted-foreground" />
                     </button>
                   </ScheduleMessagePopover>
-                  <button onClick={handleSend} className={cn("w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 transition-all shadow-md", isNoteMode ? "bg-amber-500 hover:bg-amber-600" : "bg-primary hover:bg-primary/90")}>
+                  <button onClick={handleSend} className={cn("w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 transition-all", isNoteMode ? "bg-amber-500 hover:bg-amber-600" : "bg-primary hover:bg-primary/90")}>
                     <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />
                   </button>
                 </div>
