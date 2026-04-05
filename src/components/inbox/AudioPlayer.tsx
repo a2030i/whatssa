@@ -127,7 +127,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
   }
 
   return (
-    <div className={cn("flex items-center gap-2 w-full min-w-[180px] max-w-[280px]", className)}>
+    <div className={cn("flex items-center gap-2 w-full min-w-0 max-w-[260px]", className)}>
       <audio ref={audioRef} src={src} preload="metadata" />
 
       {/* Play/Pause */}
