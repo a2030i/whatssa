@@ -98,13 +98,20 @@ const TeamPage = () => {
     return "member";
   };
 
-  const [formSupervisor, setFormSupervisor] = useState(false);
+  const [formEmail, setFormEmail] = useState("");
 
   const openEditDialog = (profile: any) => {
     setEditingProfile(profile);
     setFormTeam(profile.team_id || "");
-    setFormRole(getStoredRole(profile.id) === "admin" ? "admin" : "member");
-    setFormSupervisor(profile.is_supervisor || false);
+    const storedRole = getStoredRole(profile.id);
+    if (storedRole === "admin") {
+      setFormRole("admin");
+    } else if (profile.is_supervisor) {
+      setFormRole("supervisor");
+    } else {
+      setFormRole("member");
+    }
+    setFormEmail("");
     setDialogOpen(true);
   };
 
