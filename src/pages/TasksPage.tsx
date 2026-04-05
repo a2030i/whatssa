@@ -75,7 +75,8 @@ const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }>
 };
 
 const TasksPage = () => {
-  const { profile } = useAuth();
+  const { profile, userRole, isSuperAdmin } = useAuth();
+  const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const [tasks, setTasks] = useState<Task[]>([]);
   const [configs, setConfigs] = useState<ForwardConfig[]>([]);
   const [agents, setAgents] = useState<{ id: string; full_name: string }[]>([]);
@@ -132,28 +133,40 @@ const TasksPage = () => {
   };
 
   const fetchAgents = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("profiles")
-      .select("id, full_name")
+      .select("id, full_name, team_id")
       .eq("org_id", profile!.org_id!)
       .eq("is_active", true);
+    
+    // Supervisors only see their team members
+    if (effectiveRole === "supervisor" && profile?.team_id) {
+      query = query.eq("team_id", profile.team_id);
+    }
+    
+    const { data } = await query;
     setAgents(data || []);
   };
 
   const createTask = async () => {
     if (!newTitle.trim()) return toast.error("أدخل عنوان المهمة");
+    const assignee = effectiveRole === "member" ? profile!.id : (newAssignee || null);
     const { error } = await supabase.from("tasks").insert({
       org_id: profile!.org_id!,
       title: newTitle.trim(),
       description: newDesc.trim() || null,
       task_type: newType,
       priority: newPriority,
-      assigned_to: newAssignee || null,
+      assigned_to: assignee,
       customer_phone: newPhone || null,
       customer_name: newCustomerName || null,
       created_by_type: "agent",
+      created_by: profile!.id,
     } as any);
-    if (error) return toast.error("فشل إنشاء المهمة");
+    if (error) {
+      console.error("Task creation error:", error);
+      return toast.error("فشل إنشاء المهمة");
+    }
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
     setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setNewPhone(""); setNewCustomerName("");
@@ -469,16 +482,18 @@ const TasksPage = () => {
                 </Select>
               </div>
             </div>
-            <div>
-              <Label>إسناد إلى</Label>
-              <Select value={newAssignee} onValueChange={setNewAssignee}>
-                <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">بدون إسناد</SelectItem>
-                  {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            {effectiveRole !== "member" && (
+              <div>
+                <Label>إسناد إلى</Label>
+                <Select value={newAssignee} onValueChange={setNewAssignee}>
+                  <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">بدون إسناد</SelectItem>
+                    {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>اسم العميل</Label>
