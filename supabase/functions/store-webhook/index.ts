@@ -1,5 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.1";
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.100.1/cors";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.49.1/cors";
 
 // ─────────────────────────────────────────────
 // Unified Store Webhook — Zid, WooCommerce, Shopify, Generic
