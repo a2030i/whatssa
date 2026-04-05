@@ -120,6 +120,12 @@ const TeamPage = () => {
 
   const handleSave = async () => {
     if (!editingProfile) return;
+
+    const currentRole = getStoredRole(editingProfile.id);
+    if (currentRole === "super_admin" && formRole !== "admin") {
+      toast.error("لا يمكن خفض صلاحية السوبر أدمن من هذه الشاشة");
+      return;
+    }
     
     const isSupervisor = formRole === "supervisor";
     const profileUpdate = await supabase.from("profiles").update({ 
@@ -132,19 +138,17 @@ const TeamPage = () => {
       return;
     }
 
-    const currentRole = getStoredRole(editingProfile.id);
     const targetDbRole = formRole === "admin" ? "admin" : "member";
     
-    if (currentRole !== targetDbRole) {
+    if (currentRole !== targetDbRole && currentRole !== "super_admin") {
       let roleResult;
       if (targetDbRole === "admin") {
         if (currentRole) {
-          roleResult = await supabase.from("user_roles").update({ role: "admin" as any }).eq("user_id", editingProfile.id);
+          roleResult = await supabase.from("user_roles").update({ role: "admin" as any }).eq("user_id", editingProfile.id).neq("role", "super_admin");
         } else {
           roleResult = await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "admin" as any });
         }
       } else if (currentRole === "admin") {
-        // Downgrade from admin: delete admin role and insert member
         await supabase.from("user_roles").delete().eq("user_id", editingProfile.id).eq("role", "admin");
         roleResult = await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "member" as any });
       }
@@ -154,7 +158,6 @@ const TeamPage = () => {
       }
     }
 
-    // Update email if changed
     if (formEmail.trim() && formEmail.trim() !== editingProfile.email) {
       try {
         const { error } = await invokeCloud("admin-create-user", {
