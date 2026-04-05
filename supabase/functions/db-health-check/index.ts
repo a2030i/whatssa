@@ -18,6 +18,15 @@ Deno.serve(async (req) => {
 
   const cloudSupabase = createClient(CLOUD_URL, CLOUD_SERVICE_KEY);
 
+  // Parse request body early (can only read once)
+  let isTest = false;
+  try {
+    const body = await req.json();
+    isTest = body?.test === true;
+  } catch {
+    // no body or not JSON
+  }
+
   const results: Record<string, any> = {
     checked_at: new Date().toISOString(),
     db_reachable: false,
@@ -74,8 +83,9 @@ Deno.serve(async (req) => {
     // table might not exist yet, that's fine
   }
 
-  // If external DB is DOWN, send alert via Evolution API (WhatsApp)
-  if (!results.db_reachable || !results.auth_reachable) {
+
+  // Send alert if external DB is DOWN or if this is a test
+  if (!results.db_reachable || !results.auth_reachable || isTest) {
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
 
@@ -96,12 +106,14 @@ Deno.serve(async (req) => {
         const alertInstance = settingsMap["alert_evolution_instance"];
 
         if (alertPhone && alertInstance) {
-          const message = `🚨 تنبيه طوارئ - النظام متوقف!\n\n` +
-            `⏰ الوقت: ${new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}\n` +
-            `🔴 قاعدة البيانات: ${results.db_reachable ? "تعمل" : "متوقفة"}\n` +
-            `🔴 المصادقة: ${results.auth_reachable ? "تعمل" : "متوقفة"}\n` +
-            `⏱️ زمن الفحص: ${results.latency_ms}ms\n\n` +
-            `يرجى التحقق فوراً من لوحة Supabase.`;
+          const message = isTest
+            ? `✅ تنبيه تجريبي — نظام الطوارئ يعمل بنجاح!\n\n⏰ ${new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}`
+            : `🚨 تنبيه طوارئ - النظام متوقف!\n\n` +
+              `⏰ الوقت: ${new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}\n` +
+              `🔴 قاعدة البيانات: ${results.db_reachable ? "تعمل" : "متوقفة"}\n` +
+              `🔴 المصادقة: ${results.auth_reachable ? "تعمل" : "متوقفة"}\n` +
+              `⏱️ زمن الفحص: ${results.latency_ms}ms\n\n` +
+              `يرجى التحقق فوراً من لوحة Supabase.`;
 
           await fetch(`${EVOLUTION_URL}/message/sendText/${alertInstance}`, {
             method: "POST",
@@ -118,6 +130,7 @@ Deno.serve(async (req) => {
           results.alert_sent = true;
           results.alert_phone = alertPhone;
           results.alert_instance = alertInstance;
+          if (isTest) results.is_test = true;
         } else {
           results.alert_sent = false;
           results.alert_reason = !alertPhone ? "no_emergency_phone" : "no_alert_instance";

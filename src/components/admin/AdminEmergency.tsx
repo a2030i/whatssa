@@ -31,6 +31,7 @@ const AdminEmergency = () => {
   const [evolutionChannels, setEvolutionChannels] = useState<{instance: string; phone: string; name: string}[]>([]);
   const [savingPhone, setSavingPhone] = useState(false);
   const [savingInstance, setSavingInstance] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
 
   const EXTERNAL_URL = "https://ovbrrumnqfvtgmqsscat.supabase.co";
   const EXTERNAL_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92YnJydW1ucWZ2dGdtcXNzY2F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzc4ODQsImV4cCI6MjA5MDY1Mzg4NH0.-ed8-nrAbfO1lMm9Rc5bjwsIzmonunVKkcwRY586SrQ";
@@ -161,6 +162,26 @@ const AdminEmergency = () => {
     return <Clock className="w-5 h-5 text-muted-foreground animate-spin" />;
   };
 
+  const sendTestAlert = async () => {
+    setIsTesting(true);
+    try {
+      const res = await fetch(`${CLOUD_URL}/functions/v1/db-health-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${CLOUD_KEY}` },
+        body: JSON.stringify({ test: true }),
+      });
+      const data = await res.json();
+      if (data.alert_sent) {
+        toast.success("تم إرسال التنبيه التجريبي بنجاح ✅");
+      } else {
+        toast.error(`فشل الإرسال: ${data.alert_reason || data.alert_error || "خطأ غير معروف"}`);
+      }
+    } catch (e: any) {
+      toast.error("فشل الاتصال بالخادم");
+    }
+    setIsTesting(false);
+  };
+
   // Generate QR data for emergency access
   const emergencyUrl = `${window.location.origin}/emergency-admin`;
   const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(emergencyUrl)}`;
@@ -249,9 +270,21 @@ const AdminEmergency = () => {
             </div>
 
             {emergencyPhone && alertInstance ? (
-              <div className="bg-primary/5 rounded-lg p-2 text-xs text-primary font-medium flex items-center gap-2">
-                <CheckCircle className="w-3 h-3" />
-                التنبيهات مفعّلة — المستقبل: {emergencyPhone}
+              <div className="space-y-2">
+                <div className="bg-primary/5 rounded-lg p-2 text-xs text-primary font-medium flex items-center gap-2">
+                  <CheckCircle className="w-3 h-3" />
+                  التنبيهات مفعّلة — المستقبل: {emergencyPhone}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-8 text-xs"
+                  disabled={isTesting}
+                  onClick={sendTestAlert}
+                >
+                  <Send className={`w-3 h-3 ml-1 ${isTesting ? "animate-pulse" : ""}`} />
+                  {isTesting ? "جارٍ الإرسال..." : "إرسال تنبيه تجريبي"}
+                </Button>
               </div>
             ) : (
               <div className="bg-yellow-500/10 rounded-lg p-2 text-xs text-yellow-600 font-medium flex items-center gap-2">
