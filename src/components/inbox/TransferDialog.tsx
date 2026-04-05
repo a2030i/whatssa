@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, Circle } from "lucide-react";
+import { UserPlus, Circle, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -20,10 +19,12 @@ interface TransferDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   conversationId: string;
+  currentAssigneeId?: string;
+  currentAssigneeName?: string;
   onTransfer: (convId: string, agentName: string) => void;
 }
 
-const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: TransferDialogProps) => {
+const TransferDialog = ({ open, onOpenChange, conversationId, currentAssigneeId, currentAssigneeName, onTransfer }: TransferDialogProps) => {
   const { orgId, user } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +43,7 @@ const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: Tran
           .from("conversations")
           .select("assigned_to_id")
           .eq("org_id", orgId)
-          .eq("status", "open"),
+          .in("status", ["open", "active", "waiting"]),
       ]);
       const countMap: Record<string, number> = {};
       (countsData || []).forEach((c: any) => {
@@ -50,8 +51,10 @@ const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: Tran
           countMap[c.assigned_to_id] = (countMap[c.assigned_to_id] || 0) + 1;
         }
       });
+      // Exclude currently assigned agent
+      const filtered = (profilesData || []).filter((p: any) => p.id !== currentAssigneeId);
       setAgents(
-        (profilesData || []).map((p: any) => ({
+        filtered.map((p: any) => ({
           ...p,
           assigned_count: countMap[p.id] || 0,
         }))
@@ -59,7 +62,7 @@ const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: Tran
       setLoading(false);
     };
     load();
-  }, [open, orgId]);
+  }, [open, orgId, currentAssigneeId]);
 
   const handleTransfer = (agent: Agent) => {
     onTransfer(conversationId, agent.full_name || "غير معروف");
@@ -91,6 +94,15 @@ const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: Tran
           </DialogTitle>
         </DialogHeader>
 
+        {/* Current assignee indicator */}
+        {currentAssigneeName && currentAssigneeName !== "غير معيّن" && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20 text-sm">
+            <AlertCircle className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-muted-foreground">مُسندة حالياً إلى:</span>
+            <span className="font-semibold text-foreground">{currentAssigneeName}</span>
+          </div>
+        )}
+
         {loading ? (
           <div className="py-8 text-center text-sm text-muted-foreground">جاري التحميل...</div>
         ) : agents.length === 0 ? (
@@ -121,7 +133,7 @@ const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: Tran
                         <p className="text-[10px] text-success">متصل الآن</p>
                       </div>
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 shrink-0">
-                        مُسند إليه {agent.assigned_count}
+                        {agent.assigned_count} محادثة
                       </Badge>
                     </button>
                   ))}
@@ -152,7 +164,7 @@ const TransferDialog = ({ open, onOpenChange, conversationId, onTransfer }: Tran
                         <p className="text-[10px] text-muted-foreground">آخر ظهور: {formatLastSeen(agent.last_seen_at)}</p>
                       </div>
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 shrink-0">
-                        مُسند إليه {agent.assigned_count}
+                        {agent.assigned_count} محادثة
                       </Badge>
                     </button>
                   ))}

@@ -2449,6 +2449,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         open={showTransfer}
         onOpenChange={setShowTransfer}
         conversationId={conversation.id}
+        currentAssigneeId={conversation.assignedToId}
+        currentAssigneeName={conversation.assignedTo}
         onTransfer={onTransfer}
       />
 
