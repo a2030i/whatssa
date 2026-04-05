@@ -150,18 +150,23 @@ const TasksPage = () => {
 
   const createTask = async () => {
     if (!newTitle.trim()) return toast.error("أدخل عنوان المهمة");
+    const assignee = effectiveRole === "member" ? profile!.id : (newAssignee || null);
     const { error } = await supabase.from("tasks").insert({
       org_id: profile!.org_id!,
       title: newTitle.trim(),
       description: newDesc.trim() || null,
       task_type: newType,
       priority: newPriority,
-      assigned_to: newAssignee || null,
+      assigned_to: assignee,
       customer_phone: newPhone || null,
       customer_name: newCustomerName || null,
       created_by_type: "agent",
+      created_by: profile!.id,
     } as any);
-    if (error) return toast.error("فشل إنشاء المهمة");
+    if (error) {
+      console.error("Task creation error:", error);
+      return toast.error("فشل إنشاء المهمة");
+    }
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
     setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setNewPhone(""); setNewCustomerName("");
