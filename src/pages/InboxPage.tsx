@@ -446,31 +446,41 @@ const InboxPage = () => {
     return () => window.clearTimeout(timer);
   }, [selectedId, allMessages, conversations]);
 
-  // Send read receipts to Evolution when opening a conversation with unread messages
+  // Send read receipts when opening a conversation with unread messages
   useEffect(() => {
     if (!selectedId || !orgId) return;
     const conv = conversations.find(c => c.id === selectedId);
     if (!conv || conv.unread === 0) return;
-    // Only for evolution channels (or unknown channels which are likely evolution)
-    if (conv.channelType === "meta_api") return;
 
     const msgs = allMessages[selectedId];
     if (!msgs || msgs.length === 0) return;
 
-    // Collect unread customer message keys
-    const unreadKeys = msgs
-      .filter(m => m.sender === "customer" && m.waMessageId)
-      .slice(-20) // last 20 messages max
-      .map(m => ({
-        remoteJid: conv.customerPhone.includes("@") ? conv.customerPhone : `${conv.customerPhone}@s.whatsapp.net`,
-        fromMe: false,
-        id: m.waMessageId!,
-      }));
+    const unreadCustomerMsgs = msgs.filter(m => m.sender === "customer" && m.waMessageId);
+    if (unreadCustomerMsgs.length === 0) return;
 
-    if (unreadKeys.length > 0) {
-      invokeCloud("evolution-manage", {
-        body: { action: "read_messages", messages: unreadKeys, channel_id: conv.channelId },
-      }).catch(() => {}); // fire and forget
+    if (conv.channelType === "meta_api") {
+      // Meta API: send read receipt for the last customer message
+      const lastMsg = unreadCustomerMsgs[unreadCustomerMsgs.length - 1];
+      if (lastMsg.waMessageId) {
+        invokeCloud("whatsapp-catalog", {
+          body: { action: "mark_read", message_id: lastMsg.waMessageId, org_id: orgId },
+        }).catch(() => {});
+      }
+    } else {
+      // Evolution: send read receipts for all unread messages
+      const unreadKeys = unreadCustomerMsgs
+        .slice(-20)
+        .map(m => ({
+          remoteJid: conv.customerPhone.includes("@") ? conv.customerPhone : `${conv.customerPhone}@s.whatsapp.net`,
+          fromMe: false,
+          id: m.waMessageId!,
+        }));
+
+      if (unreadKeys.length > 0) {
+        invokeCloud("evolution-manage", {
+          body: { action: "read_messages", messages: unreadKeys, channel_id: conv.channelId },
+        }).catch(() => {});
+      }
     }
   }, [selectedId, allMessages, conversations, orgId]);
 
