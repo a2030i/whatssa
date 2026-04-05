@@ -56,7 +56,7 @@ const CustomersPage = () => {
     const payload: any = {
       name: form.name || null, phone: form.phone, email: form.email || null,
       notes: form.notes || null, tags: form.tags,
-      lifecycle_stage: form.lifecycle_stage, company: form.company || null,
+      company: form.company || null,
       source: form.source || "whatsapp",
       custom_fields: Object.keys(customFields).length > 0 ? customFields : {},
     };
