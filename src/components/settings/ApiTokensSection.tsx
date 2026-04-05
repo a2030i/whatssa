@@ -29,6 +29,7 @@ const allPermissions = [
   { key: "customers", label: "العملاء", desc: "إدارة بيانات العملاء" },
   { key: "orders", label: "الطلبات", desc: "إدارة الطلبات والسلات المتروكة" },
   { key: "conversations", label: "المحادثات", desc: "عرض المحادثات والرسائل" },
+  { key: "whatsapp", label: "واتساب QR", desc: "إنشاء وإدارة أرقام QR" },
 ];
 
 const ApiTokensSection = () => {
