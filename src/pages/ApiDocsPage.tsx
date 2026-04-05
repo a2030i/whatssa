@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Smartphone } from "lucide-react";
 import { ArrowRight, Copy, Code2, Send, Users, ShoppingCart, MessageSquare, ShoppingBag, Key } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
