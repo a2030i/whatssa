@@ -120,13 +120,22 @@ const IntegrationsPage = () => {
   useEffect(() => {
     loadFacebookSDK();
     // Load Meta settings via Cloud edge function (bypasses external DB RLS)
-    invokeCloud("get-meta-settings").then(({ data }) => {
-      const settings = Array.isArray(data) ? data : [];
+    invokeCloud("get-meta-settings").then(({ data, error }) => {
+      console.log("[get-meta-settings] raw response:", { data, error });
+      // data may come as a JSON string from the edge function
+      let settings: any[] = [];
+      if (Array.isArray(data)) {
+        settings = data;
+      } else if (typeof data === "string") {
+        try { settings = JSON.parse(data); } catch { /* ignore */ }
+      }
       settings.forEach((s: any) => {
         if (s.key === "meta_app_id" && s.value) setMetaAppId(String(s.value));
         if (s.key === "meta_config_id" && s.value) setMetaConfigId(String(s.value));
         if (s.key === "official_whatsapp_enabled") setOfficialEnabled(s.value === true || s.value === "true");
       });
+    }).catch((err) => {
+      console.error("[get-meta-settings] fetch error:", err);
     });
   }, []);
 
