@@ -476,9 +476,9 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           <>
             {msg.senderName && conversation.conversationType === "group" && (
               <div className={cn(
-                "text-[11px] font-bold mb-1",
-                msg.sender === "agent" ? "text-primary" : ""
-              )} style={msg.sender === "customer" ? { color: "#a8f0c8" } : undefined}>
+                "text-[10px] font-semibold mb-0.5 opacity-80",
+                msg.sender === "agent" ? "text-primary" : "text-primary-foreground/70"
+              )}>
                 {msg.senderName}
               </div>
             )}
