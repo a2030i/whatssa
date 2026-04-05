@@ -3,6 +3,7 @@ import { Users, User, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -11,6 +12,7 @@ interface Props {
   orgId: string;
   defaultTeamId?: string | null;
   defaultAgentId?: string | null;
+  excludeSupervisors?: boolean;
 }
 
 const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId }: Props) => {
