@@ -47,6 +47,7 @@ const TeamPage = () => {
   const [workStart2, setWorkStart2] = useState("18:00");
   const [workEnd2, setWorkEnd2] = useState("02:00");
   const [workDays2, setWorkDays2] = useState<number[]>([]);
+  const [rolesRepaired, setRolesRepaired] = useState(false);
 
   // Assignment config dialog
   const [assignDialog, setAssignDialog] = useState<any>(null);
@@ -59,12 +60,6 @@ const TeamPage = () => {
 
   const dayLabels = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
-  useEffect(() => {
-    if (orgId) load();
-    const interval = setInterval(() => { if (orgId && !document.hidden) load(); }, 60000);
-    return () => clearInterval(interval);
-  }, [orgId]);
-
   const load = async () => {
     const [t, p, r, conv] = await Promise.all([
       supabase.from("teams").select("*").eq("org_id", orgId),
@@ -76,7 +71,6 @@ const TeamPage = () => {
     setProfiles(p.data || []);
     setRoles(r.data || []);
 
-    // Build conversation count map by assigned_to (full_name)
     const counts: Record<string, number> = {};
     (conv.data || []).forEach((c: any) => {
       if (c.assigned_to) {
@@ -86,11 +80,37 @@ const TeamPage = () => {
     setConvCounts(counts);
   };
 
+  useEffect(() => {
+    if (orgId) load();
+    const interval = setInterval(() => { if (orgId && !document.hidden) load(); }, 60000);
+    return () => clearInterval(interval);
+  }, [orgId]);
+
+  useEffect(() => {
+    if (!orgId || rolesRepaired || !["admin", "super_admin"].includes(userRole || "")) return;
+
+    const repairDuplicatedRoles = async () => {
+      const { data, error } = await invokeCloud("repair-org-roles");
+      if (!error && data?.repaired > 0) {
+        toast.success(`تم إصلاح ${data.repaired} عضو في الفريق`);
+      }
+      setRolesRepaired(true);
+      load();
+    };
+
+    repairDuplicatedRoles();
+  }, [orgId, userRole, rolesRepaired]);
+
   const getStoredRole = (userId: string) => {
     const userRoles = roles.filter((x) => x.user_id === userId).map((x) => x.role);
-    if (userRoles.includes("super_admin")) return "super_admin";
-    if (userRoles.includes("admin")) return "admin";
-    if (userRoles.includes("member")) return "member";
+    const hasSuperAdmin = userRoles.includes("super_admin");
+    const hasAdmin = userRoles.includes("admin");
+    const hasMember = userRoles.includes("member");
+
+    if (hasSuperAdmin) return "super_admin";
+    if (hasAdmin && !hasMember) return "admin";
+    if (hasMember) return "member";
+    if (hasAdmin) return "admin";
     return null;
   };
 
@@ -126,33 +146,29 @@ const TeamPage = () => {
       toast.error("لا يمكن خفض صلاحية السوبر أدمن من هذه الشاشة");
       return;
     }
-    
+
     const isSupervisor = formRole === "supervisor";
-    const profileUpdate = await supabase.from("profiles").update({ 
-      team_id: formTeam || null, 
-      is_supervisor: isSupervisor 
+    const profileUpdate = await supabase.from("profiles").update({
+      team_id: formTeam || null,
+      is_supervisor: isSupervisor,
     }).eq("id", editingProfile.id);
-    
+
     if (profileUpdate.error) {
       toast.error("فشل تحديث الملف الشخصي: " + profileUpdate.error.message);
       return;
     }
 
     const targetDbRole = formRole === "admin" ? "admin" : "member";
-    
-    if (currentRole !== targetDbRole && currentRole !== "super_admin") {
-      let roleResult;
-      if (targetDbRole === "admin") {
-        if (currentRole) {
-          roleResult = await supabase.from("user_roles").update({ role: "admin" as any }).eq("user_id", editingProfile.id).neq("role", "super_admin");
-        } else {
-          roleResult = await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "admin" as any });
-        }
-      } else if (currentRole === "admin") {
-        await supabase.from("user_roles").delete().eq("user_id", editingProfile.id).eq("role", "admin");
-        roleResult = await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "member" as any });
+
+    if (currentRole !== "super_admin") {
+      const deleteRolesResult = await supabase.from("user_roles").delete().eq("user_id", editingProfile.id).in("role", ["admin", "member"] as any);
+      if (deleteRolesResult.error) {
+        toast.error("فشل تنظيف الأدوار القديمة: " + deleteRolesResult.error.message);
+        return;
       }
-      if (roleResult?.error) {
+
+      const roleResult = await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: targetDbRole as any });
+      if (roleResult.error) {
         toast.error("فشل تحديث الدور: " + roleResult.error.message);
         return;
       }

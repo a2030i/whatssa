@@ -93,7 +93,7 @@ const roleLabels: Record<string, string> = {
   admin: "مدير",
   super_admin: "مدير النظام",
   supervisor: "مشرف",
-  member: "عضو",
+  member: "موظف",
 };
 
 const AppSidebar = () => {
@@ -101,6 +101,13 @@ const AppSidebar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const displayRole = userRole === "super_admin"
+    ? "super_admin"
+    : userRole === "admin"
+      ? "admin"
+      : profile?.is_supervisor
+        ? "supervisor"
+        : "member";
   const isInsideInboxConversation = location.pathname === "/inbox" && new URLSearchParams(location.search).has("conversation");
 
   const navSections = buildGroups(isEcommerce, hasMetaApi);
@@ -290,7 +297,7 @@ const AppSidebar = () => {
                     {profile?.full_name || "مستخدم"}
                   </p>
                   <p className="text-[10px] text-sidebar-foreground/40 truncate">
-                    {roleLabels[userRole || "member"] || "عضو"}
+                    {roleLabels[displayRole] || "موظف"}
                   </p>
                 </div>
                 <Tooltip>
