@@ -190,7 +190,11 @@ const AdminAccounts = () => {
 
   const filtered = orgs.filter((o) => {
     if (superAdminOrgIds.has(o.id)) return false;
-    return o.name?.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search);
+    const matchesSearch = o.name?.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search);
+    if (!matchesSearch) return false;
+    // Hide orphan orgs (0 members) unless toggled
+    if (!showOrphans && profiles.filter((p) => p.org_id === o.id).length === 0) return false;
+    return true;
   });
 
   const orphanCount = filtered.filter((o) => profiles.filter((p) => p.org_id === o.id).length === 0).length;
