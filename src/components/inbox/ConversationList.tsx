@@ -498,22 +498,22 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   <div className="flex-1 min-w-0">
                     {/* Row 1: Name */}
                     <p className={cn(
-                      "text-[14px] font-medium truncate leading-tight flex items-center gap-1",
-                      hasUnread ? "text-foreground" : "text-foreground/90"
+                      "text-[14px] font-semibold truncate leading-tight flex items-center gap-1",
+                      hasUnread ? "text-foreground" : "text-foreground/80"
                     )}>
-                      {conv.isPinned && <Pin className="w-2.5 h-2.5 text-muted-foreground/60 shrink-0 rotate-45" />}
+                      {conv.isPinned && <Pin className="w-2.5 h-2.5 text-primary/50 shrink-0 rotate-45" />}
                       {displayName}
                     </p>
                     {/* Row 2: Last message preview */}
                     <p className={cn(
-                      "text-[12.5px] truncate leading-snug mt-1",
-                      hasUnread ? "text-foreground/70 font-medium" : "text-muted-foreground"
+                      "text-[12.5px] truncate leading-snug mt-0.5",
+                      hasUnread ? "text-foreground/60 font-medium" : "text-muted-foreground/70"
                     )}>
                       {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                     </p>
-                    {/* Row 3: Assigned agent (only if meaningful) */}
+                    {/* Row 3: Channel label */}
                     {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                      <span className="text-[10px] text-muted-foreground/50 leading-none mt-1 block truncate max-w-[100px]">
+                      <span className="text-[10px] text-primary/50 leading-none mt-1 block truncate max-w-[100px] font-medium">
                         {conv.assignedTo.split(" ")[0]}
                       </span>
                     )}
