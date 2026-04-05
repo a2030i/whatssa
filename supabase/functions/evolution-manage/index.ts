@@ -145,10 +145,7 @@ serve(async (req) => {
     });
 
     const { data: { user }, error: userError } = await authClient.auth.getUser();
-    if (userError || !user) {
-      console.error("[evolution-manage] getUser failed:", userError?.message, "SUPABASE_URL:", SUPABASE_URL?.substring(0, 30));
-      return json({ error: "Unauthorized" }, 401);
-    }
+    if (userError || !user) return json({ error: "Unauthorized" }, 401);
 
     // Parallel: fetch profile + parse body simultaneously
     const [profileResult, rawBody] = await Promise.all([
