@@ -2822,6 +2822,7 @@ export type Database = {
           completed_at: string | null
           conversation_id: string | null
           created_at: string
+          created_by: string | null
           created_by_type: string
           customer_name: string | null
           customer_phone: string | null
@@ -2842,6 +2843,7 @@ export type Database = {
           completed_at?: string | null
           conversation_id?: string | null
           created_at?: string
+          created_by?: string | null
           created_by_type?: string
           customer_name?: string | null
           customer_phone?: string | null
@@ -2862,6 +2864,7 @@ export type Database = {
           completed_at?: string | null
           conversation_id?: string | null
           created_at?: string
+          created_by?: string | null
           created_by_type?: string
           customer_name?: string | null
           customer_phone?: string | null
@@ -3611,6 +3614,15 @@ export type Database = {
       admin_get_infra_status: { Args: never; Returns: Json }
       admin_get_system_stats: { Args: never; Returns: Json }
       admin_get_top_orgs_usage: { Args: { _limit?: number }; Returns: Json }
+      can_access_task: {
+        Args: {
+          _task_assigned_to: string
+          _task_created_by: string
+          _task_org_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       check_channel_rate_limit: { Args: { _channel_id: string }; Returns: Json }
       check_org_limit: {
         Args: { _check_type: string; _org_id: string }
