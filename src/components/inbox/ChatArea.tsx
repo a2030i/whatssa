@@ -1615,7 +1615,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       <div className="shrink-0 bg-card/90 backdrop-blur-xl" style={{ boxShadow: 'var(--shadow-xs)' }}>
         <div className="h-[56px] md:h-[60px] flex items-center justify-between px-4 md:px-5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <button className="w-8 h-8 md:w-9 md:h-9 rounded-lg hover:bg-secondary transition-all flex items-center justify-center shrink-0" onClick={onBack}>
+            <button className="w-8 h-8 md:w-9 md:h-9 rounded-full hover:bg-muted transition-all flex items-center justify-center shrink-0" onClick={onBack}>
               <ArrowRight className="w-4.5 h-4.5 text-foreground" />
             </button>
             <button
