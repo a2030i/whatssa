@@ -1149,9 +1149,12 @@ serve(async (req) => {
             const participantRaw = key.participant || "";
             const isLidParticipant = participantRaw.includes("@lid");
             // Use senderPn (real phone) for @lid participants, otherwise strip JID suffix
+            // IMPORTANT: Never save @lid IDs as phone numbers — they are not real phones
             const senderPhone = (isLidParticipant && senderPn)
               ? senderPn.replace(/\D/g, "")
-              : participantRaw.replace("@s.whatsapp.net", "").replace("@lid", "");
+              : isLidParticipant
+                ? "" // Skip — no real phone available for this LID participant
+                : participantRaw.replace("@s.whatsapp.net", "");
             const senderPushName = msg.pushName || "";
             if (senderPhone && senderPhone.length > 5) {
               const { data: existingParticipant } = await supabase
@@ -1292,9 +1295,12 @@ serve(async (req) => {
           // Auto-save group sender as customer with real phone
           if (participant && senderName) {
             const isLidPart = participant.includes("@lid");
+            // Only save real phone numbers, never LID identifiers
             const realPhone = (isLidPart && senderPn)
               ? senderPn.replace(/\D/g, "")
-              : participant.replace("@s.whatsapp.net", "").replace("@lid", "");
+              : isLidPart
+                ? "" // Skip — no real phone for this LID
+                : participant.replace("@s.whatsapp.net", "");
             if (realPhone && realPhone.length > 5) {
               try {
                 await supabase.from("customers").upsert({

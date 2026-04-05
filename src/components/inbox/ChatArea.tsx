@@ -477,7 +477,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             {conversation.conversationType === "group" && msg.sender === "customer" && (() => {
               // Resolve display name: try groupParticipants first, then fallback to senderName/phone
               const rawJid = msg.senderJid || "";
-              const rawPhone = msg.senderPhone || normalizeDigits(rawJid);
+              const jidIsLidBubble = rawJid.includes("@lid");
+              const rawPhone = msg.senderPhone || (!jidIsLidBubble ? normalizeDigits(rawJid) : "");
               let resolvedName = msg.senderName || "";
               if (rawPhone && groupParticipants?.length) {
                 const found = groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone))));
@@ -1923,7 +1924,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                       {(() => {
                         // In groups, resolve per-sender avatar
                         if (isGroup) {
-                          const rawPhone = msg.senderPhone || (msg.senderJid ? msg.senderJid.replace(/@.*/, "").replace(/\D/g, "") : "");
+                          const jidIsLid = msg.senderJid?.includes("@lid") || false;
+                          const rawPhone = msg.senderPhone || (!jidIsLid && msg.senderJid ? msg.senderJid.replace(/@.*/, "").replace(/\D/g, "") : "");
                           const participant = rawPhone ? groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone)))) : undefined;
                           const displayName = participant?.name || msg.senderName || rawPhone || "؟";
                           const initials = displayName.slice(0, 2);
