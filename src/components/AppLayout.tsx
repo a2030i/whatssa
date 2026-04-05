@@ -78,7 +78,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <NotificationBell />
         </div>
       </div>
-      <main className={`md:mr-[250px] min-h-screen ${isImpersonating ? "pt-[92px]" : "pt-14"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
+      <main className={`md:mr-[250px] min-h-screen ${isImpersonating ? "pt-[92px]" : "pt-14"} ${mainBottomPadding} transition-all duration-300`}>
         {children}
       </main>
 
