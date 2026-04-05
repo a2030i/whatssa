@@ -78,7 +78,9 @@ const AdminOverview = () => {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 30000);
+    const interval = setInterval(() => {
+      if (!document.hidden) load();
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 

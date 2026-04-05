@@ -69,7 +69,9 @@ const ReportsPage = () => {
   useEffect(() => {
     if (!orgId) return;
     loadReports();
-    const interval = setInterval(loadReports, 30000);
+    const interval = setInterval(() => {
+      if (!document.hidden) loadReports();
+    }, 60000);
     return () => clearInterval(interval);
   }, [orgId, period]);
 
