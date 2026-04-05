@@ -448,8 +448,7 @@ serve(async (req) => {
       });
     }
 
-    // Alias for rest of code
-    const config = finalConfig;
+    const config = finalConfig!;
 
     const orgId = config.org_id;
 
