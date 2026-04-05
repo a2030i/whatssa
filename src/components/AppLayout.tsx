@@ -25,7 +25,8 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const isMobile = useIsMobile();
   const [orgName, setOrgName] = useState("");
 
-  const hideBottomNav = location.pathname === "/inbox";
+  // Bottom nav is always visible — when inside a mobile chat, the fixed z-50 overlay covers it
+  const hideBottomNav = false;
 
   // Global hooks
   useNotificationSound();
