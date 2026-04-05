@@ -48,6 +48,7 @@ interface ChatAreaProps {
   onScrollToMessageDone?: () => void;
   onStarMessage?: (msgId: string, starred: boolean) => void;
   onForwardMessage?: (msg: Message) => void;
+  onConversationMerged?: (sourceConversationId: string, targetConversationId: string) => void;
 }
 
 const MessageStatus = ({ status, isGroup, readBy, groupSize }: { status?: string; isGroup?: boolean; readBy?: string[]; groupSize?: number }) => {
@@ -662,7 +663,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   );
 };
 
-const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo, scrollToMessageId, onScrollToMessageDone, onStarMessage, onForwardMessage }: ChatAreaProps) => {
+const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo, scrollToMessageId, onScrollToMessageDone, onStarMessage, onForwardMessage, onConversationMerged }: ChatAreaProps) => {
   const { orgId, user, profile } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -2557,6 +2558,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         sourceConversationId={conversation.id}
         sourceCustomerPhone={conversation.customerPhone}
         sourceCustomerName={conversation.customerName}
+        onMerged={(targetConversationId) => onConversationMerged?.(conversation.id, targetConversationId)}
       />
 
       {/* Disappearing Messages Submenu */}

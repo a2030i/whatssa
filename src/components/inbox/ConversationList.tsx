@@ -143,7 +143,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
     unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId).length,
     mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
-    closed: conversations.filter(c => c.status === "closed").length,
+    closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
     archived: conversations.filter(c => c.isArchived).length,
   }), [conversations, myId]);
 

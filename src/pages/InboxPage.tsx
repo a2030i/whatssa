@@ -759,6 +759,61 @@ const InboxPage = () => {
     toast.success(newVal ? "📁 تم أرشفة المحادثة" : "تم إلغاء الأرشفة");
   }, [conversations]);
 
+  const handleConversationMerged = useCallback((sourceConversationId: string, targetConversationId: string) => {
+    if (sourceConversationId === targetConversationId) return;
+
+    setConversations((prev) => prev.map((conversation) => {
+      if (conversation.id === sourceConversationId) {
+        return {
+          ...conversation,
+          status: "closed",
+          isArchived: true,
+          unread: 0,
+          unreadMentionCount: 0,
+        };
+      }
+
+      if (conversation.id === targetConversationId) {
+        return {
+          ...conversation,
+          status: conversation.status === "closed" ? "active" : conversation.status,
+          isArchived: false,
+        };
+      }
+
+      return conversation;
+    }));
+
+    setAllMessages((prev) => {
+      const sourceMessages = (prev[sourceConversationId] || []).map((message) => ({
+        ...message,
+        conversationId: targetConversationId,
+      }));
+
+      const targetMessages = prev[targetConversationId] || [];
+      if (sourceMessages.length === 0 && targetMessages.length === 0) return prev;
+
+      const uniqueMessages = new Map<string, Message>();
+      [...targetMessages, ...sourceMessages].forEach((message) => {
+        uniqueMessages.set(message.id, message);
+      });
+
+      const next = {
+        ...prev,
+        [targetConversationId]: Array.from(uniqueMessages.values()).sort((a, b) => {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return aTime - bTime;
+        }),
+      };
+
+      delete next[sourceConversationId];
+      return next;
+    });
+
+    setSelectedId(targetConversationId);
+  }, []);
+
   const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
     const conv = conversations.find(c => c.customerPhone === convPhone);
     const isEvolution = conv?.channelType === "evolution" || !conv?.channelType;
@@ -880,6 +935,7 @@ const InboxPage = () => {
            onShowCustomerInfo={() => setMobileCustomerInfoOpen(true)}
            scrollToMessageId={scrollToMessageId}
            onScrollToMessageDone={() => setScrollToMessageId(null)}
+            onConversationMerged={handleConversationMerged}
          />
 
         {/* Mobile Customer Info Sheet */}
@@ -934,6 +990,7 @@ const InboxPage = () => {
            onDeleteMessage={handleDeleteMessage}
            scrollToMessageId={scrollToMessageId}
            onScrollToMessageDone={() => setScrollToMessageId(null)}
+            onConversationMerged={handleConversationMerged}
          />
       ) : (
         !isMobile && (
