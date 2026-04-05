@@ -964,11 +964,16 @@ const InboxPage = () => {
          />
       ) : (
         !isMobile && (
-          <div className="flex flex-1 items-center justify-center bg-secondary/20">
+          <div className="flex flex-1 items-center justify-center bg-gradient-to-b from-background to-secondary/20">
             <div className="text-center text-muted-foreground">
-              <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">
-                {conversations.length === 0 ? "لا توجد محادثات بعد — اربط واتساب وابدأ باستقبال الرسائل" : "اختر محادثة للبدء"}
+              <div className="w-20 h-20 rounded-3xl bg-secondary/60 flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-9 h-9 opacity-25" />
+              </div>
+              <p className="text-base font-semibold text-foreground/70">
+                {conversations.length === 0 ? "لا توجد محادثات بعد" : "اختر محادثة للبدء"}
+              </p>
+              <p className="text-sm text-muted-foreground/50 mt-1.5">
+                {conversations.length === 0 ? "اربط واتساب وابدأ باستقبال الرسائل" : "اختر من القائمة على اليمين"}
               </p>
             </div>
           </div>
