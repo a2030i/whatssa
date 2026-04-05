@@ -251,15 +251,8 @@ const CustomersPage = () => {
 
   const filtered = visibleCustomers.filter((c) => {
     const matchesSearch = (c.name || "").includes(search) || c.phone.includes(search) || (c.email || "").includes(search);
-    const matchesStage = stageFilter === "all" || (c.lifecycle_stage || "lead") === stageFilter;
-    return matchesSearch && matchesStage;
+    return matchesSearch;
   });
-
-  // Stage summary counts
-  const stageCounts = LIFECYCLE_STAGES.map((s) => ({
-    ...s,
-    count: visibleCustomers.filter((c) => (c.lifecycle_stage || "lead") === s.value).length,
-  }));
 
   if (selectedCustomerId) {
     return (
