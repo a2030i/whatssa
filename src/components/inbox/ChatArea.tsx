@@ -591,7 +591,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           if (lastIndex < textStr.length) {
             parts.push(<span key={`t${lastIndex}`}>{textStr.slice(lastIndex)}</span>);
           }
-          return <p className="whitespace-pre-wrap break-words leading-[1.65]">{parts.length > 0 ? parts : text}</p>;
+          return <p className="leading-[1.65]" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "break-word", writingMode: "horizontal-tb" }}>{parts.length > 0 ? parts : text}</p>;
         };
 
         // Translation element
