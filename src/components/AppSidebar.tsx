@@ -134,6 +134,7 @@ const AppSidebar = () => {
 
   const renderItem = (item: NavItem | NavGroup) => {
     if (isGroup(item)) return null;
+    if (!hasAccess(item)) return null;
     const active = isActive(item.path);
     const locked = isLocked(item);
 
