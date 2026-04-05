@@ -260,6 +260,8 @@ const WhatsAppFlowsPage = () => {
     setFlowType("form");
     setSuccessMessage("شكراً لك! تم استلام ردك بنجاح ✅");
     setWebhookUrl("");
+    setForwardToPhone("");
+    setForwardToGroupJid("");
     setScreens([{ id: generateId(), title: "الشاشة الأولى", fields: [] }]);
   };
 
