@@ -139,7 +139,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const counts = useMemo(() => ({
     all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
     mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId).length,
-    waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.unread === 0).length,
+    waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent").length,
     unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
     unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId).length,
     mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
