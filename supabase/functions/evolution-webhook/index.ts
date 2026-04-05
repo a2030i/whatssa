@@ -1149,9 +1149,12 @@ serve(async (req) => {
             const participantRaw = key.participant || "";
             const isLidParticipant = participantRaw.includes("@lid");
             // Use senderPn (real phone) for @lid participants, otherwise strip JID suffix
+            // IMPORTANT: Never save @lid IDs as phone numbers — they are not real phones
             const senderPhone = (isLidParticipant && senderPn)
               ? senderPn.replace(/\D/g, "")
-              : participantRaw.replace("@s.whatsapp.net", "").replace("@lid", "");
+              : isLidParticipant
+                ? "" // Skip — no real phone available for this LID participant
+                : participantRaw.replace("@s.whatsapp.net", "");
             const senderPushName = msg.pushName || "";
             if (senderPhone && senderPhone.length > 5) {
               const { data: existingParticipant } = await supabase
