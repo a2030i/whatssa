@@ -1849,7 +1849,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             {conversation.status !== "closed" && (
               <button
                 onClick={() => setShowTransfer(true)}
-                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition-colors text-primary"
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-white/15 transition-colors text-primary-foreground"
                 title="تحويل لموظف آخر"
               >
                 <UserPlus className="w-4 h-4" />
