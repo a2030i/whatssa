@@ -387,6 +387,159 @@ serve(async (req) => {
       return json({ data }, 201);
     }
 
+    // ── WHATSAPP QR (Evolution) ──
+    const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
+    const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
+    const CLOUD_URL = Deno.env.get("SUPABASE_URL")!;
+
+    const EVOLUTION_WEBHOOK_EVENTS = [
+      "MESSAGES_UPSERT", "MESSAGES_UPDATE", "MESSAGES_EDITED", "MESSAGES_DELETE",
+      "CONNECTION_UPDATE", "QRCODE_UPDATED", "PRESENCE_UPDATE", "SEND_MESSAGE",
+    ];
+
+    if (path === "whatsapp/create-instance" && method === "POST") {
+      if (!hasPermission(token, "whatsapp")) return json({ error: "لا تملك صلاحية واتساب" }, 403);
+      if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution غير مكتملة" }, 500);
+
+      const body = await req.json().catch(() => ({}));
+      const instanceName = `org_${token.org_id.replace(/-/g, "").slice(0, 12)}_${Date.now().toString(36)}`;
+      const webhookUrl = `${CLOUD_URL}/functions/v1/evolution-webhook`;
+      const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
+
+      const createRes = await fetch(`${EVOLUTION_URL}/instance/create`, {
+        method: "POST",
+        headers: evoHeaders,
+        body: JSON.stringify({
+          instanceName,
+          integration: "WHATSAPP-BAILEYS",
+          qrcode: true,
+          webhook: {
+            enabled: true,
+            url: webhookUrl,
+            webhookByEvents: false,
+            webhookBase64: false,
+            events: EVOLUTION_WEBHOOK_EVENTS,
+          },
+        }),
+      });
+      const createData = await createRes.json();
+
+      if (!createRes.ok && !createData?.instance) {
+        await logToSystem(admin, "error", "فشل إنشاء جلسة عبر API", { request_id: requestId, error: JSON.stringify(createData).slice(0, 300) }, token.org_id);
+        return json({ error: createData?.response?.message?.[0] || createData?.message || "فشل إنشاء الجلسة" }, 400);
+      }
+
+      // Upsert whatsapp_config
+      await admin.from("whatsapp_config").insert({
+        org_id: token.org_id,
+        channel_type: "evolution",
+        evolution_instance_name: instanceName,
+        evolution_instance_status: "connecting",
+        is_connected: false,
+        registration_status: "pending",
+      });
+
+      const qr = createData?.qrcode?.base64 || createData?.base64 || null;
+      await logToSystem(admin, "info", "تم إنشاء رقم QR عبر API", { request_id: requestId, instance: instanceName }, token.org_id);
+      return json({ success: true, instance_name: instanceName, qr_code: qr, status: qr ? "qr_ready" : "created" }, 201);
+    }
+
+    if (path === "whatsapp/qr" && method === "POST") {
+      if (!hasPermission(token, "whatsapp")) return json({ error: "لا تملك صلاحية واتساب" }, 403);
+      if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution غير مكتملة" }, 500);
+
+      const body = await req.json().catch(() => ({}));
+      const instName = body?.instance_name;
+      if (!instName) return json({ error: "instance_name مطلوب" }, 400);
+
+      // Verify instance belongs to org
+      const { data: config } = await admin.from("whatsapp_config")
+        .select("id").eq("evolution_instance_name", instName).eq("org_id", token.org_id).maybeSingle();
+      if (!config) return json({ error: "الجلسة غير موجودة أو لا تتبع لمؤسستك" }, 404);
+
+      const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
+      const connectRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instName}`, { headers: evoHeaders });
+      const connectData = await connectRes.json();
+      const qr = connectData.base64 || connectData.qrcode?.base64 || null;
+
+      return json({ success: true, qr_code: qr, status: qr ? "qr_ready" : (connectData.instance?.state || "waiting") });
+    }
+
+    if (path === "whatsapp/status" && method === "GET") {
+      if (!hasPermission(token, "whatsapp")) return json({ error: "لا تملك صلاحية واتساب" }, 403);
+
+      // List all QR channels for this org
+      const { data: channels } = await admin.from("whatsapp_config")
+        .select("id, evolution_instance_name, evolution_instance_status, is_connected, display_phone, business_name, label, created_at")
+        .eq("org_id", token.org_id)
+        .eq("channel_type", "evolution");
+
+      if (!channels?.length) return json({ channels: [] });
+
+      // If Evolution is configured, fetch live status for each
+      if (EVOLUTION_URL && EVOLUTION_KEY) {
+        const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
+        const enriched = await Promise.all(channels.map(async (ch) => {
+          if (!ch.evolution_instance_name) return { ...ch, live_status: "unknown" };
+          try {
+            const res = await fetch(`${EVOLUTION_URL}/instance/connectionState/${ch.evolution_instance_name}`, { headers: evoHeaders });
+            const data = await res.json();
+            return { ...ch, live_status: data.instance?.state || data.state || "unknown" };
+          } catch {
+            return { ...ch, live_status: "error" };
+          }
+        }));
+        return json({ channels: enriched });
+      }
+
+      return json({ channels });
+    }
+
+    if (path === "whatsapp/logout" && method === "POST") {
+      if (!hasPermission(token, "whatsapp")) return json({ error: "لا تملك صلاحية واتساب" }, 403);
+      if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution غير مكتملة" }, 500);
+
+      const body = await req.json().catch(() => ({}));
+      const instName = body?.instance_name;
+      if (!instName) return json({ error: "instance_name مطلوب" }, 400);
+
+      const { data: config } = await admin.from("whatsapp_config")
+        .select("id").eq("evolution_instance_name", instName).eq("org_id", token.org_id).maybeSingle();
+      if (!config) return json({ error: "الجلسة غير موجودة" }, 404);
+
+      const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
+      await fetch(`${EVOLUTION_URL}/instance/logout/${instName}`, { method: "DELETE", headers: evoHeaders });
+
+      await admin.from("whatsapp_config").update({
+        evolution_instance_status: "disconnected",
+        is_connected: false,
+        registration_status: "pending",
+      }).eq("evolution_instance_name", instName).eq("org_id", token.org_id);
+
+      await logToSystem(admin, "info", "تم قطع اتصال QR عبر API", { request_id: requestId, instance: instName }, token.org_id);
+      return json({ success: true, logged_out: instName });
+    }
+
+    if (path.startsWith("whatsapp/instance/") && method === "DELETE") {
+      if (!hasPermission(token, "whatsapp")) return json({ error: "لا تملك صلاحية واتساب" }, 403);
+      if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution غير مكتملة" }, 500);
+
+      const instName = path.split("/")[2];
+      if (!instName) return json({ error: "instance_name مطلوب في المسار" }, 400);
+
+      const { data: config } = await admin.from("whatsapp_config")
+        .select("id").eq("evolution_instance_name", instName).eq("org_id", token.org_id).maybeSingle();
+      if (!config) return json({ error: "الجلسة غير موجودة" }, 404);
+
+      const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
+      await fetch(`${EVOLUTION_URL}/instance/delete/${instName}`, { method: "DELETE", headers: evoHeaders });
+
+      await admin.from("whatsapp_config").delete().eq("evolution_instance_name", instName).eq("org_id", token.org_id);
+
+      await logToSystem(admin, "info", "تم حذف جلسة QR عبر API", { request_id: requestId, instance: instName }, token.org_id);
+      return json({ success: true, deleted: instName });
+    }
+
     await logToSystem(admin, "warn", `مسار API غير موجود: ${method} /${path}`, { request_id: requestId }, token.org_id);
     return json({ error: `المسار ${path} غير موجود`, available_endpoints: [
       "POST /messages/send",
@@ -394,6 +547,11 @@ serve(async (req) => {
       "GET /orders", "POST /orders", "PUT /orders/:id",
       "GET /conversations", "GET /conversations/:id/messages",
       "GET /abandoned-carts", "POST /abandoned-carts",
+      "POST /whatsapp/create-instance",
+      "POST /whatsapp/qr",
+      "GET /whatsapp/status",
+      "POST /whatsapp/logout",
+      "DELETE /whatsapp/instance/:name",
     ] }, 404);
   } catch (err: any) {
     console.error("Public API error:", err);

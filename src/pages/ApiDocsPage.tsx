@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Smartphone } from "lucide-react";
 import { ArrowRight, Copy, Code2, Send, Users, ShoppingCart, MessageSquare, ShoppingBag, Key } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,34 @@ const endpoints: { category: string; icon: React.ElementType; items: Endpoint[] 
         method: "GET", path: "/conversations/:id/messages", description: "جلب رسائل محادثة معينة", permission: "conversations",
         query: { limit: "عدد الرسائل (افتراضي: 50)" },
         response: `{ "data": [{ "id": "...", "content": "...", "sender": "customer", ... }] }`,
+      },
+    ],
+  },
+  {
+    category: "واتساب QR",
+    icon: Smartphone,
+    items: [
+      {
+        method: "POST", path: "/whatsapp/create-instance", description: "إنشاء رقم QR جديد والحصول على رمز المسح", permission: "whatsapp",
+        response: `{ "success": true, "instance_name": "org_xxx_abc", "qr_code": "base64...", "status": "qr_ready" }`,
+      },
+      {
+        method: "POST", path: "/whatsapp/qr", description: "جلب رمز QR للمسح (إذا انتهت صلاحية الأول)", permission: "whatsapp",
+        body: { instance_name: "اسم الجلسة (مطلوب)" },
+        response: `{ "success": true, "qr_code": "base64...", "status": "qr_ready" }`,
+      },
+      {
+        method: "GET", path: "/whatsapp/status", description: "عرض جميع أرقام QR وحالة اتصالها", permission: "whatsapp",
+        response: `{ "channels": [{ "instance_name": "...", "is_connected": true, "live_status": "open", "display_phone": "..." }] }`,
+      },
+      {
+        method: "POST", path: "/whatsapp/logout", description: "قطع اتصال رقم QR (بدون حذف)", permission: "whatsapp",
+        body: { instance_name: "اسم الجلسة (مطلوب)" },
+        response: `{ "success": true, "logged_out": "org_xxx" }`,
+      },
+      {
+        method: "DELETE", path: "/whatsapp/instance/:name", description: "حذف رقم QR نهائياً", permission: "whatsapp",
+        response: `{ "success": true, "deleted": "org_xxx" }`,
       },
     ],
   },
