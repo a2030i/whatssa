@@ -515,12 +515,9 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               }
               if (!resolvedName && rawPhone) resolvedName = `+${rawPhone}`;
               return resolvedName ? (
-                <div className={cn(
-                  "text-[10px] font-semibold mb-0.5 opacity-80",
-                  "text-primary-foreground/70"
-                )}>
-                  {resolvedName}
-                </div>
+                 <div className="text-[10px] font-semibold mb-0.5 text-white/60">
+                   {resolvedName}
+                 </div>
               ) : null;
             })()}
             {msg.quoted && msg.quoted.text && (
