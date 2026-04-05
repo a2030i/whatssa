@@ -824,7 +824,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           return acc;
         }, {} as Record<string, typeof msg.reactions>);
         return (
-          <div className={cn("flex -mt-2 mb-1", msg.sender === "agent" ? "justify-end mr-2" : "justify-start ml-2")}>
+          <div className={cn("flex -mt-2 mb-1", msg.sender === "agent" ? "justify-start ml-2" : "justify-end mr-2")}>
             <button
               onClick={() => {
                 window.dispatchEvent(new CustomEvent("show-reaction-details", {
@@ -2067,7 +2067,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           return (
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
-            msg.sender === "agent" ? "justify-start" : msg.sender === "system" ? "justify-center" : "justify-end",
+            msg.sender === "agent" ? "justify-end" : msg.sender === "system" ? "justify-center" : "justify-start",
             !isFirstInGroup && "mt-0.5"
           )}>
             {msg.sender === "system" ? (
@@ -2075,7 +2075,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {msg.text}
               </div>
             ) : (
-              <div className={cn("flex items-end gap-2", msg.sender === "agent" ? "flex-row" : "flex-row-reverse")}>
+              <div className={cn("flex items-end gap-2", msg.sender === "agent" ? "flex-row-reverse" : "flex-row")}>
                 {/* Avatar */}
                 {showAvatar ? (
                   msg.sender === "customer" ? (
@@ -2165,7 +2165,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 ) : (
                   <div className="w-8 shrink-0" />
                 )}
-                <div className={cn("flex flex-col w-fit max-w-full", msg.sender === "agent" ? "items-start" : "items-end")}>
+                <div className={cn("flex flex-col w-fit max-w-full", msg.sender === "agent" ? "items-end" : "items-start")}>
                   <SwipeableMessageBubble
                     msg={msg}
                     conversation={conversation}
@@ -2224,7 +2224,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         )}
         {/* Customer typing indicator */}
         {customerTyping && (
-          <div className="flex justify-start">
+          <div className="flex justify-end">
             <div className="bg-card border border-border rounded-xl rounded-bl-sm px-4 py-2.5 text-sm">
               <div className="flex gap-1 items-center">
                 <span className="text-xs text-muted-foreground">يكتب</span>
@@ -2239,7 +2239,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         )}
         {/* Other agents typing indicator */}
         {otherTypingAgents.length > 0 && (
-          <div className="flex justify-end">
+           <div className="flex justify-start">
             <div className="bg-primary/10 text-primary text-[11px] px-3 py-1.5 rounded-xl rounded-br-sm flex items-center gap-1.5">
               <span className="font-medium">{otherTypingAgents.join("، ")}</span>
               <span>يكتب الآن</span>
