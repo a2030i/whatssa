@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/lib/supabase";
+import { supabase, cloudSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import {
   RefreshCw, Database, AlertTriangle, CheckCircle, XCircle,
@@ -41,8 +41,8 @@ const AdminEmergency = () => {
   // Load emergency settings from system_settings
   useEffect(() => {
     Promise.all([
-      supabase.from("system_settings").select("value").eq("key", "emergency_phone").maybeSingle(),
-      supabase.from("system_settings").select("value").eq("key", "alert_evolution_instance").maybeSingle(),
+      cloudSupabase.from("system_settings").select("value").eq("key", "emergency_phone").maybeSingle(),
+      cloudSupabase.from("system_settings").select("value").eq("key", "alert_evolution_instance").maybeSingle(),
     ]).then(([phoneRes, instanceRes]) => {
       if (phoneRes.data?.value) setEmergencyPhone(String(phoneRes.data.value));
       if (instanceRes.data?.value) setAlertInstance(String(instanceRes.data.value));
@@ -67,11 +67,11 @@ const AdminEmergency = () => {
   }, []);
 
   const saveSetting = async (key: string, value: string, description: string) => {
-    const { data: existing } = await supabase.from("system_settings").select("key").eq("key", key).maybeSingle();
+    const { data: existing } = await cloudSupabase.from("system_settings").select("key").eq("key", key).maybeSingle();
     if (existing) {
-      await supabase.from("system_settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key);
+      await cloudSupabase.from("system_settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key);
     } else {
-      await supabase.from("system_settings").insert({ key, value, description });
+      await cloudSupabase.from("system_settings").insert({ key, value, description });
     }
   };
 
