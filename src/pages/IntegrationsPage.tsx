@@ -119,9 +119,10 @@ const IntegrationsPage = () => {
 
   useEffect(() => {
     loadFacebookSDK();
-    // Load Meta settings from system_settings
-    supabase.from("system_settings").select("key, value").in("key", ["meta_app_id", "meta_config_id", "official_whatsapp_enabled"]).then(({ data }) => {
-      (data || []).forEach((s: any) => {
+    // Load Meta settings via Cloud edge function (bypasses external DB RLS)
+    invokeCloud("get-meta-settings").then(({ data }) => {
+      const settings = Array.isArray(data) ? data : [];
+      settings.forEach((s: any) => {
         if (s.key === "meta_app_id" && s.value) setMetaAppId(String(s.value));
         if (s.key === "meta_config_id" && s.value) setMetaConfigId(String(s.value));
         if (s.key === "official_whatsapp_enabled") setOfficialEnabled(s.value === true || s.value === "true");
