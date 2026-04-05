@@ -137,7 +137,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
           "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95",
           isAgent
             ? "bg-primary text-primary-foreground shadow-sm"
-            : "bg-white/25 text-white"
+            : "bg-white text-primary"
         )}
       >
         {isPlaying
@@ -163,7 +163,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
                   "flex-1 rounded-full transition-colors duration-150",
                   isPlayed
                     ? isAgent ? "bg-primary" : "bg-white"
-                    : isAgent ? "bg-muted-foreground/25" : "bg-white/30"
+                    : isAgent ? "bg-muted-foreground/25" : "bg-white/50"
                 )}
                 style={{ height: `${h * 100}%`, minWidth: 1.5, maxWidth: 3 }}
               />
@@ -172,7 +172,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
         </div>
 
         <div className="flex items-center justify-between">
-          <span className={cn("text-[9px] font-mono tabular-nums", isAgent ? "text-muted-foreground" : "text-white/70")}>
+          <span className={cn("text-[9px] font-mono tabular-nums", isAgent ? "text-muted-foreground" : "text-white/80")}>
             {isPlaying || currentTime > 0 ? formatTime(currentTime) : formatTime(duration)}
           </span>
           <div className="flex items-center gap-1">
@@ -180,13 +180,13 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
               onClick={cycleSpeed}
               className={cn(
                 "text-[8px] font-bold px-1 py-0.5 rounded transition-colors",
-                isAgent ? "bg-muted text-muted-foreground hover:bg-accent" : "bg-white/15 text-white/80 hover:bg-white/25"
+                isAgent ? "bg-muted text-muted-foreground hover:bg-accent" : "bg-white/25 text-white hover:bg-white/35"
               )}
             >
               {playbackRate}x
             </button>
             <a href={src} download target="_blank" rel="noreferrer"
-              className={cn("p-0.5 rounded transition-colors", isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/60 hover:text-white")}>
+              className={cn("p-0.5 rounded transition-colors", isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/80 hover:text-white")}>
               <Download className="w-2.5 h-2.5" />
             </a>
           </div>
