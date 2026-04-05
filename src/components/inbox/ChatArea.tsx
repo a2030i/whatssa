@@ -2240,7 +2240,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         {/* Other agents typing indicator */}
         {otherTypingAgents.length > 0 && (
            <div className="flex justify-start">
-            <div className="bg-primary/10 text-primary text-[11px] px-3 py-1.5 rounded-xl rounded-br-sm flex items-center gap-1.5">
+            <div className="bg-primary/10 text-primary text-[11px] px-3 py-1.5 rounded-xl rounded-bl-sm flex items-center gap-1.5">
               <span className="font-medium">{otherTypingAgents.join("، ")}</span>
               <span>يكتب الآن</span>
               <span className="flex gap-0.5">
