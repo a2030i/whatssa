@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Search, Plus, Upload, Download, UserPlus, X, Tag, Edit2, Trash2, Filter, User, UserCheck, UserX, Users } from "lucide-react";
+import { Search, Plus, Upload, Download, UserPlus, X, Tag, Edit2, Trash2, Filter, Users } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -24,22 +24,16 @@ const isLikelyRealCustomerPhone = (phone?: string | null) => {
   return true;
 };
 
-const LIFECYCLE_STAGES = [
-  { value: "lead", label: "عميل محتمل", icon: User, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  { value: "qualified", label: "مؤهل", icon: UserCheck, color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  { value: "customer", label: "عميل فعلي", icon: Users, color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  { value: "lost", label: "خسرناه", icon: UserX, color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-];
 
 const CustomersPage = () => {
   const { orgId } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
-  const [stageFilter, setStageFilter] = useState<string>("all");
+  
   const [tagDefs, setTagDefs] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [editCustomer, setEditCustomer] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", tags: [] as string[], lifecycle_stage: "lead", company: "", source: "whatsapp" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", tags: [] as string[], company: "", source: "whatsapp" });
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -62,7 +56,7 @@ const CustomersPage = () => {
     const payload: any = {
       name: form.name || null, phone: form.phone, email: form.email || null,
       notes: form.notes || null, tags: form.tags,
-      lifecycle_stage: form.lifecycle_stage, company: form.company || null,
+      company: form.company || null,
       source: form.source || "whatsapp",
       custom_fields: Object.keys(customFields).length > 0 ? customFields : {},
     };
@@ -83,7 +77,7 @@ const CustomersPage = () => {
   };
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", notes: "", tags: [], lifecycle_stage: "lead", company: "", source: "whatsapp" });
+    setForm({ name: "", phone: "", email: "", notes: "", tags: [], company: "", source: "whatsapp" });
     setCustomFields({});
   };
 
@@ -97,7 +91,7 @@ const CustomersPage = () => {
     setEditCustomer(c);
     setForm({
       name: c.name || "", phone: c.phone, email: c.email || "", notes: c.notes || "",
-      tags: c.tags || [], lifecycle_stage: c.lifecycle_stage || "lead",
+      tags: c.tags || [],
       company: c.company || "", source: c.source || "whatsapp",
     });
     setCustomFields(c.custom_fields || {});
@@ -106,8 +100,8 @@ const CustomersPage = () => {
 
   const handleExport = () => {
     const csv = [
-      "الاسم,الجوال,الإيميل,التصنيفات,المرحلة,الشركة,المصدر,ملاحظات",
-      ...customers.filter((c) => isLikelyRealCustomerPhone(c.phone)).map((c) => `"${c.name || ""}","${c.phone}","${c.email || ""}","${(c.tags || []).join(";")}","${c.lifecycle_stage || "lead"}","${c.company || ""}","${c.source || ""}","${c.notes || ""}"`),
+      "الاسم,الجوال,الإيميل,التصنيفات,الشركة,المصدر,ملاحظات",
+      ...customers.filter((c) => isLikelyRealCustomerPhone(c.phone)).map((c) => `"${c.name || ""}","${c.phone}","${c.email || ""}","${(c.tags || []).join(";")}","${c.company || ""}","${c.source || ""}","${c.notes || ""}"`),
     ].join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -168,7 +162,6 @@ const CustomersPage = () => {
       tags: header.findIndex((h) => ["tags", "التصنيفات", "تصنيف", "وسم"].includes(h)),
       notes: header.findIndex((h) => ["notes", "ملاحظات", "ملاحظة"].includes(h)),
       company: header.findIndex((h) => ["company", "شركة", "الشركة"].includes(h)),
-      stage: header.findIndex((h) => ["stage", "المرحلة", "مرحلة", "lifecycle_stage"].includes(h)),
     };
 
     if (colMap.phone === -1) {
@@ -204,9 +197,6 @@ const CustomersPage = () => {
       }
 
       const tags = colMap.tags >= 0 ? (parts[colMap.tags] || "").split(";").filter(Boolean) : [];
-      const validStages = ["lead", "qualified", "customer", "lost"];
-      const rawStage = colMap.stage >= 0 ? parts[colMap.stage] || "" : "";
-      const stage = validStages.includes(rawStage) ? rawStage : "lead";
 
       validRows.push({
         org_id: orgId,
@@ -216,7 +206,6 @@ const CustomersPage = () => {
         tags,
         notes: colMap.notes >= 0 ? parts[colMap.notes] || null : null,
         company: colMap.company >= 0 ? parts[colMap.company] || null : null,
-        lifecycle_stage: stage,
       });
     }
 
@@ -252,25 +241,13 @@ const CustomersPage = () => {
     }));
   };
 
-  const updateLifecycleStage = async (customerId: string, stage: string) => {
-    await supabase.from("customers").update({ lifecycle_stage: stage }).eq("id", customerId);
-    toast.success("تم تحديث المرحلة");
-    load();
-  };
 
   const visibleCustomers = customers.filter((c) => isLikelyRealCustomerPhone(c.phone));
 
   const filtered = visibleCustomers.filter((c) => {
     const matchesSearch = (c.name || "").includes(search) || c.phone.includes(search) || (c.email || "").includes(search);
-    const matchesStage = stageFilter === "all" || (c.lifecycle_stage || "lead") === stageFilter;
-    return matchesSearch && matchesStage;
+    return matchesSearch;
   });
-
-  // Stage summary counts
-  const stageCounts = LIFECYCLE_STAGES.map((s) => ({
-    ...s,
-    count: visibleCustomers.filter((c) => (c.lifecycle_stage || "lead") === s.value).length,
-  }));
 
   if (selectedCustomerId) {
     return (
@@ -306,26 +283,6 @@ const CustomersPage = () => {
         </div>
       </div>
 
-      {/* Stage summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-in">
-        {stageCounts.map((s) => (
-          <button
-            key={s.value}
-            onClick={() => setStageFilter(stageFilter === s.value ? "all" : s.value)}
-            className={`group rounded-2xl p-4 text-right transition-all duration-200 border backdrop-blur-sm ${
-              stageFilter === s.value ? "ring-2 ring-primary border-primary/30 bg-primary/5" : "border-border/40 hover:border-primary/30 bg-card/70"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-xl bg-secondary/60 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <s.icon className="w-4 h-4 text-muted-foreground" />
-              </div>
-              <span className="text-2xl font-black">{s.count}</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2 font-medium">{s.label}</p>
-          </button>
-        ))}
-      </div>
 
       <div className="relative max-w-sm">
         <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -338,7 +295,6 @@ const CustomersPage = () => {
             <tr className="border-b border-border/30 text-muted-foreground text-[11px] bg-secondary/20">
               <th className="text-right p-3.5 font-semibold">الاسم</th>
               <th className="text-right p-3.5 font-semibold">الجوال</th>
-              <th className="text-right p-3.5 font-semibold">المرحلة</th>
               <th className="text-right p-3.5 font-semibold hidden md:table-cell">الإيميل</th>
               <th className="text-right p-3.5 font-semibold">التصنيفات</th>
               <th className="text-right p-3.5 font-semibold w-20">إجراء</th>
@@ -346,7 +302,6 @@ const CustomersPage = () => {
           </thead>
           <tbody>
             {filtered.map((c) => {
-              const stage = LIFECYCLE_STAGES.find((s) => s.value === (c.lifecycle_stage || "lead")) || LIFECYCLE_STAGES[0];
               return (
                 <tr key={c.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => setSelectedCustomerId(c.id)}>
                   <td className="p-3">
@@ -354,18 +309,6 @@ const CustomersPage = () => {
                     {c.company && <p className="text-[10px] text-muted-foreground">{c.company}</p>}
                   </td>
                   <td className="p-3 font-mono text-xs" dir="ltr">{c.phone}</td>
-                  <td className="p-3">
-                    <Select value={c.lifecycle_stage || "lead"} onValueChange={(v) => updateLifecycleStage(c.id, v)}>
-                      <SelectTrigger className="h-7 text-[10px] w-24 border-0 p-1">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${stage.color}`}>{stage.label}</span>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LIFECYCLE_STAGES.map((s) => (
-                          <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </td>
                   <td className="p-3 text-xs hidden md:table-cell">{c.email || "-"}</td>
                   <td className="p-3">
                     <div className="flex flex-wrap gap-1">
@@ -388,7 +331,7 @@ const CustomersPage = () => {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-8 text-muted-foreground text-xs">لا يوجد عملاء</td></tr>
+              <tr><td colSpan={5} className="text-center py-8 text-muted-foreground text-xs">لا يوجد عملاء</td></tr>
             )}
           </tbody>
         </table>
@@ -421,31 +364,18 @@ const CustomersPage = () => {
                 <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} className="mt-1" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">المرحلة</Label>
-                <Select value={form.lifecycle_stage} onValueChange={(v) => setForm({ ...form, lifecycle_stage: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LIFECYCLE_STAGES.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">المصدر</Label>
-                <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="whatsapp">واتساب</SelectItem>
-                    <SelectItem value="website">الموقع</SelectItem>
-                    <SelectItem value="referral">إحالة</SelectItem>
-                    <SelectItem value="social">سوشيال ميديا</SelectItem>
-                    <SelectItem value="manual">يدوي</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label className="text-xs">المصدر</Label>
+              <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="whatsapp">واتساب</SelectItem>
+                  <SelectItem value="website">الموقع</SelectItem>
+                  <SelectItem value="referral">إحالة</SelectItem>
+                  <SelectItem value="social">سوشيال ميديا</SelectItem>
+                  <SelectItem value="manual">يدوي</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="text-xs">ملاحظات</Label>
