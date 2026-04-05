@@ -98,7 +98,6 @@ const TasksPage = () => {
   const [newAssignee, setNewAssignee] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customers, setCustomers] = useState<{ id: string; name: string | null; phone: string }[]>([]);
-  const [customerSearch, setCustomerSearch] = useState("");
 
   // New config form
   const [cfgName, setCfgName] = useState("");
