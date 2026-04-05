@@ -664,7 +664,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
 };
 
 const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo, scrollToMessageId, onScrollToMessageDone, onStarMessage, onForwardMessage, onConversationMerged, onDeleteConversation }: ChatAreaProps) => {
-  const { orgId, user, profile } = useAuth();
+  const { orgId, user, profile, userRole, isSuperAdmin } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -1680,6 +1680,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <DropdownMenuItem onClick={() => setShowTransfer(true)} className="md:hidden">
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
+                {(userRole === "admin" || isSuperAdmin) && (
                 <DropdownMenuItem
                   onClick={() => {
                     const confirm = window.confirm("هل أنت متأكد من حذف هذه المحادثة وجميع رسائلها؟ هذا الإجراء لا يمكن التراجع عنه.");
@@ -1689,6 +1690,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 >
                   <Trash2 className="w-4 h-4 ml-2" /> حذف المحادثة
                 </DropdownMenuItem>
+                )}
                 {isEvolutionChannel && (
                   <DropdownMenuItem onClick={() => setShowDisappearingMenu(!showDisappearingMenu)}>
                     <Timer className="w-4 h-4 ml-2 text-primary" /> الرسائل المختفية
