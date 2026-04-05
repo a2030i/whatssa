@@ -115,6 +115,34 @@ const endpoints: { category: string; icon: React.ElementType; items: Endpoint[] 
       },
     ],
   },
+  {
+    category: "واتساب QR",
+    icon: Smartphone,
+    items: [
+      {
+        method: "POST", path: "/whatsapp/create-instance", description: "إنشاء رقم QR جديد والحصول على رمز المسح", permission: "whatsapp",
+        response: `{ "success": true, "instance_name": "org_xxx_abc", "qr_code": "base64...", "status": "qr_ready" }`,
+      },
+      {
+        method: "POST", path: "/whatsapp/qr", description: "جلب رمز QR للمسح (إذا انتهت صلاحية الأول)", permission: "whatsapp",
+        body: { instance_name: "اسم الجلسة (مطلوب)" },
+        response: `{ "success": true, "qr_code": "base64...", "status": "qr_ready" }`,
+      },
+      {
+        method: "GET", path: "/whatsapp/status", description: "عرض جميع أرقام QR وحالة اتصالها", permission: "whatsapp",
+        response: `{ "channels": [{ "instance_name": "...", "is_connected": true, "live_status": "open", "display_phone": "..." }] }`,
+      },
+      {
+        method: "POST", path: "/whatsapp/logout", description: "قطع اتصال رقم QR (بدون حذف)", permission: "whatsapp",
+        body: { instance_name: "اسم الجلسة (مطلوب)" },
+        response: `{ "success": true, "logged_out": "org_xxx" }`,
+      },
+      {
+        method: "DELETE", path: "/whatsapp/instance/:name", description: "حذف رقم QR نهائياً", permission: "whatsapp",
+        response: `{ "success": true, "deleted": "org_xxx" }`,
+      },
+    ],
+  },
 ];
 
 const methodColors: Record<string, string> = {
