@@ -477,7 +477,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             {conversation.conversationType === "group" && msg.sender === "customer" && (() => {
               // Resolve display name: try groupParticipants first, then fallback to senderName/phone
               const rawJid = msg.senderJid || "";
-              const rawPhone = msg.senderPhone || normalizeDigits(rawJid);
+              const jidIsLidBubble = rawJid.includes("@lid");
+              const rawPhone = msg.senderPhone || (!jidIsLidBubble ? normalizeDigits(rawJid) : "");
               let resolvedName = msg.senderName || "";
               if (rawPhone && groupParticipants?.length) {
                 const found = groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone))));
