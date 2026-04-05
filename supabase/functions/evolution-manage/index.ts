@@ -1360,9 +1360,12 @@ serve(async (req) => {
       }
 
       if (editRes.ok) {
+        // Merge with existing metadata
+        const { data: editMsgData } = await adminClient.from("messages").select("metadata").eq("wa_message_id", editMsgId).maybeSingle();
+        const editExistingMeta = (editMsgData?.metadata as Record<string, unknown>) || {};
         await adminClient.from("messages").update({
           content: new_text,
-          metadata: { edited_at: new Date().toISOString() },
+          metadata: { ...editExistingMeta, edited_at: new Date().toISOString(), edited_by: profile?.full_name || userId },
         }).eq("wa_message_id", editMsgId);
 
         await logToSystem(adminClient, "info", "تم تعديل رسالة", {
