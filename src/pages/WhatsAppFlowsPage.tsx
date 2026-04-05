@@ -246,6 +246,8 @@ const WhatsAppFlowsPage = () => {
     setFlowType(flow.flow_type);
     setSuccessMessage(flow.success_message);
     setWebhookUrl(flow.webhook_url || "");
+    setForwardToPhone((flow as any).forward_to_phone || "");
+    setForwardToGroupJid((flow as any).forward_to_group_jid || "");
     setScreens(flow.screens || []);
     setShowBuilder(true);
   };
