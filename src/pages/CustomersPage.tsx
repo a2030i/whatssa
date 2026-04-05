@@ -366,17 +366,16 @@ const CustomersPage = () => {
             </div>
             <div>
               <Label className="text-xs">المصدر</Label>
-                <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="whatsapp">واتساب</SelectItem>
-                    <SelectItem value="website">الموقع</SelectItem>
-                    <SelectItem value="referral">إحالة</SelectItem>
-                    <SelectItem value="social">سوشيال ميديا</SelectItem>
-                    <SelectItem value="manual">يدوي</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={form.source} onValueChange={(v) => setForm({ ...form, source: v })}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="whatsapp">واتساب</SelectItem>
+                  <SelectItem value="website">الموقع</SelectItem>
+                  <SelectItem value="referral">إحالة</SelectItem>
+                  <SelectItem value="social">سوشيال ميديا</SelectItem>
+                  <SelectItem value="manual">يدوي</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="text-xs">ملاحظات</Label>
