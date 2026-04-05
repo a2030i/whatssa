@@ -1519,6 +1519,7 @@ serve(async (req) => {
 
     // ── BROADCAST TO GROUPS ──
     if (action === "broadcast_groups") {
+      const groupDelay = (ms: number) => new Promise(r => setTimeout(r, ms));
       const groupIds = asStringArray(payload.group_ids);
       const msgText = asString(payload.message);
       const msgMediaUrl = asString(payload.media_url);
