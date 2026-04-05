@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
 
     if (createError) {
       if (createError.message?.includes("already been registered")) {
-        return new Response(JSON.stringify({ error: "هذا البريد مسجل مسبقاً" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "هذا البريد مسجل مسبقاً في منظمة أخرى. يجب استخدام بريد إلكتروني مختلف لكل منظمة." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       throw createError;
     }
