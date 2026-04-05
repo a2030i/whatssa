@@ -449,7 +449,7 @@ serve(async (req) => {
       if (metadataPhoneId) {
         const { data: config } = await supabase
           .from("whatsapp_config")
-          .select("id, org_id, default_team_id, default_agent_id")
+          .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
           .eq("phone_number_id", metadataPhoneId)
           .eq("is_connected", true)
           .maybeSingle();
@@ -458,6 +458,7 @@ serve(async (req) => {
         channelConfigId = config?.id || null;
         var channelDefaultTeamId = config?.default_team_id || null;
         var channelDefaultAgentId = config?.default_agent_id || null;
+        var channelExcludeSupervisors = !!(config as any)?.exclude_supervisors;
       }
 
       if (!orgId) {
@@ -621,7 +622,7 @@ serve(async (req) => {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
                   },
-                  body: JSON.stringify({ conversation_id: conversation.id, org_id: orgId, message_text: messageContent, exclude_supervisors: !!(config as any)?.exclude_supervisors }),
+                  body: JSON.stringify({ conversation_id: conversation.id, org_id: orgId, message_text: messageContent, exclude_supervisors: channelExcludeSupervisors }),
                 });
               } catch (error) {
                 const errMsg = error instanceof Error ? error.message : String(error);
