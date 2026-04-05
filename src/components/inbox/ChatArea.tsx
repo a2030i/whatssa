@@ -516,17 +516,17 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           return resolvedName || null;
         })();
 
-        // Timestamp element
+        // Timestamp element - inline like WhatsApp (floats at end of last line)
         const timestampEl = (
-          <div className={cn("flex items-center gap-1.5 mt-1",
+          <span className={cn("inline-flex items-center gap-1 text-[10px] tracking-tight mr-1 float-left mt-1.5 ml-2 leading-none select-none",
             msg.type === "note" ? "text-amber-500/50"
             : msg.sender === "customer" ? "text-white/55"
             : "text-muted-foreground/50"
           )}>
-            <span className="text-[10px] tracking-tight">{msg.timestamp}</span>
-            {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
+            <span>{msg.timestamp}</span>
+            {msg.editedAt && <span className="text-[9px] italic">معدّلة</span>}
             {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
-          </div>
+          </span>
         );
 
         // Quoted message element
@@ -1733,7 +1733,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-background/60">
+    <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-[#efeae2] dark:bg-[#0b141a]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'400\' height=\'400\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cdefs%3E%3Cpattern id=\'p\' width=\'80\' height=\'80\' patternUnits=\'userSpaceOnUse\' patternTransform=\'rotate(15)\'%3E%3Cpath d=\'M20 10c2 0 3 1 3 3s-1 3-3 3-3-1-3-3 1-3 3-3zm30 25c1.5 0 2.5 1 2.5 2.5s-1 2.5-2.5 2.5-2.5-1-2.5-2.5 1-2.5 2.5-2.5zm-35 30c1 0 2 .8 2 2s-1 2-2 2-2-.8-2-2 1-2 2-2zm45 10c1.5 0 2.5 1 2.5 2.5s-1 2.5-2.5 2.5-2.5-1-2.5-2.5 1-2.5 2.5-2.5z\' fill=\'%23d6cfc4\' fill-opacity=\'0.3\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'400\' height=\'400\' fill=\'url(%23p)\'/%3E%3C/svg%3E")' }}>
       {/* Header */}
       <div className="shrink-0 bg-card border-b border-border">
         <div className="h-[56px] md:h-[60px] flex items-center justify-between px-4 md:px-5">
