@@ -2185,8 +2185,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     }}
                     translationText={translations[msg.id]}
                   />
-                  {/* Agent name label below bubble */}
-                  {msg.sender === "agent" && msg.senderName && showAvatar && conversation.conversationType !== "group" && (
+                  {/* Agent name label below bubble — always show for agent messages */}
+                  {msg.sender === "agent" && msg.senderName && conversation.conversationType !== "group" && (
                     <span className="text-[10px] text-muted-foreground/60 mt-0.5 mr-1 font-medium">{msg.senderName}</span>
                   )}
                 </div>
