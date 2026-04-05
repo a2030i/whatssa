@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   ClipboardCheck, Plus, Filter, Clock, CheckCircle2, AlertCircle,
   User, MessageSquare, ArrowUpDown, MoreHorizontal, Send, Loader2,
-  Bot, UserCircle, Truck, Phone, Mail, RefreshCw
+  Bot, UserCircle, Truck, Phone, Mail, RefreshCw, ChevronsUpDown, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -95,7 +98,6 @@ const TasksPage = () => {
   const [newAssignee, setNewAssignee] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customers, setCustomers] = useState<{ id: string; name: string | null; phone: string }[]>([]);
-  const [customerSearch, setCustomerSearch] = useState("");
 
   // New config form
   const [cfgName, setCfgName] = useState("");
@@ -182,7 +184,7 @@ const TasksPage = () => {
     }
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
-    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setSelectedCustomerId(""); setCustomerSearch("");
+    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setSelectedCustomerId("");
     fetchTasks();
   };
 
@@ -509,32 +511,39 @@ const TasksPage = () => {
             )}
             <div>
               <Label>العميل</Label>
-              <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                <SelectTrigger><SelectValue placeholder="اختر عميل" /></SelectTrigger>
-                <SelectContent>
-                  <div className="p-2">
-                    <Input
-                      placeholder="بحث بالاسم أو الرقم..."
-                      value={customerSearch}
-                      onChange={e => setCustomerSearch(e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <SelectItem value="">بدون عميل</SelectItem>
-                  {customers
-                    .filter(c => {
-                      if (!customerSearch) return true;
-                      const q = customerSearch.toLowerCase();
-                      return (c.name?.toLowerCase().includes(q)) || c.phone.includes(q);
-                    })
-                    .slice(0, 50)
-                    .map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name || "بدون اسم"} — {c.phone}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                    {selectedCustomerId
+                      ? (() => { const c = customers.find(c => c.id === selectedCustomerId); return c ? `${c.name || "بدون اسم"} — ${c.phone}` : "اختر عميل"; })()
+                      : "اختر عميل"}
+                    <ChevronsUpDown className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="بحث بالاسم أو الرقم..." />
+                    <CommandList>
+                      <CommandEmpty>لا يوجد عملاء</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem value="none" onSelect={() => setSelectedCustomerId("")}>
+                          بدون عميل
+                        </CommandItem>
+                        {customers.map(c => (
+                          <CommandItem
+                            key={c.id}
+                            value={`${c.name || ""} ${c.phone}`}
+                            onSelect={() => setSelectedCustomerId(c.id)}
+                          >
+                            <Check className={cn("ml-2 h-4 w-4", selectedCustomerId === c.id ? "opacity-100" : "opacity-0")} />
+                            {c.name || "بدون اسم"} — {c.phone}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <Button onClick={createTask} className="w-full">إنشاء المهمة</Button>
           </div>
