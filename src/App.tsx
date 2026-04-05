@@ -115,36 +115,36 @@ const AppRoutes = () => {
       <Route path="/change-password" element={user ? <ForceChangePasswordPage /> : <Navigate to="/auth" replace />} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       <Route path="/" element={user ? (shouldRedirectToAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/dashboard" replace />) : <LandingPage />} />
-      <Route path="/dashboard" element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute minRole="admin"><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
       <Route path="/inbox" element={<ProtectedRoute><AppLayout><InboxPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/customers" element={<ProtectedRoute><AppLayout><CustomersPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/analytics" element={<ProtectedRoute><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/campaigns" element={<ProtectedRoute><AppLayout><CampaignsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/automation" element={<ProtectedRoute><AppLayout><AutomationPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/chatbot" element={<ProtectedRoute><AppLayout><ChatbotPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/team" element={<ProtectedRoute><AppLayout><TeamPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/plans" element={<ProtectedRoute><AppLayout><PlanUpgradePage /></AppLayout></ProtectedRoute>} />
-      <Route path="/integrations" element={<ProtectedRoute><AppLayout><IntegrationsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/conversation-settings" element={<ProtectedRoute><AppLayout><ConversationSettingsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/ai-settings" element={<ProtectedRoute><AppLayout><AiSettingsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/api-tokens" element={<ProtectedRoute><AppLayout><ApiTokensPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/customers" element={<ProtectedRoute minRole="admin"><AppLayout><CustomersPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute minRole="supervisor"><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/campaigns" element={<ProtectedRoute minRole="admin"><AppLayout><CampaignsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/automation" element={<ProtectedRoute minRole="admin"><AppLayout><AutomationPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/chatbot" element={<ProtectedRoute minRole="admin"><AppLayout><ChatbotPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/team" element={<ProtectedRoute minRole="supervisor"><AppLayout><TeamPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/plans" element={<ProtectedRoute minRole="admin"><AppLayout><PlanUpgradePage /></AppLayout></ProtectedRoute>} />
+      <Route path="/integrations" element={<ProtectedRoute minRole="admin"><AppLayout><IntegrationsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute minRole="admin"><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/conversation-settings" element={<ProtectedRoute minRole="admin"><AppLayout><ConversationSettingsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/ai-settings" element={<ProtectedRoute minRole="admin"><AppLayout><AiSettingsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/api-tokens" element={<ProtectedRoute minRole="admin"><AppLayout><ApiTokensPage /></AppLayout></ProtectedRoute>} />
       <Route path="/templates" element={<MetaApiRoute><AppLayout><TemplatesPage /></AppLayout></MetaApiRoute>} />
       <Route path="/catalog" element={<MetaApiRoute><AppLayout><CatalogPage /></AppLayout></MetaApiRoute>} />
-      <Route path="/wallet" element={<ProtectedRoute><AppLayout><WalletPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/orders" element={<ProtectedRoute><AppLayout><OrdersPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/abandoned-carts" element={<ProtectedRoute><AppLayout><AbandonedCartsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/store-analytics" element={<ProtectedRoute><AppLayout><StoreAnalyticsPage /></AppLayout></ProtectedRoute>} />
-      {/* <Route path="/warehouses" element={<ProtectedRoute><AppLayout><WarehousesPage /></AppLayout></ProtectedRoute>} /> */}{/* Hidden until Lamha integration is complete */}
+      <Route path="/wallet" element={<ProtectedRoute minRole="admin"><AppLayout><WalletPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/orders" element={<ProtectedRoute minRole="admin"><AppLayout><OrdersPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/abandoned-carts" element={<ProtectedRoute minRole="admin"><AppLayout><AbandonedCartsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/store-analytics" element={<ProtectedRoute minRole="admin"><AppLayout><StoreAnalyticsPage /></AppLayout></ProtectedRoute>} />
+      {/* <Route path="/warehouses" element={<ProtectedRoute minRole="admin"><AppLayout><WarehousesPage /></AppLayout></ProtectedRoute>} /> */}{/* Hidden until Lamha integration is complete */}
       <Route path="/conversation-analytics" element={<MetaApiRoute><AppLayout><ConversationAnalyticsPage /></AppLayout></MetaApiRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><AppLayout><ReportsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/api-docs" element={<ProtectedRoute><AppLayout><ApiDocsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/checkout" element={<ProtectedRoute><AppLayout><CheckoutPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/payment-callback" element={<ProtectedRoute><AppLayout><PaymentCallbackPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/billing" element={<ProtectedRoute><AppLayout><BillingPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/scheduled-messages" element={<ProtectedRoute><AppLayout><ScheduledMessagesPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/custom-plan" element={<ProtectedRoute><AppLayout><CustomPlanPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/wa-flows" element={<ProtectedRoute><AppLayout><WhatsAppFlowsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute minRole="supervisor"><AppLayout><ReportsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/api-docs" element={<ProtectedRoute minRole="admin"><AppLayout><ApiDocsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/checkout" element={<ProtectedRoute minRole="admin"><AppLayout><CheckoutPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/payment-callback" element={<ProtectedRoute minRole="admin"><AppLayout><PaymentCallbackPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/billing" element={<ProtectedRoute minRole="admin"><AppLayout><BillingPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/scheduled-messages" element={<ProtectedRoute minRole="admin"><AppLayout><ScheduledMessagesPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/custom-plan" element={<ProtectedRoute minRole="admin"><AppLayout><CustomPlanPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/wa-flows" element={<ProtectedRoute minRole="admin"><AppLayout><WhatsAppFlowsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/locked-features" element={<ProtectedRoute><AppLayout><LockedFeaturesPage /></AppLayout></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><AppLayout><TasksPage /></AppLayout></ProtectedRoute>} />
       <Route path="/tracking" element={<TrackingPage />} />
