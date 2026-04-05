@@ -15,6 +15,12 @@ const EXT_SERVICE = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.e
 const CLOUD_URL = Deno.env.get("SUPABASE_URL")!;
 const CLOUD_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Reuse admin client across requests (single connection pool)
+const extAdmin = createClient(EXT_URL, EXT_SERVICE, {
+  auth: { persistSession: false },
+  db: { schema: "public" },
+});
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -50,8 +56,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
-  const extAdmin = createClient(EXT_URL, EXT_SERVICE);
 
   try {
     const authorization = req.headers.get("Authorization") || "";
@@ -121,9 +125,9 @@ serve(async (req) => {
     }
 
     const [{ data: profile }, { data: conversation }, { data: isSuperAdmin }] = await Promise.all([
-      extAdmin.from("profiles").select("org_id").eq("id", user.id).maybeSingle(),
-      extAdmin.from("conversations").select("id, org_id").eq("id", conversation_id).maybeSingle(),
-      extAdmin.rpc("has_role", { _user_id: user.id, _role: "super_admin" }),
+      extAdmin.from("profiles").select("org_id").eq("id", user.id).maybeSingle().abortSignal(AbortSignal.timeout(8000)),
+      extAdmin.from("conversations").select("id, org_id").eq("id", conversation_id).maybeSingle().abortSignal(AbortSignal.timeout(8000)),
+      extAdmin.rpc("has_role", { _user_id: user.id, _role: "super_admin" }).abortSignal(AbortSignal.timeout(8000)),
     ]);
 
     if (!profile?.org_id) {
