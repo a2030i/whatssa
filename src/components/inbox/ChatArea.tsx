@@ -620,7 +620,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === NOTE MESSAGE ===
         if (msg.type === "note") {
           return (
-            <div className="inline-flex min-w-[80px] max-w-full flex-col rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-br-sm" style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "normal", writingMode: "horizontal-tb" }}>
+            <div className="inline-block min-w-[100px] max-w-full rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-br-sm" style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
               <div className="flex items-center gap-1 mb-1 text-amber-500 whitespace-nowrap">
                 <StickyNote className="w-3 h-3 shrink-0" />
                 <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
@@ -756,11 +756,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               {/* Caption text in a mini bubble */}
               {hasText && (
                 <div className={cn(
-                  "inline-flex min-w-[80px] max-w-full flex-col rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed",
+                  "inline-block min-w-[100px] max-w-full rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed",
                   msg.sender === "agent"
                     ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                     : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
-                )} style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "normal", writingMode: "horizontal-tb" }}>
+                )} style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
                   {renderText(textWithoutUrl)}
                   {translationEl}
                   {timestampEl}
@@ -775,11 +775,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === PURE TEXT MESSAGE (no media) ===
         return (
           <div className={cn(
-            "inline-flex min-w-[80px] max-w-full flex-col rounded-2xl px-4 py-2 text-[14px] leading-relaxed",
+            "inline-block min-w-[100px] max-w-full rounded-2xl px-4 py-2 text-[14px] leading-relaxed",
             msg.sender === "agent"
               ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
               : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
-          )} style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "normal", writingMode: "horizontal-tb" }}>
+          )} style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
             {groupSenderEl && (
               <div className="text-[10.5px] font-bold mb-0.5 text-white/80">{groupSenderEl}</div>
             )}
