@@ -22,6 +22,7 @@ interface NavItem {
   ecommerceOnly?: boolean;
   metaApiOnly?: boolean;
   lockedMessage?: string;
+  minRole?: "admin" | "supervisor" | "member";
 }
 
 interface NavGroup {
