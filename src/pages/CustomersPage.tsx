@@ -336,7 +336,7 @@ const CustomersPage = () => {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-8 text-muted-foreground text-xs">لا يوجد عملاء</td></tr>
+              <tr><td colSpan={5} className="text-center py-8 text-muted-foreground text-xs">لا يوجد عملاء</td></tr>
             )}
           </tbody>
         </table>
