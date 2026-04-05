@@ -1,1 +1,148 @@
 project_id = "dgnqehcezvewkdodqpyh"
+
+[functions.evolution-send]
+verify_jwt = false
+
+[functions.evolution-manage]
+verify_jwt = false
+
+[functions.evolution-webhook]
+verify_jwt = false
+
+[functions.whatsapp-send]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.whatsapp-templates]
+verify_jwt = false
+
+[functions.whatsapp-catalog]
+verify_jwt = false
+
+[functions.whatsapp-check-status]
+verify_jwt = false
+
+[functions.whatsapp-complete-signup]
+verify_jwt = false
+
+[functions.whatsapp-exchange-token]
+verify_jwt = false
+
+[functions.whatsapp-list-phones]
+verify_jwt = false
+
+[functions.whatsapp-profile]
+verify_jwt = false
+
+[functions.whatsapp-refresh-token]
+verify_jwt = false
+
+[functions.whatsapp-flow-endpoint]
+verify_jwt = false
+
+[functions.admin-create-user]
+verify_jwt = false
+
+[functions.admin-delete-member]
+verify_jwt = false
+
+[functions.admin-delete-org]
+verify_jwt = false
+
+[functions.ai-auto-reply]
+verify_jwt = false
+
+[functions.ai-features]
+verify_jwt = false
+
+[functions.ai-proxy]
+verify_jwt = false
+
+[functions.audit-log]
+verify_jwt = false
+
+[functions.auto-assign]
+verify_jwt = false
+
+[functions.auto-close-conversations]
+verify_jwt = false
+
+[functions.check-template-status]
+verify_jwt = false
+
+[functions.check-usage-limits]
+verify_jwt = false
+
+[functions.cleanup-old-logs]
+verify_jwt = false
+
+[functions.db-health-check]
+verify_jwt = false
+
+[functions.dispatch-webhook]
+verify_jwt = false
+
+[functions.evolution-health-check]
+verify_jwt = false
+
+[functions.forward-task]
+verify_jwt = false
+
+[functions.invite-member]
+verify_jwt = false
+
+[functions.lamha-bulk-create]
+verify_jwt = false
+
+[functions.lamha-carriers]
+verify_jwt = false
+
+[functions.lamha-create-shipment]
+verify_jwt = false
+
+[functions.lamha-label]
+verify_jwt = false
+
+[functions.lamha-sync-status]
+verify_jwt = false
+
+[functions.lamha-webhook]
+verify_jwt = false
+
+[functions.moyasar-checkout]
+verify_jwt = false
+
+[functions.moyasar-webhook]
+verify_jwt = false
+
+[functions.process-follow-ups]
+verify_jwt = false
+
+[functions.process-recurring-campaigns]
+verify_jwt = false
+
+[functions.process-scheduled-messages]
+verify_jwt = false
+
+[functions.public-api]
+verify_jwt = false
+
+[functions.retry-messages]
+verify_jwt = false
+
+[functions.salla-webhook]
+verify_jwt = false
+
+[functions.send-campaign]
+verify_jwt = false
+
+[functions.sla-escalation]
+verify_jwt = false
+
+[functions.store-webhook]
+verify_jwt = false
+
+[functions.upload-chat-media]
+verify_jwt = false
