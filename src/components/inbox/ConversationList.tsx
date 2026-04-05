@@ -149,8 +149,8 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   const quickFilters: QuickFilter[] = [
     { id: "mine", label: "محادثاتي", icon: User, count: counts.mine },
-    { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: counts.waitingCustomer },
     { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
+    { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: counts.waitingCustomer },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
     { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions },
     { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
