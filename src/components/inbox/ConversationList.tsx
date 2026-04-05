@@ -406,7 +406,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             )}
           </div>
         ) : (
-          <div className="divide-y divide-border/30">
+          <div className="divide-y divide-border">
           {filtered.map((conv) => {
             const isSelected = conv.id === selectedId;
             const countdown = conv.channelType === "meta_api" ? get24hCountdown(conv.lastCustomerMessageAt) : null;
