@@ -1084,8 +1084,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             .eq("org_id", orgId)
             .in("phone", allLookups);
 
+          // 1b. Check profiles table (team members) by phone
+          const { data: savedProfiles } = await supabase
+            .from("profiles")
+            .select("phone, full_name")
+            .eq("org_id", orgId)
+            .in("phone", allLookups);
+
           const customerMap = new Map<string, string>();
           (savedCustomers || []).forEach(c => { if (c.name) customerMap.set(c.phone, c.name); });
+          // Profiles override customers (team members should show their name)
+          (savedProfiles || []).forEach(p => { if (p.full_name && p.phone) customerMap.set(p.phone, p.full_name); });
 
           // 2. Extract names from recent messages metadata (sender_name field)
           const msgNameMap = new Map<string, string>();
