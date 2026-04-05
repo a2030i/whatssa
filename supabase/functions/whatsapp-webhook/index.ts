@@ -621,7 +621,7 @@ serve(async (req) => {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
                   },
-                  body: JSON.stringify({ conversation_id: conversation.id, org_id: orgId, message_text: messageContent }),
+                  body: JSON.stringify({ conversation_id: conversation.id, org_id: orgId, message_text: messageContent, exclude_supervisors: !!(config as any)?.exclude_supervisors }),
                 });
               } catch (error) {
                 const errMsg = error instanceof Error ? error.message : String(error);
