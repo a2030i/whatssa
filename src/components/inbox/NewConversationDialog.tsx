@@ -68,7 +68,7 @@ const COUNTRY_CODES = [
 ];
 
 const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCreated }: NewConversationDialogProps) => {
-  const { orgId } = useAuth();
+  const { orgId, profile } = useAuth();
   const [step, setStep] = useState<Step>("contact");
   const [dialogMode, setDialogMode] = useState<DialogMode>("private");
   const [channels, setChannels] = useState<Channel[]>([]);
