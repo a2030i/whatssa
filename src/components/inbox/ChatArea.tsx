@@ -1893,12 +1893,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-2 md:space-y-3" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, hsl(var(--secondary) / 0.3), transparent 70%)' }}>
         {messages.map((msg, msgIdx) => {
-          // Check if next message is from same sender to avoid repeating avatar
+          // In groups, distinguish senders by their JID/phone, not just "customer"
+          const isGroup = conversation.conversationType === "group";
+          const getMsgSenderKey = (m: Message) => {
+            if (m.sender !== "customer" || !isGroup) return m.sender;
+            return m.senderPhone || m.senderJid || m.senderName || m.sender;
+          };
+          const senderKey = getMsgSenderKey(msg);
           const nextMsg = messages[msgIdx + 1];
-          const showAvatar = !nextMsg || nextMsg.sender !== msg.sender || nextMsg.sender === "system";
-          // Check if this is the first message in a group from same sender
+          const showAvatar = !nextMsg || getMsgSenderKey(nextMsg) !== senderKey || nextMsg.sender === "system";
           const prevMsg = messages[msgIdx - 1];
-          const isFirstInGroup = !prevMsg || prevMsg.sender !== msg.sender || prevMsg.sender === "system";
+          const isFirstInGroup = !prevMsg || getMsgSenderKey(prevMsg) !== senderKey || prevMsg.sender === "system";
           return (
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
