@@ -485,18 +485,15 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         </div>
       )}
       <div className={cn(
-        "rounded-2xl px-4 py-3 text-[14px] leading-relaxed max-w-full",
-        msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3.5",
+        "rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed max-w-full",
         msg.isDeleted
           ? "bg-muted/30 border border-dashed border-border/20 text-muted-foreground italic"
           : msg.type === "note"
-            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/40 dark:border-amber-500/15 text-foreground rounded-bl-sm"
+            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-bl-sm"
             : msg.sender === "agent"
-              ? "bg-card text-foreground rounded-bl-sm"
-              : msg.mentioned && msg.mentioned.length > 0
-                ? "bg-primary/90 text-primary-foreground rounded-br-sm"
-                : "bg-primary/90 text-primary-foreground rounded-br-sm"
-      )} style={msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" ? { boxShadow: 'var(--shadow-xs)' } : undefined}>
+              ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+              : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
+      )}>
         {msg.isDeleted ? (
           <div className="flex items-center gap-1.5 text-xs opacity-70">
             <XCircle className="w-3.5 h-3.5" />
