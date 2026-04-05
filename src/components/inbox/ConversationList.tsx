@@ -385,7 +385,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       )}
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto px-3 pt-2">
+      <div className="flex-1 overflow-y-auto px-3 pt-1">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
@@ -403,7 +403,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             )}
           </div>
         ) : (
-          <div className="space-y-px">
+          <div className="divide-y divide-border/40">
           {filtered.map((conv) => {
             const isSelected = conv.id === selectedId;
             const countdown = conv.channelType === "meta_api" ? get24hCountdown(conv.lastCustomerMessageAt) : null;
@@ -446,10 +446,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   setTimeout(() => document.addEventListener("click", dismiss), 0);
                 }}
                 className={cn(
-                  "w-full text-right px-3 py-2.5 transition-all group relative rounded-lg",
+                  "w-full text-right px-3 py-3 transition-all group relative",
                   isSelected && !bulkMode
-                    ? "bg-primary/[0.06]"
-                    : "hover:bg-muted/50",
+                    ? "bg-primary/[0.07]"
+                    : "hover:bg-muted/60",
                   bulkMode && bulkSelected.has(conv.id) && "bg-primary/5"
                 )}
               >
@@ -467,12 +467,12 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   )}
 
                   {/* RIGHT: Avatar */}
-                  <div className="relative shrink-0 mt-0.5">
+                  <div className="relative shrink-0">
                     {conv.profilePic ? (
                       <img
                         src={conv.profilePic}
                         alt={displayName}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-11 h-11 rounded-full object-cover ring-1 ring-border/30"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                           (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
@@ -480,14 +480,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       />
                     ) : null}
                     <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-semibold",
+                      "w-11 h-11 rounded-full flex items-center justify-center text-[14px] font-semibold",
                       conv.profilePic ? "hidden" : "",
                       isSelected
-                        ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground"
+                        ? "bg-primary/12 text-primary"
+                        : "bg-secondary text-secondary-foreground"
                     )}>
                       {conv.conversationType === "group" ? (
-                        <Users className="w-4 h-4" />
+                        <Users className="w-4.5 h-4.5" />
                       ) : (
                         displayName.charAt(0)
                       )}
@@ -498,43 +498,43 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   <div className="flex-1 min-w-0">
                     {/* Row 1: Name */}
                     <p className={cn(
-                      "text-[14px] font-medium truncate leading-tight flex items-center gap-1",
-                      hasUnread ? "text-foreground" : "text-foreground/90"
+                      "text-[14px] font-semibold truncate leading-tight flex items-center gap-1",
+                      hasUnread ? "text-foreground" : "text-foreground/80"
                     )}>
-                      {conv.isPinned && <Pin className="w-2.5 h-2.5 text-muted-foreground/60 shrink-0 rotate-45" />}
+                      {conv.isPinned && <Pin className="w-2.5 h-2.5 text-primary/50 shrink-0 rotate-45" />}
                       {displayName}
                     </p>
                     {/* Row 2: Last message preview */}
                     <p className={cn(
-                      "text-[12.5px] truncate leading-snug mt-1",
-                      hasUnread ? "text-foreground/70 font-medium" : "text-muted-foreground"
+                      "text-[12.5px] truncate leading-snug mt-0.5",
+                      hasUnread ? "text-foreground/60 font-medium" : "text-muted-foreground/70"
                     )}>
                       {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                     </p>
-                    {/* Row 3: Assigned agent (only if meaningful) */}
+                    {/* Row 3: Channel label */}
                     {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                      <span className="text-[10px] text-muted-foreground/50 leading-none mt-1 block truncate max-w-[100px]">
+                      <span className="text-[10px] text-primary/50 leading-none mt-1 block truncate max-w-[100px] font-medium">
                         {conv.assignedTo.split(" ")[0]}
                       </span>
                     )}
                   </div>
 
                   {/* LEFT: Timestamp + indicators */}
-                  <div className="flex flex-col items-start gap-1.5 shrink-0 pt-0.5 min-w-[48px]">
+                  <div className="flex flex-col items-start gap-1.5 shrink-0 pt-0.5 min-w-[50px]">
                     <span className={cn(
                       "text-[11px] leading-none",
-                      hasUnread ? "text-primary font-medium" : "text-muted-foreground/60"
+                      hasUnread ? "text-primary font-semibold" : "text-muted-foreground/50"
                     )}>
                       {conv.timestamp}
                     </span>
                     <div className="flex items-center gap-1">
-                      {/* Unread dot */}
                       {hasUnread && (
-                        <span className="w-2 h-2 rounded-full bg-primary" />
+                        <span className="min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                          {conv.unread}
+                        </span>
                       )}
-                      {/* Mention indicator */}
                       {hasMention && (
-                        <span className="w-4 h-4 rounded-full bg-accent text-accent-foreground text-[8px] font-bold flex items-center justify-center">@</span>
+                        <span className="w-[18px] h-[18px] rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">@</span>
                       )}
                     </div>
                   </div>
