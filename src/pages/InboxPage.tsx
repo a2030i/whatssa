@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSearchParams } from "react-router-dom";
 import { Conversation, Message } from "@/data/mockData";
@@ -987,7 +987,14 @@ const InboxPage = () => {
       )}
 
       {selected && !isMobile && desktopInfoOpen && (
-        <div className="relative animate-in slide-in-from-left duration-200">
+        <div className="relative animate-in slide-in-from-left duration-200 h-full">
+          <button
+            onClick={() => setDesktopInfoOpen(false)}
+            className="absolute top-3 left-3 z-10 w-7 h-7 rounded-lg bg-muted hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-all"
+            title="إغلاق"
+          >
+            <X className="w-4 h-4" />
+          </button>
           <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} onAssignAgent={handleAssignAgent} onAssignTeam={handleAssignTeam} />
         </div>
       )}
