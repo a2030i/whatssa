@@ -1758,14 +1758,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
             <div className="min-w-0 overflow-hidden">
               <div className="flex items-center gap-1.5">
-                <p className="font-medium text-[15px] truncate max-w-[120px] md:max-w-[250px] tracking-tight">{conversation.customerName}</p>
+                <p className="font-medium text-[15px] truncate max-w-[120px] md:max-w-[250px] tracking-tight text-primary-foreground">{conversation.customerName}</p>
                 {isMetaChannel ? (
-                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-medium shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-white/20 text-primary-foreground font-medium shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
                     رسمي
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground font-medium shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-white/15 text-primary-foreground/80 font-medium shrink-0">
                     <Wifi className="w-2.5 h-2.5" />
                     غير رسمي
                   </span>
