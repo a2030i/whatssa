@@ -93,6 +93,7 @@ const getWindowRemaining = (lastCustomerMessageAt?: string): { expired: boolean;
 };
 
 const isImageUrl = (url?: string | null) => !!url && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url);
+const isPdfUrl = (url?: string | null) => !!url && /\.pdf(\?.*)?(#.*)?$/i.test(url);
 
 const getStorageUrlFromText = (text: string) => {
   const match = text.match(/\n(https:\/\/[^\s]+|storage:chat-media\/[^\s]+)/i);
@@ -220,13 +221,43 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
     );
   }
   if (type === "document") {
+    const pdfFile = isPdfUrl(resolvedUrl) || isPdfUrl(url);
     return (
-      <a href={resolvedUrl} target="_blank" rel="noreferrer" className="mb-1.5 flex items-center gap-3 rounded-xl bg-background/50 p-3 text-xs font-semibold hover:bg-background/70 transition-colors border border-border/10">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-          <FileText className="h-5 w-5 text-primary" />
+      <div className="mb-1.5 min-w-[240px] max-w-[min(82vw,480px)] rounded-2xl border border-border/15 bg-background/60 p-2.5 shadow-sm">
+        <div className="mb-2 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 shrink-0">
+            <FileText className="h-5 w-5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold">{pdfFile ? "ملف PDF" : "ملف مرفق"}</p>
+            <p className="text-[10px] text-muted-foreground">يمكنك المعاينة أو الفتح في تبويب جديد</p>
+          </div>
+          <a
+            href={resolvedUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex shrink-0 items-center rounded-xl bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            فتح
+          </a>
         </div>
-        <span className="flex-1 truncate">فتح الملف المرفق</span>
-      </a>
+        {pdfFile ? (
+          <iframe
+            src={resolvedUrl}
+            title="معاينة PDF"
+            className="h-[320px] w-full rounded-xl border border-border/10 bg-background"
+          />
+        ) : (
+          <a
+            href={resolvedUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center rounded-xl border border-dashed border-border/40 px-3 py-6 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/40"
+          >
+            فتح الملف المرفق
+          </a>
+        )}
+      </div>
     );
   }
   return null;
@@ -311,7 +342,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       onTouchStart={canReply ? swipe.onTouchStart : undefined}
       onTouchMove={canReply ? swipe.onTouchMove : undefined}
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
-      className="group relative max-w-[92%] md:max-w-[70%]"
+      className="group relative max-w-[94%] md:max-w-[72%]"
       data-message-id={msg.id}
       data-wa-message-id={msg.waMessageId || undefined}
     >
@@ -455,17 +486,17 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         </div>
       )}
       <div className={cn(
-        "rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-full",
+        "rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-full backdrop-blur-sm",
         msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3.5",
         msg.isDeleted
           ? "bg-muted/30 border border-dashed border-border/30 text-muted-foreground italic"
           : msg.type === "note"
             ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 text-foreground rounded-bl-sm shadow-sm"
             : msg.sender === "agent"
-              ? "bg-card border border-border/15 shadow-[0_1px_3px_rgba(0,0,0,0.06)] text-foreground rounded-bl-sm"
+              ? "bg-card border border-border/30 shadow-sm text-foreground rounded-bl-sm"
               : msg.mentioned && msg.mentioned.length > 0
                 ? "bg-primary text-primary-foreground rounded-br-sm shadow-md ring-2 ring-primary/30"
-                : "bg-primary text-primary-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.1)]"
+                : "bg-primary text-primary-foreground rounded-br-sm shadow-md border border-primary/20"
       )}>
         {msg.isDeleted ? (
           <div className="flex items-center gap-1.5 text-xs opacity-70">
@@ -1496,14 +1527,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     setIsUploading(true);
     try {
-      const ext = imagePreview.file.name.split(".").pop() || "bin";
       const mediaType = getFileMediaType(imagePreview.file);
-      const path = `${conversation.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("chat-media")
-        .upload(path, imagePreview.file, { contentType: imagePreview.file.type });
+      const base64 = await blobToBase64(imagePreview.file);
+      const { data: uploadData, error: uploadError } = await invokeCloud("upload-chat-media", {
+        body: {
+          conversation_id: conversation.id,
+          file_name: imagePreview.file.name,
+          content_type: imagePreview.file.type || "application/octet-stream",
+          base64,
+        },
+      });
       if (uploadError) throw uploadError;
-      const storagePath = `storage:chat-media/${path}`;
+      if (!uploadData?.storage_path) throw new Error("تعذر رفع الملف");
+      const storagePath = uploadData.storage_path as string;
       const caption = inputText.trim();
 
       // Check if using Evolution based on conversation channel type
@@ -1892,7 +1928,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-2 md:space-y-3" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, hsl(var(--secondary) / 0.3), transparent 70%)' }}>
+      <div className="flex-1 overflow-y-auto p-3 md:p-5 space-y-2.5 md:space-y-3.5" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, hsl(var(--secondary) / 0.32), transparent 68%)' }}>
         {messages.map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";
