@@ -618,7 +618,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === NOTE MESSAGE ===
         if (msg.type === "note") {
           return (
-            <div className="rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-bl-sm min-w-[160px] max-w-[75%] w-fit [overflow-wrap:break-word]">
+            <div className="rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-br-sm min-w-[160px] max-w-[75%] w-fit [overflow-wrap:break-word]">
               <div className="flex items-center gap-1 mb-1 text-amber-500 whitespace-nowrap">
                 <StickyNote className="w-3 h-3 shrink-0" />
                 <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
@@ -756,8 +756,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 <div className={cn(
                   "inline-block rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
                   msg.sender === "agent"
-                    ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                    : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
+                    ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                    : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
                 )}>
                   {renderText(textWithoutUrl)}
                   {translationEl}
@@ -775,8 +775,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           <div className={cn(
             "inline-block rounded-2xl px-4 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
             msg.sender === "agent"
-              ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-              : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
+              ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+              : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
           )}>
             {groupSenderEl && (
               <div className="text-[10.5px] font-bold mb-0.5 text-white/80">{groupSenderEl}</div>
@@ -2240,7 +2240,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         {/* Other agents typing indicator */}
         {otherTypingAgents.length > 0 && (
            <div className="flex justify-start">
-            <div className="bg-primary/10 text-primary text-[11px] px-3 py-1.5 rounded-xl rounded-br-sm flex items-center gap-1.5">
+            <div className="bg-primary/10 text-primary text-[11px] px-3 py-1.5 rounded-xl rounded-bl-sm flex items-center gap-1.5">
               <span className="font-medium">{otherTypingAgents.join("، ")}</span>
               <span>يكتب الآن</span>
               <span className="flex gap-0.5">
