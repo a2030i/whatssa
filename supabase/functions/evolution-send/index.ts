@@ -164,20 +164,24 @@ serve(async (req) => {
       const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
       if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
 
-      // Resolve instance from channel_id or fallback to first connected
-      let configQuery = adminClient.from("whatsapp_config")
-        .select("evolution_instance_name")
-        .eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true);
-      if (channel_id) {
-        configQuery = configQuery.eq("id", channel_id);
-      }
-      const [configResult] = await Promise.all([
-        configQuery.limit(1).maybeSingle(),
-        adminClient.from("messages").update({
-          content: "تم حذف هذه الرسالة",
-          metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
-        }).eq("wa_message_id", delete_message_id),
+      // Fetch existing message metadata + channel config in parallel
+      const [configResult, msgResult] = await Promise.all([
+        (() => {
+          let q = adminClient.from("whatsapp_config")
+            .select("evolution_instance_name")
+            .eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true);
+          if (channel_id) q = q.eq("id", channel_id);
+          return q.limit(1).maybeSingle();
+        })(),
+        adminClient.from("messages").select("metadata").eq("wa_message_id", delete_message_id).maybeSingle(),
       ]);
+
+      // Merge metadata and update
+      const existingMeta = (msgResult.data?.metadata as Record<string, unknown>) || {};
+      await adminClient.from("messages").update({
+        content: "تم حذف هذه الرسالة",
+        metadata: { ...existingMeta, is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: profile?.full_name || user.id },
+      }).eq("wa_message_id", delete_message_id);
 
       const config = configResult.data;
       if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
