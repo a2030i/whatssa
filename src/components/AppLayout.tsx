@@ -26,6 +26,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const [orgName, setOrgName] = useState("");
 
   const hideBottomNav = false;
+  const mainBottomPadding = isMobile && !hideBottomNav ? "pb-safe-nav" : "";
 
   // Global hooks
   useNotificationSound();
