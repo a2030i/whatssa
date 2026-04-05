@@ -2076,7 +2076,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {msg.text}
               </div>
             ) : (
-              <div className={cn("flex items-end gap-2", msg.sender === "agent" ? "flex-row-reverse" : "flex-row")}>
+              <div className={cn("flex items-end gap-2 max-w-full", msg.sender === "agent" ? "flex-row-reverse" : "flex-row")}>
                 {/* Avatar */}
                 {showAvatar ? (
                   msg.sender === "customer" ? (
