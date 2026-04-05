@@ -505,8 +505,9 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       </p>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                          <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center" title={conv.assignedTo}>
+                          <div className="flex items-center gap-1 bg-primary/10 rounded-full px-1.5 py-0.5" title={conv.assignedTo}>
                             <User className="w-2.5 h-2.5 text-primary" />
+                            <span className="text-[9px] font-medium text-primary max-w-[60px] truncate">{conv.assignedTo.split(" ")[0]}</span>
                           </div>
                         )}
                         {(conv.unreadMentionCount || 0) > 0 && (

@@ -665,8 +665,22 @@ const InboxPage = () => {
     const previousAgent = conv?.assignedTo;
     const agentName = profile?.full_name || "النظام";
     
-    await supabase.from("conversations").update({ assigned_to: agent }).eq("id", convId);
-    setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, assignedTo: agent } : conversation)));
+    // Look up the agent's profile ID
+    const { data: agentProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("full_name", agent)
+      .limit(1)
+      .maybeSingle();
+    const agentId = agentProfile?.id || null;
+    
+    await supabase.from("conversations").update({
+      assigned_to: agent,
+      assigned_to_id: agentId,
+      assigned_at: new Date().toISOString(),
+    }).eq("id", convId);
+    setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, assignedTo: agent, assignedToId: agentId || undefined } : conversation)));
     
     // Log transfer with details
     const content = previousAgent && previousAgent !== "غير معيّن"
@@ -679,7 +693,7 @@ const InboxPage = () => {
       sender: "system",
       message_type: "text",
     });
-  }, [conversations, profile]);
+  }, [conversations, profile, orgId]);
 
   const handleAssignAgent = useCallback(async (convId: string, agentId: string | null, agentName: string) => {
     const actorName = profile?.full_name || "النظام";
