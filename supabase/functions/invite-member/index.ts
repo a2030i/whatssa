@@ -66,7 +66,12 @@ Deno.serve(async (req) => {
 
     const userId = newUser.user!.id;
 
-    // Update profile
+    // The handle_new_user trigger may have auto-created a phantom org for this user.
+    // We need to: 1) find the phantom org, 2) reassign profile to caller's org, 3) delete phantom org.
+    const { data: autoProfile } = await adminClient.from("profiles").select("org_id").eq("id", userId).maybeSingle();
+    const phantomOrgId = autoProfile?.org_id;
+
+    // Update profile to caller's org
     const isSupervisor = role === "supervisor";
     await adminClient.from("profiles").update({
       org_id: callerProfile.org_id,
@@ -75,6 +80,18 @@ Deno.serve(async (req) => {
       is_active: true,
       is_supervisor: isSupervisor,
     }).eq("id", userId);
+
+    // Delete phantom org if it was auto-created and is different from caller's org
+    if (phantomOrgId && phantomOrgId !== callerProfile.org_id) {
+      // Verify it's truly empty (no other members)
+      const { count } = await adminClient.from("profiles").select("id", { count: "exact", head: true }).eq("org_id", phantomOrgId);
+      if ((count || 0) === 0) {
+        // Safe to delete — no members left
+        await adminClient.from("wallets").delete().eq("org_id", phantomOrgId);
+        await adminClient.from("usage_tracking").delete().eq("org_id", phantomOrgId);
+        await adminClient.from("organizations").delete().eq("id", phantomOrgId);
+      }
+    }
 
     // Normalize roles — remove any auto-created admin/member role from signup trigger, then set the intended one only
     const dbRole = role === "admin" ? "admin" : "member";
