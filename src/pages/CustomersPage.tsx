@@ -33,7 +33,7 @@ const CustomersPage = () => {
   const [tagDefs, setTagDefs] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [editCustomer, setEditCustomer] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", tags: [] as string[], lifecycle_stage: "lead", company: "", source: "whatsapp" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", tags: [] as string[], company: "", source: "whatsapp" });
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
