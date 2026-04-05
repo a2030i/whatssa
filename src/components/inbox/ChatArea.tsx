@@ -1216,7 +1216,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
   const handleReply = (msg: Message) => {
     setReplyTo(msg);
-    setIsNoteMode(false);
     inputRef.current?.focus();
   };
 
