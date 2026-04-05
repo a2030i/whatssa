@@ -182,7 +182,8 @@ serve(async (req) => {
       const config = configResult.data;
       if (!config?.evolution_instance_name) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
 
-      const remoteJid = to.includes("@") ? to : `${to}@s.whatsapp.net`;
+      const isGroup = to.includes("@g.us") || (!to.includes("@") && to.length > 15);
+      const remoteJid = to.includes("@") ? to : isGroup ? `${to}@g.us` : `${to.replace(/\D/g, "")}@s.whatsapp.net`;
       const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
       const instanceName = config.evolution_instance_name;
 
