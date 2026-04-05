@@ -1842,8 +1842,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </div>
               </div>
             ))}
-            <button onClick={() => setShowMessageSearch(!showMessageSearch)} className={cn("p-2 rounded-lg hover:bg-secondary transition-colors", showMessageSearch ? "bg-primary/10 text-primary" : "")} title="بحث في الرسائل">
-              <SearchIcon className="w-4 h-4 text-muted-foreground" />
+            <button onClick={() => setShowMessageSearch(!showMessageSearch)} className={cn("p-2 rounded-lg hover:bg-white/15 transition-colors", showMessageSearch ? "bg-white/20" : "")} title="بحث في الرسائل">
+              <SearchIcon className="w-4 h-4 text-primary-foreground/80" />
             </button>
             {/* Desktop: Transfer button directly visible */}
             {conversation.status !== "closed" && (
