@@ -123,6 +123,17 @@ const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId, 
           </Select>
         </div>
       </div>
+
+      {selectedTeamId && (
+        <div className="flex items-center justify-between pt-1">
+          <Label className="text-[10px] text-muted-foreground">استثناء المشرفين من التوزيع التلقائي</Label>
+          <Switch
+            checked={excludeSupervisors}
+            onCheckedChange={handleExcludeToggle}
+            className="scale-75"
+          />
+        </div>
+      )}
     </div>
   );
 };
