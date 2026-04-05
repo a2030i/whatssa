@@ -1735,11 +1735,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-background/60">
       {/* Header */}
-      <div className="shrink-0 bg-primary/5 dark:bg-primary/8 border-b border-border/50">
+      <div className="shrink-0 bg-primary border-b border-primary/20">
         <div className="h-[56px] md:h-[60px] flex items-center justify-between px-4 md:px-5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <button className="w-8 h-8 md:w-9 md:h-9 rounded-full hover:bg-muted transition-all flex items-center justify-center shrink-0" onClick={onBack}>
-              <ArrowRight className="w-4.5 h-4.5 text-foreground" />
+            <button className="w-8 h-8 md:w-9 md:h-9 rounded-full hover:bg-white/15 transition-all flex items-center justify-center shrink-0" onClick={onBack}>
+              <ArrowRight className="w-4.5 h-4.5 text-primary-foreground" />
             </button>
             <button
               className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
@@ -1749,23 +1749,23 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               {groupPicture ? (
                 <img src={groupPicture} alt={conversation.customerName} className="w-10 h-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
               ) : null}
-              <div className={cn("w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground", groupPicture ? "hidden" : "")}>
+              <div className={cn("w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-medium text-primary-foreground", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-card" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-primary" />
               )}
             </div>
             <div className="min-w-0 overflow-hidden">
               <div className="flex items-center gap-1.5">
-                <p className="font-medium text-[15px] truncate max-w-[120px] md:max-w-[250px] tracking-tight">{conversation.customerName}</p>
+                <p className="font-medium text-[15px] truncate max-w-[120px] md:max-w-[250px] tracking-tight text-primary-foreground">{conversation.customerName}</p>
                 {isMetaChannel ? (
-                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-medium shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-white/20 text-primary-foreground font-medium shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
                     رسمي
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground font-medium shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-white/15 text-primary-foreground/80 font-medium shrink-0">
                     <Wifi className="w-2.5 h-2.5" />
                     غير رسمي
                   </span>
@@ -1777,7 +1777,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5 font-light">{conversation.lastSeen || conversation.customerPhone}</p>
+              <p className="text-[11px] text-primary-foreground/60 truncate mt-0.5 font-light">{conversation.lastSeen || conversation.customerPhone}</p>
             </div>
             </button>
           </div>
@@ -1788,27 +1788,27 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               {onShowCustomerInfo && (
                 <button
                   onClick={onShowCustomerInfo}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-primary/10 transition-colors"
+                   className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/15 transition-colors"
                   title="معلومات العميل"
                 >
-                  <Contact className="w-4 h-4 text-muted-foreground" />
+                  <Contact className="w-4 h-4 text-primary-foreground/80" />
                 </button>
               )}
               {conversation.status !== "closed" && (
                 <>
                   <button
                     onClick={() => setShowTransfer(true)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-secondary/80 transition-colors"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/15 transition-colors"
                     title="تحويل"
                   >
-                    <UserPlus className="w-4 h-4 text-primary" />
+                    <UserPlus className="w-4 h-4 text-primary-foreground/80" />
                   </button>
                   <button
                     onClick={() => setShowClosureReason(true)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-destructive/10 transition-colors"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/15 transition-colors"
                     title="إغلاق"
                   >
-                    <XCircle className="w-4 h-4 text-destructive" />
+                    <XCircle className="w-4 h-4 text-primary-foreground/80" />
                   </button>
                 </>
               )}
@@ -1842,14 +1842,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </div>
               </div>
             ))}
-            <button onClick={() => setShowMessageSearch(!showMessageSearch)} className={cn("p-2 rounded-lg hover:bg-secondary transition-colors", showMessageSearch ? "bg-primary/10 text-primary" : "")} title="بحث في الرسائل">
-              <SearchIcon className="w-4 h-4 text-muted-foreground" />
+            <button onClick={() => setShowMessageSearch(!showMessageSearch)} className={cn("p-2 rounded-lg hover:bg-white/15 transition-colors", showMessageSearch ? "bg-white/20" : "")} title="بحث في الرسائل">
+              <SearchIcon className="w-4 h-4 text-primary-foreground/80" />
             </button>
             {/* Desktop: Transfer button directly visible */}
             {conversation.status !== "closed" && (
               <button
                 onClick={() => setShowTransfer(true)}
-                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition-colors text-primary"
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-white/15 transition-colors text-primary-foreground"
                 title="تحويل لموظف آخر"
               >
                 <UserPlus className="w-4 h-4" />
@@ -1858,8 +1858,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="p-2 rounded-lg hover:bg-secondary transition-colors">
-                  <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                <button className="p-2 rounded-lg hover:bg-white/15 transition-colors">
+                  <MoreVertical className="w-4 h-4 text-primary-foreground/80" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
