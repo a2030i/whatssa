@@ -97,7 +97,7 @@ const MetaApiRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { user, isLoading, isSuperAdmin, isImpersonating } = useAuth();
+  const { user, isLoading, isSuperAdmin, isImpersonating, userRole, profile } = useAuth();
 
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -107,14 +107,17 @@ const AppRoutes = () => {
 
   // Super admin accessing client routes when impersonating
   const shouldRedirectToAdmin = isSuperAdmin && !isImpersonating;
+  // Members/supervisors go to inbox, admins go to dashboard
+  const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
+  const defaultPath = effectiveRole === "admin" ? "/dashboard" : "/inbox";
 
   return (
     <Routes>
-      <Route path="/auth" element={user ? (shouldRedirectToAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/dashboard" replace />) : <AuthPage />} />
+      <Route path="/auth" element={user ? (shouldRedirectToAdmin ? <Navigate to="/admin" replace /> : <Navigate to={defaultPath} replace />) : <AuthPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/change-password" element={user ? <ForceChangePasswordPage /> : <Navigate to="/auth" replace />} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-      <Route path="/" element={user ? (shouldRedirectToAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/dashboard" replace />) : <LandingPage />} />
+      <Route path="/" element={user ? (shouldRedirectToAdmin ? <Navigate to="/admin" replace /> : <Navigate to={defaultPath} replace />) : <LandingPage />} />
       <Route path="/dashboard" element={<ProtectedRoute minRole="admin"><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
       <Route path="/inbox" element={<ProtectedRoute><AppLayout><InboxPage /></AppLayout></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute minRole="admin"><AppLayout><CustomersPage /></AppLayout></ProtectedRoute>} />
