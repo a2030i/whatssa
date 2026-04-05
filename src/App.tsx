@@ -50,8 +50,8 @@ import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading, mustChangePassword } = useAuth();
+const ProtectedRoute = ({ children, minRole }: { children: React.ReactNode; minRole?: "admin" | "supervisor" | "member" }) => {
+  const { user, isLoading, mustChangePassword, userRole, profile, isSuperAdmin } = useAuth();
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -59,6 +59,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   );
   if (!user) return <Navigate to="/auth" replace />;
   if (mustChangePassword) return <Navigate to="/change-password" replace />;
+
+  // Role-based access check
+  if (minRole && !isSuperAdmin) {
+    const effectiveRole = userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
+    const hierarchy: Record<string, number> = { member: 0, supervisor: 1, admin: 2 };
+    if ((hierarchy[effectiveRole] ?? 0) < (hierarchy[minRole] ?? 0)) {
+      return <Navigate to="/inbox" replace />;
+    }
+  }
+
   return <>{children}</>;
 };
 
