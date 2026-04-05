@@ -374,10 +374,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Use Lovable Cloud DB (where whatsapp_config lives)
+  // Use the external DB consistently (where whatsapp_config, conversations, and messages live)
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY
   );
 
   try {
