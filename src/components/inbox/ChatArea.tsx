@@ -2224,7 +2224,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         )}
         {/* Customer typing indicator */}
         {customerTyping && (
-          <div className="flex justify-start">
+          <div className="flex justify-end">
             <div className="bg-card border border-border rounded-xl rounded-bl-sm px-4 py-2.5 text-sm">
               <div className="flex gap-1 items-center">
                 <span className="text-xs text-muted-foreground">يكتب</span>
