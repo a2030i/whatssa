@@ -736,7 +736,14 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 <ResolvedMedia url={mediaUrl} type="document" isAgent={msg.sender === "agent"} onImageClick={onImageClick} />
               )}
               {isAudio && mediaUrl && (
-                <ResolvedMedia url={mediaUrl} type="audio" isAgent={msg.sender === "agent"} onImageClick={onImageClick} />
+                <div className={cn(
+                  "rounded-2xl px-3.5 py-2.5",
+                  msg.sender === "agent"
+                    ? "bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                    : "bg-[hsl(158,45%,42%)]"
+                )}>
+                  <ResolvedMedia url={mediaUrl} type="audio" isAgent={msg.sender === "agent"} onImageClick={onImageClick} />
+                </div>
               )}
               {isAudio && !mediaUrl && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
@@ -766,7 +773,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === PURE TEXT MESSAGE (no media) ===
         return (
           <div className={cn(
-            "rounded-2xl px-4 py-2 text-[14px] leading-relaxed max-w-full",
+            "rounded-2xl px-4 py-2 text-[14px] leading-relaxed max-w-full overflow-hidden break-words",
             msg.sender === "agent"
               ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
               : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
