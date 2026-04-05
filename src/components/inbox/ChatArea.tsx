@@ -206,36 +206,36 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
     return <img src={resolvedUrl} alt="ملصق" className="max-w-[140px] max-h-[140px] object-contain mb-1" />;
   }
   if (isImage) {
-    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-xl max-w-[260px] max-h-[220px] object-cover mb-1.5 cursor-pointer active:scale-[0.98] transition-transform shadow-sm" onClick={() => onImageClick?.(resolvedUrl)} />;
+    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-xl max-w-[260px] max-h-[220px] object-cover mb-1.5 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => onImageClick?.(resolvedUrl)} />;
   }
   if (type === "audio") {
     return <AudioPlayer src={resolvedUrl} isAgent={isAgent} className="mb-1" />;
   }
   if (type === "video") {
     return (
-      <div className="mb-1.5 min-w-[240px] rounded-xl bg-background/50 p-2.5 border border-border/10">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold"><Video className="h-4 w-4 text-primary" /><span>مقطع فيديو</span></div>
-        <video controls preload="metadata" className="max-h-[260px] w-full rounded-lg"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الفيديو.</video>
+      <div className="mb-1.5 min-w-[220px] rounded-xl bg-white dark:bg-card overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center gap-2 p-2.5 text-[12px] font-medium text-foreground"><Video className="h-4 w-4 text-primary" /><span>مقطع فيديو</span></div>
+        <video controls preload="metadata" className="max-h-[260px] w-full"><source src={resolvedUrl} />متصفحك لا يدعم تشغيل الفيديو.</video>
       </div>
     );
   }
   if (type === "document") {
     const pdfFile = isPdfUrl(resolvedUrl) || isPdfUrl(url);
     return (
-      <div className="mb-1.5 min-w-[240px] max-w-[min(82vw,480px)] rounded-2xl border border-border/15 bg-background/60 p-2.5 shadow-sm">
-        <div className="mb-2 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 shrink-0">
-            <FileText className="h-5 w-5 text-primary" />
+      <div className="mb-1.5 min-w-[220px] max-w-[min(82vw,420px)] rounded-xl bg-white dark:bg-card overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center gap-3 p-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/8 shrink-0">
+            <FileText className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold">{pdfFile ? "ملف PDF" : "ملف مرفق"}</p>
-            <p className="text-[10px] text-muted-foreground">يمكنك المعاينة أو الفتح في تبويب جديد</p>
+            <p className="truncate text-[13px] font-medium text-foreground">{pdfFile ? "ملف PDF" : "ملف مرفق"}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">اضغط للمعاينة</p>
           </div>
           <a
             href={resolvedUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex shrink-0 items-center rounded-xl bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            className="inline-flex shrink-0 items-center rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
           >
             فتح
           </a>
@@ -244,14 +244,14 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
           <iframe
             src={resolvedUrl}
             title="معاينة PDF"
-            className="h-[320px] w-full rounded-xl border border-border/10 bg-background"
+            className="h-[280px] w-full border-t border-border/10 bg-background"
           />
         ) : (
           <a
             href={resolvedUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center justify-center rounded-xl border border-dashed border-border/40 px-3 py-6 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/40"
+            className="flex items-center justify-center border-t border-border/10 px-3 py-5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/30"
           >
             فتح الملف المرفق
           </a>
@@ -485,18 +485,15 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         </div>
       )}
       <div className={cn(
-        "rounded-2xl px-4 py-3 text-[14px] leading-relaxed max-w-full",
-        msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3.5",
+        "rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed max-w-full",
         msg.isDeleted
           ? "bg-muted/30 border border-dashed border-border/20 text-muted-foreground italic"
           : msg.type === "note"
-            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/40 dark:border-amber-500/15 text-foreground rounded-bl-sm"
+            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-bl-sm"
             : msg.sender === "agent"
-              ? "bg-card text-foreground rounded-bl-sm"
-              : msg.mentioned && msg.mentioned.length > 0
-                ? "bg-primary/90 text-primary-foreground rounded-br-sm"
-                : "bg-primary/90 text-primary-foreground rounded-br-sm"
-      )} style={msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" ? { boxShadow: 'var(--shadow-xs)' } : undefined}>
+              ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+              : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
+      )}>
         {msg.isDeleted ? (
           <div className="flex items-center gap-1.5 text-xs opacity-70">
             <XCircle className="w-3.5 h-3.5" />
@@ -518,23 +515,20 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               }
               if (!resolvedName && rawPhone) resolvedName = `+${rawPhone}`;
               return resolvedName ? (
-                <div className={cn(
-                  "text-[10px] font-semibold mb-0.5 opacity-80",
-                  "text-primary-foreground/70"
-                )}>
-                  {resolvedName}
-                </div>
+                 <div className="text-[10px] font-semibold mb-0.5 text-white/60">
+                   {resolvedName}
+                 </div>
               ) : null;
             })()}
             {msg.quoted && msg.quoted.text && (
               <div
                 onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
-                className={cn(
-                  "rounded-xl px-3 py-2 mb-2 border-r-4 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity",
-                  msg.sender === "customer"
-                    ? "bg-white/15 border-white/50"
-                    : "bg-secondary/80 border-primary/40"
-                )}>
+                 className={cn(
+                   "rounded-lg px-3 py-2 mb-2 border-r-3 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity",
+                   msg.sender === "customer"
+                     ? "bg-white/12 border-white/40"
+                     : "bg-secondary/60 border-primary/30"
+                 )}>
                 {msg.quoted.sender_name && (
                   <p className={cn(
                     "text-[11px] font-bold mb-0.5",
@@ -662,11 +656,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                         }
                         return (
                           <span key={i} className={cn(
-                            "font-semibold px-1 rounded",
-                            msg.sender === "customer"
-                              ? "bg-white/20 text-white underline underline-offset-2"
-                              : "bg-primary/10 text-primary"
-                          )}>{displayLabel}</span>
+                             "font-semibold px-1 rounded",
+                             msg.sender === "customer"
+                               ? "bg-white/15 text-white"
+                               : "bg-primary/8 text-primary"
+                           )}>{displayLabel}</span>
                         );
                       })}
                     </p>
@@ -684,8 +678,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               </div>
             )}
             {/* Timestamp + status */}
-            <div className={cn("flex items-center gap-1.5 mt-2", msg.type === "note" ? "text-amber-500/50" : msg.sender === "agent" ? "text-muted-foreground/50" : "text-white/45")}>
-              <span className="text-[10px] font-medium tracking-tight">{msg.timestamp}</span>
+            <div className={cn("flex items-center gap-1.5 mt-1.5", msg.type === "note" ? "text-amber-500/50" : msg.sender === "agent" ? "text-muted-foreground/40" : "text-white/50")}>
+              <span className="text-[10px] tracking-tight">{msg.timestamp}</span>
               {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
               {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
             </div>
@@ -1928,7 +1922,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-1 md:space-y-1.5 bg-background">
+      <div className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-6 space-y-0.5 md:space-y-1 bg-background">
         {messages.map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";
