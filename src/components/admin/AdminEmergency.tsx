@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import {
   RefreshCw, Database, AlertTriangle, CheckCircle, XCircle,
-  Clock, ExternalLink, Shield, Phone, Save, QrCode
+  Clock, ExternalLink, Shield, Phone, Save, QrCode, Send
 } from "lucide-react";
 
 interface HealthLog {
@@ -26,31 +27,65 @@ const AdminEmergency = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
   const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [alertInstance, setAlertInstance] = useState("");
+  const [evolutionChannels, setEvolutionChannels] = useState<{instance: string; phone: string; name: string}[]>([]);
   const [savingPhone, setSavingPhone] = useState(false);
+  const [savingInstance, setSavingInstance] = useState(false);
 
   const EXTERNAL_URL = "https://ovbrrumnqfvtgmqsscat.supabase.co";
   const EXTERNAL_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92YnJydW1ucWZ2dGdtcXNzY2F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzc4ODQsImV4cCI6MjA5MDY1Mzg4NH0.-ed8-nrAbfO1lMm9Rc5bjwsIzmonunVKkcwRY586SrQ";
   const CLOUD_URL = import.meta.env.VITE_SUPABASE_URL;
   const CLOUD_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  // Load emergency phone from system_settings
+  // Load emergency settings from system_settings
   useEffect(() => {
-    supabase.from("system_settings").select("value").eq("key", "emergency_phone").maybeSingle()
+    Promise.all([
+      supabase.from("system_settings").select("value").eq("key", "emergency_phone").maybeSingle(),
+      supabase.from("system_settings").select("value").eq("key", "alert_evolution_instance").maybeSingle(),
+    ]).then(([phoneRes, instanceRes]) => {
+      if (phoneRes.data?.value) setEmergencyPhone(String(phoneRes.data.value));
+      if (instanceRes.data?.value) setAlertInstance(String(instanceRes.data.value));
+    });
+
+    // Load Evolution channels for selection
+    supabase.from("whatsapp_config")
+      .select("evolution_instance_name, display_phone, business_name")
+      .eq("channel_type", "evolution")
+      .eq("is_connected", true)
       .then(({ data }) => {
-        if (data?.value) setEmergencyPhone(String(data.value));
+        setEvolutionChannels(
+          (data || [])
+            .filter((c: any) => c.evolution_instance_name)
+            .map((c: any) => ({
+              instance: c.evolution_instance_name,
+              phone: c.display_phone || "—",
+              name: c.business_name || "",
+            }))
+        );
       });
   }, []);
 
+  const saveSetting = async (key: string, value: string, description: string) => {
+    const { data: existing } = await supabase.from("system_settings").select("key").eq("key", key).maybeSingle();
+    if (existing) {
+      await supabase.from("system_settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key);
+    } else {
+      await supabase.from("system_settings").insert({ key, value, description });
+    }
+  };
+
   const saveEmergencyPhone = async () => {
     setSavingPhone(true);
-    const { data: existing } = await supabase.from("system_settings").select("key").eq("key", "emergency_phone").maybeSingle();
-    if (existing) {
-      await supabase.from("system_settings").update({ value: emergencyPhone, updated_at: new Date().toISOString() }).eq("key", "emergency_phone");
-    } else {
-      await supabase.from("system_settings").insert({ key: "emergency_phone", value: emergencyPhone, description: "رقم الطوارئ لتنبيهات تعطل النظام" });
-    }
+    await saveSetting("emergency_phone", emergencyPhone, "رقم الطوارئ لتنبيهات تعطل النظام");
     toast.success("تم حفظ رقم الطوارئ");
     setSavingPhone(false);
+  };
+
+  const saveAlertInstance = async () => {
+    setSavingInstance(true);
+    await saveSetting("alert_evolution_instance", alertInstance, "اسم Instance الواتساب لإرسال تنبيهات الطوارئ");
+    toast.success("تم حفظ رقم الإرسال");
+    setSavingInstance(false);
   };
 
   const checkExternalDB = async () => {
@@ -166,35 +201,62 @@ const AdminEmergency = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Phone className="w-4 h-4 text-destructive" />
-              رقم الطوارئ للتنبيهات
+              إعدادات تنبيه الطوارئ
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <p className="text-[10px] text-muted-foreground">
-              سيتم إرسال تنبيه واتساب فوري لهذا الرقم عند تعطل القاعدة الخارجية
+              سيتم إرسال تنبيه واتساب فوري عند تعطل القاعدة الخارجية
             </p>
-            <div className="flex gap-2">
-              <Input
-                value={emergencyPhone}
-                onChange={e => setEmergencyPhone(e.target.value)}
-                placeholder="966500000000"
-                className="h-9 text-sm font-mono"
-                dir="ltr"
-              />
-              <Button size="sm" variant="outline" className="h-9" onClick={saveEmergencyPhone} disabled={savingPhone}>
-                <Save className="w-3 h-3" />
-              </Button>
-            </div>
-            {emergencyPhone && (
-              <div className="bg-primary/5 rounded-lg p-2 text-xs text-primary font-medium flex items-center gap-2">
-                <Phone className="w-3 h-3" />
-                التنبيهات مفعّلة للرقم: {emergencyPhone}
+
+            {/* رقم المستقبل */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">رقم المستقبل</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={emergencyPhone}
+                  onChange={e => setEmergencyPhone(e.target.value)}
+                  placeholder="966500000000"
+                  className="h-9 text-sm font-mono"
+                  dir="ltr"
+                />
+                <Button size="sm" variant="outline" className="h-9" onClick={saveEmergencyPhone} disabled={savingPhone}>
+                  <Save className="w-3 h-3" />
+                </Button>
               </div>
-            )}
-            {!emergencyPhone && (
+            </div>
+
+            {/* رقم الإرسال (Instance) */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">الرقم المرسل منه</Label>
+              <div className="flex gap-2">
+                <Select value={alertInstance} onValueChange={setAlertInstance}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="اختر رقم الإرسال" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {evolutionChannels.map(ch => (
+                      <SelectItem key={ch.instance} value={ch.instance}>
+                        {ch.phone} {ch.name ? `(${ch.name})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" className="h-9" onClick={saveAlertInstance} disabled={savingInstance}>
+                  <Save className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+
+            {emergencyPhone && alertInstance ? (
+              <div className="bg-primary/5 rounded-lg p-2 text-xs text-primary font-medium flex items-center gap-2">
+                <CheckCircle className="w-3 h-3" />
+                التنبيهات مفعّلة — المستقبل: {emergencyPhone}
+              </div>
+            ) : (
               <div className="bg-yellow-500/10 rounded-lg p-2 text-xs text-yellow-600 font-medium flex items-center gap-2">
                 <AlertTriangle className="w-3 h-3" />
-                لم يتم تعيين رقم طوارئ — لن تصلك تنبيهات
+                {!emergencyPhone ? "لم يتم تعيين رقم المستقبل" : "لم يتم اختيار رقم الإرسال"}
               </div>
             )}
           </CardContent>
