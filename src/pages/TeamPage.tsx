@@ -107,7 +107,7 @@ const TeamPage = () => {
     setEditingProfile(profile);
     setFormTeam(profile.team_id || "");
     const storedRole = getStoredRole(profile.id);
-    if (storedRole === "admin") {
+    if (storedRole === "admin" || storedRole === "super_admin") {
       setFormRole("admin");
     } else if (profile.is_supervisor) {
       setFormRole("supervisor");
