@@ -1735,7 +1735,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-background/60">
       {/* Header */}
-      <div className="shrink-0 bg-card border-b border-border/50">
+      <div className="shrink-0 bg-card border-b border-border">
         <div className="h-[56px] md:h-[60px] flex items-center justify-between px-4 md:px-5">
           <div className="flex items-center gap-2.5 min-w-0">
             <button className="w-8 h-8 md:w-9 md:h-9 rounded-full hover:bg-muted transition-all flex items-center justify-center shrink-0" onClick={onBack}>
@@ -2353,7 +2353,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Input Area */}
       {!isRecording && conversation.status !== "closed" && (
-        <div className={cn("shrink-0 bg-card/90 backdrop-blur-xl p-3 md:p-4", isNoteMode ? "border-t border-amber-500/20" : isBlocked ? "opacity-60" : "")} style={{ boxShadow: '0 -1px 2px rgba(0,0,0,0.03)' }}>
+        <div className={cn("shrink-0 bg-card/90 backdrop-blur-xl border-t border-border p-3 md:p-4", isNoteMode ? "border-t border-amber-500/20" : isBlocked ? "opacity-60" : "")} style={{ boxShadow: '0 -1px 2px rgba(0,0,0,0.03)' }}>
           {/* Reply Preview Bar */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
