@@ -479,7 +479,7 @@ serve(async (req) => {
         return json({ error: "رقم الهاتف مطلوب" }, 400);
       }
 
-      // Ensure instance exists and is in connecting state
+      // Ensure instance exists; if connected, logout first to allow re-pairing with new number
       try {
         const stateRes = await fetch(`${EVOLUTION_URL}/instance/connectionState/${instanceName}`, {
           headers: evoHeaders,
@@ -488,7 +488,16 @@ serve(async (req) => {
         const currentState = stateData.instance?.state || stateData.state || "unknown";
 
         if (currentState === "open") {
-          return json({ success: true, status: "open", pairing_code: null });
+          // Logout first so we can pair a new number
+          await fetch(`${EVOLUTION_URL}/instance/logout/${instanceName}`, {
+            method: "DELETE",
+            headers: evoHeaders,
+          });
+          await logToSystem(adminClient, "info", `تم فصل الجلسة الحالية لإعادة الربط برقم جديد`, {
+            instance: instanceName,
+          }, orgId, userId);
+          // Brief wait for the instance to reset
+          await new Promise((r) => setTimeout(r, 1500));
         }
       } catch {
         // Instance might not exist, continue
