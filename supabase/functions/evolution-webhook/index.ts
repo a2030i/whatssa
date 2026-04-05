@@ -404,16 +404,20 @@ serve(async (req) => {
 
     const instanceName = body.instance || body.instanceName || "";
 
+    console.log(`[evolution-webhook] event=${event} instance=${instanceName} DB_URL=${(Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL") || "").slice(0, 40)}`);
+
     // Find the config for this instance
-    const { data: config } = await supabase
+    const { data: config, error: configError } = await supabase
       .from("whatsapp_config")
       .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
       .eq("evolution_instance_name", instanceName)
       .eq("channel_type", "evolution")
       .maybeSingle();
 
+    console.log(`[evolution-webhook] config lookup: found=${!!config} error=${configError?.message || 'none'} instance=${instanceName}`);
+
     if (!config) {
-      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, { event, instance: instanceName });
+      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, { event, instance: instanceName, configError: configError?.message });
       return new Response(JSON.stringify({ ok: true, skipped: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
