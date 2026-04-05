@@ -545,11 +545,17 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // Text rendering function
         const renderText = (text: string) => (
           <p className="whitespace-pre-wrap leading-[1.65]">
-            {text.split(/(@\+?[\u0600-\u06FF\w\d]+)/g).map((part, i) => {
-              if (!part.startsWith("@")) return <span key={i}>{part}</span>;
-              const mentionRaw = part.slice(1).replace(/^\+/, "");
+            {text.split(/((?:^|(?<=\s))@\+?[\u0600-\u06FF\w\d]+)/g).map((part, i) => {
+              if (!part.startsWith("@") && !part.startsWith(" @") && !part.startsWith("\n@")) return <span key={i}>{part}</span>;
+              const trimmed = part.trimStart();
+              if (!trimmed.startsWith("@")) return <span key={i}>{part}</span>;
+              const mentionRaw = trimmed.slice(1).replace(/^\+/, "");
               const isPhone = /^\d{6,}$/.test(mentionRaw);
-              let displayLabel = part;
+              // Skip if it looks like part of an email
+              if (!isPhone && /^[a-zA-Z0-9._-]+$/.test(mentionRaw) && !mentionRaw.match(/[\u0600-\u06FF]/)) {
+                return <span key={i}>{part}</span>;
+              }
+              let displayLabel = trimmed;
               if (isPhone) {
                 if (conversation.conversationType === "group" && groupParticipants?.length) {
                   const participant = groupParticipants.find(p => p.phone === mentionRaw || p.rawDigits === mentionRaw);
@@ -562,13 +568,17 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   displayLabel = `@+${mentionRaw}`;
                 }
               }
+              const prefix = part.slice(0, part.length - trimmed.length);
               return (
-              <span key={i} className={cn(
-                  "font-semibold px-1.5 py-0.5 rounded-md",
-                  msg.sender === "customer"
-                    ? "bg-white/25 text-white"
-                    : "bg-primary/10 text-primary"
-                )}>{displayLabel}</span>
+                <span key={i}>
+                  {prefix}
+                  <span className={cn(
+                    "font-semibold px-1 py-0.5 rounded",
+                    msg.sender === "customer"
+                      ? "bg-white/20 text-white"
+                      : "bg-primary/10 text-primary"
+                  )}>{displayLabel}</span>
+                </span>
               );
             })}
           </p>
