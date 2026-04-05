@@ -25,17 +25,17 @@ const AuthPage = () => {
     if (!email.trim()) return;
     setIsLoading(true);
     try {
-      // Try signing in with a dummy password to check if user exists
-      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: "___check_existence___" });
-      // If user doesn't exist, Supabase returns "Invalid login credentials" too,
-      // but we can use signInWithOtp to check — or simply try resetPasswordForEmail
-      // A more reliable approach: check if the error indicates the user is not found
-      // Supabase returns the same error for wrong password and non-existent user for security
-      // So we'll use a different approach: try to sign up with a random password
-      // Actually, the simplest: just proceed. If credentials are wrong, login will show the error.
-      // BUT we can use the admin approach — let's check via a lightweight RPC or just proceed
+      const { data, error } = await invokeCloud("check-email-exists", {
+        body: { email: email.trim() },
+      });
+      if (!data?.exists) {
+        toast.error("هذا البريد غير مسجل في النظام — تواصل مع المدير لإضافتك");
+        setIsLoading(false);
+        return;
+      }
       setStep("password");
     } catch {
+      // If check fails, proceed anyway
       setStep("password");
     }
     setIsLoading(false);
