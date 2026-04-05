@@ -1,0 +1,1 @@
+INSERT INTO system_settings (key, value, description) VALUES ('official_whatsapp_enabled', 'true'::jsonb, 'إطلاق الربط الرسمي') ON CONFLICT (key) DO UPDATE SET value = 'true'::jsonb;
