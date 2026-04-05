@@ -2513,7 +2513,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
               ) : (
-                <button disabled className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-muted">
+                <button disabled className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-muted">
                   <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
               )
