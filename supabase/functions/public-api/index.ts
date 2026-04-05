@@ -121,41 +121,30 @@ serve(async (req) => {
       }
 
       const body = await req.json();
-      const { to, message, template_name, template_language, template_variables } = body;
+      const { to, message, template_name, template_language, template_variables, header_variables, channel_id, media_url, media_type } = body;
       if (!to) return json({ error: "الحقل to مطلوب" }, 400);
       if (!message && !template_name) return json({ error: "الحقل message أو template_name مطلوب" }, 400);
 
-      // Find WhatsApp config
-      const { data: configs } = await admin
+      // Find WhatsApp config — prefer channel_id if given
+      let configQuery = admin
         .from("whatsapp_config")
         .select("*")
         .eq("org_id", token.org_id)
-        .eq("is_connected", true)
-        .limit(1);
+        .eq("is_connected", true);
 
-      const config = configs?.[0];
-      if (!config) {
-        await logToSystem(admin, "error", "لا يوجد رقم واتساب مربوط عند محاولة إرسال عبر API", { request_id: requestId, to }, token.org_id);
-        return json({ error: "لا يوجد رقم واتساب مربوط" }, 400);
+      if (channel_id) {
+        configQuery = configQuery.eq("id", channel_id);
       }
 
-      if (config.channel_type === "evolution") {
-        const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
-        const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
-        if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution غير مكتملة" }, 500);
+      const { data: configs } = await configQuery.limit(1);
+      const config = configs?.[0];
+      if (!config) {
+        await logToSystem(admin, "error", "لا يوجد رقم واتساب مربوط عند محاولة إرسال عبر API", { request_id: requestId, to, channel_id }, token.org_id);
+        return json({ error: channel_id ? "القناة المحددة غير موجودة أو غير متصلة" : "لا يوجد رقم واتساب مربوط" }, 400);
+      }
 
-        const response = await fetch(`${EVOLUTION_URL}/message/sendText/${config.evolution_instance_name}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY },
-          body: JSON.stringify({ number: to, text: message }),
-        });
-        const result = await response.json();
-        if (!response.ok) {
-          await logToSystem(admin, "error", "فشل إرسال رسالة عبر Evolution API", { request_id: requestId, to, error: result?.message, status: response.status }, token.org_id);
-          return json({ error: result?.message || "فشل الإرسال" }, response.status);
-        }
-
-        // Save to DB
+      // Helper: save conversation & message to DB
+      const saveToDb = async (content: string, msgId: string | null, msgType = "text", mediaUrl: string | null = null) => {
         let { data: conv } = await admin
           .from("conversations")
           .select("id")
@@ -173,8 +162,9 @@ serve(async (req) => {
               customer_name: to,
               org_id: token.org_id,
               status: "active",
-              last_message: message,
+              last_message: content.substring(0, 200),
               last_message_at: new Date().toISOString(),
+              channel_id: config.id,
             })
             .select("id")
             .single();
@@ -184,69 +174,202 @@ serve(async (req) => {
         if (conv) {
           await admin.from("messages").insert({
             conversation_id: conv.id,
-            wa_message_id: result.key?.id || null,
+            wa_message_id: msgId,
             sender: "agent",
-            message_type: "text",
-            content: message,
+            message_type: msgType,
+            content,
+            media_url: mediaUrl,
             status: "sent",
             metadata: { source: "api" },
           });
           await admin.from("conversations").update({
-            last_message: message,
+            last_message: content.substring(0, 200),
             last_message_at: new Date().toISOString(),
           }).eq("id", conv.id);
         }
+        return conv?.id;
+      };
 
+      // ── Evolution (unofficial) ──
+      if (config.channel_type === "evolution") {
+        const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
+        const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
+        if (!EVOLUTION_URL || !EVOLUTION_KEY) return json({ error: "إعدادات Evolution غير مكتملة" }, 500);
+        const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
+
+        // Media message
+        if (media_url && media_type) {
+          const evoMediaType = media_type === "image" ? "sendMedia" : media_type === "document" ? "sendMedia" : media_type === "audio" ? "sendWhatsAppAudio" : "sendMedia";
+          const mediaBody: any = { number: to, media: media_url, caption: message || "" };
+          if (media_type === "document") mediaBody.fileName = body.file_name || "file";
+          const response = await fetch(`${EVOLUTION_URL}/message/${evoMediaType}/${config.evolution_instance_name}`, {
+            method: "POST", headers: evoHeaders, body: JSON.stringify(mediaBody),
+          });
+          const result = await response.json();
+          if (!response.ok) return json({ error: result?.message || "فشل إرسال الوسائط" }, response.status);
+          await saveToDb(message || `[${media_type}]`, result.key?.id, media_type, media_url);
+          return json({ success: true, message_id: result.key?.id, channel: config.evolution_instance_name });
+        }
+
+        // Text message
+        const response = await fetch(`${EVOLUTION_URL}/message/sendText/${config.evolution_instance_name}`, {
+          method: "POST", headers: evoHeaders, body: JSON.stringify({ number: to, text: message }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          await logToSystem(admin, "error", "فشل إرسال رسالة عبر Evolution API", { request_id: requestId, to, error: result?.message }, token.org_id);
+          return json({ error: result?.message || "فشل الإرسال" }, response.status);
+        }
+        await saveToDb(message, result.key?.id);
         await logToSystem(admin, "info", "تم إرسال رسالة عبر API (Evolution)", { request_id: requestId, to, message_id: result.key?.id }, token.org_id);
-        return json({ success: true, message_id: result.key?.id });
+        return json({ success: true, message_id: result.key?.id, channel: config.evolution_instance_name });
       }
 
-      // Meta Cloud API
+      // ── Meta Cloud API (official) ──
+      const metaHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${config.access_token}` };
+      const metaUrl = `https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`;
+
+      // Template message
       if (template_name) {
         const components: unknown[] = [];
+
+        // Header variables (image, video, document, or text)
+        if (header_variables?.length) {
+          const headerParams = header_variables.map((v: any) => {
+            if (typeof v === "string") return { type: "text", text: v };
+            // Object form: { type: "image", link: "..." } or { type: "document", link: "...", filename: "..." }
+            return v;
+          });
+          components.push({ type: "header", parameters: headerParams });
+        }
+
+        // Body variables
         if (template_variables?.length) {
           components.push({
             type: "body",
             parameters: template_variables.map((v: string) => ({ type: "text", text: v })),
           });
         }
-        const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${config.access_token}`,
+
+        // Button variables (optional)
+        if (body.button_variables?.length) {
+          body.button_variables.forEach((btn: any, idx: number) => {
+            components.push({
+              type: "button",
+              sub_type: btn.sub_type || "url",
+              index: btn.index ?? idx,
+              parameters: btn.parameters || [{ type: "text", text: btn.text }],
+            });
+          });
+        }
+
+        const templatePayload = {
+          messaging_product: "whatsapp",
+          to,
+          type: "template",
+          template: {
+            name: template_name,
+            language: { code: template_language || "ar" },
+            components: components.length > 0 ? components : undefined,
           },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            to,
-            type: "template",
-            template: { name: template_name, language: { code: template_language || "ar" }, components },
-          }),
+        };
+
+        const response = await fetch(metaUrl, {
+          method: "POST", headers: metaHeaders, body: JSON.stringify(templatePayload),
         });
         const result = await response.json();
         if (!response.ok) {
-          await logToSystem(admin, "error", "فشل إرسال قالب عبر Meta API", { request_id: requestId, to, template_name, error: result?.error?.message }, token.org_id);
-          return json({ error: result?.error?.message || "فشل إرسال القالب" }, response.status);
+          await logToSystem(admin, "error", "فشل إرسال قالب عبر Meta API", { request_id: requestId, to, template_name, error: result?.error?.message, components }, token.org_id);
+          return json({ error: result?.error?.message || "فشل إرسال القالب", details: result?.error }, response.status);
         }
-        await logToSystem(admin, "info", "تم إرسال قالب عبر API (Meta)", { request_id: requestId, to, template_name, message_id: result.messages?.[0]?.id }, token.org_id);
-        return json({ success: true, message_id: result.messages?.[0]?.id });
+        const msgId = result.messages?.[0]?.id;
+        await saveToDb(`📋 ${template_name}`, msgId, "template");
+        await logToSystem(admin, "info", "تم إرسال قالب عبر API (Meta)", { request_id: requestId, to, template_name, message_id: msgId, channel: config.display_phone }, token.org_id);
+        return json({ success: true, message_id: msgId, channel: config.display_phone || config.phone_number_id });
       }
 
-      const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${config.access_token}`,
-        },
+      // Media message (Meta)
+      if (media_url && media_type) {
+        const mediaPayload: any = {
+          messaging_product: "whatsapp",
+          to,
+          type: media_type,
+          [media_type]: { link: media_url },
+        };
+        if (message && (media_type === "image" || media_type === "video")) {
+          mediaPayload[media_type].caption = message;
+        }
+        if (media_type === "document") {
+          mediaPayload.document.filename = body.file_name || "file";
+          if (message) mediaPayload.document.caption = message;
+        }
+        const response = await fetch(metaUrl, { method: "POST", headers: metaHeaders, body: JSON.stringify(mediaPayload) });
+        const result = await response.json();
+        if (!response.ok) return json({ error: result?.error?.message || "فشل إرسال الوسائط" }, response.status);
+        const msgId = result.messages?.[0]?.id;
+        await saveToDb(message || `[${media_type}]`, msgId, media_type, media_url);
+        return json({ success: true, message_id: msgId, channel: config.display_phone || config.phone_number_id });
+      }
+
+      // Plain text message (Meta)
+      const response = await fetch(metaUrl, {
+        method: "POST", headers: metaHeaders,
         body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: message } }),
       });
       const result = await response.json();
       if (!response.ok) {
         await logToSystem(admin, "error", "فشل إرسال رسالة عبر Meta API", { request_id: requestId, to, error: result?.error?.message }, token.org_id);
-        return json({ error: result?.error?.message || "فشل الإرسال" }, response.status);
+        return json({ error: result?.error?.message || "فشل الإرسال", details: result?.error }, response.status);
       }
-      await logToSystem(admin, "info", "تم إرسال رسالة عبر API (Meta)", { request_id: requestId, to, message_id: result.messages?.[0]?.id }, token.org_id);
-      return json({ success: true, message_id: result.messages?.[0]?.id });
+      const msgId = result.messages?.[0]?.id;
+      await saveToDb(message, msgId);
+      await logToSystem(admin, "info", "تم إرسال رسالة عبر API (Meta)", { request_id: requestId, to, message_id: msgId }, token.org_id);
+      return json({ success: true, message_id: msgId, channel: config.display_phone || config.phone_number_id });
+    }
+
+    // ── LIST CHANNELS ──
+    if (path === "channels" && method === "GET") {
+      if (!hasPermission(token, "messages")) return json({ error: "لا تملك صلاحية الرسائل" }, 403);
+      const { data: channels } = await admin.from("whatsapp_config")
+        .select("id, display_phone, business_name, channel_type, channel_label, is_connected, evolution_instance_name, evolution_instance_status")
+        .eq("org_id", token.org_id)
+        .eq("is_connected", true);
+      return json({ channels: channels || [] });
+    }
+
+    // ── LIST TEMPLATES ──
+    if (path === "templates" && method === "GET") {
+      if (!hasPermission(token, "messages")) return json({ error: "لا تملك صلاحية الرسائل" }, 403);
+
+      // Get a connected Meta config
+      const { data: metaConfig } = await admin.from("whatsapp_config")
+        .select("business_account_id, access_token")
+        .eq("org_id", token.org_id)
+        .eq("is_connected", true)
+        .eq("channel_type", "meta_api")
+        .limit(1)
+        .maybeSingle();
+
+      if (!metaConfig?.business_account_id || !metaConfig?.access_token) {
+        return json({ error: "لا يوجد حساب واتساب رسمي مربوط" }, 400);
+      }
+
+      const statusFilter = url.searchParams.get("status") || "APPROVED";
+      const tplRes = await fetch(
+        `https://graph.facebook.com/v21.0/${metaConfig.business_account_id}/message_templates?status=${statusFilter}&limit=200`,
+        { headers: { Authorization: `Bearer ${metaConfig.access_token}` } }
+      );
+      const tplData = await tplRes.json();
+      if (!tplRes.ok) return json({ error: tplData?.error?.message || "فشل جلب القوالب" }, tplRes.status);
+
+      const templates = (tplData.data || []).map((t: any) => ({
+        name: t.name,
+        language: t.language,
+        category: t.category,
+        status: t.status,
+        components: t.components,
+      }));
+      return json({ templates, total: templates.length });
     }
 
     // ── CUSTOMERS ──
@@ -543,6 +666,8 @@ serve(async (req) => {
     await logToSystem(admin, "warn", `مسار API غير موجود: ${method} /${path}`, { request_id: requestId }, token.org_id);
     return json({ error: `المسار ${path} غير موجود`, available_endpoints: [
       "POST /messages/send",
+      "GET /channels",
+      "GET /templates",
       "GET /customers", "POST /customers", "PUT /customers/:id", "DELETE /customers/:id",
       "GET /orders", "POST /orders", "PUT /orders/:id",
       "GET /conversations", "GET /conversations/:id/messages",

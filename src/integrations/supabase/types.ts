@@ -3039,6 +3039,9 @@ export type Database = {
           created_by: string | null
           description: string | null
           flow_type: string
+          forward_channel_id: string | null
+          forward_to_group_jid: string | null
+          forward_to_phone: string | null
           id: string
           meta_flow_id: string | null
           name: string
@@ -3054,6 +3057,9 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           flow_type?: string
+          forward_channel_id?: string | null
+          forward_to_group_jid?: string | null
+          forward_to_phone?: string | null
           id?: string
           meta_flow_id?: string | null
           name: string
@@ -3069,6 +3075,9 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           flow_type?: string
+          forward_channel_id?: string | null
+          forward_to_group_jid?: string | null
+          forward_to_phone?: string | null
           id?: string
           meta_flow_id?: string | null
           name?: string

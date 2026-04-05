@@ -55,10 +55,10 @@ serve(async (req) => {
         return json({ error: "Failed to save submission" }, 500);
       }
 
-      // Get flow for success message and webhook
+      // Get flow for success message, webhook, and forwarding config
       const { data: flow } = await adminClient
         .from("wa_flows")
-        .select("success_message, webhook_url, name")
+        .select("success_message, webhook_url, name, forward_to_phone, forward_to_group_jid, forward_channel_id")
         .eq("id", flow_id)
         .single();
 
@@ -80,6 +80,59 @@ serve(async (req) => {
           });
         } catch (e) {
           console.error("Failed to forward to webhook:", e);
+        }
+      }
+
+      // Forward to WhatsApp group or person via Evolution API
+      if (flow && (flow.forward_to_phone || flow.forward_to_group_jid)) {
+        const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
+        const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
+
+        if (EVOLUTION_URL && EVOLUTION_KEY) {
+          try {
+            // Determine which Evolution instance to use
+            let instanceName: string | null = null;
+            if (flow.forward_channel_id) {
+              const { data: ch } = await adminClient.from("whatsapp_config")
+                .select("evolution_instance_name")
+                .eq("id", flow.forward_channel_id)
+                .eq("channel_type", "evolution")
+                .eq("is_connected", true)
+                .maybeSingle();
+              instanceName = ch?.evolution_instance_name || null;
+            }
+            // Fallback: find any connected Evolution instance for this org
+            if (!instanceName) {
+              const { data: ch } = await adminClient.from("whatsapp_config")
+                .select("evolution_instance_name")
+                .eq("org_id", org_id)
+                .eq("channel_type", "evolution")
+                .eq("is_connected", true)
+                .limit(1)
+                .maybeSingle();
+              instanceName = ch?.evolution_instance_name || null;
+            }
+
+            if (instanceName) {
+              // Build the forwarding message
+              const responsesText = typeof responses === "object"
+                ? Object.entries(responses).map(([k, v]) => `• ${k}: ${v}`).join("\n")
+                : JSON.stringify(responses);
+
+              const forwardMsg = `📋 *رد جديد على نموذج: ${flow.name}*\n\n👤 العميل: ${customer_name || customer_phone}\n📱 الرقم: ${customer_phone}\n\n${responsesText}`;
+
+              const target = flow.forward_to_group_jid || flow.forward_to_phone;
+              const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
+
+              await fetch(`${EVOLUTION_URL}/message/sendText/${instanceName}`, {
+                method: "POST",
+                headers: evoHeaders,
+                body: JSON.stringify({ number: target, text: forwardMsg }),
+              });
+            }
+          } catch (e) {
+            console.error("Failed to forward flow submission via Evolution:", e);
+          }
         }
       }
 

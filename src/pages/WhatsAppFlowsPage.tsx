@@ -47,6 +47,9 @@ interface WaFlow {
   success_message: string;
   meta_flow_id: string | null;
   webhook_url: string | null;
+  forward_to_phone: string | null;
+  forward_to_group_jid: string | null;
+  forward_channel_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -162,6 +165,8 @@ const WhatsAppFlowsPage = () => {
   const [flowType, setFlowType] = useState("form");
   const [successMessage, setSuccessMessage] = useState("شكراً لك! تم استلام ردك بنجاح ✅");
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [forwardToPhone, setForwardToPhone] = useState("");
+  const [forwardToGroupJid, setForwardToGroupJid] = useState("");
   const [screens, setScreens] = useState<FlowScreen[]>([{
     id: generateId(),
     title: "الشاشة الأولى",
@@ -207,6 +212,8 @@ const WhatsAppFlowsPage = () => {
       screens: screens as any,
       success_message: successMessage,
       webhook_url: webhookUrl || null,
+      forward_to_phone: forwardToPhone || null,
+      forward_to_group_jid: forwardToGroupJid || null,
       status: "published",
       created_by: profile?.id,
     };
@@ -242,6 +249,8 @@ const WhatsAppFlowsPage = () => {
     setFlowType(flow.flow_type);
     setSuccessMessage(flow.success_message);
     setWebhookUrl(flow.webhook_url || "");
+    setForwardToPhone((flow as any).forward_to_phone || "");
+    setForwardToGroupJid((flow as any).forward_to_group_jid || "");
     setScreens(flow.screens || []);
     setShowBuilder(true);
   };
@@ -254,6 +263,8 @@ const WhatsAppFlowsPage = () => {
     setFlowType("form");
     setSuccessMessage("شكراً لك! تم استلام ردك بنجاح ✅");
     setWebhookUrl("");
+    setForwardToPhone("");
+    setForwardToGroupJid("");
     setScreens([{ id: generateId(), title: "الشاشة الأولى", fields: [] }]);
   };
 
@@ -646,13 +657,24 @@ const WhatsAppFlowsPage = () => {
             <div className="space-y-2">
               <Label className="text-xs font-semibold">رسالة النجاح (بعد التعبئة)</Label>
               <Textarea value={successMessage} onChange={e => setSuccessMessage(e.target.value)} className="rounded-xl text-sm" rows={2} />
-            </div>
 
-            {/* Webhook */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Webhook URL (اختياري — لإرسال الردود لنظام خارجي)</Label>
-              <Input value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} placeholder="https://..." dir="ltr" className="rounded-xl text-sm" />
+            {/* Forward to WhatsApp (Evolution) */}
+            <div className="space-y-2 bg-muted/50 rounded-xl p-3">
+              <Label className="text-xs font-semibold">📲 إعادة توجيه الردود عبر واتساب غير رسمي (اختياري)</Label>
+              <p className="text-[10px] text-muted-foreground">عند استلام رد من العميل، يُرسل تلقائياً لشخص أو قروب عبر الواتساب غير الرسمي</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">رقم شخص</Label>
+                  <Input value={forwardToPhone} onChange={e => setForwardToPhone(e.target.value)} placeholder="966501234567" dir="ltr" className="rounded-xl text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">أو JID قروب</Label>
+                  <Input value={forwardToGroupJid} onChange={e => setForwardToGroupJid(e.target.value)} placeholder="120363...@g.us" dir="ltr" className="rounded-xl text-xs" />
+                </div>
+              </div>
+              <p className="text-[9px] text-muted-foreground">💡 للحصول على JID القروب: أرسل رسالة في القروب ثم راجع سجل المحادثات</p>
             </div>
+          </div>
           </div>
 
           <DialogFooter className="gap-2 pt-4">
