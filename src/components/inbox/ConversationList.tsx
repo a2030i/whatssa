@@ -215,7 +215,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       hasSelection ? "hidden md:flex md:w-[340px] lg:w-[370px]" : "w-full md:w-[340px] lg:w-[370px]"
     )}>
       {/* Header */}
-      <div className="px-4 pt-5 pb-3 space-y-3 shrink-0 bg-card border-b border-border/30">
+      <div className="px-4 pt-5 pb-3 space-y-3 shrink-0 border-b border-border/30">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-foreground tracking-tight">
             {activeInbox ? activeInbox.name : "المحادثات"}
