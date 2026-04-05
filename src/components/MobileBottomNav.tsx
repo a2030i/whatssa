@@ -104,7 +104,7 @@ const MobileBottomNav = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">{profile?.full_name || "مستخدم"}</p>
-                <p className="text-xs text-muted-foreground">{roleLabels[userRole || "member"]}</p>
+                <p className="text-xs text-muted-foreground">{roleLabels[displayRole]}</p>
               </div>
               <button
                 onClick={() => { signOut(); setMenuOpen(false); }}

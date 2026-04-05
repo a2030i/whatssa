@@ -297,7 +297,7 @@ const AppSidebar = () => {
                     {profile?.full_name || "مستخدم"}
                   </p>
                   <p className="text-[10px] text-sidebar-foreground/40 truncate">
-                    {roleLabels[userRole || "member"] || "عضو"}
+                    {roleLabels[displayRole] || "موظف"}
                   </p>
                 </div>
                 <Tooltip>

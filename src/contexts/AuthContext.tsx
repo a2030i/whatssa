@@ -82,11 +82,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     if (roleRes.data && roleRes.data.length > 0) {
       const roles = roleRes.data.map((r: any) => r.role);
-      if (roles.includes("super_admin")) setUserRole("super_admin");
-      else if (roles.includes("admin")) setUserRole("admin");
+      const hasSuperAdmin = roles.includes("super_admin");
+      const hasAdmin = roles.includes("admin");
+      const hasMember = roles.includes("member");
+
+      if (hasSuperAdmin) setUserRole("super_admin");
+      else if (hasAdmin && !hasMember) setUserRole("admin");
+      else if (hasMember) setUserRole("member");
+      else if (hasAdmin) setUserRole("admin");
       else setUserRole(roles[0]);
     } else {
-      // No role found — default to member (least privilege)
       setUserRole("member");
     }
   };

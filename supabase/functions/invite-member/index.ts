@@ -76,9 +76,10 @@ Deno.serve(async (req) => {
       is_supervisor: isSupervisor,
     }).eq("id", userId);
 
-    // Set role — always insert a role so userRole is never null
+    // Normalize roles — remove any auto-created admin/member role from signup trigger, then set the intended one only
     const dbRole = role === "admin" ? "admin" : "member";
-    await adminClient.from("user_roles").upsert({ user_id: userId, role: dbRole }, { onConflict: "user_id,role" });
+    await adminClient.from("user_roles").delete().eq("user_id", userId).in("role", ["admin", "member"]);
+    await adminClient.from("user_roles").insert({ user_id: userId, role: dbRole });
 
     // If multiple teams, insert into team_members junction table if it exists,
     // otherwise we just use primary team_id
