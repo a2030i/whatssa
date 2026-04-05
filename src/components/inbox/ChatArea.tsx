@@ -242,7 +242,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   const canEdit = msg.sender === "agent" && msg.type === "text" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
     (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
   const canDelete = msg.sender === "agent" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
-    (Date.now() - new Date(msg.createdAt).getTime()) < 2 * 60 * 60 * 1000;
+    (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
