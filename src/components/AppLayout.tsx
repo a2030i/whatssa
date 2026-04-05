@@ -26,6 +26,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const [orgName, setOrgName] = useState("");
 
   const hideBottomNav = false;
+  const mainBottomPadding = isMobile && !hideBottomNav ? "pb-safe-nav" : "";
 
   // Global hooks
   useNotificationSound();
@@ -77,7 +78,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <NotificationBell />
         </div>
       </div>
-      <main className={`md:mr-[250px] min-h-screen ${isImpersonating ? "pt-[92px]" : "pt-14"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
+      <main className={`md:mr-[250px] min-h-screen ${isImpersonating ? "pt-[92px]" : "pt-14"} ${mainBottomPadding} transition-all duration-300`}>
         {children}
       </main>
 
