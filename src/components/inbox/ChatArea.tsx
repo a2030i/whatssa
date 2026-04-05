@@ -543,36 +543,55 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         );
 
         // Text rendering function
-        const renderText = (text: string) => (
-          <p className="whitespace-pre-wrap leading-[1.65]">
-            {text.split(/(@\+?[\u0600-\u06FF\w\d]+)/g).map((part, i) => {
-              if (!part.startsWith("@")) return <span key={i}>{part}</span>;
-              const mentionRaw = part.slice(1).replace(/^\+/, "");
-              const isPhone = /^\d{6,}$/.test(mentionRaw);
-              let displayLabel = part;
-              if (isPhone) {
-                if (conversation.conversationType === "group" && groupParticipants?.length) {
-                  const participant = groupParticipants.find(p => p.phone === mentionRaw || p.rawDigits === mentionRaw);
-                  if (participant?.name && participant.name !== participant.phone && participant.name !== participant.rawDigits) {
-                    displayLabel = `@${participant.name}`;
-                  } else {
-                    displayLabel = `@+${mentionRaw}`;
-                  }
+        const renderText = (text: string) => {
+          // Split on mentions: @ followed by phone/name, but NOT inside emails
+          const parts: React.ReactNode[] = [];
+          // Use a regex that matches standalone mentions (not preceded by alphanumeric/dot)
+          const mentionRegex = /(?:^|(?<=[\s\n]))(@\+?[\u0600-\u06FF\w\d]+)/g;
+          let lastIndex = 0;
+          let match;
+          const textStr = text;
+          while ((match = mentionRegex.exec(textStr)) !== null) {
+            const mentionFull = match[1];
+            const mentionRaw = mentionFull.slice(1).replace(/^\+/, "");
+            // Skip email-like patterns (pure latin like @gmail, @yahoo)
+            const isPhone = /^\d{6,}$/.test(mentionRaw);
+            const isArabic = /[\u0600-\u06FF]/.test(mentionRaw);
+            if (!isPhone && !isArabic) {
+              continue; // skip, it's probably part of an email
+            }
+            // Add text before this mention
+            if (match.index > lastIndex) {
+              parts.push(<span key={`t${lastIndex}`}>{textStr.slice(lastIndex, match.index)}</span>);
+            }
+            let displayLabel = mentionFull;
+            if (isPhone) {
+              if (conversation.conversationType === "group" && groupParticipants?.length) {
+                const participant = groupParticipants.find(p => p.phone === mentionRaw || p.rawDigits === mentionRaw);
+                if (participant?.name && participant.name !== participant.phone && participant.name !== participant.rawDigits) {
+                  displayLabel = `@${participant.name}`;
                 } else {
                   displayLabel = `@+${mentionRaw}`;
                 }
+              } else {
+                displayLabel = `@+${mentionRaw}`;
               }
-              return (
-              <span key={i} className={cn(
-                  "font-semibold px-1.5 py-0.5 rounded-md",
-                  msg.sender === "customer"
-                    ? "bg-white/25 text-white"
-                    : "bg-primary/10 text-primary"
-                )}>{displayLabel}</span>
-              );
-            })}
-          </p>
-        );
+            }
+            parts.push(
+              <span key={`m${match.index}`} className={cn(
+                "font-semibold px-1 py-0.5 rounded",
+                msg.sender === "customer"
+                  ? "bg-white/20 text-white"
+                  : "bg-primary/10 text-primary"
+              )}>{displayLabel}</span>
+            );
+            lastIndex = match.index + match[0].length;
+          }
+          if (lastIndex < textStr.length) {
+            parts.push(<span key={`t${lastIndex}`}>{textStr.slice(lastIndex)}</span>);
+          }
+          return <p className="whitespace-pre-wrap leading-[1.65]">{parts.length > 0 ? parts : text}</p>;
+        };
 
         // Translation element
         const translationEl = translationText && msg.sender === "customer" && (
