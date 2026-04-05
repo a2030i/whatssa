@@ -389,8 +389,8 @@ serve(async (req) => {
   }
 
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") || Deno.env.get("EXTERNAL_SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY")!,
+    Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
   const url = new URL(req.url);
@@ -449,7 +449,7 @@ serve(async (req) => {
       if (metadataPhoneId) {
         const { data: config } = await supabase
           .from("whatsapp_config")
-          .select("id, org_id, default_team_id, default_agent_id")
+          .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
           .eq("phone_number_id", metadataPhoneId)
           .eq("is_connected", true)
           .maybeSingle();
@@ -458,7 +458,7 @@ serve(async (req) => {
         channelConfigId = config?.id || null;
         var channelDefaultTeamId = config?.default_team_id || null;
         var channelDefaultAgentId = config?.default_agent_id || null;
-        var channelExcludeSupervisors = false;
+        var channelExcludeSupervisors = !!(config as any)?.exclude_supervisors;
       }
 
       if (!orgId) {

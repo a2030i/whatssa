@@ -24,7 +24,6 @@ const MobileBottomNav = () => {
     { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊" },
     { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
     { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "🚀" },
-    { label: "بث القروبات", icon: Megaphone, path: "/groups-broadcast", emoji: "📡" },
     { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰" },
     ...(hasMetaApi || isSuperAdmin ? [{ label: "القوالب", icon: FileText, path: "/templates", emoji: "📝" }] : []),
     { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡" },
@@ -45,7 +44,7 @@ const MobileBottomNav = () => {
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border flex items-center justify-around h-safe-nav px-1 safe-bottom" dir="rtl">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border flex items-center justify-around h-14 px-1 safe-bottom" dir="rtl">
         <NavLink
           to="/inbox"
           className={cn(

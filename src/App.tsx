@@ -43,7 +43,6 @@ import WarehousesPage from "./pages/WarehousesPage";
 import LockedFeaturesPage from "./pages/LockedFeaturesPage";
 import LandingPage from "./pages/LandingPage";
 import TasksPage from "./pages/TasksPage";
-import GroupsBroadcastPage from "./pages/GroupsBroadcastPage";
 import ForceChangePasswordPage from "./pages/ForceChangePasswordPage";
 import { Loader2 } from "lucide-react";
 
@@ -136,7 +135,6 @@ const AppRoutes = () => {
       <Route path="/wa-flows" element={<ProtectedRoute><AppLayout><WhatsAppFlowsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/locked-features" element={<ProtectedRoute><AppLayout><LockedFeaturesPage /></AppLayout></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute><AppLayout><TasksPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/groups-broadcast" element={<ProtectedRoute><AppLayout><GroupsBroadcastPage /></AppLayout></ProtectedRoute>} />
       <Route path="/tracking" element={<TrackingPage />} />
       
       <Route path="*" element={<NotFound />} />

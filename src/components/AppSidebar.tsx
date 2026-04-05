@@ -45,7 +45,6 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     emoji: "📣",
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "🚀" },
-      { label: "بث القروبات", icon: Users, path: "/groups-broadcast", emoji: "📡" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰" },
       { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب" },
       { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡" },
