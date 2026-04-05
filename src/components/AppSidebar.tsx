@@ -101,6 +101,7 @@ const AppSidebar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const isInsideInboxConversation = location.pathname === "/inbox" && new URLSearchParams(location.search).has("conversation");
 
   const navSections = buildGroups(isEcommerce, hasMetaApi);
 
@@ -328,8 +329,8 @@ const AppSidebar = () => {
 
   return (
     <>
-      {/* Mobile toggle - hidden on inbox page */}
-      {location.pathname !== "/inbox" && (
+      {/* Mobile toggle - show on inbox list page, hide only inside an opened conversation */}
+      {!isInsideInboxConversation && (
         <button
           onClick={() => setMobileOpen(true)}
           className={cn(

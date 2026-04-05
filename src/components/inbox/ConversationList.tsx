@@ -139,6 +139,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
     active: conversations.filter(c => c.status === "active" && !c.isArchived).length,
     unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
+    assigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && !!c.assignedTo && c.assignedTo !== "غير معيّن").length,
     unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
     waiting: conversations.filter(c => c.status === "waiting" && !c.isArchived).length,
     closed: conversations.filter(c => c.status === "closed").length,
@@ -153,6 +154,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
     { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
+    { id: "assigned", label: "معيّنة", icon: User, count: counts.assigned },
     { id: "waiting", label: "بانتظار", icon: Clock, count: counts.waiting },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived },
@@ -170,6 +172,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       switch (activeQuickFilter) {
         case "active": if (conv.status !== "active") return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
+        case "assigned": if (!conv.assignedTo || conv.assignedTo === "غير معيّن") return false; break;
         case "unread": if (conv.unread <= 0) return false; break;
         case "waiting": if (conv.status !== "waiting") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
@@ -195,6 +198,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const hasActiveFilters = agentFilter !== "all" || channelFilter !== "all" || selectedTags.length > 0 || !!activeCustomInbox;
   const clearFilters = () => { setAgentFilter("all"); setChannelFilter("all"); setSelectedTags([]); setActiveCustomInbox(null); setActiveQuickFilter("all"); };
   const toggleTag = (tag: string) => setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
+  const hasListConstraints = !!searchQuery.trim() || activeQuickFilter !== "all" || hasActiveFilters;
+  const resetListView = () => {
+    setSearchQuery("");
+    clearFilters();
+  };
 
   return (
     <div className={cn(
@@ -376,7 +384,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <MessageSquare className="w-10 h-10 mb-2 opacity-20" />
-            <p className="text-sm">لا توجد محادثات</p>
+            <p className="text-sm">{hasListConstraints ? "لا توجد محادثات مطابقة للفلاتر الحالية" : "لا توجد محادثات"}</p>
+            {hasListConstraints && (
+              <button
+                onClick={resetListView}
+                className="mt-3 text-xs px-3 py-1.5 rounded-full bg-secondary text-foreground hover:bg-accent transition-all"
+              >
+                عرض كل المحادثات
+              </button>
+            )}
           </div>
         ) : (
           filtered.map((conv) => {
