@@ -3646,7 +3646,8 @@ export type Database = {
           display_phone: string
           evolution_instance_name: string
           evolution_instance_status: string
-          health_status: Json
+          exclude_supervisors: boolean
+          health_status: string
           id: string
           is_connected: boolean
           messaging_limit_tier: string
