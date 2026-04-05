@@ -149,7 +149,7 @@ serve(async (req) => {
 
     // Parallel: fetch profile + parse body simultaneously
     const [profileResult, rawBody] = await Promise.all([
-      adminClient.from("profiles").select("org_id").eq("id", user.id).maybeSingle(),
+      adminClient.from("profiles").select("org_id, full_name").eq("id", user.id).maybeSingle(),
       req.json().catch(() => ({} as Record<string, unknown>)),
     ]);
     const profile = profileResult.data;
