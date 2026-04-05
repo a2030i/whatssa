@@ -470,7 +470,7 @@ const InboxPage = () => {
     if (conv.channelType === "meta_api") {
       lastReadMessageRef.current = lastMsg.waMessageId;
       invokeCloud("whatsapp-catalog", {
-        body: { action: "mark_read", message_id: lastMsg.waMessageId, org_id: orgId },
+        body: { action: "mark_read", message_id: lastMsg.waMessageId, org_id: orgId, channel_id: conv.channelId },
       }).catch(() => {
         if (lastReadMessageRef.current === lastMsg.waMessageId) {
           lastReadMessageRef.current = null;
@@ -557,6 +557,7 @@ const InboxPage = () => {
         to: conversation.customerPhone,
         message: text,
         conversation_id: convId,
+        channel_id: conversation.channelId,
         sender_name: agentDisplayName,
         reply_to: replyTo ? { wa_message_id: replyTo.waMessageId, sender_name: replyTo.senderName, text: replyTo.text, message_id: replyTo.id } : undefined,
       },
@@ -647,6 +648,7 @@ const InboxPage = () => {
                 to: conv.customerPhone,
                 message: satMessage,
                 conversation_id: convId,
+                channel_id: conv.channelId,
               },
             });
             await supabase.from("conversations").update({ satisfaction_status: "pending" }).eq("id", convId);
@@ -748,8 +750,8 @@ const InboxPage = () => {
 
     const { data, error } = await invokeCloud(isEvolution ? "evolution-manage" : "whatsapp-send", {
       body: isEvolution
-        ? { action: "edit_message", phone: convPhone, message_id: waMessageId, new_text: newText }
-        : { to: convPhone, type: "edit", edit_message_id: waMessageId, message: newText },
+        ? { action: "edit_message", phone: convPhone, message_id: waMessageId, new_text: newText, channel_id: conv?.channelId }
+        : { to: convPhone, type: "edit", edit_message_id: waMessageId, message: newText, channel_id: conv?.channelId },
     });
 
     if (error || data?.error || data?.success === false) {
@@ -774,7 +776,7 @@ const InboxPage = () => {
     const conv = conversations.find(c => c.customerPhone === convPhone);
     const func = getSendFunction(conv?.channelType);
     invokeCloud(func, {
-      body: { to: convPhone, delete_message_id: waMessageId },
+      body: { to: convPhone, delete_message_id: waMessageId, channel_id: conv?.channelId },
     }).then(({ data, error }) => {
       if (error || data?.error) {
         // Revert on failure
@@ -818,6 +820,7 @@ const InboxPage = () => {
         template_language: template.language,
         template_components: buildTemplateComponents(template, variables),
         conversation_id: convId,
+        channel_id: conversation.channelId,
         sender_name: profile?.full_name || "النظام",
       },
     });

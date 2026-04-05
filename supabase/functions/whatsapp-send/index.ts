@@ -124,6 +124,7 @@ serve(async (req) => {
       interactive,
       // Phone number selection (multi-number support)
       phone_number_id: requestedPhoneId,
+      channel_id: requestedChannelId,
       // Reaction fields
       reaction_emoji,
       reaction_message_id,
@@ -143,7 +144,7 @@ serve(async (req) => {
       return json({ error: "رقم المستلم مطلوب" }, 400);
     }
 
-    // Pick config — if requestedPhoneId is provided, use that specific number
+    // Pick config — prefer the exact channel, then exact phone number, then fallback
     let configQuery = adminClient
       .from("whatsapp_config")
       .select("*")
@@ -151,7 +152,9 @@ serve(async (req) => {
       .eq("is_connected", true)
       .eq("channel_type", "meta_api");
 
-    if (requestedPhoneId) {
+    if (requestedChannelId) {
+      configQuery = configQuery.eq("id", requestedChannelId);
+    } else if (requestedPhoneId) {
       configQuery = configQuery.eq("phone_number_id", requestedPhoneId);
     }
 

@@ -13,7 +13,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_K
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-async function getUserContext(req: Request) {
+async function getUserContext(req: Request, requestedChannelId?: string, requestedPhoneNumberId?: string) {
   const authorization = req.headers.get("Authorization") || "";
   if (!authorization.startsWith("Bearer ")) return { error: json({ error: "Unauthorized" }, 401) };
 
@@ -24,15 +24,22 @@ async function getUserContext(req: Request) {
   const { data: profile } = await adminClient.from("profiles").select("org_id").eq("id", user.id).maybeSingle();
   if (!profile?.org_id) return { error: json({ error: "لا توجد مؤسسة" }, 400) };
 
-  const { data: config } = await adminClient
+  let configQuery = adminClient
     .from("whatsapp_config")
     .select("business_account_id, access_token, phone_number_id")
     .eq("org_id", profile.org_id)
     .eq("is_connected", true)
-    .eq("channel_type", "meta_api")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .eq("channel_type", "meta_api");
+
+  if (requestedChannelId) {
+    configQuery = configQuery.eq("id", requestedChannelId);
+  } else if (requestedPhoneNumberId) {
+    configQuery = configQuery.eq("phone_number_id", requestedPhoneNumberId);
+  } else {
+    configQuery = configQuery.order("created_at", { ascending: true }).limit(1);
+  }
+
+  const { data: config } = await configQuery.maybeSingle();
 
   if (!config) return { error: json({ error: "لا يوجد رقم واتساب رسمي مربوط" }) };
   return { adminClient, orgId: profile.org_id, config };
@@ -43,8 +50,10 @@ serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   const action = body?.action;
+  const requestedChannelId = typeof body?.channel_id === "string" ? body.channel_id.trim() : "";
+  const requestedPhoneNumberId = typeof body?.phone_number_id === "string" ? body.phone_number_id.trim() : "";
 
-  const context = await getUserContext(req);
+  const context = await getUserContext(req, requestedChannelId || undefined, requestedPhoneNumberId || undefined);
   if ("error" in context) return context.error;
   const { config } = context;
 

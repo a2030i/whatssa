@@ -606,37 +606,59 @@ serve(async (req) => {
       }
 
       try {
-        // Try POST first (v2.3.7+), then PUT as fallback
-        let readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${readInstanceName}`, {
-          method: "POST",
-          headers: evoHeaders,
-          body: JSON.stringify({
-            readMessages: resolvedKeys,
-          }),
-        });
-
-        // Fallback to PUT if POST returns 404/405
-        if (readRes.status === 404 || readRes.status === 405) {
-          readRes = await fetch(`${EVOLUTION_URL}/chat/markMessageAsRead/${readInstanceName}`, {
+        const readAttempts = [
+          {
+            method: "POST",
+            url: `${EVOLUTION_URL}/chat/markMessageAsRead/${readInstanceName}`,
+            body: { readMessages: resolvedKeys },
+          },
+          {
+            method: "POST",
+            url: `${EVOLUTION_URL}/chat/markMessageAsRead/${readInstanceName}`,
+            body: { read_messages: resolvedKeys },
+          },
+          {
             method: "PUT",
+            url: `${EVOLUTION_URL}/chat/markMessageAsRead/${readInstanceName}`,
+            body: { read_messages: resolvedKeys },
+          },
+          {
+            method: "POST",
+            url: `${EVOLUTION_URL}/chat/readMessages/${readInstanceName}`,
+            body: { readMessages: resolvedKeys },
+          },
+        ];
+
+        let readRes: Response | null = null;
+        let errText = "";
+
+        for (const attempt of readAttempts) {
+          readRes = await fetch(attempt.url, {
+            method: attempt.method,
             headers: evoHeaders,
-            body: JSON.stringify({
-              readMessages: resolvedKeys,
-            }),
+            body: JSON.stringify(attempt.body),
           });
+
+          if (readRes.ok) break;
+          errText = await readRes.text().catch(() => "");
+
+          if (readRes.status !== 404 && readRes.status !== 405 && readRes.status !== 400) {
+            break;
+          }
         }
 
-        if (!readRes.ok) {
-          const errText = await readRes.text().catch(() => "");
+        if (!readRes?.ok) {
           await logToSystem(adminClient, "warn", "فشل إرسال إشعار قراءة إلى Evolution", {
-            http_status: readRes.status, count: resolvedKeys.length,
+            http_status: readRes?.status || 0, count: resolvedKeys.length,
             error: errText.slice(0, 200),
             sample_jid: resolvedKeys[0]?.remoteJid,
+            instance: readInstanceName,
           }, orgId, userId);
         } else {
           await logToSystem(adminClient, "info", "تم إرسال إشعار قراءة بنجاح", {
             count: resolvedKeys.length,
             sample_jid: resolvedKeys[0]?.remoteJid,
+            instance: readInstanceName,
           }, orgId, userId);
         }
       } catch (err) {
