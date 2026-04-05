@@ -3472,94 +3472,121 @@ export type Database = {
     Views: {
       whatsapp_config_safe: {
         Row: {
-          access_token_masked: string | null
           account_mode: string | null
           business_account_id: string | null
           business_name: string | null
           channel_label: string | null
           channel_type: string | null
+          code_verification_status: string | null
           created_at: string | null
+          data_localization_region: string | null
           default_agent_id: string | null
           default_team_id: string | null
           display_phone: string | null
           evolution_instance_name: string | null
           evolution_instance_status: string | null
-          exclude_supervisors: boolean | null
           health_status: Json | null
           id: string | null
           is_connected: boolean | null
+          last_register_attempt_at: string | null
           messaging_limit_tier: string | null
+          meta_business_id: string | null
+          migrated_at: string | null
+          migration_error: string | null
+          migration_source: string | null
+          migration_status: string | null
+          name_status: string | null
           onboarding_type: string | null
           org_id: string | null
           phone_number_id: string | null
+          previous_provider: string | null
           quality_rating: string | null
           rate_limit_settings: Json | null
+          registered_at: string | null
+          registration_error: string | null
+          registration_status: string | null
           settings: Json | null
+          throughput_level: string | null
+          token_expires_at: string | null
           updated_at: string | null
-          webhook_verify_token_masked: string | null
-          welcome_message_enabled: boolean | null
-          welcome_message_new_only: boolean | null
-          welcome_message_text: string | null
         }
         Insert: {
-          access_token_masked?: never
           account_mode?: string | null
           business_account_id?: string | null
           business_name?: string | null
           channel_label?: string | null
           channel_type?: string | null
+          code_verification_status?: string | null
           created_at?: string | null
+          data_localization_region?: string | null
           default_agent_id?: string | null
           default_team_id?: string | null
           display_phone?: string | null
           evolution_instance_name?: string | null
           evolution_instance_status?: string | null
-          exclude_supervisors?: boolean | null
           health_status?: Json | null
           id?: string | null
           is_connected?: boolean | null
+          last_register_attempt_at?: string | null
           messaging_limit_tier?: string | null
+          meta_business_id?: string | null
+          migrated_at?: string | null
+          migration_error?: string | null
+          migration_source?: string | null
+          migration_status?: string | null
+          name_status?: string | null
           onboarding_type?: string | null
           org_id?: string | null
           phone_number_id?: string | null
+          previous_provider?: string | null
           quality_rating?: string | null
           rate_limit_settings?: Json | null
+          registered_at?: string | null
+          registration_error?: string | null
+          registration_status?: string | null
           settings?: Json | null
+          throughput_level?: string | null
+          token_expires_at?: string | null
           updated_at?: string | null
-          webhook_verify_token_masked?: never
-          welcome_message_enabled?: boolean | null
-          welcome_message_new_only?: boolean | null
-          welcome_message_text?: string | null
         }
         Update: {
-          access_token_masked?: never
           account_mode?: string | null
           business_account_id?: string | null
           business_name?: string | null
           channel_label?: string | null
           channel_type?: string | null
+          code_verification_status?: string | null
           created_at?: string | null
+          data_localization_region?: string | null
           default_agent_id?: string | null
           default_team_id?: string | null
           display_phone?: string | null
           evolution_instance_name?: string | null
           evolution_instance_status?: string | null
-          exclude_supervisors?: boolean | null
           health_status?: Json | null
           id?: string | null
           is_connected?: boolean | null
+          last_register_attempt_at?: string | null
           messaging_limit_tier?: string | null
+          meta_business_id?: string | null
+          migrated_at?: string | null
+          migration_error?: string | null
+          migration_source?: string | null
+          migration_status?: string | null
+          name_status?: string | null
           onboarding_type?: string | null
           org_id?: string | null
           phone_number_id?: string | null
+          previous_provider?: string | null
           quality_rating?: string | null
           rate_limit_settings?: Json | null
+          registered_at?: string | null
+          registration_error?: string | null
+          registration_status?: string | null
           settings?: Json | null
+          throughput_level?: string | null
+          token_expires_at?: string | null
           updated_at?: string | null
-          webhook_verify_token_masked?: never
-          welcome_message_enabled?: boolean | null
-          welcome_message_new_only?: boolean | null
-          welcome_message_text?: string | null
         }
         Relationships: [
           {

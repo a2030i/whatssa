@@ -111,24 +111,6 @@ serve(async (req) => {
     const path = url.pathname.replace(/^\/public-api\/?/, "").replace(/\/$/, "");
     const method = req.method;
 
-    // ── RATE LIMITING ──
-    const rateLimitEndpoint = `${method}:${path.split("/")[0] || "root"}`;
-    const { data: rlResult } = await admin.rpc("check_rate_limit", {
-      _org_id: token.org_id,
-      _endpoint: rateLimitEndpoint,
-      _max_requests: 100,
-      _window_seconds: 60,
-    });
-    if (rlResult && !rlResult.allowed) {
-      await logToSystem(admin, "warn", "Rate limit exceeded", { request_id: requestId, token_id: token.id, endpoint: rateLimitEndpoint, count: rlResult.count }, token.org_id);
-      return new Response(JSON.stringify({ error: "تجاوزت الحد الأقصى للطلبات (100/دقيقة). حاول لاحقاً.", remaining: 0, limit: rlResult.limit }), {
-        status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60", "X-RateLimit-Limit": String(rlResult.limit), "X-RateLimit-Remaining": "0" },
-      });
-    }
-
-    const rateLimitHeaders = rlResult ? { "X-RateLimit-Limit": String(rlResult.limit), "X-RateLimit-Remaining": String(rlResult.remaining) } : {};
-
     await logToSystem(admin, "info", `API request: ${method} /${path}`, { request_id: requestId, method, path, token_id: token.id }, token.org_id);
 
     // ── MESSAGES ──

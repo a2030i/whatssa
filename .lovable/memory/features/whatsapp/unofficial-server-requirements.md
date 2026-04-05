@@ -43,5 +43,4 @@ Updated: now
 - جسم الطلب: `{ readMessages: [{ remoteJid, fromMe, id }] }`
 
 ## Instance الحالي
-- اسم الـ instance: `org_92efa9a48334` (أحدث — تم تحديثه 2026-04-05) و `org_1c3b7fdd1c27`
-- ملاحظة: الاسم القديم `org_0baa3015983c` لم يعد مستخدماً — تم استبداله بـ `org_92efa9a48334`
+- اسم الـ instance: `org_0baa3015983c` (أحدث) و `org_1c3b7fdd1c27`

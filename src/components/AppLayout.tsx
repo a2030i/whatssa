@@ -25,7 +25,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const isMobile = useIsMobile();
   const [orgName, setOrgName] = useState("");
 
-  const hideBottomNav = false;
+  const hideBottomNav = location.pathname === "/inbox";
 
   // Global hooks
   useNotificationSound();
