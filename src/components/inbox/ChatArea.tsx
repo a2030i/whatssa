@@ -1818,13 +1818,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           </div>
         </div>
 
-        {/* Tags row - always visible */}
-        <div className="flex items-center gap-1.5 px-3 pb-2 overflow-x-auto">
+        {/* Tags row */}
+        {(conversation.tags.length > 0 || true) && (
+        <div className="flex items-center gap-1 px-3 pb-2 overflow-x-auto scrollbar-none">
           {conversation.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 gap-1 shrink-0 group">
+            <Badge key={tag} variant="secondary" className="text-[9px] px-1.5 py-0 gap-0.5 shrink-0 group h-5 rounded-md font-medium">
               {tag}
-              <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                <X className="w-2.5 h-2.5" />
+              <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <X className="w-2 h-2" />
               </button>
             </Badge>
           ))}
@@ -1836,12 +1837,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onChange={(e) => setNewTagText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addTag(); if (e.key === "Escape") { setShowTagInput(false); setNewTagText(""); } }}
                 placeholder="وسم جديد..."
-                className="w-24 text-[11px] bg-secondary rounded px-2 py-0.5 outline-none border-0"
+                className="w-24 text-[10px] bg-secondary rounded-md px-2 py-0.5 outline-none border-0"
                 autoFocus
               />
-              <button onClick={addTag} className="text-primary"><Check className="w-3.5 h-3.5" /></button>
-              <button onClick={() => { setShowTagInput(false); setNewTagText(""); }} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
-              {/* Tag suggestions dropdown */}
+              <button onClick={addTag} className="text-primary"><Check className="w-3 h-3" /></button>
+              <button onClick={() => { setShowTagInput(false); setNewTagText(""); }} className="text-muted-foreground"><X className="w-3 h-3" /></button>
               {(() => {
                 const suggestions = allOrgTags.filter(
                   (t) => !conversation.tags.includes(t) && (newTagText === "" || t.includes(newTagText))
@@ -1860,7 +1860,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                           setNewTagText("");
                           setShowTagInput(false);
                         }}
-                        className="w-full text-right px-3 py-1.5 text-[11px] hover:bg-secondary transition-colors truncate"
+                        className="w-full text-right px-3 py-1.5 text-[10px] hover:bg-secondary transition-colors truncate"
                       >
                         {tag}
                       </button>
@@ -1870,11 +1870,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               })()}
             </div>
           ) : (
-            <button onClick={() => setShowTagInput(true)} className="shrink-0 flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-colors px-1.5 py-0.5 rounded hover:bg-secondary">
-              <Plus className="w-3 h-3" /> وسم
+            <button onClick={() => setShowTagInput(true)} className="shrink-0 flex items-center gap-0.5 text-[9px] text-muted-foreground/50 hover:text-primary transition-colors px-1 py-0.5 rounded">
+              <Plus className="w-2.5 h-2.5" /> وسم
             </button>
           )}
         </div>
+        )}
       </div>
 
       {/* Message Search Bar */}
