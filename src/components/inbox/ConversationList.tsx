@@ -139,22 +139,21 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const counts = useMemo(() => ({
     all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
     mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId).length,
-    needsReply: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId).length,
+    waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.unread === 0).length,
     unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
-    waiting: conversations.filter(c => c.status === "waiting" && !c.isArchived).length,
-    mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
     unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
+    mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
     closed: conversations.filter(c => c.status === "closed").length,
     archived: conversations.filter(c => c.isArchived).length,
   }), [conversations, myId]);
 
   const quickFilters: QuickFilter[] = [
     { id: "mine", label: "محادثاتي", icon: User, count: counts.mine },
-    { id: "needsReply", label: "بحاجة رد", icon: Clock, count: counts.needsReply },
+    { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: counts.waitingCustomer },
+    { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
-    { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
     { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions },
-    { id: "waiting", label: "بانتظار", icon: Eye, count: counts.waiting },
+    { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived },
   ];
@@ -170,11 +169,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       if (activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.status === "closed") return false;
       switch (activeQuickFilter) {
         case "mine": if (conv.assignedToId !== myId) return false; break;
-        case "needsReply": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
+        case "waitingCustomer": if (conv.assignedToId !== myId || conv.unread > 0) return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
         case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
         case "unread": if (conv.unread <= 0) return false; break;
-        case "waiting": if (conv.status !== "waiting") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
         case "archived": if (!conv.isArchived) return false; break;
       }
