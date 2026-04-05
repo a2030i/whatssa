@@ -1931,33 +1931,46 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                           const hue = hash % 360;
                           const handleAvatarClick = async () => {
                             if (!rawPhone) return;
-                            // Try to find existing private conversation with this phone
-                            const { data: existingConv } = await supabase
+                            // 1. Look up customer by phone to get customer_id
+                            const { data: customer } = await supabase
+                              .from("customers")
+                              .select("id, phone")
+                              .eq("org_id", orgId)
+                              .or(`phone.eq.${rawPhone},phone.like.%${rawPhone.slice(-9)}%`)
+                              .limit(1)
+                              .maybeSingle();
+
+                            // 2. Search conversations by customer_id first (most reliable)
+                            if (customer?.id) {
+                              const { data: conv } = await supabase
+                                .from("conversations")
+                                .select("id")
+                                .eq("org_id", orgId)
+                                .eq("customer_id", customer.id)
+                                .eq("conversation_type", "private")
+                                .order("last_message_at", { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+                              if (conv) {
+                                window.location.href = `/inbox?conversation=${conv.id}`;
+                                return;
+                              }
+                            }
+
+                            // 3. Fallback: search by phone directly or suffix
+                            const { data: phoneConv } = await supabase
                               .from("conversations")
                               .select("id")
                               .eq("org_id", orgId)
-                              .eq("customer_phone", rawPhone)
                               .eq("conversation_type", "private")
+                              .or(`customer_phone.eq.${rawPhone},customer_phone.like.%${rawPhone.slice(-9)}%`)
+                              .order("last_message_at", { ascending: false })
                               .limit(1)
                               .maybeSingle();
-                            if (existingConv) {
-                              // Navigate to existing conversation
-                              window.location.href = `/inbox?conversation=${existingConv.id}`;
+                            if (phoneConv) {
+                              window.location.href = `/inbox?conversation=${phoneConv.id}`;
                             } else {
-                              // Try with + prefix or suffix matching
-                              const { data: altConv } = await supabase
-                                .from("conversations")
-                                .select("id, customer_phone")
-                                .eq("org_id", orgId)
-                                .eq("conversation_type", "private")
-                                .like("customer_phone", `%${rawPhone.slice(-9)}%`)
-                                .limit(1)
-                                .maybeSingle();
-                              if (altConv) {
-                                window.location.href = `/inbox?conversation=${altConv.id}`;
-                              } else {
-                                toast.info(`لا توجد محادثة خاصة مع ${displayName} (${rawPhone})`);
-                              }
+                              toast.info(`لا توجد محادثة خاصة مع ${displayName} (${rawPhone})`);
                             }
                           };
                           return (
