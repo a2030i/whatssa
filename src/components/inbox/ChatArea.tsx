@@ -1539,9 +1539,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-background">
       {/* Header - elevated glass */}
       <div className="shrink-0 border-b border-border/20 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="h-14 md:h-[68px] flex items-center justify-between px-2.5 md:px-5">
-          <div className="flex items-center gap-3">
-            <button className="w-8 h-8 md:w-9 md:h-9 rounded-xl hover:bg-secondary/80 transition-all flex items-center justify-center shrink-0" onClick={onBack}>
+        <div className="h-[60px] md:h-[72px] flex items-center justify-between px-3 md:px-5">
+          <div className="flex items-center gap-3 min-w-0">
+            <button className="w-9 h-9 md:w-10 md:h-10 rounded-xl hover:bg-secondary transition-all flex items-center justify-center shrink-0" onClick={onBack}>
               <ArrowRight className="w-5 h-5 text-foreground" />
             </button>
             <button
