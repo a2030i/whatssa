@@ -163,7 +163,15 @@ const AdminAccounts = () => {
     return m[s] || m.trial;
   };
 
-  const filtered = orgs.filter((o) => !superAdminOrgIds.has(o.id) && (o.name?.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search)));
+  const filtered = orgs.filter((o) => {
+    // Hide super admin orgs
+    if (superAdminOrgIds.has(o.id)) return false;
+    // Hide orphan orgs with 0 members (created by self-signup trigger for users who later joined another org)
+    const memberCount = profiles.filter((p) => p.org_id === o.id).length;
+    if (memberCount === 0) return false;
+    // Search filter
+    return o.name?.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search);
+  });
 
   return (
     <div className="space-y-4">
