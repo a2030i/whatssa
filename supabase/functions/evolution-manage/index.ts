@@ -804,17 +804,36 @@ serve(async (req) => {
       const group_jid = asString(payload.group_jid);
       if (!group_jid) return json({ error: "معرف المجموعة مطلوب" }, 400);
       
-      // Fetch group info and participants in parallel
-      const [infoRes, participantsRes] = await Promise.all([
+      // Fetch group info, participants, and contacts in parallel
+      const [infoRes, participantsRes, contactsRes] = await Promise.all([
         fetch(`${EVOLUTION_URL}/group/findGroupInfos/${instanceName}?groupJid=${group_jid}`, {
           headers: evoHeaders,
         }),
         fetch(`${EVOLUTION_URL}/group/participants/${instanceName}?groupJid=${group_jid}`, {
           headers: evoHeaders,
         }).catch(() => null),
+        // Fetch all contacts to get pushName/name for participants
+        fetch(`${EVOLUTION_URL}/chat/findContacts/${instanceName}`, {
+          method: "POST",
+          headers: evoHeaders,
+          body: JSON.stringify({ where: {} }),
+        }).catch(() => null),
       ]);
       
       const infoData = await infoRes.json();
+
+      // Build contacts map from contacts endpoint
+      const contactsMap = new Map<string, any>();
+      if (contactsRes?.ok) {
+        try {
+          const contactsData = await contactsRes.json();
+          const cList = Array.isArray(contactsData) ? contactsData : contactsData?.data || contactsData?.contacts || [];
+          for (const c of cList) {
+            const cid = c.id || c.jid || c.remoteJid || "";
+            if (cid) contactsMap.set(cid, c);
+          }
+        } catch (_) { /* ignore */ }
+      }
       
       // Try to enrich participants with data from the participants endpoint
       if (participantsRes?.ok) {
@@ -822,29 +841,52 @@ serve(async (req) => {
           const participantsData = await participantsRes.json();
           const pList = participantsData?.participants || participantsData || [];
           if (Array.isArray(pList) && pList.length > 0) {
-            // Build a map of participant data from the alternate endpoint
             const pMap = new Map<string, any>();
             for (const p of pList) {
               const pid = p.id || p.jid || "";
               if (pid) pMap.set(pid, p);
             }
-            // Merge into the main info data
             const mainData = infoData?.data || infoData || {};
             const mainParticipants = mainData?.participants || [];
             for (const mp of mainParticipants) {
               const mpId = mp.id || mp.jid || "";
               const alt = pMap.get(mpId);
               if (alt) {
-                // Copy any additional fields (like phone, number, pn) from alternate endpoint
                 if (alt.phone) mp.phone = alt.phone;
                 if (alt.number) mp.number = alt.number;
                 if (alt.pn) mp.pn = alt.pn;
                 if (alt.pushName) mp.pushName = alt.pushName;
                 if (alt.name) mp.name = alt.name;
               }
+              // Enrich from contacts
+              const contact = contactsMap.get(mpId);
+              if (contact) {
+                if (!mp.pushName && contact.pushName) mp.pushName = contact.pushName;
+                if (!mp.name && contact.pushName) mp.name = contact.pushName;
+                if (!mp.name && contact.name) mp.name = contact.name;
+                if (!mp.name && contact.notify) mp.name = contact.notify;
+                if (!mp.name && contact.verifiedName) mp.name = contact.verifiedName;
+                if (!mp.name && contact.shortName) mp.name = contact.shortName;
+                if (!mp.phone && contact.number) mp.phone = contact.number;
+              }
             }
           }
         } catch (_) { /* ignore parse errors */ }
+      } else {
+        // Even without participants endpoint, enrich main participants from contacts
+        const mainData = infoData?.data || infoData || {};
+        const mainParticipants = mainData?.participants || [];
+        for (const mp of mainParticipants) {
+          const mpId = mp.id || mp.jid || "";
+          const contact = contactsMap.get(mpId);
+          if (contact) {
+            if (!mp.pushName && contact.pushName) mp.pushName = contact.pushName;
+            if (!mp.name && (contact.pushName || contact.name || contact.notify || contact.verifiedName || contact.shortName)) {
+              mp.name = contact.pushName || contact.name || contact.notify || contact.verifiedName || contact.shortName;
+            }
+            if (!mp.phone && contact.number) mp.phone = contact.number;
+          }
+        }
       }
       
       return json({ success: infoRes.ok, data: infoData });
