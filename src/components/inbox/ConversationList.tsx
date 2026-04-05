@@ -211,7 +211,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   return (
     <div className={cn(
-      "flex flex-col",
+      "flex flex-col bg-card border-l border-border/40",
       hasSelection ? "hidden md:flex md:w-[340px] lg:w-[370px]" : "w-full md:w-[340px] lg:w-[370px]"
     )}>
       {/* Header */}
