@@ -196,12 +196,17 @@ const AdminAccounts = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="بحث بالاسم أو ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm" />
         </div>
         <span className="text-xs text-muted-foreground">{filtered.length} منظمة</span>
+        {orphanCount > 0 && (
+          <Button size="sm" variant="destructive" className="text-xs gap-1" onClick={cleanupOrphanOrgs} disabled={deleting}>
+            <Trash2 className="w-3 h-3" /> حذف {orphanCount} منظمة فارغة
+          </Button>
+        )}
         <Button size="sm" className="text-xs gap-1" onClick={() => setShowCreate(true)}>
           <Plus className="w-3 h-3" /> إضافة عميل
         </Button>
