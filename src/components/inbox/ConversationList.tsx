@@ -172,7 +172,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
         case "waitingCustomer": if (conv.assignedToId !== myId || conv.unread > 0) return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
         case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
-        case "unread": if (conv.unread <= 0) return false; break;
+        case "unread": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
         case "archived": if (!conv.isArchived) return false; break;
       }
