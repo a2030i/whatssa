@@ -197,7 +197,7 @@ const AdminAccounts = () => {
     return true;
   });
 
-  const orphanCount = filtered.filter((o) => profiles.filter((p) => p.org_id === o.id).length === 0).length;
+  const orphanCount = orgs.filter((o) => !superAdminOrgIds.has(o.id) && profiles.filter((p) => p.org_id === o.id).length === 0).length;
 
   return (
     <div className="space-y-4">
@@ -208,9 +208,16 @@ const AdminAccounts = () => {
         </div>
         <span className="text-xs text-muted-foreground">{filtered.length} منظمة</span>
         {orphanCount > 0 && (
-          <Button size="sm" variant="destructive" className="text-xs gap-1" onClick={cleanupOrphanOrgs} disabled={deleting}>
-            <Trash2 className="w-3 h-3" /> حذف {orphanCount} منظمة فارغة
-          </Button>
+          <>
+            <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setShowOrphans(!showOrphans)}>
+              <Archive className="w-3 h-3" /> {showOrphans ? "إخفاء" : "عرض"} {orphanCount} فارغة
+            </Button>
+            {showOrphans && (
+              <Button size="sm" variant="destructive" className="text-xs gap-1" onClick={cleanupOrphanOrgs} disabled={deleting}>
+                <Trash2 className="w-3 h-3" /> حذف الكل
+              </Button>
+            )}
+          </>
         )}
         <Button size="sm" className="text-xs gap-1" onClick={() => setShowCreate(true)}>
           <Plus className="w-3 h-3" /> إضافة عميل
