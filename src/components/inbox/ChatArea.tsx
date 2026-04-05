@@ -1928,7 +1928,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-5 space-y-2.5 md:space-y-3.5" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, hsl(var(--secondary) / 0.32), transparent 68%)' }}>
+      <div className="flex-1 overflow-y-auto p-3 md:p-5 space-y-1.5 md:space-y-2" style={{ background: 'linear-gradient(180deg, hsl(var(--secondary) / 0.15) 0%, hsl(var(--background)) 40%)' }}>
         {messages.map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";
