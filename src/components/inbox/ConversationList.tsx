@@ -211,50 +211,50 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   return (
     <div className={cn(
-      "border-l border-border/40 flex flex-col bg-background",
-      hasSelection ? "hidden md:flex md:w-[360px] lg:w-[380px]" : "w-full md:w-[360px] lg:w-[380px]"
+      "border-l border-border/30 flex flex-col bg-card/50 backdrop-blur-sm",
+      hasSelection ? "hidden md:flex md:w-[340px] lg:w-[370px]" : "w-full md:w-[340px] lg:w-[370px]"
     )}>
       {/* Header */}
-      <div className="px-4 pt-4 pb-2 space-y-3 shrink-0">
+      <div className="px-4 pt-5 pb-3 space-y-3 shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-extrabold text-foreground tracking-tight">
+          <h1 className="text-lg font-bold text-foreground">
             {activeInbox ? activeInbox.name : "المحادثات"}
           </h1>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {onNewConversation && (
               <button
                 onClick={onNewConversation}
-                className="w-9 h-9 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-sm"
+                className="w-8 h-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-sm"
                 title="محادثة جديدة"
               >
-                <MessageSquare className="w-4 h-4" />
+                <MessageSquare className="w-3.5 h-3.5" />
               </button>
             )}
             <button
               onClick={() => { setEditingInbox(null); setBuilderOpen(true); }}
-              className="w-9 h-9 rounded-xl hover:bg-secondary text-muted-foreground transition-all flex items-center justify-center hover:text-foreground"
+              className="w-8 h-8 rounded-lg hover:bg-secondary text-muted-foreground transition-all flex items-center justify-center"
               title="صندوق مخصص"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); }}
-              className={cn("w-9 h-9 rounded-xl transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+              className={cn("w-8 h-8 rounded-lg transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
               title="تحديد متعدد"
             >
-              <CheckSquare className="w-4 h-4" />
+              <CheckSquare className="w-3.5 h-3.5" />
             </button>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="w-9 h-9 rounded-xl hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
-                <RotateCcw className="w-4 h-4 text-muted-foreground" />
+              <button onClick={clearFilters} className="w-8 h-8 rounded-lg hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
+                <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             )}
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={cn("w-9 h-9 rounded-xl transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+              className={cn("w-8 h-8 rounded-lg transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
             >
-              <Filter className="w-4 h-4" />
-              {hasActiveFilters && <span className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-primary animate-pulse" />}
+              <Filter className="w-3.5 h-3.5" />
+              {hasActiveFilters && <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-primary" />}
             </button>
           </div>
         </div>
@@ -292,38 +292,38 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
           <Input
             placeholder="بحث بالاسم أو الرقم..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-10 bg-secondary/60 border-0 text-sm h-11 rounded-2xl focus:bg-secondary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/40"
+            className="pr-10 bg-secondary/40 border-border/20 text-sm h-10 rounded-xl focus:bg-background focus:ring-1 focus:ring-primary/20 focus:border-primary/30 transition-all placeholder:text-muted-foreground/40"
           />
         </div>
       </div>
 
       {/* Quick Filters */}
-      <div className="shrink-0 border-b border-border/20 px-4 pb-3 overflow-x-auto scrollbar-none">
-        <div className="flex gap-1.5 w-max">
+      <div className="shrink-0 border-b border-border/15 px-4 pb-2.5 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 w-max">
           {quickFilters.map((qf) => (
             <button
               key={qf.id}
               onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
               className={cn(
-                "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all",
                 activeQuickFilter === qf.id && !activeCustomInbox
                   ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
               )}
             >
-              <qf.icon className="w-3.5 h-3.5" />
+              <qf.icon className="w-3 h-3" />
               <span>{qf.label}</span>
               {(qf.count ?? 0) > 0 && (
                 <span className={cn(
-                  "text-[10px] min-w-[20px] h-5 rounded-full flex items-center justify-center font-bold px-1.5",
+                  "text-[9px] min-w-[18px] h-4 rounded-md flex items-center justify-center font-bold px-1",
                   activeQuickFilter === qf.id && !activeCustomInbox
                     ? "bg-primary-foreground/20"
-                    : "bg-background text-foreground"
+                    : "bg-secondary text-foreground"
                 )}>
                   {qf.count}
                 </span>
@@ -443,20 +443,20 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   setTimeout(() => document.addEventListener("click", dismiss), 0);
                 }}
                 className={cn(
-                  "w-full text-right px-4 py-3.5 transition-all group relative",
+                  "w-full text-right px-3.5 py-3 transition-all group relative border-b border-border/10",
                   isSelected && !bulkMode
-                    ? "bg-primary/[0.06] border-r-[3px] border-r-primary"
-                    : "hover:bg-secondary/60 border-r-[3px] border-r-transparent",
+                    ? "bg-primary/[0.05] border-r-2 border-r-primary"
+                    : "hover:bg-secondary/40 border-r-2 border-r-transparent",
                   bulkMode && bulkSelected.has(conv.id) && "bg-primary/10"
                 )}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-center gap-3">
                   {bulkMode && (
-                    <div className="flex items-center pt-3 shrink-0">
+                    <div className="flex items-center shrink-0">
                       {bulkSelected.has(conv.id) ? (
-                        <CheckSquare className="w-4.5 h-4.5 text-primary" />
+                        <CheckSquare className="w-4 h-4 text-primary" />
                       ) : (
-                        <Square className="w-4.5 h-4.5 text-muted-foreground/40" />
+                        <Square className="w-4 h-4 text-muted-foreground/30" />
                       )}
                     </div>
                   )}
@@ -466,7 +466,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       <img
                         src={conv.profilePic}
                         alt={conv.customerName}
-                        className="w-12 h-12 rounded-2xl object-cover ring-2 ring-background shadow-sm"
+                        className="w-11 h-11 rounded-full object-cover ring-1 ring-border/20"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                           (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
@@ -474,90 +474,58 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       />
                     ) : null}
                     <div className={cn(
-                      "w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold transition-all shadow-sm",
+                      "w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
                       conv.profilePic ? "hidden" : "",
                       isSelected
-                        ? "bg-primary/15 text-primary ring-2 ring-primary/20"
-                        : "bg-gradient-to-br from-secondary to-muted text-muted-foreground"
+                        ? "bg-primary/10 text-primary"
+                        : "bg-secondary text-muted-foreground"
                     )}>
                       {conv.conversationType === "group" ? (
-                        <Users className="w-5 h-5" />
+                        <Users className="w-4.5 h-4.5" />
                       ) : (
                         conv.customerName.charAt(0)
                       )}
                     </div>
-                    {/* Online status dot */}
+                    {/* Status dot */}
                     <span className={cn(
-                      "absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 rounded-full border-[2.5px] border-background",
+                      "absolute bottom-0 left-0 w-3 h-3 rounded-full border-2 border-card",
                       statusColors[conv.status]
                     )} />
-                    {/* Channel badge */}
-                    {conv.channelType === "meta_api" && (
-                      <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm ring-2 ring-background">
-                        <ShieldCheck className="w-2.5 h-2.5 text-white" />
-                      </span>
-                    )}
-                    {conv.channelType === "evolution" && (
-                      <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-muted-foreground/60 flex items-center justify-center shadow-sm ring-2 ring-background">
-                        <Wifi className="w-2.5 h-2.5 text-white" />
-                      </span>
-                    )}
                   </div>
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={cn("text-sm font-bold truncate flex items-center gap-1.5", isSelected ? "text-primary" : "text-foreground")}>
-                        {conv.isPinned && <Pin className="w-3 h-3 text-primary shrink-0 rotate-45" />}
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className={cn("text-[13px] font-semibold truncate flex items-center gap-1", isSelected ? "text-primary" : "text-foreground")}>
+                        {conv.isPinned && <Pin className="w-2.5 h-2.5 text-primary shrink-0 rotate-45" />}
                          {displayName}
                       </span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {countdown && (
-                          <span className={cn("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-secondary/80", countdown.color)}>
-                            {countdown.text}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-muted-foreground/50 font-medium">{conv.timestamp}</span>
-                      </div>
+                      <span className="text-[10px] text-muted-foreground/50 shrink-0 mr-1">{conv.timestamp}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-1.5">
                        <p className={cn(
-                         "text-[12px] line-clamp-2 max-w-[220px] leading-5",
-                        conv.unread > 0 ? "text-foreground font-medium" : "text-muted-foreground/70"
+                         "text-[11px] truncate leading-relaxed",
+                        conv.unread > 0 ? "text-foreground font-medium" : "text-muted-foreground/60"
                       )}>
                          {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                       </p>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                          <div className="flex items-center gap-1 bg-secondary rounded-lg px-1.5 py-0.5" title={conv.assignedTo}>
-                            <User className="w-2.5 h-2.5 text-muted-foreground" />
-                            <span className="text-[9px] font-medium text-muted-foreground max-w-[50px] truncate">{conv.assignedTo.split(" ")[0]}</span>
-                          </div>
+                          <span className="text-[9px] text-muted-foreground/50 max-w-[40px] truncate" title={conv.assignedTo}>
+                            {conv.assignedTo.split(" ")[0]}
+                          </span>
                         )}
                         {(conv.unreadMentionCount || 0) > 0 && (
-                          <span className="min-w-[22px] h-[22px] rounded-lg bg-accent text-accent-foreground text-[10px] font-bold flex items-center justify-center px-1 shadow-sm">
-                            <AtSign className="w-3 h-3" />
+                          <span className="w-5 h-5 rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">
+                            @
                           </span>
                         )}
                         {conv.unread > 0 && (
-                          <span className="min-w-[22px] h-[22px] rounded-lg bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1.5 shadow-md">
+                          <span className="min-w-[20px] h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1.5">
                             {conv.unread}
                           </span>
                         )}
                       </div>
                     </div>
-                    {/* Tags */}
-                    {conv.tags.length > 0 && (
-                      <div className="flex gap-1 mt-2 overflow-x-auto scrollbar-none">
-                        {conv.tags.slice(0, 3).map((tag) => (
-                          <span key={tag} className="text-[9px] px-2 py-0.5 rounded-lg bg-secondary text-muted-foreground shrink-0 font-medium">
-                            {tag}
-                          </span>
-                        ))}
-                        {conv.tags.length > 3 && (
-                          <span className="text-[9px] text-muted-foreground/50 flex items-center">+{conv.tags.length - 3}</span>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               </button>

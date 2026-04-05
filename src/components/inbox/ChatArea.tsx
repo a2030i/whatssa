@@ -1611,50 +1611,50 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-background">
-      {/* Header - elevated glass */}
-      <div className="shrink-0 border-b border-border/20 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="h-[60px] md:h-[72px] flex items-center justify-between px-3 md:px-5">
-          <div className="flex items-center gap-3 min-w-0">
-            <button className="w-9 h-9 md:w-10 md:h-10 rounded-xl hover:bg-secondary transition-all flex items-center justify-center shrink-0" onClick={onBack}>
-              <ArrowRight className="w-5 h-5 text-foreground" />
+      {/* Header */}
+      <div className="shrink-0 border-b border-border/15 bg-card/80 backdrop-blur-xl">
+        <div className="h-[56px] md:h-[64px] flex items-center justify-between px-3 md:px-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button className="w-8 h-8 md:w-9 md:h-9 rounded-lg hover:bg-secondary transition-all flex items-center justify-center shrink-0" onClick={onBack}>
+              <ArrowRight className="w-4.5 h-4.5 text-foreground" />
             </button>
             <button
-              className="flex items-center gap-3 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => onShowCustomerInfo?.()}
             >
             <div className="relative shrink-0">
               {groupPicture ? (
-                <img src={groupPicture} alt={conversation.customerName} className="w-11 h-11 md:w-12 md:h-12 rounded-2xl object-cover ring-2 ring-background shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                <img src={groupPicture} alt={conversation.customerName} className="w-10 h-10 rounded-full object-cover ring-1 ring-border/20" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
               ) : null}
-              <div className={cn("w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-base font-bold text-primary shadow-sm ring-2 ring-background", groupPicture ? "hidden" : "")}>
+              <div className={cn("w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-sm font-semibold text-muted-foreground", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card shadow-sm" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-card" />
               )}
             </div>
             <div className="min-w-0 overflow-hidden">
-              <div className="flex items-center gap-2">
-                <p className="font-bold text-sm truncate max-w-[120px] md:max-w-[250px]">{conversation.customerName}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-semibold text-[13px] truncate max-w-[120px] md:max-w-[250px]">{conversation.customerName}</p>
                 {isMetaChannel ? (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-semibold shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-medium shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
                     رسمي
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground font-semibold shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground font-medium shrink-0">
                     <Wifi className="w-2.5 h-2.5" />
                     غير رسمي
                   </span>
                 )}
                 {isBlocked && (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive font-semibold shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive font-medium shrink-0">
                     <Ban className="w-2.5 h-2.5" />
                     محظور
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{conversation.lastSeen || conversation.customerPhone}</p>
+              <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{conversation.lastSeen || conversation.customerPhone}</p>
             </div>
             </button>
           </div>
@@ -1818,13 +1818,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           </div>
         </div>
 
-        {/* Tags row - always visible */}
-        <div className="flex items-center gap-1.5 px-3 pb-2 overflow-x-auto">
+        {/* Tags row */}
+        {(conversation.tags.length > 0 || true) && (
+        <div className="flex items-center gap-1 px-3 pb-2 overflow-x-auto scrollbar-none">
           {conversation.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 gap-1 shrink-0 group">
+            <Badge key={tag} variant="secondary" className="text-[9px] px-1.5 py-0 gap-0.5 shrink-0 group h-5 rounded-md font-medium">
               {tag}
-              <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                <X className="w-2.5 h-2.5" />
+              <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <X className="w-2 h-2" />
               </button>
             </Badge>
           ))}
@@ -1836,12 +1837,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onChange={(e) => setNewTagText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addTag(); if (e.key === "Escape") { setShowTagInput(false); setNewTagText(""); } }}
                 placeholder="وسم جديد..."
-                className="w-24 text-[11px] bg-secondary rounded px-2 py-0.5 outline-none border-0"
+                className="w-24 text-[10px] bg-secondary rounded-md px-2 py-0.5 outline-none border-0"
                 autoFocus
               />
-              <button onClick={addTag} className="text-primary"><Check className="w-3.5 h-3.5" /></button>
-              <button onClick={() => { setShowTagInput(false); setNewTagText(""); }} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
-              {/* Tag suggestions dropdown */}
+              <button onClick={addTag} className="text-primary"><Check className="w-3 h-3" /></button>
+              <button onClick={() => { setShowTagInput(false); setNewTagText(""); }} className="text-muted-foreground"><X className="w-3 h-3" /></button>
               {(() => {
                 const suggestions = allOrgTags.filter(
                   (t) => !conversation.tags.includes(t) && (newTagText === "" || t.includes(newTagText))
@@ -1860,7 +1860,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                           setNewTagText("");
                           setShowTagInput(false);
                         }}
-                        className="w-full text-right px-3 py-1.5 text-[11px] hover:bg-secondary transition-colors truncate"
+                        className="w-full text-right px-3 py-1.5 text-[10px] hover:bg-secondary transition-colors truncate"
                       >
                         {tag}
                       </button>
@@ -1870,11 +1870,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               })()}
             </div>
           ) : (
-            <button onClick={() => setShowTagInput(true)} className="shrink-0 flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-colors px-1.5 py-0.5 rounded hover:bg-secondary">
-              <Plus className="w-3 h-3" /> وسم
+            <button onClick={() => setShowTagInput(true)} className="shrink-0 flex items-center gap-0.5 text-[9px] text-muted-foreground/50 hover:text-primary transition-colors px-1 py-0.5 rounded">
+              <Plus className="w-2.5 h-2.5" /> وسم
             </button>
           )}
         </div>
+        )}
       </div>
 
       {/* Message Search Bar */}
@@ -1927,7 +1928,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-5 space-y-2.5 md:space-y-3.5" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, hsl(var(--secondary) / 0.32), transparent 68%)' }}>
+      <div className="flex-1 overflow-y-auto p-3 md:p-5 space-y-1.5 md:space-y-2" style={{ background: 'linear-gradient(180deg, hsl(var(--secondary) / 0.15) 0%, hsl(var(--background)) 40%)' }}>
         {messages.map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";
