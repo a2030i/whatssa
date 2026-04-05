@@ -310,6 +310,8 @@ const InboxPage = () => {
           type: message.message_type || "text",
           mediaUrl: message.media_url || undefined,
           senderName: message.metadata?.sender_name || undefined,
+          senderJid: message.metadata?.participant || undefined,
+          senderPhone: message.metadata?.sender_pn || undefined,
           quoted: message.metadata?.quoted || undefined,
           mentioned: message.metadata?.mentioned || undefined,
           waMessageId: message.wa_message_id || undefined,
