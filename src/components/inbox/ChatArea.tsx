@@ -222,20 +222,20 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   if (type === "document") {
     const pdfFile = isPdfUrl(resolvedUrl) || isPdfUrl(url);
     return (
-      <div className="mb-1.5 min-w-[240px] max-w-[min(82vw,480px)] rounded-2xl border border-border/15 bg-background/60 p-2.5 shadow-sm">
-        <div className="mb-2 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 shrink-0">
-            <FileText className="h-5 w-5 text-primary" />
+      <div className="mb-1.5 min-w-[220px] max-w-[min(82vw,420px)] rounded-xl bg-white dark:bg-card overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center gap-3 p-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/8 shrink-0">
+            <FileText className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold">{pdfFile ? "ملف PDF" : "ملف مرفق"}</p>
-            <p className="text-[10px] text-muted-foreground">يمكنك المعاينة أو الفتح في تبويب جديد</p>
+            <p className="truncate text-[13px] font-medium text-foreground">{pdfFile ? "ملف PDF" : "ملف مرفق"}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">اضغط للمعاينة</p>
           </div>
           <a
             href={resolvedUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex shrink-0 items-center rounded-xl bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+            className="inline-flex shrink-0 items-center rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
           >
             فتح
           </a>
@@ -244,14 +244,14 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
           <iframe
             src={resolvedUrl}
             title="معاينة PDF"
-            className="h-[320px] w-full rounded-xl border border-border/10 bg-background"
+            className="h-[280px] w-full border-t border-border/10 bg-background"
           />
         ) : (
           <a
             href={resolvedUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center justify-center rounded-xl border border-dashed border-border/40 px-3 py-6 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/40"
+            className="flex items-center justify-center border-t border-border/10 px-3 py-5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/30"
           >
             فتح الملف المرفق
           </a>
