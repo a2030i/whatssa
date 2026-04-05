@@ -198,9 +198,6 @@ const CustomersPage = () => {
       }
 
       const tags = colMap.tags >= 0 ? (parts[colMap.tags] || "").split(";").filter(Boolean) : [];
-      const validStages = ["lead", "qualified", "customer", "lost"];
-      const rawStage = colMap.stage >= 0 ? parts[colMap.stage] || "" : "";
-      const stage = validStages.includes(rawStage) ? rawStage : "lead";
 
       validRows.push({
         org_id: orgId,
