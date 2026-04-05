@@ -385,25 +385,26 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       )}
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto px-3 pt-2">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-            <div className="w-16 h-16 rounded-2xl bg-secondary/60 flex items-center justify-center mb-3">
-              <MessageSquare className="w-7 h-7 opacity-30" />
+            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+              <MessageSquare className="w-6 h-6 opacity-25" />
             </div>
             <p className="text-sm font-medium">{hasListConstraints ? "لا توجد محادثات مطابقة" : "لا توجد محادثات"}</p>
             <p className="text-xs text-muted-foreground/60 mt-1">{hasListConstraints ? "جرّب تغيير الفلاتر" : "ابدأ بإرسال رسالة جديدة"}</p>
             {hasListConstraints && (
               <button
                 onClick={resetListView}
-                className="mt-3 text-xs px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all font-medium"
+                className="mt-3 text-xs px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-all font-medium"
               >
                 عرض كل المحادثات
               </button>
             )}
           </div>
         ) : (
-          filtered.map((conv) => {
+          <div className="space-y-1">
+          {filtered.map((conv) => {
             const isSelected = conv.id === selectedId;
             const countdown = conv.channelType === "meta_api" ? get24hCountdown(conv.lastCustomerMessageAt) : null;
             const displayName = getConversationDisplayName(conv);
@@ -443,11 +444,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   setTimeout(() => document.addEventListener("click", dismiss), 0);
                 }}
                 className={cn(
-                  "w-full text-right px-3.5 py-3 transition-all group relative border-b border-border/10",
+                  "w-full text-right px-3.5 py-3.5 transition-all group relative rounded-xl",
                   isSelected && !bulkMode
-                    ? "bg-primary/[0.05] border-r-2 border-r-primary"
-                    : "hover:bg-secondary/40 border-r-2 border-r-transparent",
-                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/10"
+                    ? "bg-card shadow-[var(--shadow-sm)]"
+                    : "hover:bg-card/60",
+                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/5"
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -466,7 +467,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       <img
                         src={conv.profilePic}
                         alt={conv.customerName}
-                        className="w-11 h-11 rounded-full object-cover ring-1 ring-border/20"
+                        className="w-12 h-12 rounded-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                           (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
@@ -474,43 +475,42 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       />
                     ) : null}
                     <div className={cn(
-                      "w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
+                      "w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
                       conv.profilePic ? "hidden" : "",
                       isSelected
                         ? "bg-primary/10 text-primary"
-                        : "bg-secondary text-muted-foreground"
+                        : "bg-muted text-muted-foreground"
                     )}>
                       {conv.conversationType === "group" ? (
-                        <Users className="w-4.5 h-4.5" />
+                        <Users className="w-5 h-5" />
                       ) : (
                         conv.customerName.charAt(0)
                       )}
                     </div>
-                    {/* Status dot */}
-                    <span className={cn(
-                      "absolute bottom-0 left-0 w-3 h-3 rounded-full border-2 border-card",
-                      statusColors[conv.status]
-                    )} />
+                    {/* Unread dot instead of status dot */}
+                    {conv.unread > 0 && (
+                      <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-primary border-2 border-background" />
+                    )}
                   </div>
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className={cn("text-[13px] font-semibold truncate flex items-center gap-1", isSelected ? "text-primary" : "text-foreground")}>
-                        {conv.isPinned && <Pin className="w-2.5 h-2.5 text-primary shrink-0 rotate-45" />}
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={cn("text-[14px] font-medium truncate flex items-center gap-1", isSelected ? "text-foreground" : "text-foreground")}>
+                        {conv.isPinned && <Pin className="w-2.5 h-2.5 text-muted-foreground shrink-0 rotate-45" />}
                          {displayName}
                       </span>
-                      <span className="text-[10px] text-muted-foreground/50 shrink-0 mr-1">{conv.timestamp}</span>
+                      <span className="text-[11px] text-muted-foreground/50 shrink-0 mr-1 font-light">{conv.timestamp}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-1.5">
+                    <div className="flex items-center justify-between gap-2">
                        <p className={cn(
-                         "text-[11px] truncate leading-relaxed",
-                        conv.unread > 0 ? "text-foreground font-medium" : "text-muted-foreground/60"
+                         "text-[12px] truncate leading-relaxed",
+                        conv.unread > 0 ? "text-foreground/70 font-medium" : "text-muted-foreground/50"
                       )}>
                          {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                       </p>
                       <div className="flex items-center gap-1 shrink-0">
                         {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                          <span className="text-[9px] text-muted-foreground/50 max-w-[40px] truncate" title={conv.assignedTo}>
+                          <span className="text-[9px] text-muted-foreground/40 max-w-[40px] truncate font-light" title={conv.assignedTo}>
                             {conv.assignedTo.split(" ")[0]}
                           </span>
                         )}
@@ -519,18 +519,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                             @
                           </span>
                         )}
-                        {conv.unread > 0 && (
-                          <span className="min-w-[20px] h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1.5">
-                            {conv.unread}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
                 </div>
               </button>
             );
-          })
+          })}
+          </div>
         )}
       </div>
 
