@@ -775,8 +775,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           <div className={cn(
             "inline-block rounded-2xl px-4 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
             msg.sender === "agent"
-              ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-              : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
+              ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+              : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
           )}>
             {groupSenderEl && (
               <div className="text-[10.5px] font-bold mb-0.5 text-white/80">{groupSenderEl}</div>
