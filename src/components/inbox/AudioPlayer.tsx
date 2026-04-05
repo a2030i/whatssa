@@ -137,7 +137,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
           "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95",
           isAgent
             ? "bg-primary text-primary-foreground shadow-sm"
-            : "bg-white/25 text-white"
+            : "bg-white text-primary"
         )}
       >
         {isPlaying
