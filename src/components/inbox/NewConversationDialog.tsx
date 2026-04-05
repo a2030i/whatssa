@@ -374,6 +374,18 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           .eq("id", conversationId);
       }
 
+      // Auto-assign private conversations to the creator
+      if (conversationId && dialogMode === "private" && profile?.id) {
+        await supabase
+          .from("conversations")
+          .update({
+            assigned_to: profile.full_name || "موظف",
+            assigned_to_id: profile.id,
+            assigned_at: new Date().toISOString(),
+          })
+          .eq("id", conversationId);
+      }
+
       if (conversationId) {
         onConversationCreated(conversationId);
       }
