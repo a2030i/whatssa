@@ -618,7 +618,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === NOTE MESSAGE ===
         if (msg.type === "note") {
           return (
-            <div className="inline-block rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-bl-sm min-w-[160px] max-w-full">
+            <div className="rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-bl-sm min-w-[160px] max-w-[75%] w-fit [overflow-wrap:break-word]">
               <div className="flex items-center gap-1 mb-1 text-amber-500 whitespace-nowrap">
                 <StickyNote className="w-3 h-3 shrink-0" />
                 <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
@@ -2051,7 +2051,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-6 space-y-0.5 md:space-y-1 bg-background">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-8 md:py-6 space-y-0.5 md:space-y-1 bg-background">
         {messages.map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";
