@@ -524,7 +524,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             : "text-muted-foreground/50"
           )}>
             <span>{msg.timestamp}</span>
-            {msg.editedAt && <span className="text-[9px] italic">معدّلة</span>}
+            {msg.editedAt && <span className="text-[9px] italic">{msg.editedBy ? `عدّلها ${msg.editedBy}` : "معدّلة"}</span>}
             {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
           </span>
         );
