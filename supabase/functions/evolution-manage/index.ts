@@ -130,6 +130,8 @@ async function logToSystem(
 }
 
 serve(async (req) => {
+  console.log("[evolution-manage] Request received:", req.method, new URL(req.url).pathname);
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -138,6 +140,7 @@ serve(async (req) => {
 
   try {
     const authorization = req.headers.get("Authorization") || "";
+    console.log("[evolution-manage] Auth header present:", !!authorization, "length:", authorization.length);
     if (!authorization) return json({ error: "Unauthorized" }, 401);
 
     const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
