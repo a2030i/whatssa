@@ -1852,7 +1852,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4 bg-gradient-to-b from-secondary/15 to-secondary/30">
-        {messages.map((msg) => (
+        {messages.map((msg, msgIdx) => {
+          // Check if next message is from same sender to avoid repeating avatar
+          const nextMsg = messages[msgIdx + 1];
+          const showAvatar = !nextMsg || nextMsg.sender !== msg.sender || nextMsg.sender === "system";
+          return (
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
             msg.sender === "agent" ? "justify-start" : msg.sender === "system" ? "justify-center" : "justify-end"
@@ -1862,27 +1866,58 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {msg.text}
               </div>
             ) : (
-              <SwipeableMessageBubble
-                msg={msg}
-                conversation={conversation}
-                onReply={handleReply}
-                onEdit={onEditMessage ? handleStartEdit : undefined}
-                onDelete={onDeleteMessage ? handleDeleteMsg : undefined}
-                onImageClick={(src) => setLightboxSrc(src)}
-                hasAiConfig={hasAiConfig}
-                groupParticipants={isGroup ? groupParticipants : undefined}
-                onCopyLink={copyMessageLink}
-                onForward={(m) => setForwardMsg(m)}
-                onStar={(m) => {
-                  const starred = !(m as any).isStarred;
-                  onStarMessage?.(m.id, starred);
-                  toast.success(starred ? "⭐ تم تمييز الرسالة" : "تم إلغاء التمييز");
-                }}
-                translationText={translations[msg.id]}
-              />
+              <div className={cn("flex items-end gap-1.5", msg.sender === "agent" ? "flex-row" : "flex-row-reverse")}>
+                {/* Avatar */}
+                {showAvatar ? (
+                  msg.sender === "customer" ? (
+                    <div className="shrink-0 mb-1">
+                      {conversation.profilePic ? (
+                        <img src={conversation.profilePic} alt="" className="w-7 h-7 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-[10px] font-bold text-primary">
+                          {(conversation.customerName || "؟").slice(0, 1)}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="shrink-0 mb-1">
+                      <div className="w-7 h-7 rounded-full bg-secondary border border-border/40 flex items-center justify-center text-[10px] font-bold text-muted-foreground" title={msg.senderName || "موظف"}>
+                        {(msg.senderName || "م").slice(0, 1)}
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div className="w-7 shrink-0" />
+                )}
+                <div className="flex flex-col">
+                  <SwipeableMessageBubble
+                    msg={msg}
+                    conversation={conversation}
+                    onReply={handleReply}
+                    onEdit={onEditMessage ? handleStartEdit : undefined}
+                    onDelete={onDeleteMessage ? handleDeleteMsg : undefined}
+                    onImageClick={(src) => setLightboxSrc(src)}
+                    hasAiConfig={hasAiConfig}
+                    groupParticipants={isGroup ? groupParticipants : undefined}
+                    onCopyLink={copyMessageLink}
+                    onForward={(m) => setForwardMsg(m)}
+                    onStar={(m) => {
+                      const starred = !(m as any).isStarred;
+                      onStarMessage?.(m.id, starred);
+                      toast.success(starred ? "⭐ تم تمييز الرسالة" : "تم إلغاء التمييز");
+                    }}
+                    translationText={translations[msg.id]}
+                  />
+                  {/* Agent name label below bubble */}
+                  {msg.sender === "agent" && msg.senderName && showAvatar && conversation.conversationType !== "group" && (
+                    <span className="text-[10px] text-muted-foreground/70 mt-0.5 mr-1 font-medium">{msg.senderName}</span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
-        ))}
+          );
+        })}
         {/* Floating @ mention navigation button */}
         {isGroup && mentionMessageIds.length > 0 && (
           <div className="sticky bottom-2 flex justify-start px-2 z-20">
