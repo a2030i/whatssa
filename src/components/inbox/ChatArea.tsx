@@ -1753,7 +1753,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-card" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-primary" />
               )}
             </div>
             <div className="min-w-0 overflow-hidden">
