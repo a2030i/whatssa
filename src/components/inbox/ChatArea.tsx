@@ -1611,50 +1611,50 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-background">
-      {/* Header - elevated glass */}
-      <div className="shrink-0 border-b border-border/20 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="h-[60px] md:h-[72px] flex items-center justify-between px-3 md:px-5">
-          <div className="flex items-center gap-3 min-w-0">
-            <button className="w-9 h-9 md:w-10 md:h-10 rounded-xl hover:bg-secondary transition-all flex items-center justify-center shrink-0" onClick={onBack}>
-              <ArrowRight className="w-5 h-5 text-foreground" />
+      {/* Header */}
+      <div className="shrink-0 border-b border-border/15 bg-card/80 backdrop-blur-xl">
+        <div className="h-[56px] md:h-[64px] flex items-center justify-between px-3 md:px-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button className="w-8 h-8 md:w-9 md:h-9 rounded-lg hover:bg-secondary transition-all flex items-center justify-center shrink-0" onClick={onBack}>
+              <ArrowRight className="w-4.5 h-4.5 text-foreground" />
             </button>
             <button
-              className="flex items-center gap-3 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => onShowCustomerInfo?.()}
             >
             <div className="relative shrink-0">
               {groupPicture ? (
-                <img src={groupPicture} alt={conversation.customerName} className="w-11 h-11 md:w-12 md:h-12 rounded-2xl object-cover ring-2 ring-background shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                <img src={groupPicture} alt={conversation.customerName} className="w-10 h-10 rounded-full object-cover ring-1 ring-border/20" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
               ) : null}
-              <div className={cn("w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-base font-bold text-primary shadow-sm ring-2 ring-background", groupPicture ? "hidden" : "")}>
+              <div className={cn("w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-sm font-semibold text-muted-foreground", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card shadow-sm" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-card" />
               )}
             </div>
             <div className="min-w-0 overflow-hidden">
-              <div className="flex items-center gap-2">
-                <p className="font-bold text-sm truncate max-w-[120px] md:max-w-[250px]">{conversation.customerName}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-semibold text-[13px] truncate max-w-[120px] md:max-w-[250px]">{conversation.customerName}</p>
                 {isMetaChannel ? (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-semibold shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-medium shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
                     رسمي
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground font-semibold shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground font-medium shrink-0">
                     <Wifi className="w-2.5 h-2.5" />
                     غير رسمي
                   </span>
                 )}
                 {isBlocked && (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive font-semibold shrink-0">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive font-medium shrink-0">
                     <Ban className="w-2.5 h-2.5" />
                     محظور
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{conversation.lastSeen || conversation.customerPhone}</p>
+              <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{conversation.lastSeen || conversation.customerPhone}</p>
             </div>
             </button>
           </div>
