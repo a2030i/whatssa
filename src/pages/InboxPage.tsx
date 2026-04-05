@@ -584,6 +584,20 @@ const InboxPage = () => {
         ...prev,
         [convId]: (prev[convId] || []).filter((m) => m.id !== optimisticId),
       }));
+    } else {
+      // Auto-assign private conversations to the agent who replied
+      if (conversation.conversationType !== "group" && !conversation.assignedToId && profile?.id) {
+        const agentName = profile?.full_name || "موظف";
+        await supabase.from("conversations").update({
+          assigned_to: agentName,
+          assigned_to_id: profile.id,
+          assigned_at: new Date().toISOString(),
+        }).eq("id", convId);
+        // Update local state
+        setConversations(prev => prev.map(c => 
+          c.id === convId ? { ...c, assignedTo: agentName, assignedToId: profile.id } : c
+        ));
+      }
     }
   }, [conversations, templates]);
 
