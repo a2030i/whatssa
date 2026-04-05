@@ -1749,7 +1749,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               {groupPicture ? (
                 <img src={groupPicture} alt={conversation.customerName} className="w-10 h-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
               ) : null}
-              <div className={cn("w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground", groupPicture ? "hidden" : "")}>
+              <div className={cn("w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-medium text-primary-foreground", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
