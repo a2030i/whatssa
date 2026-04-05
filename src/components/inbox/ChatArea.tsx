@@ -756,11 +756,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               {/* Caption text in a mini bubble */}
               {hasText && (
                 <div className={cn(
-                  "inline-flex w-fit max-w-full flex-col rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed [overflow-wrap:break-word]",
+                  "inline-flex min-w-[80px] max-w-full flex-col rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed",
                   msg.sender === "agent"
                     ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                     : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
-                )}>
+                )} style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "normal", writingMode: "horizontal-tb" }}>
                   {renderText(textWithoutUrl)}
                   {translationEl}
                   {timestampEl}
