@@ -2569,10 +2569,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               {/* Note mode indicator */}
               <button
                 onClick={() => { setIsNoteMode(!isNoteMode); inputRef.current?.focus(); }}
-                className={cn("flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-lg transition-colors", isNoteMode ? "text-amber-600 bg-amber-500/10" : "text-muted-foreground/60 hover:text-muted-foreground")}
+                className={cn("flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-lg transition-colors", isNoteMode ? "text-orange-600 bg-orange-500/15 ring-1 ring-orange-400/30" : "text-orange-500/70 hover:text-orange-600 hover:bg-orange-500/10")}
               >
                 تمييز كملاحظة
-                <div className={cn("w-8 h-4.5 rounded-full relative transition-colors", isNoteMode ? "bg-amber-500" : "bg-muted")}>
+                <div className={cn("w-8 h-4.5 rounded-full relative transition-colors", isNoteMode ? "bg-orange-500" : "bg-orange-300/50")}>
                   <div className={cn("absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-all", isNoteMode ? "right-0.5" : "left-0.5")} />
                 </div>
               </button>
@@ -2594,7 +2594,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </ScheduleMessagePopover>
               )}
               {/* Link */}
-              <button onClick={copyConversationLink} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="نسخ رابط المحادثة">
+              <button onClick={copyConversationLink} className="p-1.5 rounded-lg hover:bg-orange-500/10 transition-colors text-orange-500 shrink-0" title="نسخ رابط المحادثة">
                 <Link2 className="w-4 h-4" />
               </button>
             </div>
