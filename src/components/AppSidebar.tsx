@@ -101,6 +101,13 @@ const AppSidebar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const displayRole = userRole === "super_admin"
+    ? "super_admin"
+    : userRole === "admin"
+      ? "admin"
+      : profile?.is_supervisor
+        ? "supervisor"
+        : "member";
   const isInsideInboxConversation = location.pathname === "/inbox" && new URLSearchParams(location.search).has("conversation");
 
   const navSections = buildGroups(isEcommerce, hasMetaApi);
