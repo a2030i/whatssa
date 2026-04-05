@@ -133,6 +133,16 @@ const TasksPage = () => {
     setConfigs((data as unknown as ForwardConfig[]) || []);
   };
 
+  const fetchCustomers = async () => {
+    if (!profile?.org_id) return;
+    const { data } = await supabase
+      .from("customers")
+      .select("id, name, phone")
+      .eq("org_id", profile.org_id)
+      .order("name");
+    setCustomers(data || []);
+  };
+
   const fetchAgents = async () => {
     let query = supabase
       .from("profiles")
