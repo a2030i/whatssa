@@ -452,17 +452,17 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         </div>
       )}
       <div className={cn(
-        "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+        "rounded-2xl px-4 py-2.5 text-sm leading-relaxed max-w-full",
         msg.sender === "agent" && !msg.isDeleted && msg.type !== "note" && "pb-3",
         msg.isDeleted
-          ? "bg-muted/50 border border-border/30 text-muted-foreground italic"
+          ? "bg-muted/40 border border-border/20 text-muted-foreground italic"
           : msg.type === "note"
-            ? "bg-amber-500/10 border border-amber-500/20 text-foreground rounded-bl-sm"
+            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-foreground rounded-bl-sm"
             : msg.sender === "agent"
-              ? "bg-card border border-border/10 shadow-[0_1px_4px_rgba(0,0,0,0.06)] text-foreground rounded-bl-sm"
+              ? "bg-card border border-border/20 shadow-sm text-foreground rounded-bl-sm"
               : msg.mentioned && msg.mentioned.length > 0
-                ? "bg-gradient-to-br from-primary/95 to-primary text-primary-foreground rounded-br-sm shadow-[0_2px_8px_rgba(0,0,0,0.1)] ring-2 ring-primary/40"
-                : "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground rounded-br-sm shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+                ? "bg-primary text-primary-foreground rounded-br-sm shadow-md ring-2 ring-primary/30"
+                : "bg-primary text-primary-foreground rounded-br-sm shadow-sm"
       )}>
         {msg.isDeleted ? (
           <div className="flex items-center gap-1.5 text-xs">
