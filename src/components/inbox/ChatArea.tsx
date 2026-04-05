@@ -465,7 +465,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 : "bg-primary text-primary-foreground rounded-br-sm shadow-sm"
       )}>
         {msg.isDeleted ? (
-          <div className="flex items-center gap-1.5 text-xs">
+          <div className="flex items-center gap-1.5 text-xs opacity-70">
             <XCircle className="w-3.5 h-3.5" />
             <span>تم حذف هذه الرسالة</span>
           </div>
