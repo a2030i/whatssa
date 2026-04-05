@@ -180,7 +180,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
               onClick={cycleSpeed}
               className={cn(
                 "text-[8px] font-bold px-1 py-0.5 rounded transition-colors",
-                isAgent ? "bg-muted text-muted-foreground hover:bg-accent" : "bg-white/15 text-white/80 hover:bg-white/25"
+                isAgent ? "bg-muted text-muted-foreground hover:bg-accent" : "bg-white/25 text-white hover:bg-white/35"
               )}
             >
               {playbackRate}x
