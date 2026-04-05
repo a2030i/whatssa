@@ -745,9 +745,15 @@ const TeamPage = () => {
                 <SelectTrigger className="bg-secondary border-0"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">مدير</SelectItem>
+                  <SelectItem value="supervisor">مشرف</SelectItem>
                   <SelectItem value="member">موظف</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground">
+                {formRole === "admin" && "يرى جميع المحادثات ويدير الفريق والإعدادات"}
+                {formRole === "supervisor" && "يرى محادثات فريقه كاملة بما فيها المسندة لأعضاء آخرين"}
+                {formRole === "member" && "يرى المحادثات المسندة له فقط"}
+              </p>
             </div>
             <div className="space-y-2">
               <Label className="text-xs">الفريق</Label>
@@ -761,13 +767,16 @@ const TeamPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            {/* Supervisor Toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-xs">مشرف فريق</Label>
-                <p className="text-[10px] text-muted-foreground">يرى جميع محادثات فريقه</p>
-              </div>
-              <Switch checked={formSupervisor} onCheckedChange={setFormSupervisor} />
+            <div className="space-y-2">
+              <Label className="text-xs">البريد الإلكتروني</Label>
+              <Input 
+                type="email" 
+                placeholder="أدخل البريد الجديد (اتركه فارغاً لعدم التغيير)" 
+                value={formEmail} 
+                onChange={(e) => setFormEmail(e.target.value)} 
+                className="bg-secondary border-0 text-sm"
+                dir="ltr"
+              />
             </div>
           </div>
           <DialogFooter className="gap-2">
