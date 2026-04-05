@@ -162,6 +162,8 @@ const WhatsAppFlowsPage = () => {
   const [flowType, setFlowType] = useState("form");
   const [successMessage, setSuccessMessage] = useState("شكراً لك! تم استلام ردك بنجاح ✅");
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [forwardToPhone, setForwardToPhone] = useState("");
+  const [forwardToGroupJid, setForwardToGroupJid] = useState("");
   const [screens, setScreens] = useState<FlowScreen[]>([{
     id: generateId(),
     title: "الشاشة الأولى",
