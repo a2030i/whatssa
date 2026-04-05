@@ -1853,43 +1853,47 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4 bg-gradient-to-b from-secondary/15 to-secondary/30">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-2 md:space-y-3" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, hsl(var(--secondary) / 0.3), transparent 70%)' }}>
         {messages.map((msg, msgIdx) => {
           // Check if next message is from same sender to avoid repeating avatar
           const nextMsg = messages[msgIdx + 1];
           const showAvatar = !nextMsg || nextMsg.sender !== msg.sender || nextMsg.sender === "system";
+          // Check if this is the first message in a group from same sender
+          const prevMsg = messages[msgIdx - 1];
+          const isFirstInGroup = !prevMsg || prevMsg.sender !== msg.sender || prevMsg.sender === "system";
           return (
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
-            msg.sender === "agent" ? "justify-start" : msg.sender === "system" ? "justify-center" : "justify-end"
+            msg.sender === "agent" ? "justify-start" : msg.sender === "system" ? "justify-center" : "justify-end",
+            !isFirstInGroup && "mt-0.5"
           )}>
             {msg.sender === "system" ? (
-              <div className="bg-muted/60 text-muted-foreground text-[11px] px-4 py-1.5 rounded-full font-medium shadow-sm">
+              <div className="bg-secondary/80 text-muted-foreground text-[11px] px-4 py-1.5 rounded-full font-medium shadow-sm backdrop-blur-sm">
                 {msg.text}
               </div>
             ) : (
-              <div className={cn("flex items-end gap-1.5", msg.sender === "agent" ? "flex-row" : "flex-row-reverse")}>
+              <div className={cn("flex items-end gap-2", msg.sender === "agent" ? "flex-row" : "flex-row-reverse")}>
                 {/* Avatar */}
                 {showAvatar ? (
                   msg.sender === "customer" ? (
                     <div className="shrink-0 mb-1">
                       {conversation.profilePic ? (
-                        <img src={conversation.profilePic} alt="" className="w-7 h-7 rounded-full object-cover" />
+                        <img src={conversation.profilePic} alt="" className="w-8 h-8 rounded-xl object-cover ring-1 ring-border/20 shadow-sm" />
                       ) : (
-                        <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-[10px] font-bold text-primary">
+                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary ring-1 ring-primary/10">
                           {(conversation.customerName || "؟").slice(0, 1)}
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="shrink-0 mb-1">
-                      <div className="w-7 h-7 rounded-full bg-secondary border border-border/40 flex items-center justify-center text-[10px] font-bold text-muted-foreground" title={msg.senderName || "موظف"}>
+                      <div className="w-8 h-8 rounded-xl bg-secondary border border-border/30 flex items-center justify-center text-[11px] font-bold text-muted-foreground shadow-sm" title={msg.senderName || "موظف"}>
                         {(msg.senderName || "م").slice(0, 1)}
                       </div>
                     </div>
                   )
                 ) : (
-                  <div className="w-7 shrink-0" />
+                  <div className="w-8 shrink-0" />
                 )}
                 <div className="flex flex-col">
                   <SwipeableMessageBubble
@@ -1912,7 +1916,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   />
                   {/* Agent name label below bubble */}
                   {msg.sender === "agent" && msg.senderName && showAvatar && conversation.conversationType !== "group" && (
-                    <span className="text-[10px] text-muted-foreground/70 mt-0.5 mr-1 font-medium">{msg.senderName}</span>
+                    <span className="text-[10px] text-muted-foreground/60 mt-0.5 mr-1 font-medium">{msg.senderName}</span>
                   )}
                 </div>
               </div>
