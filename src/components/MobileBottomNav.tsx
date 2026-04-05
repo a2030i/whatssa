@@ -24,6 +24,7 @@ const MobileBottomNav = () => {
     { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊" },
     { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
     { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "🚀" },
+    { label: "بث القروبات", icon: Megaphone, path: "/groups-broadcast", emoji: "📡" },
     { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰" },
     ...(hasMetaApi || isSuperAdmin ? [{ label: "القوالب", icon: FileText, path: "/templates", emoji: "📝" }] : []),
     { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡" },

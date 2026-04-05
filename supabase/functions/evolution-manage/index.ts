@@ -1519,6 +1519,7 @@ serve(async (req) => {
 
     // ── BROADCAST TO GROUPS ──
     if (action === "broadcast_groups") {
+      const groupDelay = (ms: number) => new Promise(r => setTimeout(r, ms));
       const groupIds = asStringArray(payload.group_ids);
       const msgText = asString(payload.message);
       const msgMediaUrl = asString(payload.media_url);
@@ -1565,7 +1566,7 @@ serve(async (req) => {
 
           // Delay between messages to avoid ban
           if (groupIds.indexOf(groupId) < groupIds.length - 1) {
-            await delay(delayMs);
+            await groupDelay(delayMs);
           }
         } catch (e) {
           results.push({ group_id: groupId, success: false, error: (e as Error).message });
