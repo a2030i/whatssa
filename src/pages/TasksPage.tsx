@@ -545,14 +545,6 @@ const TasksPage = () => {
                 </PopoverContent>
               </Popover>
             </div>
-                    .map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name || "بدون اسم"} — {c.phone}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
             <Button onClick={createTask} className="w-full">إنشاء المهمة</Button>
           </div>
         </DialogContent>
