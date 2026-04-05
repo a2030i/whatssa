@@ -666,6 +666,8 @@ serve(async (req) => {
     await logToSystem(admin, "warn", `مسار API غير موجود: ${method} /${path}`, { request_id: requestId }, token.org_id);
     return json({ error: `المسار ${path} غير موجود`, available_endpoints: [
       "POST /messages/send",
+      "GET /channels",
+      "GET /templates",
       "GET /customers", "POST /customers", "PUT /customers/:id", "DELETE /customers/:id",
       "GET /orders", "POST /orders", "PUT /orders/:id",
       "GET /conversations", "GET /conversations/:id/messages",
