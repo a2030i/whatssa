@@ -760,7 +760,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   msg.sender === "agent"
                     ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                     : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
-                )} style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
+                )} style={{ wordBreak: "normal", overflowWrap: "anywhere", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
                   {renderText(textWithoutUrl)}
                   {translationEl}
                   {timestampEl}
