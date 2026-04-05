@@ -17,6 +17,7 @@ export interface Conversation {
   notes?: string;
   lastSeen?: string;
   lastCustomerMessageAt?: string;
+  firstResponseAt?: string;
   conversationType?: "private" | "group" | "broadcast";
   channelType?: "meta_api" | "evolution";
   channelId?: string;

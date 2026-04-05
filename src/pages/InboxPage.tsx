@@ -162,6 +162,7 @@ const InboxPage = () => {
           tags: conversation.tags || [],
           notes: conversation.notes || "",
           lastCustomerMessageAt: conversation.last_message_at || undefined,
+          firstResponseAt: conversation.first_response_at || undefined,
           conversationType: (conversation.conversation_type as "private" | "group" | "broadcast") || "private",
           channelType,
           channelId: conversation.channel_id || undefined,
