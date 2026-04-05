@@ -1163,7 +1163,7 @@ serve(async (req) => {
                 ? "" // Skip — no real phone available for this LID participant
                 : participantRaw.replace("@s.whatsapp.net", "");
             const senderPushName = msg.pushName || "";
-            if (senderPhone && senderPhone.length > 5) {
+            if (senderPhone && senderPhone.length >= 7 && senderPhone.length <= 15) {
               const { data: existingParticipant } = await supabase
                 .from("customers")
                 .select("id, name")
