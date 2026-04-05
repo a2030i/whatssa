@@ -484,86 +484,148 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           </DropdownMenu>
         </div>
       )}
-      <div className={cn(
-        "rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed max-w-full",
-        msg.isDeleted
-          ? "bg-muted/30 border border-dashed border-border/20 text-muted-foreground italic"
-          : msg.type === "note"
-            ? "bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-bl-sm"
-            : msg.sender === "agent"
-              ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-              : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
-      )}>
-        {msg.isDeleted ? (
-          <div className="flex items-center gap-1.5 text-xs opacity-70">
-            <XCircle className="w-3.5 h-3.5" />
-            <span>تم حذف هذه الرسالة</span>
+      {/* Determine if message has media that should render outside bubble */}
+      {(() => {
+        const isMediaMsg = !msg.isDeleted && msg.type !== "note" && msg.type !== "location" && msg.type !== "contacts" && msg.type !== "poll" && msg.type !== "sticker";
+        const textMediaUrl = isMediaMsg ? getStorageUrlFromText(msg.text) : undefined;
+        const mediaUrl = isMediaMsg ? (msg.mediaUrl || textMediaUrl) : undefined;
+        let textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
+        const isPlaceholder = /^\[(audio|image|video|document|sticker)\]$/i.test(textWithoutUrl);
+        if (isPlaceholder) textWithoutUrl = "";
+        const hasMedia = !!mediaUrl || (isMediaMsg && msg.type === "audio" && !mediaUrl);
+        const hasMediaContent = hasMedia && (mediaUrl || msg.type === "audio");
+        const hasText = !!textWithoutUrl && textWithoutUrl.length > 0;
+        const isImageOrVideo = hasMediaContent && mediaUrl && (msg.type === "image" || msg.type === "video" || isImageUrl(mediaUrl));
+        const isDocument = hasMediaContent && mediaUrl && msg.type === "document";
+        const isAudio = msg.type === "audio";
+        const shouldSplitMedia = hasMediaContent && (isImageOrVideo || isDocument || isAudio);
+
+        // Group sender name (for groups)
+        const groupSenderEl = conversation.conversationType === "group" && msg.sender === "customer" && (() => {
+          const rawJid = msg.senderJid || "";
+          const jidIsLidBubble = rawJid.includes("@lid");
+          const rawPhone = msg.senderPhone || (!jidIsLidBubble ? normalizeDigits(rawJid) : "");
+          let resolvedName = msg.senderName || "";
+          if (rawPhone && groupParticipants?.length) {
+            const found = groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone))));
+            if (found?.name && found.name !== found.phone && found.name !== found.rawDigits && !found.name.startsWith("عضو")) {
+              resolvedName = found.name;
+            }
+          }
+          if (!resolvedName && rawPhone) resolvedName = `+${rawPhone}`;
+          return resolvedName || null;
+        })();
+
+        // Timestamp element
+        const timestampEl = (
+          <div className={cn("flex items-center gap-1.5 mt-1", msg.type === "note" ? "text-amber-500/50" : msg.sender === "agent" ? "text-muted-foreground/40" : "text-muted-foreground/40")}>
+            <span className="text-[10px] tracking-tight">{msg.timestamp}</span>
+            {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
+            {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
           </div>
-        ) : (
-          <>
-            {conversation.conversationType === "group" && msg.sender === "customer" && (() => {
-              // Resolve display name: try groupParticipants first, then fallback to senderName/phone
-              const rawJid = msg.senderJid || "";
-              const jidIsLidBubble = rawJid.includes("@lid");
-              const rawPhone = msg.senderPhone || (!jidIsLidBubble ? normalizeDigits(rawJid) : "");
-              let resolvedName = msg.senderName || "";
-              if (rawPhone && groupParticipants?.length) {
-                const found = groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone))));
-                if (found?.name && found.name !== found.phone && found.name !== found.rawDigits && !found.name.startsWith("عضو")) {
-                  resolvedName = found.name;
+        );
+
+        // Quoted message element
+        const quotedEl = msg.quoted && msg.quoted.text && (
+          <div
+            onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
+            className="rounded-lg px-3 py-2 mb-1.5 border-r-3 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity bg-secondary/60 border-primary/30"
+          >
+            {msg.quoted.sender_name && (
+              <p className="text-[11px] font-bold mb-0.5 text-primary">{msg.quoted.sender_name}</p>
+            )}
+            <p className="line-clamp-2 text-muted-foreground">{msg.quoted.text}</p>
+          </div>
+        );
+
+        // Text rendering function
+        const renderText = (text: string) => (
+          <p className="whitespace-pre-wrap leading-[1.65]">
+            {text.split(/(@\+?[\u0600-\u06FF\w\d]+)/g).map((part, i) => {
+              if (!part.startsWith("@")) return <span key={i}>{part}</span>;
+              const mentionRaw = part.slice(1).replace(/^\+/, "");
+              const isPhone = /^\d{6,}$/.test(mentionRaw);
+              let displayLabel = part;
+              if (isPhone) {
+                if (conversation.conversationType === "group" && groupParticipants?.length) {
+                  const participant = groupParticipants.find(p => p.phone === mentionRaw || p.rawDigits === mentionRaw);
+                  if (participant?.name && participant.name !== participant.phone && participant.name !== participant.rawDigits) {
+                    displayLabel = `@${participant.name}`;
+                  } else {
+                    displayLabel = `@+${mentionRaw}`;
+                  }
+                } else {
+                  displayLabel = `@+${mentionRaw}`;
                 }
               }
-              if (!resolvedName && rawPhone) resolvedName = `+${rawPhone}`;
-              return resolvedName ? (
-                 <div className="text-[10px] font-semibold mb-0.5 text-white/60">
-                   {resolvedName}
-                 </div>
-              ) : null;
-            })()}
-            {msg.quoted && msg.quoted.text && (
-              <div
-                onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
-                 className={cn(
-                   "rounded-lg px-3 py-2 mb-2 border-r-3 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity",
-                   msg.sender === "customer"
-                     ? "bg-white/12 border-white/40"
-                     : "bg-secondary/60 border-primary/30"
-                 )}>
-                {msg.quoted.sender_name && (
-                  <p className={cn(
-                    "text-[11px] font-bold mb-0.5",
-                    msg.sender === "customer" ? "text-white/90" : "text-primary"
-                  )}>
-                    {msg.quoted.sender_name}
-                  </p>
-                )}
-                <p className={cn(
-                  "line-clamp-2",
-                  msg.sender === "customer" ? "text-white/70" : "text-muted-foreground"
-                )}>
-                  {msg.quoted.text}
-                </p>
+              return (
+                <span key={i} className={cn(
+                  "font-semibold px-1 rounded",
+                  msg.sender === "customer"
+                    ? "bg-white/15 text-white"
+                    : "bg-primary/8 text-primary"
+                )}>{displayLabel}</span>
+              );
+            })}
+          </p>
+        );
+
+        // Translation element
+        const translationEl = translationText && msg.sender === "customer" && (
+          <div className="mt-1 pt-1 border-t border-border/20">
+            <p className="text-[11px] text-primary/80 whitespace-pre-wrap leading-relaxed">
+              <Languages className="w-3 h-3 inline-block ml-1 opacity-60" />
+              {translationText}
+            </p>
+          </div>
+        );
+
+        // === DELETED MESSAGE ===
+        if (msg.isDeleted) {
+          return (
+            <div className="rounded-2xl px-4 py-2.5 bg-muted/30 border border-dashed border-border/20 text-muted-foreground italic">
+              <div className="flex items-center gap-1.5 text-xs opacity-70">
+                <XCircle className="w-3.5 h-3.5" />
+                <span>تم حذف هذه الرسالة</span>
               </div>
-            )}
-            {msg.type === "template" && (
-              <div className="flex items-center gap-1 mb-1 text-primary">
-                <FileText className="w-3 h-3" />
-                <span className="text-[10px] font-semibold">قالب</span>
-              </div>
-            )}
-            {msg.type === "note" && (
+            </div>
+          );
+        }
+
+        // === NOTE MESSAGE ===
+        if (msg.type === "note") {
+          return (
+            <div className="rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-bl-sm">
               <div className="flex items-center gap-1 mb-1 text-amber-500">
                 <StickyNote className="w-3 h-3" />
                 <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
               </div>
-            )}
-            {/* Location message */}
-            {msg.type === "location" && msg.location && (
+              {quotedEl}
+              {renderText(msg.text)}
+              {timestampEl}
+            </div>
+          );
+        }
+
+        // === STICKER ===
+        if (msg.type === "sticker") {
+          return (
+            <div>
+              {mediaUrl && <ResolvedMedia url={mediaUrl} type="sticker" isAgent={msg.sender === "agent"} onImageClick={onImageClick} />}
+              {timestampEl}
+            </div>
+          );
+        }
+
+        // === LOCATION ===
+        if (msg.type === "location" && msg.location) {
+          return (
+            <div>
               <a
                 href={`https://www.google.com/maps?q=${msg.location.latitude},${msg.location.longitude}`}
                 target="_blank"
                 rel="noreferrer"
-                className="block mb-1 rounded-lg overflow-hidden border border-border/50 hover:opacity-90 transition-opacity"
+                className="block rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:opacity-90 transition-opacity"
               >
                 <img
                   src={`https://maps.googleapis.com/maps/api/staticmap?center=${msg.location.latitude},${msg.location.longitude}&zoom=15&size=280x150&markers=color:red|${msg.location.latitude},${msg.location.longitude}&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8`}
@@ -573,7 +635,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                     (e.target as HTMLImageElement).src = `https://staticmap.openstreetmap.de/staticmap.php?center=${msg.location!.latitude},${msg.location!.longitude}&zoom=15&size=280x150&markers=${msg.location!.latitude},${msg.location!.longitude},red-pushpin`;
                   }}
                 />
-                <div className="px-2.5 py-1.5 flex items-center gap-1.5">
+                <div className="px-2.5 py-1.5 bg-card flex items-center gap-1.5">
                   <MapPin className="w-3 h-3 text-destructive shrink-0" />
                   <div>
                     {msg.location.name && <p className="text-[11px] font-semibold">{msg.location.name}</p>}
@@ -582,12 +644,18 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   </div>
                 </div>
               </a>
-            )}
-            {/* Contacts message */}
-            {msg.type === "contacts" && msg.contacts && msg.contacts.length > 0 && (
+              {timestampEl}
+            </div>
+          );
+        }
+
+        // === CONTACTS ===
+        if (msg.type === "contacts" && msg.contacts && msg.contacts.length > 0) {
+          return (
+            <div>
               <div className="space-y-1.5 mb-1">
                 {msg.contacts.map((c, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-background/30 rounded-lg px-2.5 py-1.5">
+                  <div key={i} className="flex items-center gap-2 bg-card rounded-xl px-3 py-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                       <Contact className="w-4 h-4 text-primary" />
                     </div>
@@ -599,93 +667,124 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   </div>
                 ))}
               </div>
-            )}
-            {/* Poll message */}
-            {msg.type === "poll" && msg.poll && (
-              <div className="mb-1 space-y-1.5">
-                <p className="text-xs font-bold flex items-center gap-1">📊 {msg.poll.question}</p>
-                {msg.poll.options.map((opt) => {
-                  const votes = msg.poll.votes?.[opt.id]?.length || 0;
-                  return (
-                    <div key={opt.id} className="flex items-center gap-2 bg-background/30 rounded-lg px-2.5 py-1.5">
-                      <span className="text-xs flex-1">{opt.title}</span>
-                      {votes > 0 && <Badge variant="secondary" className="text-[9px] px-1.5">{votes}</Badge>}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {/* Regular content rendering */}
-            {msg.type !== "location" && msg.type !== "contacts" && msg.type !== "sticker" && msg.type !== "poll" && (() => {
-              const textMediaUrl = getStorageUrlFromText(msg.text);
-              const mediaUrl = msg.mediaUrl || textMediaUrl;
-              let textWithoutUrl = textMediaUrl ? msg.text.replace(`\n${textMediaUrl}`, "").trim() : msg.text;
-              // Hide placeholder content like [audio], [image], [video], [document]
-              const isPlaceholder = /^\[(audio|image|video|document|sticker)\]$/i.test(textWithoutUrl);
-              if (isPlaceholder) textWithoutUrl = "";
-              return (
-                <>
-                  {mediaUrl && <ResolvedMedia url={mediaUrl} type={msg.type} isAgent={msg.sender === "agent"} onImageClick={onImageClick} />}
-                  {!mediaUrl && msg.type === "audio" && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                      <Mic className="w-3.5 h-3.5" />
-                      <span>رسالة صوتية</span>
-                    </div>
-                  )}
-                  {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
-                    <p className="whitespace-pre-wrap leading-[1.65]">
-                      {textWithoutUrl.split(/(@\+?[\u0600-\u06FF\w\d]+)/g).map((part, i) => {
-                        if (!part.startsWith("@")) return <span key={i}>{part}</span>;
-                        // Strip @ and optional + to get the raw value
-                        const mentionRaw = part.slice(1).replace(/^\+/, "");
-                        const isPhone = /^\d{6,}$/.test(mentionRaw);
-                        let displayLabel = part;
-                        if (isPhone) {
-                          // Try to resolve from group participants
-                          if (conversation.conversationType === "group" && groupParticipants?.length) {
-                            const participant = groupParticipants.find(p => p.phone === mentionRaw || p.rawDigits === mentionRaw);
-                            if (participant?.name && participant.name !== participant.phone && participant.name !== participant.rawDigits) {
-                              displayLabel = `@${participant.name}`;
-                            } else {
-                              // Show as formatted phone
-                              displayLabel = `@+${mentionRaw}`;
-                            }
-                          } else {
-                            displayLabel = `@+${mentionRaw}`;
-                          }
-                        }
-                        return (
-                          <span key={i} className={cn(
-                             "font-semibold px-1 rounded",
-                             msg.sender === "customer"
-                               ? "bg-white/15 text-white"
-                               : "bg-primary/8 text-primary"
-                           )}>{displayLabel}</span>
-                        );
-                      })}
-                    </p>
-                  )}
-                </>
-              );
-            })()}
-            {/* Inline auto-translation */}
-            {translationText && msg.sender === "customer" && (
-              <div className="mt-1 pt-1 border-t border-border/30">
-                <p className="text-[11px] text-primary/80 whitespace-pre-wrap leading-relaxed">
-                  <Languages className="w-3 h-3 inline-block ml-1 opacity-60" />
-                  {translationText}
-                </p>
-              </div>
-            )}
-            {/* Timestamp + status */}
-            <div className={cn("flex items-center gap-1.5 mt-1.5", msg.type === "note" ? "text-amber-500/50" : msg.sender === "agent" ? "text-muted-foreground/40" : "text-white/50")}>
-              <span className="text-[10px] tracking-tight">{msg.timestamp}</span>
-              {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
-              {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
+              {timestampEl}
             </div>
-          </>
-        )}
-      </div>
+          );
+        }
+
+        // === POLL ===
+        if (msg.type === "poll" && msg.poll) {
+          return (
+            <div className="bg-card rounded-xl p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              <p className="text-xs font-bold flex items-center gap-1 mb-2">📊 {msg.poll.question}</p>
+              {msg.poll.options.map((opt) => {
+                const votes = msg.poll.votes?.[opt.id]?.length || 0;
+                return (
+                  <div key={opt.id} className="flex items-center gap-2 bg-secondary/50 rounded-lg px-2.5 py-1.5 mb-1">
+                    <span className="text-xs flex-1">{opt.title}</span>
+                    {votes > 0 && <Badge variant="secondary" className="text-[9px] px-1.5">{votes}</Badge>}
+                  </div>
+                );
+              })}
+              {timestampEl}
+            </div>
+          );
+        }
+
+        // === MEDIA + TEXT MESSAGES ===
+        // Media renders OUTSIDE the bubble, text (if any) in a bubble below
+        if (shouldSplitMedia) {
+          return (
+            <div className="flex flex-col gap-1">
+              {/* Group sender label */}
+              {groupSenderEl && (
+                <span className="text-[10px] font-semibold text-muted-foreground/60 mb-0.5">{groupSenderEl}</span>
+              )}
+              {/* Quoted message */}
+              {quotedEl}
+              {/* Media - standalone, no bubble */}
+              {isImageOrVideo && mediaUrl && msg.type !== "video" && (
+                <ResolvedMedia url={mediaUrl} type={msg.type} isAgent={msg.sender === "agent"} onImageClick={onImageClick} />
+              )}
+              {isImageOrVideo && mediaUrl && msg.type === "video" && (
+                <ResolvedMedia url={mediaUrl} type="video" isAgent={msg.sender === "agent"} onImageClick={onImageClick} />
+              )}
+              {isDocument && mediaUrl && (
+                <ResolvedMedia url={mediaUrl} type="document" isAgent={msg.sender === "agent"} onImageClick={onImageClick} />
+              )}
+              {isAudio && mediaUrl && (
+                <ResolvedMedia url={mediaUrl} type="audio" isAgent={msg.sender === "agent"} onImageClick={onImageClick} />
+              )}
+              {isAudio && !mediaUrl && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                  <Mic className="w-3.5 h-3.5" />
+                  <span>رسالة صوتية</span>
+                </div>
+              )}
+              {/* Caption text in a mini bubble */}
+              {hasText && (
+                <div className={cn(
+                  "rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed",
+                  msg.sender === "agent"
+                    ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                    : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
+                )}>
+                  {renderText(textWithoutUrl)}
+                  {translationEl}
+                  {timestampEl}
+                </div>
+              )}
+              {/* Timestamp if no text caption */}
+              {!hasText && timestampEl}
+            </div>
+          );
+        }
+
+        // === PURE TEXT MESSAGE (no media) ===
+        return (
+          <div className={cn(
+            "rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed max-w-full",
+            msg.sender === "agent"
+              ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+              : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
+          )}>
+            {groupSenderEl && (
+              <div className="text-[10px] font-semibold mb-0.5 text-white/60">{groupSenderEl}</div>
+            )}
+            {quotedEl && msg.sender === "customer" && (
+              <div
+                onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
+                className="rounded-lg px-3 py-2 mb-1.5 border-r-3 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity bg-white/12 border-white/40"
+              >
+                {msg.quoted?.sender_name && (
+                  <p className="text-[11px] font-bold mb-0.5 text-white/90">{msg.quoted.sender_name}</p>
+                )}
+                <p className="line-clamp-2 text-white/70">{msg.quoted?.text}</p>
+              </div>
+            )}
+            {quotedEl && msg.sender === "agent" && (
+              <div
+                onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
+                className="rounded-lg px-3 py-2 mb-1.5 border-r-3 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity bg-secondary/60 border-primary/30"
+              >
+                {msg.quoted?.sender_name && (
+                  <p className="text-[11px] font-bold mb-0.5 text-primary">{msg.quoted.sender_name}</p>
+                )}
+                <p className="line-clamp-2 text-muted-foreground">{msg.quoted?.text}</p>
+              </div>
+            )}
+            {msg.type === "template" && (
+              <div className="flex items-center gap-1 mb-1 text-white/70">
+                <FileText className="w-3 h-3" />
+                <span className="text-[10px] font-semibold">قالب</span>
+              </div>
+            )}
+            {renderText(textWithoutUrl)}
+            {translationEl}
+            {timestampEl}
+          </div>
+        );
+      })()}
       {/* Reactions badge - WhatsApp style floating below bubble */}
       {msg.reactions && msg.reactions.length > 0 && (() => {
         // Group reactions by emoji with count
