@@ -12,7 +12,7 @@ interface MergeConversationDialogProps {
   sourceConversationId: string;
   sourceCustomerPhone: string;
   sourceCustomerName: string;
-  onMerged?: () => void;
+  onMerged?: (targetConversationId: string) => void;
 }
 
 const MergeConversationDialog = ({ open, onOpenChange, sourceConversationId, sourceCustomerPhone, sourceCustomerName, onMerged }: MergeConversationDialogProps) => {
@@ -77,8 +77,11 @@ const MergeConversationDialog = ({ open, onOpenChange, sourceConversationId, sou
 
       await supabase.from("conversations").update({
         status: "closed",
+        is_archived: true,
         closed_at: new Date().toISOString(),
         last_message: `تم دمج المحادثة مع ${target.customer_name || target.customer_phone}`,
+        unread_count: 0,
+        unread_mention_count: 0,
       }).eq("id", sourceConversationId);
 
       await supabase.from("messages").insert({
@@ -98,7 +101,7 @@ const MergeConversationDialog = ({ open, onOpenChange, sourceConversationId, sou
 
       toast.success("✅ تم دمج المحادثات بنجاح");
       onOpenChange(false);
-      onMerged?.();
+      onMerged?.(target.id);
     } catch (e: any) {
       toast.error("فشل دمج المحادثات: " + (e.message || ""));
     }
