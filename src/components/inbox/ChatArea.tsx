@@ -341,7 +341,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       onTouchStart={canReply ? swipe.onTouchStart : undefined}
       onTouchMove={canReply ? swipe.onTouchMove : undefined}
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
-      className="group relative w-fit max-w-[88%] md:max-w-[72%] lg:max-w-[68%]"
+      className="group relative max-w-[88%] md:max-w-[72%] lg:max-w-[68%]"
       data-message-id={msg.id}
       data-wa-message-id={msg.waMessageId || undefined}
     >
@@ -618,7 +618,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === NOTE MESSAGE ===
         if (msg.type === "note") {
           return (
-            <div className="rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-bl-sm min-w-[160px]">
+            <div className="inline-block rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-bl-sm min-w-[160px] max-w-full">
               <div className="flex items-center gap-1 mb-1 text-amber-500 whitespace-nowrap">
                 <StickyNote className="w-3 h-3 shrink-0" />
                 <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
@@ -718,7 +718,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // Media renders OUTSIDE the bubble, text (if any) in a bubble below
         if (shouldSplitMedia) {
           return (
-            <div className="flex flex-col gap-1">
+            <div className="inline-flex flex-col gap-1 max-w-full">
               {/* Group sender label */}
               {groupSenderEl && (
                 <span className="text-[10.5px] font-bold text-muted-foreground/70">{groupSenderEl}</span>
@@ -754,7 +754,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               {/* Caption text in a mini bubble */}
               {hasText && (
                 <div className={cn(
-                  "rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
+                  "inline-block rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
                   msg.sender === "agent"
                     ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                     : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
@@ -773,7 +773,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === PURE TEXT MESSAGE (no media) ===
         return (
           <div className={cn(
-            "rounded-2xl px-4 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
+            "inline-block rounded-2xl px-4 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
             msg.sender === "agent"
               ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
               : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
@@ -2165,7 +2165,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 ) : (
                   <div className="w-8 shrink-0" />
                 )}
-                <div className="flex flex-col">
+                <div className={cn("flex flex-col w-fit max-w-full", msg.sender === "agent" ? "items-start" : "items-end")}>
                   <SwipeableMessageBubble
                     msg={msg}
                     conversation={conversation}
