@@ -2480,7 +2480,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
-                className={cn("flex-1 border-0 rounded-2xl h-11 md:h-12 text-sm", isNoteMode ? "bg-amber-500/5 ring-1 ring-amber-500/20" : "bg-secondary/50 focus:bg-secondary focus:ring-1 focus:ring-primary/20 transition-all")}
+                className={cn("flex-1 border-0 rounded-full h-11 md:h-12 text-sm px-5", isNoteMode ? "bg-amber-500/5 ring-1 ring-amber-500/15" : "bg-muted/60 focus:bg-muted focus:ring-1 focus:ring-border transition-all")}
               />
             )}
             {(isNoteMode || !windowExpired) && (
