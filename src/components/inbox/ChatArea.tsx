@@ -2500,7 +2500,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     onScheduled={() => {}}
                     onClearInput={() => setInputText("")}
                   >
-                    <button className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 bg-muted hover:bg-muted/80 transition-all" title="جدولة الإرسال">
+                    <button className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 bg-muted hover:bg-muted/80 transition-all" title="جدولة الإرسال">
                       <Clock className="w-4 h-4 text-muted-foreground" />
                     </button>
                   </ScheduleMessagePopover>
