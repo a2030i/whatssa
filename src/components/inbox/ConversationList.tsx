@@ -135,27 +135,26 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const allAgents = useMemo(() => [...new Set(conversations.map((c) => c.assignedTo))], [conversations]);
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
 
+  const myId = profile?.id;
   const counts = useMemo(() => ({
     all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
-    active: conversations.filter(c => c.status === "active" && !c.isArchived).length,
+    mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId).length,
+    needsReply: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId).length,
     unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
-    assigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && !!c.assignedTo && c.assignedTo !== "غير معيّن").length,
-    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
     waiting: conversations.filter(c => c.status === "waiting" && !c.isArchived).length,
+    mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
+    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
     closed: conversations.filter(c => c.status === "closed").length,
-    pinned: conversations.filter(c => c.isPinned && !c.isArchived).length,
     archived: conversations.filter(c => c.isArchived).length,
-    private: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.conversationType || c.conversationType === "private")).length,
-    group: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
-    broadcast: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "broadcast").length,
-  }), [conversations]);
+  }), [conversations, myId]);
 
   const quickFilters: QuickFilter[] = [
-    { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
-    { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
+    { id: "mine", label: "محادثاتي", icon: User, count: counts.mine },
+    { id: "needsReply", label: "بحاجة رد", icon: Clock, count: counts.needsReply },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
-    { id: "assigned", label: "معيّنة", icon: User, count: counts.assigned },
-    { id: "waiting", label: "بانتظار", icon: Clock, count: counts.waiting },
+    { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
+    { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions },
+    { id: "waiting", label: "بانتظار", icon: Eye, count: counts.waiting },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived },
   ];
