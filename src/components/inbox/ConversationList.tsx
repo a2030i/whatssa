@@ -50,9 +50,9 @@ interface ConversationListProps {
 }
 
 const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive }: ConversationListProps) => {
-  const { orgId } = useAuth();
+  const { orgId, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeQuickFilter, setActiveQuickFilter] = useState("all");
+  const [activeQuickFilter, setActiveQuickFilter] = useState("mine");
   const [agentFilter, setAgentFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -135,27 +135,26 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const allAgents = useMemo(() => [...new Set(conversations.map((c) => c.assignedTo))], [conversations]);
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
 
+  const myId = profile?.id;
   const counts = useMemo(() => ({
     all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
-    active: conversations.filter(c => c.status === "active" && !c.isArchived).length,
+    mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId).length,
+    needsReply: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId).length,
     unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
-    assigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && !!c.assignedTo && c.assignedTo !== "غير معيّن").length,
-    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
     waiting: conversations.filter(c => c.status === "waiting" && !c.isArchived).length,
+    mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
+    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
     closed: conversations.filter(c => c.status === "closed").length,
-    pinned: conversations.filter(c => c.isPinned && !c.isArchived).length,
     archived: conversations.filter(c => c.isArchived).length,
-    private: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.conversationType || c.conversationType === "private")).length,
-    group: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
-    broadcast: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "broadcast").length,
-  }), [conversations]);
+  }), [conversations, myId]);
 
   const quickFilters: QuickFilter[] = [
-    { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
-    { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
+    { id: "mine", label: "محادثاتي", icon: User, count: counts.mine },
+    { id: "needsReply", label: "بحاجة رد", icon: Clock, count: counts.needsReply },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
-    { id: "assigned", label: "معيّنة", icon: User, count: counts.assigned },
-    { id: "waiting", label: "بانتظار", icon: Clock, count: counts.waiting },
+    { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
+    { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions },
+    { id: "waiting", label: "بانتظار", icon: Eye, count: counts.waiting },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived },
   ];
@@ -170,9 +169,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       if (activeQuickFilter !== "archived" && conv.isArchived) return false;
       if (activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.status === "closed") return false;
       switch (activeQuickFilter) {
-        case "active": if (conv.status !== "active") return false; break;
+        case "mine": if (conv.assignedToId !== myId) return false; break;
+        case "needsReply": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
-        case "assigned": if (!conv.assignedTo || conv.assignedTo === "غير معيّن") return false; break;
+        case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
         case "unread": if (conv.unread <= 0) return false; break;
         case "waiting": if (conv.status !== "waiting") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
