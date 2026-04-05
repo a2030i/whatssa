@@ -201,35 +201,62 @@ const AdminEmergency = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Phone className="w-4 h-4 text-destructive" />
-              رقم الطوارئ للتنبيهات
+              إعدادات تنبيه الطوارئ
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <p className="text-[10px] text-muted-foreground">
-              سيتم إرسال تنبيه واتساب فوري لهذا الرقم عند تعطل القاعدة الخارجية
+              سيتم إرسال تنبيه واتساب فوري عند تعطل القاعدة الخارجية
             </p>
-            <div className="flex gap-2">
-              <Input
-                value={emergencyPhone}
-                onChange={e => setEmergencyPhone(e.target.value)}
-                placeholder="966500000000"
-                className="h-9 text-sm font-mono"
-                dir="ltr"
-              />
-              <Button size="sm" variant="outline" className="h-9" onClick={saveEmergencyPhone} disabled={savingPhone}>
-                <Save className="w-3 h-3" />
-              </Button>
-            </div>
-            {emergencyPhone && (
-              <div className="bg-primary/5 rounded-lg p-2 text-xs text-primary font-medium flex items-center gap-2">
-                <Phone className="w-3 h-3" />
-                التنبيهات مفعّلة للرقم: {emergencyPhone}
+
+            {/* رقم المستقبل */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">رقم المستقبل</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={emergencyPhone}
+                  onChange={e => setEmergencyPhone(e.target.value)}
+                  placeholder="966500000000"
+                  className="h-9 text-sm font-mono"
+                  dir="ltr"
+                />
+                <Button size="sm" variant="outline" className="h-9" onClick={saveEmergencyPhone} disabled={savingPhone}>
+                  <Save className="w-3 h-3" />
+                </Button>
               </div>
-            )}
-            {!emergencyPhone && (
+            </div>
+
+            {/* رقم الإرسال (Instance) */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">الرقم المرسل منه</Label>
+              <div className="flex gap-2">
+                <Select value={alertInstance} onValueChange={setAlertInstance}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="اختر رقم الإرسال" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {evolutionChannels.map(ch => (
+                      <SelectItem key={ch.instance} value={ch.instance}>
+                        {ch.phone} {ch.name ? `(${ch.name})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" className="h-9" onClick={saveAlertInstance} disabled={savingInstance}>
+                  <Save className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+
+            {emergencyPhone && alertInstance ? (
+              <div className="bg-primary/5 rounded-lg p-2 text-xs text-primary font-medium flex items-center gap-2">
+                <CheckCircle className="w-3 h-3" />
+                التنبيهات مفعّلة — المستقبل: {emergencyPhone}
+              </div>
+            ) : (
               <div className="bg-yellow-500/10 rounded-lg p-2 text-xs text-yellow-600 font-medium flex items-center gap-2">
                 <AlertTriangle className="w-3 h-3" />
-                لم يتم تعيين رقم طوارئ — لن تصلك تنبيهات
+                {!emergencyPhone ? "لم يتم تعيين رقم المستقبل" : "لم يتم اختيار رقم الإرسال"}
               </div>
             )}
           </CardContent>
