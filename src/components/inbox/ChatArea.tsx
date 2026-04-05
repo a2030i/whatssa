@@ -2345,10 +2345,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Input Area */}
       {!isRecording && conversation.status !== "closed" && (
-        <div className={cn("shrink-0 bg-card/90 backdrop-blur-xl border-t border-border p-3 md:p-4", isNoteMode ? "border-t border-amber-500/20" : isBlocked ? "opacity-60" : "")} style={{ boxShadow: '0 -1px 2px rgba(0,0,0,0.03)' }}>
+        <div className={cn("shrink-0 bg-card border-t", isNoteMode ? "border-amber-500/30" : "border-border/40")} style={{ boxShadow: '0 -1px 3px rgba(0,0,0,0.04)' }}>
           {/* Reply Preview Bar */}
           {replyTo && (
-            <div className="flex items-center gap-2 mb-2 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
+            <div className="flex items-center gap-2 mx-3 mt-2.5 bg-secondary/60 rounded-lg p-2.5 border-r-4 border-primary animate-fade-in">
               <Reply className="w-4 h-4 text-primary shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-bold text-primary truncate">
@@ -2361,184 +2361,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </button>
             </div>
           )}
-          {/* Tool buttons row */}
-          <div className="flex items-center gap-px md:gap-0.5 mb-1.5 md:mb-2 overflow-x-auto pb-0.5 scrollbar-hide">
-            {(!windowExpired || isNoteMode) && (
-              <>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
-                      <Smile className="w-4 h-4" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-2" side="top" align="start">
-                    <div className="grid grid-cols-8 gap-1">
-                      {emojis.map((e) => (
-                        <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
-                          {e}
-                        </button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                {!isNoteMode && (
-                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => fileInputRef.current?.click()}>
-                    <Paperclip className="w-4 h-4" />
-                  </button>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={allowedFileTypes}
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-                {/* Hidden input for group picture change */}
-                <input
-                  ref={groupPicInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleChangeGroupPicture(file);
-                    if (e.target) e.target.value = "";
-                  }}
-                />
-                {!isNoteMode && (
-                  <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
-                    <Zap className="w-4 h-4" />
-                  </button>
-                )}
-              </>
-            )}
-            <button
-              onClick={() => { setIsNoteMode(!isNoteMode); inputRef.current?.focus(); }}
-              className={cn("p-1.5 rounded-lg transition-colors shrink-0", isNoteMode ? "bg-amber-500/10 text-amber-500" : "hover:bg-secondary text-muted-foreground")}
-              title="ملاحظة داخلية"
-            >
-              <StickyNote className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => {
-                setInputText((prev) => prev + "@");
-                setShowMentions(true);
-                setMentionFilter("");
-                // In private chats, auto-switch to note mode. In groups, keep current mode
-                if (!isGroup && !isNoteMode) setIsNoteMode(true);
-                inputRef.current?.focus();
-              }}
-              className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
-              title={isGroup && !isNoteMode ? "اذكر عضو @" : "اذكر موظف @"}
-            >
-              <AtSign className="w-4 h-4" />
-            </button>
-            {!isNoteMode && isMetaChannel && (
-              <button onClick={() => setShowTemplates(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال قالب">
-                <FileText className="w-4 h-4" />
-              </button>
-            )}
-            {/* Send Product from Catalog — Meta */}
-            {!isNoteMode && !windowExpired && isMetaChannel && hasProducts && (
-              <button
-                onClick={() => setShowProductPicker(true)}
-                className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
-                title="إرسال منتج من الكتالوج"
-              >
-                <ShoppingBag className="w-4 h-4" />
-              </button>
-            )}
-            {/* Send Product — Evolution (internal products) */}
-            {!isNoteMode && !isMetaChannel && hasProducts && (
-              <button
-                onClick={() => setShowInternalProductPicker(true)}
-                className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
-                title="إرسال منتج"
-              >
-                <ShoppingBag className="w-4 h-4" />
-              </button>
-            )}
-            {/* Send Poll — Evolution only */}
-            {!isNoteMode && isEvolutionChannel && (
-              <button onClick={() => setShowPollCreator(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال استطلاع">
-                <BarChart3 className="w-4 h-4" />
-              </button>
-            )}
-            {/* Send Contact Card */}
-            {!isNoteMode && (
-              <button onClick={() => setShowContactCard(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال بطاقة اتصال">
-                <Contact className="w-4 h-4" />
-              </button>
-            )}
-            {/* AI Suggest Replies */}
-            {hasAiConfig && !isNoteMode && !windowExpired && (
-              <button
-                onClick={async () => {
-                  setAiLoading(true);
-                  setAiSuggestions([]);
-                  try {
-                    const { data, error } = await invokeCloud("ai-features", {
-                      body: {
-                        action: "suggest_replies",
-                        conversation_messages: messages.slice(-5).map(m => ({ sender: m.sender, content: m.text })),
-                        customer_name: conversation.customerName,
-                      },
-                    });
-                    if (data?.suggestions?.length > 0) {
-                      setAiSuggestions(data.suggestions);
-                    } else if (data?.error === "ai_not_configured") {
-                      toast.error("لم يتم إعداد مزود AI — اذهب للإعدادات");
-                    }
-                  } catch { toast.error("فشل جلب الاقتراحات"); }
-                  setAiLoading(false);
-                }}
-                disabled={aiLoading}
-                className={cn("p-1.5 rounded-lg transition-colors shrink-0", aiLoading ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
-                title="اقتراحات AI"
-              >
-                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              </button>
-            )}
-            {/* AI Summarize */}
-            {hasAiConfig && (
-            <button
-              onClick={async () => {
-                setAiLoading(true);
-                try {
-                  const { data } = await invokeCloud("ai-features", {
-                    body: { action: "summarize", conversation_id: conversation.id },
-                  });
-                  if (data?.summary) {
-                    setAiSummary(data.summary);
-                    setShowSummary(true);
-                  } else if (data?.error === "ai_not_configured") {
-                    toast.error("لم يتم إعداد مزود AI — فعّل ميزة التلخيص من الإعدادات");
-                  }
-                } catch { toast.error("فشل التلخيص"); }
-                setAiLoading(false);
-              }}
-              disabled={aiLoading}
-              className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
-              title="تلخيص المحادثة (AI)"
-            >
-              <Brain className="w-4 h-4" />
-            </button>
-            )}
-            {/* Auto-Translate Toggle */}
-            {hasAiConfig && (
-              <button
-                onClick={() => setAutoTranslate(!autoTranslate)}
-                className={cn("p-1.5 rounded-lg transition-colors shrink-0", autoTranslate ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
-                title={autoTranslate ? "إيقاف الترجمة التلقائية" : "تفعيل الترجمة التلقائية"}
-              >
-                <Languages className="w-4 h-4" />
-              </button>
-            )}
-          </div>
 
           {/* AI Suggestions Row */}
           {aiSuggestions.length > 0 && (
-            <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
+            <div className="flex gap-1.5 px-3 pt-2 overflow-x-auto pb-1">
               <span className="flex items-center gap-1 text-[10px] text-primary font-medium shrink-0 px-1">
                 <Sparkles className="w-3 h-3" /> AI:
               </span>
@@ -2559,9 +2385,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
           {/* File Preview */}
           {imagePreview && (
-            <div className="relative mb-2 inline-block">
+            <div className="relative mx-3 mt-2 inline-block">
               {imagePreview.file.type.startsWith("image/") ? (
-                <img src={imagePreview.url} alt="معاينة" className="max-h-32 rounded-lg border border-border object-cover" />
+                <img src={imagePreview.url} alt="معاينة" className="max-h-28 rounded-lg border border-border object-cover" />
               ) : imagePreview.file.type.startsWith("video/") ? (
                 <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2 border border-border">
                   <Video className="w-5 h-5 text-primary" />
@@ -2573,63 +2399,222 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   <span className="text-xs font-medium truncate max-w-[200px]">{imagePreview.file.name}</span>
                 </div>
               )}
-              <button
-                onClick={cancelImagePreview}
-                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md"
-              >
+              <button onClick={cancelImagePreview} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md">
                 <X className="w-3 h-3" />
               </button>
             </div>
           )}
 
-          {/* Input + send row */}
-          <div className="flex items-center gap-2">
+          {/* Text Input Area */}
+          <div className={cn("mx-3 mt-2.5 rounded-2xl border", isNoteMode ? "border-amber-500/20 bg-amber-500/3" : "border-border/40 bg-background")}>
             {windowExpired && !isNoteMode ? (
-              <button onClick={() => setShowTemplates(true)} className="flex-1 text-right text-sm text-muted-foreground bg-secondary rounded-lg px-4 py-2.5 hover:bg-accent transition-colors">
+              <button onClick={() => setShowTemplates(true)} className="w-full text-right text-sm text-muted-foreground px-4 py-3 hover:bg-accent/50 transition-colors rounded-2xl">
                 اختر قالباً لإرسال رسالة...
               </button>
             ) : (
               <Input
                 ref={inputRef}
-                placeholder={imagePreview ? "أضف تعليقاً (اختياري)..." : isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "اكتب رسالة..."}
+                placeholder={imagePreview ? "أضف تعليقاً (اختياري)..." : isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "أدخل الرسالة..."}
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
-                className={cn("flex-1 border-0 rounded-full h-11 md:h-12 text-sm px-5", isNoteMode ? "bg-amber-500/5 ring-1 ring-amber-500/15" : "bg-muted/60 focus:bg-muted focus:ring-1 focus:ring-border transition-all")}
+                className="border-0 bg-transparent h-10 text-sm px-4 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             )}
+
+            {/* Tools Row inside input box */}
+            {(!windowExpired || isNoteMode) && (
+              <div className="flex items-center gap-0 px-2 pb-1.5 border-t border-border/10">
+                {!isNoteMode && (
+                  <>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
+                          <Smile className="w-4 h-4" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-2" side="top" align="start">
+                        <div className="grid grid-cols-8 gap-1">
+                          {emojis.map((e) => (
+                            <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
+                              {e}
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => fileInputRef.current?.click()}>
+                      <Paperclip className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+                <input ref={fileInputRef} type="file" accept={allowedFileTypes} className="hidden" onChange={handleFileSelect} />
+                <input ref={groupPicInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleChangeGroupPicture(file); if (e.target) e.target.value = ""; }} />
+                {!isNoteMode && (
+                  <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
+                    <Zap className="w-4 h-4" />
+                  </button>
+                )}
+                {!isNoteMode && isMetaChannel && (
+                  <button onClick={() => setShowTemplates(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال قالب">
+                    <FileText className="w-4 h-4" />
+                  </button>
+                )}
+                {!isNoteMode && !windowExpired && isMetaChannel && hasProducts && (
+                  <button onClick={() => setShowProductPicker(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال منتج">
+                    <ShoppingBag className="w-4 h-4" />
+                  </button>
+                )}
+                {!isNoteMode && !isMetaChannel && hasProducts && (
+                  <button onClick={() => setShowInternalProductPicker(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال منتج">
+                    <ShoppingBag className="w-4 h-4" />
+                  </button>
+                )}
+                {!isNoteMode && isEvolutionChannel && (
+                  <button onClick={() => setShowPollCreator(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال استطلاع">
+                    <BarChart3 className="w-4 h-4" />
+                  </button>
+                )}
+                {!isNoteMode && (
+                  <button onClick={() => setShowContactCard(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال بطاقة اتصال">
+                    <Contact className="w-4 h-4" />
+                  </button>
+                )}
+                {!isNoteMode && !windowExpired && (
+                  <button onClick={() => setIsRecording(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="تسجيل صوتي">
+                    <Mic className="w-4 h-4" />
+                  </button>
+                )}
+                {hasAiConfig && !isNoteMode && !windowExpired && (
+                  <button
+                    onClick={async () => {
+                      setAiLoading(true);
+                      setAiSuggestions([]);
+                      try {
+                        const { data, error } = await invokeCloud("ai-features", {
+                          body: {
+                            action: "suggest_replies",
+                            conversation_messages: messages.slice(-5).map(m => ({ sender: m.sender, content: m.text })),
+                            customer_name: conversation.customerName,
+                          },
+                        });
+                        if (data?.suggestions?.length > 0) setAiSuggestions(data.suggestions);
+                        else if (data?.error === "ai_not_configured") toast.error("لم يتم إعداد مزود AI — اذهب للإعدادات");
+                      } catch { toast.error("فشل جلب الاقتراحات"); }
+                      setAiLoading(false);
+                    }}
+                    disabled={aiLoading}
+                    className={cn("p-1.5 rounded-lg transition-colors shrink-0", aiLoading ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+                    title="اقتراحات AI"
+                  >
+                    {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  </button>
+                )}
+                {hasAiConfig && (
+                  <button
+                    onClick={async () => {
+                      setAiLoading(true);
+                      try {
+                        const { data } = await invokeCloud("ai-features", { body: { action: "summarize", conversation_id: conversation.id } });
+                        if (data?.summary) { setAiSummary(data.summary); setShowSummary(true); }
+                        else if (data?.error === "ai_not_configured") toast.error("لم يتم إعداد مزود AI");
+                      } catch { toast.error("فشل التلخيص"); }
+                      setAiLoading(false);
+                    }}
+                    disabled={aiLoading}
+                    className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+                    title="تلخيص المحادثة (AI)"
+                  >
+                    <Brain className="w-4 h-4" />
+                  </button>
+                )}
+                {hasAiConfig && (
+                  <button
+                    onClick={() => setAutoTranslate(!autoTranslate)}
+                    className={cn("p-1.5 rounded-lg transition-colors shrink-0", autoTranslate ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}
+                    title={autoTranslate ? "إيقاف الترجمة التلقائية" : "تفعيل الترجمة التلقائية"}
+                  >
+                    <Languages className="w-4 h-4" />
+                  </button>
+                )}
+                {/* Separator */}
+                <div className="w-px h-5 bg-border/40 mx-0.5 shrink-0" />
+                <button
+                  onClick={() => { setIsNoteMode(!isNoteMode); inputRef.current?.focus(); }}
+                  className={cn("p-1.5 rounded-lg transition-colors shrink-0", isNoteMode ? "bg-amber-500/10 text-amber-500" : "hover:bg-secondary text-muted-foreground")}
+                  title="ملاحظة داخلية"
+                >
+                  <StickyNote className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setInputText((prev) => prev + "@");
+                    setShowMentions(true);
+                    setMentionFilter("");
+                    if (!isGroup && !isNoteMode) setIsNoteMode(true);
+                    inputRef.current?.focus();
+                  }}
+                  className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+                  title={isGroup && !isNoteMode ? "اذكر عضو @" : "اذكر موظف @"}
+                >
+                  <AtSign className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Action Bar */}
+          <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center gap-1">
+              {/* Note mode indicator */}
+              <button
+                onClick={() => { setIsNoteMode(!isNoteMode); inputRef.current?.focus(); }}
+                className={cn("flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-lg transition-colors", isNoteMode ? "text-amber-600 bg-amber-500/10" : "text-muted-foreground/60 hover:text-muted-foreground")}
+              >
+                تمييز كملاحظة
+                <div className={cn("w-8 h-4.5 rounded-full relative transition-colors", isNoteMode ? "bg-amber-500" : "bg-muted")}>
+                  <div className={cn("absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-all", isNoteMode ? "right-0.5" : "left-0.5")} />
+                </div>
+              </button>
+              {/* Schedule */}
+              {inputText.trim() && (isNoteMode || !windowExpired) && (
+                <ScheduleMessagePopover
+                  conversationId={conversation.id}
+                  customerPhone={conversation.customerPhone}
+                  messageText={inputText}
+                  channelType={conversation.channelType}
+                  lastCustomerMessageAt={conversation.lastCustomerMessageAt}
+                  templates={templates}
+                  onScheduled={() => {}}
+                  onClearInput={() => setInputText("")}
+                >
+                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="جدولة الإرسال">
+                    <Clock className="w-4 h-4" />
+                  </button>
+                </ScheduleMessagePopover>
+              )}
+              {/* Link */}
+              <button onClick={copyConversationLink} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="نسخ رابط المحادثة">
+                <Link2 className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Send Button */}
             {(isNoteMode || !windowExpired) && (
               imagePreview ? (
-                <button onClick={handleSendImage} disabled={isUploading} className="w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
+                <button onClick={handleSendImage} disabled={isUploading} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
                   {isUploading ? <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />}
                 </button>
               ) : inputText.trim() ? (
-                <div className="flex items-center gap-1">
-                  <ScheduleMessagePopover
-                    conversationId={conversation.id}
-                    customerPhone={conversation.customerPhone}
-                    messageText={inputText}
-                    channelType={conversation.channelType}
-                    lastCustomerMessageAt={conversation.lastCustomerMessageAt}
-                    templates={templates}
-                    onScheduled={() => {}}
-                    onClearInput={() => setInputText("")}
-                  >
-                    <button className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 bg-muted hover:bg-muted/80 transition-all" title="جدولة الإرسال">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </ScheduleMessagePopover>
-                  <button onClick={handleSend} className={cn("w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 transition-all", isNoteMode ? "bg-amber-500 hover:bg-amber-600" : "bg-primary hover:bg-primary/90")}>
-                    <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />
-                  </button>
-                </div>
+                <button onClick={handleSend} className={cn("w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all", isNoteMode ? "bg-amber-500 hover:bg-amber-600" : "bg-primary hover:bg-primary/90")}>
+                  <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />
+                </button>
               ) : !isNoteMode ? (
-                <button onClick={() => setIsRecording(true)} className="w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
+                <button onClick={() => setIsRecording(true)} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
                   <Mic className="w-4 h-4 text-primary-foreground" />
                 </button>
               ) : (
-                <button disabled className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-muted">
-                  <Send className="w-4 h-4 text-whatsapp-foreground" style={{ transform: "scaleX(-1)" }} />
+                <button disabled className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-muted">
+                  <Send className="w-4 h-4 text-muted-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
               )
             )}
