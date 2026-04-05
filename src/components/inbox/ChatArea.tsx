@@ -2034,7 +2034,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     </div>
                   ) : (
                     <div className="shrink-0 mb-1">
-                      <div className="w-8 h-8 rounded-xl bg-secondary border border-border/30 flex items-center justify-center text-[11px] font-bold text-muted-foreground shadow-sm" title={msg.senderName || "موظف"}>
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium text-muted-foreground" title={msg.senderName || "موظف"}>
                         {(msg.senderName || "م").slice(0, 1)}
                       </div>
                     </div>
