@@ -209,6 +209,8 @@ const WhatsAppFlowsPage = () => {
       screens: screens as any,
       success_message: successMessage,
       webhook_url: webhookUrl || null,
+      forward_to_phone: forwardToPhone || null,
+      forward_to_group_jid: forwardToGroupJid || null,
       status: "published",
       created_by: profile?.id,
     };
