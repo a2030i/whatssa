@@ -55,6 +55,48 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Handle role + profile update action (allowed for org admins)
+    if (body.action === "update_role") {
+      const { user_id, role, is_supervisor, team_id } = body;
+      if (!user_id || !role) {
+        return new Response(JSON.stringify({ error: "Missing user_id or role" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Verify caller is admin or super_admin
+      const { data: callerRole } = await adminClient.from("user_roles").select("role").eq("user_id", caller.id).in("role", ["admin", "super_admin"]).maybeSingle();
+      if (!callerRole) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // If not super_admin, verify target user is in the same org
+      if (callerRole.role !== "super_admin") {
+        const { data: callerProfile } = await adminClient.from("profiles").select("org_id").eq("id", caller.id).maybeSingle();
+        const { data: targetProfile } = await adminClient.from("profiles").select("org_id").eq("id", user_id).maybeSingle();
+        if (!callerProfile?.org_id || callerProfile.org_id !== targetProfile?.org_id) {
+          return new Response(JSON.stringify({ error: "Cannot modify users outside your organization" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
+      // Don't allow downgrading super_admin
+      const { data: targetRoles } = await adminClient.from("user_roles").select("role").eq("user_id", user_id).eq("role", "super_admin").maybeSingle();
+      if (targetRoles) {
+        return new Response(JSON.stringify({ error: "Cannot modify super_admin role" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Update profile
+      await adminClient.from("profiles").update({
+        team_id: team_id || null,
+        is_supervisor: !!is_supervisor,
+      }).eq("id", user_id);
+
+      // Update role: delete old, insert new
+      const dbRole = role === "admin" ? "admin" : "member";
+      await adminClient.from("user_roles").delete().eq("user_id", user_id).in("role", ["admin", "member"]);
+      await adminClient.from("user_roles").insert({ user_id, role: dbRole });
+
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Original create user flow — super_admin only
     const { data: roleData } = await adminClient.from("user_roles").select("role").eq("user_id", caller.id).eq("role", "super_admin").maybeSingle();
     if (!roleData) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
