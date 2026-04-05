@@ -341,7 +341,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       onTouchStart={canReply ? swipe.onTouchStart : undefined}
       onTouchMove={canReply ? swipe.onTouchMove : undefined}
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
-      className="group relative max-w-[85%] md:max-w-[60%]"
+      className="group relative max-w-[88%] md:max-w-[72%] lg:max-w-[68%]"
       data-message-id={msg.id}
       data-wa-message-id={msg.waMessageId || undefined}
     >
@@ -754,7 +754,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               {/* Caption text in a mini bubble */}
               {hasText && (
                 <div className={cn(
-                  "rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed",
+                  "rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
                   msg.sender === "agent"
                     ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                     : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
@@ -773,7 +773,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === PURE TEXT MESSAGE (no media) ===
         return (
           <div className={cn(
-            "rounded-2xl px-4 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:anywhere]",
+            "rounded-2xl px-4 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
             msg.sender === "agent"
               ? "bg-card text-foreground rounded-bl-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
               : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
