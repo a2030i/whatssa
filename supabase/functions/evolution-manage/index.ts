@@ -1489,6 +1489,97 @@ serve(async (req) => {
       return json({ success: true, results, sent: successCount, total: phones.length });
     }
 
+    // ── FETCH ALL GROUPS ──
+    if (action === "fetch_groups") {
+      const resolvedInstance = await resolveEvolutionInstanceName(adminClient, orgId, instance_name, channel_id);
+      if (!resolvedInstance) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
+
+      const res = await fetch(`${EVOLUTION_URL}/group/fetchAllGroups/${resolvedInstance}`, {
+        method: "GET",
+        headers: evoHeaders,
+      });
+
+      const data = await res.json().catch(() => []);
+      if (!res.ok) {
+        return json({ error: "فشل جلب القروبات" }, res.status);
+      }
+
+      const groups = (Array.isArray(data) ? data : data?.groups || data?.data || []).map((g: any) => ({
+        id: g.id || g.jid || "",
+        subject: g.subject || g.name || "",
+        size: g.size || g.participants?.length || 0,
+        creation: g.creation || null,
+        owner: g.owner || g.ownerJid || "",
+        description: g.desc || g.description || "",
+        profile_pic: g.profilePictureUrl || g.imgUrl || null,
+      }));
+
+      return json({ success: true, groups });
+    }
+
+    // ── BROADCAST TO GROUPS ──
+    if (action === "broadcast_groups") {
+      const groupIds = asStringArray(payload.group_ids);
+      const msgText = asString(payload.message);
+      const msgMediaUrl = asString(payload.media_url);
+      const msgMediaType = asString(payload.media_type) || "image";
+      const delayMs = asNumber(payload.delay_seconds, 3) * 1000;
+
+      if (groupIds.length === 0) return json({ error: "يجب اختيار قروب واحد على الأقل" }, 400);
+      if (!msgText && !msgMediaUrl) return json({ error: "يجب إدخال رسالة أو رفع وسائط" }, 400);
+
+      const resolvedInstance = await resolveEvolutionInstanceName(adminClient, orgId, instance_name, channel_id);
+      if (!resolvedInstance) return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
+
+      const results: { group_id: string; success: boolean; error?: string }[] = [];
+
+      for (const groupId of groupIds) {
+        try {
+          const groupJid = groupId.includes("@g.us") ? groupId : `${groupId}@g.us`;
+
+          if (msgMediaUrl) {
+            // Send media
+            const mediaBody: Record<string, unknown> = {
+              number: groupJid,
+              mediatype: msgMediaType === "audio" ? "audio" : msgMediaType === "video" ? "video" : msgMediaType === "document" ? "document" : "image",
+              media: msgMediaUrl,
+              caption: msgText || "",
+            };
+
+            const res = await fetch(`${EVOLUTION_URL}/message/sendMedia/${resolvedInstance}`, {
+              method: "POST", headers: evoHeaders, body: JSON.stringify(mediaBody),
+            });
+
+            if (!res.ok) throw new Error("فشل إرسال الوسائط");
+          } else {
+            // Send text
+            const res = await fetch(`${EVOLUTION_URL}/message/sendText/${resolvedInstance}`, {
+              method: "POST", headers: evoHeaders,
+              body: JSON.stringify({ number: groupJid, text: msgText }),
+            });
+
+            if (!res.ok) throw new Error("فشل إرسال الرسالة");
+          }
+
+          results.push({ group_id: groupId, success: true });
+
+          // Delay between messages to avoid ban
+          if (groupIds.indexOf(groupId) < groupIds.length - 1) {
+            await delay(delayMs);
+          }
+        } catch (e) {
+          results.push({ group_id: groupId, success: false, error: (e as Error).message });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      await logToSystem(adminClient, "info", `بث جماعي للقروبات: ${successCount}/${groupIds.length}`, {
+        total: groupIds.length, success: successCount,
+      }, orgId, userId);
+
+      return json({ success: true, results, sent: successCount, total: groupIds.length });
+    }
+
     return json({ error: "إجراء غير معروف" }, 400);
   } catch (err: any) {
     await logToSystem(adminClient, "critical", "خطأ غير متوقع في إدارة Evolution", {
