@@ -507,15 +507,34 @@ const TasksPage = () => {
                 </Select>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>اسم العميل</Label>
-                <Input value={newCustomerName} onChange={e => setNewCustomerName(e.target.value)} />
-              </div>
-              <div>
-                <Label>رقم العميل</Label>
-                <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} dir="ltr" />
-              </div>
+            <div>
+              <Label>العميل</Label>
+              <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                <SelectTrigger><SelectValue placeholder="اختر عميل" /></SelectTrigger>
+                <SelectContent>
+                  <div className="p-2">
+                    <Input
+                      placeholder="بحث بالاسم أو الرقم..."
+                      value={customerSearch}
+                      onChange={e => setCustomerSearch(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <SelectItem value="">بدون عميل</SelectItem>
+                  {customers
+                    .filter(c => {
+                      if (!customerSearch) return true;
+                      const q = customerSearch.toLowerCase();
+                      return (c.name?.toLowerCase().includes(q)) || c.phone.includes(q);
+                    })
+                    .slice(0, 50)
+                    .map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name || "بدون اسم"} — {c.phone}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={createTask} className="w-full">إنشاء المهمة</Button>
           </div>
