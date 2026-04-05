@@ -446,13 +446,10 @@ const InboxPage = () => {
     return () => window.clearTimeout(timer);
   }, [selectedId, allMessages, conversations]);
 
-  // Send read receipts when opening a conversation (fire on every selection change)
-  const lastReadConvRef = useRef<string | null>(null);
+  // Send read receipts when the latest customer message is available
+  const lastReadMessageRef = useRef<string | null>(null);
   useEffect(() => {
     if (!selectedId || !orgId) return;
-    // Avoid sending duplicate read receipts for the same conversation
-    if (lastReadConvRef.current === selectedId) return;
-    lastReadConvRef.current = selectedId;
 
     const conv = conversations.find(c => c.id === selectedId);
     if (!conv) return;
@@ -463,14 +460,22 @@ const InboxPage = () => {
     const customerMsgs = msgs.filter(m => m.sender === "customer" && m.waMessageId);
     if (customerMsgs.length === 0) return;
 
+    const lastMsg = customerMsgs[customerMsgs.length - 1];
+    if (!lastMsg?.waMessageId) return;
+
+    // Avoid duplicates for the same latest incoming WhatsApp message,
+    // while still allowing retry after messages finish loading.
+    if (lastReadMessageRef.current === lastMsg.waMessageId) return;
+
     if (conv.channelType === "meta_api") {
-      // Meta API: send read receipt for the last customer message
-      const lastMsg = customerMsgs[customerMsgs.length - 1];
-      if (lastMsg.waMessageId) {
-        invokeCloud("whatsapp-catalog", {
-          body: { action: "mark_read", message_id: lastMsg.waMessageId, org_id: orgId },
-        }).catch(() => {});
-      }
+      lastReadMessageRef.current = lastMsg.waMessageId;
+      invokeCloud("whatsapp-catalog", {
+        body: { action: "mark_read", message_id: lastMsg.waMessageId, org_id: orgId },
+      }).catch(() => {
+        if (lastReadMessageRef.current === lastMsg.waMessageId) {
+          lastReadMessageRef.current = null;
+        }
+      });
     } else {
       // Evolution: send read receipts for recent customer messages
       const unreadKeys = customerMsgs
@@ -482,9 +487,14 @@ const InboxPage = () => {
         }));
 
       if (unreadKeys.length > 0) {
+        lastReadMessageRef.current = lastMsg.waMessageId;
         invokeCloud("evolution-manage", {
           body: { action: "read_messages", messages: unreadKeys, channel_id: conv.channelId },
-        }).catch(() => {});
+        }).catch(() => {
+          if (lastReadMessageRef.current === lastMsg.waMessageId) {
+            lastReadMessageRef.current = null;
+          }
+        });
       }
     }
   }, [selectedId, allMessages, conversations, orgId]);
