@@ -2068,7 +2068,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           return (
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
-            msg.type === "note" ? "justify-start" : msg.sender === "agent" ? "justify-end" : msg.sender === "system" ? "justify-center" : "justify-start",
+            msg.sender === "agent" ? "justify-end" : msg.sender === "system" ? "justify-center" : "justify-start",
             !isFirstInGroup && "mt-0.5"
           )}>
             {msg.sender === "system" ? (
