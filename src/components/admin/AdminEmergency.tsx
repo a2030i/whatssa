@@ -249,9 +249,21 @@ const AdminEmergency = () => {
             </div>
 
             {emergencyPhone && alertInstance ? (
-              <div className="bg-primary/5 rounded-lg p-2 text-xs text-primary font-medium flex items-center gap-2">
-                <CheckCircle className="w-3 h-3" />
-                التنبيهات مفعّلة — المستقبل: {emergencyPhone}
+              <div className="space-y-2">
+                <div className="bg-primary/5 rounded-lg p-2 text-xs text-primary font-medium flex items-center gap-2">
+                  <CheckCircle className="w-3 h-3" />
+                  التنبيهات مفعّلة — المستقبل: {emergencyPhone}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-8 text-xs"
+                  disabled={isTesting}
+                  onClick={sendTestAlert}
+                >
+                  <Send className={`w-3 h-3 ml-1 ${isTesting ? "animate-pulse" : ""}`} />
+                  {isTesting ? "جارٍ الإرسال..." : "إرسال تنبيه تجريبي"}
+                </Button>
               </div>
             ) : (
               <div className="bg-yellow-500/10 rounded-lg p-2 text-xs text-yellow-600 font-medium flex items-center gap-2">
