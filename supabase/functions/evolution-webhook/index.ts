@@ -1115,9 +1115,16 @@ serve(async (req) => {
                   const membersData = await membersRes.json();
                   const participants = membersData?.participants || membersData?.data?.participants || membersData?.[0]?.participants || [];
                   for (const p of participants) {
-                    const memberPhone = (p.id || p.jid || "").replace(/@.*/, "");
-                    const memberName = p.pushName || p.name || null;
-                    if (memberPhone && memberPhone.length > 5) {
+                    const rawParticipantId = p.id || p.jid || "";
+                    const isLidParticipant = String(rawParticipantId).includes("@lid");
+                    const memberPhone = [p.phone, p.number, p.senderPn, p.participantPn]
+                      .map((value: unknown) => typeof value === "string" ? value.replace(/\D/g, "") : "")
+                      .find(Boolean)
+                      || (!isLidParticipant && String(rawParticipantId).includes("@s.whatsapp.net")
+                        ? String(rawParticipantId).replace(/\D/g, "")
+                        : "");
+                    const memberName = chooseBestContactName(p.pushName, p.name, p.notify) || null;
+                    if (memberPhone && memberPhone.length >= 8 && memberPhone.length <= 15) {
                       try {
                         await supabase.from("customers").upsert({
                           org_id: orgId,

@@ -19,6 +19,13 @@ const statusColors: Record<string, string> = {
 };
 const statusLabels: Record<string, string> = { active: "نشط", waiting: "بانتظار", closed: "مغلق" };
 
+const getConversationDisplayName = (conv: Conversation) => {
+  if (conv.conversationType === "group") {
+    return conv.customerName && conv.customerName !== conv.customerPhone ? conv.customerName : "مجموعة واتساب";
+  }
+  return conv.customerName || conv.customerPhone || "بدون اسم";
+};
+
 const get24hCountdown = (lastCustomerMessageAt?: string): { text: string; color: string } | null => {
   if (!lastCustomerMessageAt) return null;
   const elapsed = Date.now() - new Date(lastCustomerMessageAt).getTime();
@@ -399,6 +406,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
           filtered.map((conv) => {
             const isSelected = conv.id === selectedId;
             const countdown = conv.channelType === "meta_api" ? get24hCountdown(conv.lastCustomerMessageAt) : null;
+            const displayName = getConversationDisplayName(conv);
             return (
               <button
                 key={conv.id}
@@ -500,7 +508,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                     <div className="flex items-center justify-between mb-1">
                       <span className={cn("text-sm font-bold truncate flex items-center gap-1.5", isSelected ? "text-primary" : "text-foreground")}>
                         {conv.isPinned && <Pin className="w-3 h-3 text-primary shrink-0 rotate-45" />}
-                        {conv.customerName}
+                         {displayName}
                       </span>
                       <div className="flex items-center gap-2 shrink-0">
                         {countdown && (
@@ -512,11 +520,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       </div>
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <p className={cn(
-                        "text-[13px] truncate max-w-[200px] leading-relaxed",
+                       <p className={cn(
+                         "text-[12px] line-clamp-2 max-w-[220px] leading-5",
                         conv.unread > 0 ? "text-foreground font-medium" : "text-muted-foreground/70"
                       )}>
-                        {conv.lastMessage}
+                         {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                       </p>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
