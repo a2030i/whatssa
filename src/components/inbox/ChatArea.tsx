@@ -2485,7 +2485,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             )}
             {(isNoteMode || !windowExpired) && (
               imagePreview ? (
-                <button onClick={handleSendImage} disabled={isUploading} className="w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all shadow-md">
+                <button onClick={handleSendImage} disabled={isUploading} className="w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
                   {isUploading ? <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />}
                 </button>
               ) : inputText.trim() ? (
