@@ -98,32 +98,73 @@ const TeamPage = () => {
     return "member";
   };
 
-  const [formSupervisor, setFormSupervisor] = useState(false);
+  const [formEmail, setFormEmail] = useState("");
 
   const openEditDialog = (profile: any) => {
     setEditingProfile(profile);
     setFormTeam(profile.team_id || "");
-    setFormRole(getStoredRole(profile.id) === "admin" ? "admin" : "member");
-    setFormSupervisor(profile.is_supervisor || false);
+    const storedRole = getStoredRole(profile.id);
+    if (storedRole === "admin") {
+      setFormRole("admin");
+    } else if (profile.is_supervisor) {
+      setFormRole("supervisor");
+    } else {
+      setFormRole("member");
+    }
+    setFormEmail("");
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!editingProfile) return;
-    await supabase.from("profiles").update({ team_id: formTeam || null, is_supervisor: formSupervisor }).eq("id", editingProfile.id);
+    
+    const isSupervisor = formRole === "supervisor";
+    const profileUpdate = await supabase.from("profiles").update({ 
+      team_id: formTeam || null, 
+      is_supervisor: isSupervisor 
+    }).eq("id", editingProfile.id);
+    
+    if (profileUpdate.error) {
+      toast.error("فشل تحديث الملف الشخصي: " + profileUpdate.error.message);
+      return;
+    }
 
     const currentRole = getStoredRole(editingProfile.id);
-    if (currentRole !== formRole) {
-      if (formRole === "admin") {
+    const targetDbRole = formRole === "admin" ? "admin" : "member";
+    
+    if (currentRole !== targetDbRole) {
+      let roleResult;
+      if (targetDbRole === "admin") {
         if (currentRole) {
-          await supabase.from("user_roles").update({ role: "admin" as any }).eq("user_id", editingProfile.id);
+          roleResult = await supabase.from("user_roles").update({ role: "admin" as any }).eq("user_id", editingProfile.id);
         } else {
-          await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "admin" as any });
+          roleResult = await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "admin" as any });
         }
       } else if (currentRole === "admin") {
+        // Downgrade from admin: delete admin role and insert member
         await supabase.from("user_roles").delete().eq("user_id", editingProfile.id).eq("role", "admin");
+        roleResult = await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "member" as any });
+      }
+      if (roleResult?.error) {
+        toast.error("فشل تحديث الدور: " + roleResult.error.message);
+        return;
       }
     }
+
+    // Update email if changed
+    if (formEmail.trim() && formEmail.trim() !== editingProfile.email) {
+      try {
+        const { error } = await invokeCloud("admin-create-user", {
+          body: { action: "update_email", user_id: editingProfile.id, new_email: formEmail.trim() },
+        });
+        if (error) {
+          toast.error("فشل تحديث البريد الإلكتروني");
+        }
+      } catch {
+        toast.error("فشل تحديث البريد الإلكتروني");
+      }
+    }
+
     toast.success("تم تحديث بيانات العضو");
     setDialogOpen(false);
     load();
@@ -704,9 +745,15 @@ const TeamPage = () => {
                 <SelectTrigger className="bg-secondary border-0"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">مدير</SelectItem>
+                  <SelectItem value="supervisor">مشرف</SelectItem>
                   <SelectItem value="member">موظف</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground">
+                {formRole === "admin" && "يرى جميع المحادثات ويدير الفريق والإعدادات"}
+                {formRole === "supervisor" && "يرى محادثات فريقه كاملة بما فيها المسندة لأعضاء آخرين"}
+                {formRole === "member" && "يرى المحادثات المسندة له فقط"}
+              </p>
             </div>
             <div className="space-y-2">
               <Label className="text-xs">الفريق</Label>
@@ -720,13 +767,16 @@ const TeamPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            {/* Supervisor Toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-xs">مشرف فريق</Label>
-                <p className="text-[10px] text-muted-foreground">يرى جميع محادثات فريقه</p>
-              </div>
-              <Switch checked={formSupervisor} onCheckedChange={setFormSupervisor} />
+            <div className="space-y-2">
+              <Label className="text-xs">البريد الإلكتروني</Label>
+              <Input 
+                type="email" 
+                placeholder="أدخل البريد الجديد (اتركه فارغاً لعدم التغيير)" 
+                value={formEmail} 
+                onChange={(e) => setFormEmail(e.target.value)} 
+                className="bg-secondary border-0 text-sm"
+                dir="ltr"
+              />
             </div>
           </div>
           <DialogFooter className="gap-2">
