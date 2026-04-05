@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   ClipboardCheck, Plus, Filter, Clock, CheckCircle2, AlertCircle,
   User, MessageSquare, ArrowUpDown, MoreHorizontal, Send, Loader2,
-  Bot, UserCircle, Truck, Phone, Mail, RefreshCw
+  Bot, UserCircle, Truck, Phone, Mail, RefreshCw, ChevronsUpDown, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
