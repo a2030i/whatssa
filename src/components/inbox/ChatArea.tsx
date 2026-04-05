@@ -2014,7 +2014,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                           return (
                             <div
                               onClick={handleAvatarClick}
-                              className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold text-white ring-1 ring-border/20 shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white cursor-pointer hover:opacity-80 transition-opacity"
                               style={{ backgroundColor: `hsl(${hue}, 50%, 45%)` }}
                               title={`${displayName}${rawPhone ? ` • +${rawPhone}` : ""}`}
                             >
