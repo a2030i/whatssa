@@ -635,20 +635,32 @@ serve(async (req) => {
             systemText = `${affectedPhones.join(", ")} انضم عبر رابط الدعوة`;
           }
 
-          if (systemText && conversation) {
-            // Insert system message
-            await supabase.from("messages").insert({
-              conversation_id: conversation.id,
-              content: systemText,
-              sender: "system",
-              message_type: "text",
-              wa_message_id: key.id || `stub_${Date.now()}`,
-              metadata: { stub_type: stubType, affected_phones: affectedPhones },
-            });
-            await supabase.from("conversations").update({
-              last_message: systemText,
-              last_message_at: new Date().toISOString(),
-            }).eq("id", conversation.id);
+          if (systemText) {
+            // Find existing group conversation to attach stub message
+            const { data: stubConv } = await supabase
+              .from("conversations")
+              .select("id")
+              .eq("customer_phone", phone)
+              .eq("org_id", orgId)
+              .eq("conversation_type", "group")
+              .neq("status", "closed")
+              .limit(1)
+              .maybeSingle();
+
+            if (stubConv) {
+              await supabase.from("messages").insert({
+                conversation_id: stubConv.id,
+                content: systemText,
+                sender: "system",
+                message_type: "text",
+                wa_message_id: key.id || `stub_${Date.now()}`,
+                metadata: { stub_type: stubType, affected_phones: affectedPhones },
+              });
+              await supabase.from("conversations").update({
+                last_message: systemText,
+                last_message_at: new Date().toISOString(),
+              }).eq("id", stubConv.id);
+            }
           }
           continue;
         }
