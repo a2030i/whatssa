@@ -77,7 +77,7 @@ const CustomersPage = () => {
   };
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", notes: "", tags: [], lifecycle_stage: "lead", company: "", source: "whatsapp" });
+    setForm({ name: "", phone: "", email: "", notes: "", tags: [], company: "", source: "whatsapp" });
     setCustomFields({});
   };
 
