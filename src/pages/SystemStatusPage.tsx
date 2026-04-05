@@ -69,7 +69,9 @@ const SystemStatusPage = () => {
 
   useEffect(() => {
     runChecks();
-    const interval = setInterval(runChecks, 60000);
+    const interval = setInterval(() => {
+      if (!document.hidden) runChecks();
+    }, 120000);
     return () => clearInterval(interval);
   }, []);
 

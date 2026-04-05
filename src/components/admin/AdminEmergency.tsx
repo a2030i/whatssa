@@ -114,7 +114,9 @@ const AdminEmergency = () => {
 
   useEffect(() => {
     checkExternalDB();
-    const interval = setInterval(checkExternalDB, 30000);
+    const interval = setInterval(() => {
+      if (!document.hidden) checkExternalDB();
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
