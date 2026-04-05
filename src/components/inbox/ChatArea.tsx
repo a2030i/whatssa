@@ -718,7 +718,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // Media renders OUTSIDE the bubble, text (if any) in a bubble below
         if (shouldSplitMedia) {
           return (
-            <div className="flex flex-col gap-1">
+            <div className="inline-flex flex-col gap-1 max-w-full">
               {/* Group sender label */}
               {groupSenderEl && (
                 <span className="text-[10.5px] font-bold text-muted-foreground/70">{groupSenderEl}</span>
