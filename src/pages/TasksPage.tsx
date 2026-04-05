@@ -106,9 +106,10 @@ const TasksPage = () => {
 
   useEffect(() => {
     if (profile?.org_id) {
-      fetchTasks();
-      fetchConfigs();
-      fetchAgents();
+    fetchTasks();
+    fetchConfigs();
+    fetchAgents();
+    fetchCustomers();
     }
   }, [profile?.org_id]);
 
