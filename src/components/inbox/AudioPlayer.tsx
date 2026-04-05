@@ -186,7 +186,7 @@ const AudioPlayer = ({ src, isAgent = false, className }: AudioPlayerProps) => {
               {playbackRate}x
             </button>
             <a href={src} download target="_blank" rel="noreferrer"
-              className={cn("p-0.5 rounded transition-colors", isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/60 hover:text-white")}>
+              className={cn("p-0.5 rounded transition-colors", isAgent ? "text-muted-foreground hover:text-foreground" : "text-white/80 hover:text-white")}>
               <Download className="w-2.5 h-2.5" />
             </a>
           </div>
