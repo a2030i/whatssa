@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const LAMHA_API_BASE = "https://app.lamha.sa/api/v2";
 
