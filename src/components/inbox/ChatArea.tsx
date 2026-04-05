@@ -516,17 +516,17 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           return resolvedName || null;
         })();
 
-        // Timestamp element
+        // Timestamp element - inline like WhatsApp (floats at end of last line)
         const timestampEl = (
-          <div className={cn("flex items-center gap-1.5 mt-1",
+          <span className={cn("inline-flex items-center gap-1 text-[10px] tracking-tight mr-1 float-left mt-1.5 ml-2 leading-none select-none",
             msg.type === "note" ? "text-amber-500/50"
             : msg.sender === "customer" ? "text-white/55"
             : "text-muted-foreground/50"
           )}>
-            <span className="text-[10px] tracking-tight">{msg.timestamp}</span>
-            {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
+            <span>{msg.timestamp}</span>
+            {msg.editedAt && <span className="text-[9px] italic">معدّلة</span>}
             {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
-          </div>
+          </span>
         );
 
         // Quoted message element
