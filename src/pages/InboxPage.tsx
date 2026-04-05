@@ -359,7 +359,9 @@ const InboxPage = () => {
               status: updated.status as any,
               reactions: updated.metadata?.reactions || m.reactions,
               editedAt: updated.metadata?.edited_at || m.editedAt,
+              editedBy: updated.metadata?.edited_by || m.editedBy,
               isDeleted: updated.metadata?.is_deleted || false,
+              deletedBy: updated.metadata?.deleted_by || m.deletedBy,
               readBy: updated.metadata?.read_by || m.readBy,
               groupSize: updated.metadata?.group_size || m.groupSize,
             };
