@@ -26,6 +26,7 @@ const AdminAccounts = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [newAccount, setNewAccount] = useState({ email: "", full_name: "", org_name: "" });
+  const [showOrphans, setShowOrphans] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => { load(); }, []);
