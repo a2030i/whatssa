@@ -374,15 +374,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Try external DB first, then fallback to Lovable Cloud DB
-  const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || "";
-  const externalKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || "";
-  const cloudUrl = Deno.env.get("SUPABASE_URL") || "";
-  const cloudKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-
-  let supabase = createClient(
-    externalUrl || cloudUrl,
-    externalKey || cloudKey
+  // Use Lovable Cloud DB (where whatsapp_config lives)
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
   try {
@@ -393,7 +388,6 @@ serve(async (req) => {
     if (!event) {
       const url = new URL(req.url);
       const pathSegments = url.pathname.split("/").filter(Boolean);
-      // Last segment might be the event slug like "messages-update", "messages-upsert", etc.
       const lastSegment = pathSegments[pathSegments.length - 1] || "";
       const pathEventMap: Record<string, string> = {
         "messages-upsert": "MESSAGES_UPSERT",
@@ -410,45 +404,21 @@ serve(async (req) => {
 
     const instanceName = body.instance || body.instanceName || "";
 
-    // Find the config for this instance — try primary DB first
-    const { data: primaryConfig, error: configError } = await supabase
+    // Find the config for this instance
+    const { data: config, error: configError } = await supabase
       .from("whatsapp_config")
       .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
       .eq("evolution_instance_name", instanceName)
       .eq("channel_type", "evolution")
       .maybeSingle();
 
-    // If not found on primary DB, try the other DB
-    let resolvedConfig = primaryConfig;
-    if (!primaryConfig && externalUrl && cloudUrl && externalUrl !== cloudUrl) {
-      const fallbackClient = createClient(cloudUrl, cloudKey);
-      const { data: fallbackConfig } = await fallbackClient
-        .from("whatsapp_config")
-        .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
-        .eq("evolution_instance_name", instanceName)
-        .eq("channel_type", "evolution")
-        .maybeSingle();
-      if (fallbackConfig) {
-        supabase = fallbackClient;
-        resolvedConfig = fallbackConfig;
-        console.log(`[evolution-webhook] Config found in Cloud DB for instance: ${instanceName}`);
-      }
-    }
-
-    if (!resolvedConfig) {
-      const dbUsed = externalUrl ? externalUrl.replace(/https?:\/\//, "").split(".")[0] : "cloud";
-      console.error(`[evolution-webhook] Config NOT found for ${instanceName}. DB: ${dbUsed}, error: ${configError?.message || "none"}`);
-      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, {
-        event, instance: instanceName,
-        db_used: dbUsed,
-        config_error: configError?.message || null,
-      });
+    if (!config) {
+      console.error(`[evolution-webhook] Config NOT found for ${instanceName}, error: ${configError?.message || "none"}`);
+      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, { event, instance: instanceName, config_error: configError?.message || null });
       return new Response(JSON.stringify({ ok: true, skipped: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const config = resolvedConfig;
 
     const orgId = config.org_id;
 
