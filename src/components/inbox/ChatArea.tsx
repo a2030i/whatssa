@@ -2076,7 +2076,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {msg.text}
               </div>
             ) : (
-              <div className={cn("flex items-end gap-2", msg.sender === "agent" ? "flex-row-reverse" : "flex-row")}>
+              <div className={cn("flex items-end gap-2 max-w-full", msg.sender === "agent" ? "flex-row-reverse" : "flex-row")}>
                 {/* Avatar */}
                 {showAvatar ? (
                   msg.sender === "customer" ? (
@@ -2166,7 +2166,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 ) : (
                   <div className="w-8 shrink-0" />
                 )}
-                <div className={cn("flex flex-col w-fit max-w-full", msg.sender === "agent" ? "items-end" : "items-start")}>
+                <div className={cn("flex flex-col min-w-0 max-w-full", msg.sender === "agent" ? "items-end" : "items-start")}>
                   <SwipeableMessageBubble
                     msg={msg}
                     conversation={conversation}
