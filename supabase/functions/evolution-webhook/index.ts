@@ -402,18 +402,31 @@ serve(async (req) => {
       event = pathEventMap[lastSegment] || "";
     }
 
-    const instanceName = body.instance || body.instanceName || "";
+    // Evolution v2 may send instance as string or as object {instanceName: "..."}
+    let instanceName = "";
+    if (typeof body.instance === "string") {
+      instanceName = body.instance;
+    } else if (typeof body.instance === "object" && body.instance?.instanceName) {
+      instanceName = body.instance.instanceName;
+    } else if (typeof body.instanceName === "string") {
+      instanceName = body.instanceName;
+    }
+
+    console.log(`[evolution-webhook] event=${event} instance="${instanceName}" bodyKeys=${Object.keys(body).join(",")}`);
 
     // Find the config for this instance
-    const { data: config } = await supabase
+    const { data: config, error: configError } = await supabase
       .from("whatsapp_config")
       .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
       .eq("evolution_instance_name", instanceName)
       .eq("channel_type", "evolution")
       .maybeSingle();
 
+    console.log(`[evolution-webhook] config found: ${!!config}, error: ${configError?.message || "none"}`);
+
     if (!config) {
-      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, { event, instance: instanceName });
+      console.log(`[evolution-webhook] SKIPPED - no config for instance "${instanceName}"`);
+      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, { event, instance: instanceName, bodyKeys: Object.keys(body), configError: configError?.message });
       return new Response(JSON.stringify({ ok: true, skipped: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
