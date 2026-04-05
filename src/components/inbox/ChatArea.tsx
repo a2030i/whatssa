@@ -524,7 +524,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             : "text-muted-foreground/50"
           )}>
             <span>{msg.timestamp}</span>
-            {msg.editedAt && <span className="text-[9px] italic">معدّلة</span>}
+            {msg.editedAt && <span className="text-[9px] italic">{msg.editedBy ? `عدّلها ${msg.editedBy}` : "معدّلة"}</span>}
             {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
           </span>
         );
@@ -610,6 +610,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               <div className="flex items-center gap-1.5 text-xs opacity-70">
                 <XCircle className="w-3.5 h-3.5" />
                 <span>تم حذف هذه الرسالة</span>
+                {msg.deletedBy && <span className="text-[10px] font-medium">— {msg.deletedBy}</span>}
               </div>
             </div>
           );
@@ -2184,8 +2185,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     }}
                     translationText={translations[msg.id]}
                   />
-                  {/* Agent name label below bubble */}
-                  {msg.sender === "agent" && msg.senderName && showAvatar && conversation.conversationType !== "group" && (
+                  {/* Agent name label below bubble — always show for agent messages */}
+                  {msg.sender === "agent" && msg.senderName && conversation.conversationType !== "group" && (
                     <span className="text-[10px] text-muted-foreground/60 mt-0.5 mr-1 font-medium">{msg.senderName}</span>
                   )}
                 </div>
