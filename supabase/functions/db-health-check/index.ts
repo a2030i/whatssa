@@ -83,14 +83,6 @@ Deno.serve(async (req) => {
     // table might not exist yet, that's fine
   }
 
-  // Parse request body for test mode
-  let isTest = false;
-  try {
-    const body = await req.json();
-    isTest = body?.test === true;
-  } catch {
-    // no body or not JSON, that's fine
-  }
 
   // Send alert if external DB is DOWN or if this is a test
   if (!results.db_reachable || !results.auth_reachable || isTest) {
