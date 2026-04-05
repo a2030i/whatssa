@@ -520,21 +520,21 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   </div>
 
                   {/* LEFT: Timestamp + indicators */}
-                  <div className="flex flex-col items-start gap-1.5 shrink-0 pt-0.5 min-w-[48px]">
+                  <div className="flex flex-col items-start gap-1.5 shrink-0 pt-0.5 min-w-[50px]">
                     <span className={cn(
                       "text-[11px] leading-none",
-                      hasUnread ? "text-primary font-medium" : "text-muted-foreground/60"
+                      hasUnread ? "text-primary font-semibold" : "text-muted-foreground/50"
                     )}>
                       {conv.timestamp}
                     </span>
                     <div className="flex items-center gap-1">
-                      {/* Unread dot */}
                       {hasUnread && (
-                        <span className="w-2 h-2 rounded-full bg-primary" />
+                        <span className="min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                          {conv.unread}
+                        </span>
                       )}
-                      {/* Mention indicator */}
                       {hasMention && (
-                        <span className="w-4 h-4 rounded-full bg-accent text-accent-foreground text-[8px] font-bold flex items-center justify-center">@</span>
+                        <span className="w-[18px] h-[18px] rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">@</span>
                       )}
                     </div>
                   </div>
