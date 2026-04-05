@@ -2569,9 +2569,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               {/* Note mode indicator */}
               <button
                 onClick={() => { setIsNoteMode(!isNoteMode); inputRef.current?.focus(); }}
-                className={cn("flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-lg transition-colors", isNoteMode ? "text-red-600 bg-red-500/15 ring-1 ring-red-400/30" : "text-red-500/70 hover:text-red-600 hover:bg-red-500/10")}
+                className={cn("flex items-center gap-2 text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors", isNoteMode ? "text-red-600 bg-red-500/15 ring-1 ring-red-400/30" : "text-red-500/70 hover:text-red-600 hover:bg-red-500/10")}
               >
-                تمييز كملاحظة
+                رسالة داخلية
                 <div className={cn("w-8 h-4.5 rounded-full relative transition-colors", isNoteMode ? "bg-red-500" : "bg-red-300/50")}>
                   <div className={cn("absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-all", isNoteMode ? "right-0.5" : "left-0.5")} />
                 </div>
