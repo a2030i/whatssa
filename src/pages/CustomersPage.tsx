@@ -206,7 +206,6 @@ const CustomersPage = () => {
         tags,
         notes: colMap.notes >= 0 ? parts[colMap.notes] || null : null,
         company: colMap.company >= 0 ? parts[colMap.company] || null : null,
-        lifecycle_stage: stage,
       });
     }
 
