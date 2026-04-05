@@ -91,7 +91,7 @@ const CustomersPage = () => {
     setEditCustomer(c);
     setForm({
       name: c.name || "", phone: c.phone, email: c.email || "", notes: c.notes || "",
-      tags: c.tags || [], lifecycle_stage: c.lifecycle_stage || "lead",
+      tags: c.tags || [],
       company: c.company || "", source: c.source || "whatsapp",
     });
     setCustomFields(c.custom_fields || {});
