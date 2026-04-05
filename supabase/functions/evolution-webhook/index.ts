@@ -374,9 +374,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Use Lovable Cloud DB (where whatsapp_config lives)
   const supabase = createClient(
-    Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
   try {
@@ -387,7 +388,6 @@ serve(async (req) => {
     if (!event) {
       const url = new URL(req.url);
       const pathSegments = url.pathname.split("/").filter(Boolean);
-      // Last segment might be the event slug like "messages-update", "messages-upsert", etc.
       const lastSegment = pathSegments[pathSegments.length - 1] || "";
       const pathEventMap: Record<string, string> = {
         "messages-upsert": "MESSAGES_UPSERT",
@@ -405,7 +405,7 @@ serve(async (req) => {
     const instanceName = body.instance || body.instanceName || "";
 
     // Find the config for this instance
-    const { data: config } = await supabase
+    const { data: config, error: configError } = await supabase
       .from("whatsapp_config")
       .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
       .eq("evolution_instance_name", instanceName)
@@ -413,7 +413,8 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!config) {
-      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, { event, instance: instanceName });
+      console.error(`[evolution-webhook] Config NOT found for ${instanceName}, error: ${configError?.message || "none"}`);
+      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, { event, instance: instanceName, config_error: configError?.message || null });
       return new Response(JSON.stringify({ ok: true, skipped: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
