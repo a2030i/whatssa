@@ -163,6 +163,7 @@ const TasksPage = () => {
   const createTask = async () => {
     if (!newTitle.trim()) return toast.error("أدخل عنوان المهمة");
     const assignee = effectiveRole === "member" ? profile!.id : (newAssignee || null);
+    const selectedCust = customers.find(c => c.id === selectedCustomerId);
     const { error } = await supabase.from("tasks").insert({
       org_id: profile!.org_id!,
       title: newTitle.trim(),
@@ -170,8 +171,8 @@ const TasksPage = () => {
       task_type: newType,
       priority: newPriority,
       assigned_to: assignee,
-      customer_phone: newPhone || null,
-      customer_name: newCustomerName || null,
+      customer_phone: selectedCust?.phone || null,
+      customer_name: selectedCust?.name || null,
       created_by_type: "agent",
       created_by: profile!.id,
     } as any);
