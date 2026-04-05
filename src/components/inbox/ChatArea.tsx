@@ -474,14 +474,27 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           </div>
         ) : (
           <>
-            {msg.senderName && conversation.conversationType === "group" && (
-              <div className={cn(
-                "text-[10px] font-semibold mb-0.5 opacity-80",
-                msg.sender === "agent" ? "text-primary" : "text-primary-foreground/70"
-              )}>
-                {msg.senderName}
-              </div>
-            )}
+            {conversation.conversationType === "group" && msg.sender === "customer" && (() => {
+              // Resolve display name: try groupParticipants first, then fallback to senderName/phone
+              const rawJid = msg.senderJid || "";
+              const rawPhone = msg.senderPhone || normalizeDigits(rawJid);
+              let resolvedName = msg.senderName || "";
+              if (rawPhone && groupParticipants?.length) {
+                const found = groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone))));
+                if (found?.name && found.name !== found.phone && found.name !== found.rawDigits && !found.name.startsWith("عضو")) {
+                  resolvedName = found.name;
+                }
+              }
+              if (!resolvedName && rawPhone) resolvedName = `+${rawPhone}`;
+              return resolvedName ? (
+                <div className={cn(
+                  "text-[10px] font-semibold mb-0.5 opacity-80",
+                  "text-primary-foreground/70"
+                )}>
+                  {resolvedName}
+                </div>
+              ) : null;
+            })()}
             {msg.quoted && msg.quoted.text && (
               <div
                 onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}

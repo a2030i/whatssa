@@ -76,6 +76,8 @@ export interface Message {
   type?: "text" | "image" | "document" | "note" | "template" | "audio" | "video" | "location" | "contacts" | "sticker" | "reaction" | "poll";
   mediaUrl?: string;
   senderName?: string;
+  senderJid?: string;
+  senderPhone?: string;
   quoted?: {
     stanza_id?: string;
     message_id?: string;
