@@ -482,16 +482,18 @@ const TasksPage = () => {
                 </Select>
               </div>
             </div>
-            <div>
-              <Label>إسناد إلى</Label>
-              <Select value={newAssignee} onValueChange={setNewAssignee}>
-                <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">بدون إسناد</SelectItem>
-                  {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            {effectiveRole !== "member" && (
+              <div>
+                <Label>إسناد إلى</Label>
+                <Select value={newAssignee} onValueChange={setNewAssignee}>
+                  <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">بدون إسناد</SelectItem>
+                    {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>اسم العميل</Label>
