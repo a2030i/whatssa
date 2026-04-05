@@ -750,9 +750,39 @@ const InboxPage = () => {
   }, []);
 
   const handleTagsChange = useCallback(async (convId: string, tags: string[]) => {
+    const conv = conversations.find(c => c.id === convId);
+    const oldTags = conv?.tags || [];
+    const actorName = profile?.full_name || "النظام";
+
+    // Determine added and removed tags
+    const addedTags = tags.filter(t => !oldTags.includes(t));
+    const removedTags = oldTags.filter(t => !tags.includes(t));
+
     await supabase.from("conversations").update({ tags }).eq("id", convId);
     setConversations((prev) => prev.map((conversation) => (conversation.id === convId ? { ...conversation, tags } : conversation)));
-  }, []);
+
+    // Insert system messages for tag changes
+    const systemMessages: Array<{ conversation_id: string; content: string; sender: string; message_type: string }> = [];
+    for (const tag of addedTags) {
+      systemMessages.push({
+        conversation_id: convId,
+        content: `تم إضافة الوسم "${tag}" بواسطة ${actorName}`,
+        sender: "system",
+        message_type: "text",
+      });
+    }
+    for (const tag of removedTags) {
+      systemMessages.push({
+        conversation_id: convId,
+        content: `تم حذف الوسم "${tag}" بواسطة ${actorName}`,
+        sender: "system",
+        message_type: "text",
+      });
+    }
+    if (systemMessages.length > 0) {
+      await supabase.from("messages").insert(systemMessages);
+    }
+  }, [conversations, profile]);
 
   const handleTogglePin = useCallback(async (convId: string) => {
     const conv = conversations.find(c => c.id === convId);
