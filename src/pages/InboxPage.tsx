@@ -759,60 +759,28 @@ const InboxPage = () => {
     toast.success(newVal ? "📁 تم أرشفة المحادثة" : "تم إلغاء الأرشفة");
   }, [conversations]);
 
-  const handleConversationMerged = useCallback((sourceConversationId: string, targetConversationId: string) => {
-    if (sourceConversationId === targetConversationId) return;
-
-    setConversations((prev) => prev.map((conversation) => {
-      if (conversation.id === sourceConversationId) {
-        return {
-          ...conversation,
-          status: "closed",
-          isArchived: true,
-          unread: 0,
-          unreadMentionCount: 0,
-        };
-      }
-
-      if (conversation.id === targetConversationId) {
-        return {
-          ...conversation,
-          status: conversation.status === "closed" ? "active" : conversation.status,
-          isArchived: false,
-        };
-      }
-
-      return conversation;
-    }));
-
-    setAllMessages((prev) => {
-      const sourceMessages = (prev[sourceConversationId] || []).map((message) => ({
-        ...message,
-        conversationId: targetConversationId,
-      }));
-
-      const targetMessages = prev[targetConversationId] || [];
-      if (sourceMessages.length === 0 && targetMessages.length === 0) return prev;
-
-      const uniqueMessages = new Map<string, Message>();
-      [...targetMessages, ...sourceMessages].forEach((message) => {
-        uniqueMessages.set(message.id, message);
+  const handleDeleteConversation = useCallback(async (convId: string) => {
+    try {
+      // Delete all messages first, then the conversation
+      await supabase.from("messages").delete().eq("conversation_id", convId);
+      await supabase.from("conversations").delete().eq("id", convId);
+      
+      setConversations((prev) => prev.filter((c) => c.id !== convId));
+      setAllMessages((prev) => {
+        const next = { ...prev };
+        delete next[convId];
+        return next;
       });
-
-      const next = {
-        ...prev,
-        [targetConversationId]: Array.from(uniqueMessages.values()).sort((a, b) => {
-          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return aTime - bTime;
-        }),
-      };
-
-      delete next[sourceConversationId];
-      return next;
-    });
-
-    setSelectedId(targetConversationId);
-  }, []);
+      
+      if (selectedId === convId) {
+        setSelectedId(null);
+      }
+      
+      toast.success("🗑️ تم حذف المحادثة");
+    } catch (e: any) {
+      toast.error("فشل حذف المحادثة: " + (e.message || ""));
+    }
+  }, [selectedId]);
 
   const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
     const conv = conversations.find(c => c.customerPhone === convPhone);
@@ -935,7 +903,7 @@ const InboxPage = () => {
            onShowCustomerInfo={() => setMobileCustomerInfoOpen(true)}
            scrollToMessageId={scrollToMessageId}
            onScrollToMessageDone={() => setScrollToMessageId(null)}
-            onConversationMerged={handleConversationMerged}
+            onDeleteConversation={handleDeleteConversation}
          />
 
         {/* Mobile Customer Info Sheet */}
@@ -990,7 +958,7 @@ const InboxPage = () => {
            onDeleteMessage={handleDeleteMessage}
            scrollToMessageId={scrollToMessageId}
            onScrollToMessageDone={() => setScrollToMessageId(null)}
-            onConversationMerged={handleConversationMerged}
+            onDeleteConversation={handleDeleteConversation}
          />
       ) : (
         !isMobile && (
