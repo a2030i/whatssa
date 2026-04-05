@@ -85,6 +85,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (roles.includes("super_admin")) setUserRole("super_admin");
       else if (roles.includes("admin")) setUserRole("admin");
       else setUserRole(roles[0]);
+    } else {
+      // No role found — default to member (least privilege)
+      setUserRole("member");
     }
   };
 
