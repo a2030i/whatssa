@@ -148,38 +148,30 @@ const TeamPage = () => {
     }
 
     const isSupervisor = formRole === "supervisor";
-    const profileUpdate = await supabase.from("profiles").update({
-      team_id: formTeam || null,
-      is_supervisor: isSupervisor,
-    }).eq("id", editingProfile.id);
-
-    if (profileUpdate.error) {
-      toast.error("فشل تحديث الملف الشخصي: " + profileUpdate.error.message);
-      return;
-    }
-
     const targetDbRole = formRole === "admin" ? "admin" : "member";
 
-    if (currentRole !== "super_admin") {
-      const deleteRolesResult = await supabase.from("user_roles").delete().eq("user_id", editingProfile.id).in("role", ["admin", "member"] as any);
-      if (deleteRolesResult.error) {
-        toast.error("فشل تنظيف الأدوار القديمة: " + deleteRolesResult.error.message);
-        return;
-      }
+    // Use edge function to bypass RLS for role updates
+    const { data, error } = await invokeCloud("admin-create-user", {
+      body: {
+        action: "update_role",
+        user_id: editingProfile.id,
+        role: targetDbRole,
+        is_supervisor: isSupervisor,
+        team_id: formTeam || null,
+      },
+    });
 
-      const roleResult = await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: targetDbRole as any });
-      if (roleResult.error) {
-        toast.error("فشل تحديث الدور: " + roleResult.error.message);
-        return;
-      }
+    if (error || data?.error) {
+      toast.error(data?.error || "فشل تحديث الدور");
+      return;
     }
 
     if (formEmail.trim() && formEmail.trim() !== editingProfile.email) {
       try {
-        const { error } = await invokeCloud("admin-create-user", {
+        const { error: emailErr } = await invokeCloud("admin-create-user", {
           body: { action: "update_email", user_id: editingProfile.id, new_email: formEmail.trim() },
         });
-        if (error) {
+        if (emailErr) {
           toast.error("فشل تحديث البريد الإلكتروني");
         }
       } catch {
