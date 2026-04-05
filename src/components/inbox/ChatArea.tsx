@@ -518,7 +518,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
 
         // Timestamp element
         const timestampEl = (
-          <div className={cn("flex items-center gap-1.5 mt-1", msg.type === "note" ? "text-amber-500/50" : msg.sender === "agent" ? "text-muted-foreground/40" : "text-muted-foreground/40")}>
+          <div className={cn("flex items-center gap-1.5 mt-1",
+            msg.type === "note" ? "text-amber-500/50"
+            : msg.sender === "customer" ? "text-white/55"
+            : "text-muted-foreground/50"
+          )}>
             <span className="text-[10px] tracking-tight">{msg.timestamp}</span>
             {msg.editedAt && <span className="text-[9px] italic mx-0.5">معدّلة</span>}
             {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
@@ -559,11 +563,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 }
               }
               return (
-                <span key={i} className={cn(
-                  "font-semibold px-1 rounded",
+              <span key={i} className={cn(
+                  "font-semibold px-1.5 py-0.5 rounded-md",
                   msg.sender === "customer"
-                    ? "bg-white/15 text-white"
-                    : "bg-primary/8 text-primary"
+                    ? "bg-white/25 text-white"
+                    : "bg-primary/10 text-primary"
                 )}>{displayLabel}</span>
               );
             })}
@@ -698,7 +702,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             <div className="flex flex-col gap-1">
               {/* Group sender label */}
               {groupSenderEl && (
-                <span className="text-[10px] font-semibold text-muted-foreground/60 mb-0.5">{groupSenderEl}</span>
+                <span className="text-[10.5px] font-bold text-muted-foreground/70">{groupSenderEl}</span>
               )}
               {/* Quoted message */}
               {quotedEl}
@@ -749,7 +753,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
           )}>
             {groupSenderEl && (
-              <div className="text-[10px] font-semibold -mb-0.5 text-white/60">{groupSenderEl}</div>
+              <div className="text-[10.5px] font-bold mb-0.5 text-white/80">{groupSenderEl}</div>
             )}
             {quotedEl && msg.sender === "customer" && (
               <div
