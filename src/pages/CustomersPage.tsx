@@ -314,18 +314,6 @@ const CustomersPage = () => {
                     {c.company && <p className="text-[10px] text-muted-foreground">{c.company}</p>}
                   </td>
                   <td className="p-3 font-mono text-xs" dir="ltr">{c.phone}</td>
-                  <td className="p-3">
-                    <Select value={c.lifecycle_stage || "lead"} onValueChange={(v) => updateLifecycleStage(c.id, v)}>
-                      <SelectTrigger className="h-7 text-[10px] w-24 border-0 p-1">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${stage.color}`}>{stage.label}</span>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LIFECYCLE_STAGES.map((s) => (
-                          <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </td>
                   <td className="p-3 text-xs hidden md:table-cell">{c.email || "-"}</td>
                   <td className="p-3">
                     <div className="flex flex-wrap gap-1">
