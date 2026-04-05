@@ -241,7 +241,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   // Can edit agent text messages within 15 minutes
   const canEdit = msg.sender === "agent" && msg.type === "text" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
     (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
-  const canDelete = msg.sender === "agent" && msg.waMessageId && !msg.isDeleted;
+  const canDelete = msg.sender === "agent" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
+    (Date.now() - new Date(msg.createdAt).getTime()) < 2 * 60 * 60 * 1000;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
