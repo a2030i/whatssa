@@ -753,7 +753,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               : "bg-[hsl(158,45%,42%)] text-white rounded-br-sm"
           )}>
             {groupSenderEl && (
-              <div className="text-[10px] font-semibold -mb-0.5 text-white/60">{groupSenderEl}</div>
+              <div className="text-[10.5px] font-bold mb-0.5 text-white/80">{groupSenderEl}</div>
             )}
             {quotedEl && msg.sender === "customer" && (
               <div
