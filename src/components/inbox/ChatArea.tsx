@@ -1893,12 +1893,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-2 md:space-y-3" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, hsl(var(--secondary) / 0.3), transparent 70%)' }}>
         {messages.map((msg, msgIdx) => {
-          // Check if next message is from same sender to avoid repeating avatar
+          // In groups, distinguish senders by their JID/phone, not just "customer"
+          const isGroup = conversation.conversationType === "group";
+          const getMsgSenderKey = (m: Message) => {
+            if (m.sender !== "customer" || !isGroup) return m.sender;
+            return m.senderPhone || m.senderJid || m.senderName || m.sender;
+          };
+          const senderKey = getMsgSenderKey(msg);
           const nextMsg = messages[msgIdx + 1];
-          const showAvatar = !nextMsg || nextMsg.sender !== msg.sender || nextMsg.sender === "system";
-          // Check if this is the first message in a group from same sender
+          const showAvatar = !nextMsg || getMsgSenderKey(nextMsg) !== senderKey || nextMsg.sender === "system";
           const prevMsg = messages[msgIdx - 1];
-          const isFirstInGroup = !prevMsg || prevMsg.sender !== msg.sender || prevMsg.sender === "system";
+          const isFirstInGroup = !prevMsg || getMsgSenderKey(prevMsg) !== senderKey || prevMsg.sender === "system";
           return (
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
@@ -1915,13 +1920,31 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 {showAvatar ? (
                   msg.sender === "customer" ? (
                     <div className="shrink-0 mb-1">
-                      {conversation.profilePic ? (
-                        <img src={conversation.profilePic} alt="" className="w-8 h-8 rounded-xl object-cover ring-1 ring-border/20 shadow-sm" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary ring-1 ring-primary/10">
-                          {(conversation.customerName || "؟").slice(0, 1)}
-                        </div>
-                      )}
+                      {(() => {
+                        // In groups, resolve per-sender avatar
+                        if (isGroup) {
+                          const rawPhone = msg.senderPhone || (msg.senderJid ? msg.senderJid.replace(/@.*/, "").replace(/\D/g, "") : "");
+                          const participant = rawPhone ? groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone)))) : undefined;
+                          const displayName = participant?.name || msg.senderName || rawPhone || "؟";
+                          const initials = displayName.slice(0, 2);
+                          // Generate a consistent color based on phone/name
+                          const hash = (rawPhone || displayName).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+                          const hue = hash % 360;
+                          return (
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold text-white ring-1 ring-border/20 shadow-sm" style={{ backgroundColor: `hsl(${hue}, 50%, 45%)` }}>
+                              {initials}
+                            </div>
+                          );
+                        }
+                        // Non-group: use conversation profile pic
+                        return conversation.profilePic ? (
+                          <img src={conversation.profilePic} alt="" className="w-8 h-8 rounded-xl object-cover ring-1 ring-border/20 shadow-sm" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary ring-1 ring-primary/10">
+                            {(conversation.customerName || "؟").slice(0, 1)}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div className="shrink-0 mb-1">
