@@ -3,8 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL") || "";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") || "";
-const SUPABASE_URL = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL") || "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("EXTERNAL_SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || "";
 
 // ── Chatbot Flow Processor ──
 async function processChatbotFlow(
@@ -375,8 +375,8 @@ serve(async (req) => {
   }
 
   const supabase = createClient(
-    Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    Deno.env.get("SUPABASE_URL") || Deno.env.get("EXTERNAL_SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY")!
   );
 
   try {
@@ -407,7 +407,7 @@ serve(async (req) => {
     // Find the config for this instance
     const { data: config } = await supabase
       .from("whatsapp_config")
-      .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
+      .select("id, org_id, default_team_id, default_agent_id")
       .eq("evolution_instance_name", instanceName)
       .eq("channel_type", "evolution")
       .maybeSingle();
@@ -1084,7 +1084,7 @@ serve(async (req) => {
             if (newConv && config.default_team_id && !config.default_agent_id) {
               try {
                 await supabase.functions.invoke("auto-assign", {
-                  body: { conversation_id: newConv.id, org_id: orgId, message_text: text || "", exclude_supervisors: !!(config as any).exclude_supervisors },
+                  body: { conversation_id: newConv.id, org_id: orgId, message_text: text || "", exclude_supervisors: false },
                 });
               } catch (_) {
                 await logToSystem(supabase, "warn", "فشل التعيين التلقائي (Evolution)", { conversation_id: newConv?.id }, orgId);
