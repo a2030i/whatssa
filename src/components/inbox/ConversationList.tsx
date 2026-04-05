@@ -446,10 +446,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   setTimeout(() => document.addEventListener("click", dismiss), 0);
                 }}
                 className={cn(
-                  "w-full text-right px-3 py-2.5 transition-all group relative rounded-lg",
+                  "w-full text-right px-3 py-3 transition-all group relative",
                   isSelected && !bulkMode
-                    ? "bg-primary/[0.06]"
-                    : "hover:bg-muted/50",
+                    ? "bg-primary/[0.07]"
+                    : "hover:bg-muted/60",
                   bulkMode && bulkSelected.has(conv.id) && "bg-primary/5"
                 )}
               >
