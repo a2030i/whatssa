@@ -1,5 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.1";
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.100.1/cors";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.49.1/cors";
 
 const OPENAI_BASE = "https://api.openai.com/v1";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";

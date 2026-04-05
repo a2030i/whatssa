@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 // ─────────────────────────────────────────────
 // Dispatch Webhook — sends events to org outgoing webhooks
