@@ -374,9 +374,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabase = createClient(
-    Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  // Try external DB first, then fallback to Lovable Cloud DB
+  const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || "";
+  const externalKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || "";
+  const cloudUrl = Deno.env.get("SUPABASE_URL") || "";
+  const cloudKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+  let supabase = createClient(
+    externalUrl || cloudUrl,
+    externalKey || cloudKey
   );
 
   try {
@@ -404,20 +410,46 @@ serve(async (req) => {
 
     const instanceName = body.instance || body.instanceName || "";
 
-    // Find the config for this instance
-    const { data: config } = await supabase
+    // Find the config for this instance — try primary DB first
+    const { data: config, error: configError } = await supabase
       .from("whatsapp_config")
       .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
       .eq("evolution_instance_name", instanceName)
       .eq("channel_type", "evolution")
       .maybeSingle();
 
-    if (!config) {
-      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, { event, instance: instanceName });
+    // If not found on primary DB, try the other DB
+    let finalConfig = config;
+    if (!config && externalUrl && cloudUrl && externalUrl !== cloudUrl) {
+      const fallbackClient = createClient(cloudUrl, cloudKey);
+      const { data: fallbackConfig } = await fallbackClient
+        .from("whatsapp_config")
+        .select("id, org_id, default_team_id, default_agent_id, exclude_supervisors")
+        .eq("evolution_instance_name", instanceName)
+        .eq("channel_type", "evolution")
+        .maybeSingle();
+      if (fallbackConfig) {
+        // Use Cloud DB as the main client for this request
+        supabase = fallbackClient;
+        finalConfig = fallbackConfig;
+        console.log(`[evolution-webhook] Config found in Cloud DB for instance: ${instanceName}`);
+      }
+    }
+
+    if (!finalConfig) {
+      const dbUsed = externalUrl ? externalUrl.replace(/https?:\/\//, "").split(".")[0] : "cloud";
+      await logToSystem(supabase, "warn", `Webhook وارد لجلسة غير معروفة: ${instanceName}`, {
+        event, instance: instanceName,
+        db_used: dbUsed,
+        config_error: configError?.message || null,
+      });
       return new Response(JSON.stringify({ ok: true, skipped: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Alias for rest of code
+    const config = finalConfig;
 
     const orgId = config.org_id;
 
