@@ -1788,10 +1788,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               {onShowCustomerInfo && (
                 <button
                   onClick={onShowCustomerInfo}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-primary/10 transition-colors"
+                   className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/15 transition-colors"
                   title="معلومات العميل"
                 >
-                  <Contact className="w-4 h-4 text-muted-foreground" />
+                  <Contact className="w-4 h-4 text-primary-foreground/80" />
                 </button>
               )}
               {conversation.status !== "closed" && (
