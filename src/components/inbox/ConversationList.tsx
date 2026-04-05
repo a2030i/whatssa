@@ -467,12 +467,12 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   )}
 
                   {/* RIGHT: Avatar */}
-                  <div className="relative shrink-0 mt-0.5">
+                  <div className="relative shrink-0">
                     {conv.profilePic ? (
                       <img
                         src={conv.profilePic}
                         alt={displayName}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-11 h-11 rounded-full object-cover ring-1 ring-border/30"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                           (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
