@@ -516,9 +516,10 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           return resolvedName || null;
         })();
 
-        // Timestamp element - inline like WhatsApp (floats at end of last line)
+        // Timestamp element — separate footer row to avoid bubble width collapse
         const timestampEl = (
-          <span className={cn("inline-flex items-center gap-1 text-[10px] tracking-tight mr-1 float-left mt-1.5 ml-2 leading-none select-none",
+          <div className={cn(
+            "mt-1.5 flex w-full items-center justify-end gap-1 text-[10px] tracking-tight leading-none select-none",
             msg.type === "note" ? "text-amber-500/50"
             : msg.sender === "customer" ? "text-white/55"
             : "text-muted-foreground/50"
@@ -526,7 +527,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             <span>{msg.timestamp}</span>
             {msg.editedAt && <span className="text-[9px] italic">{msg.editedBy ? `عدّلها ${msg.editedBy}` : "معدّلة"}</span>}
             {msg.sender === "agent" && msg.type !== "note" && <MessageStatus status={msg.status} isGroup={conversation.conversationType === "group"} readBy={msg.readBy} groupSize={msg.groupSize} />}
-          </span>
+          </div>
         );
 
         // Quoted message element
@@ -590,7 +591,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           if (lastIndex < textStr.length) {
             parts.push(<span key={`t${lastIndex}`}>{textStr.slice(lastIndex)}</span>);
           }
-          return <p className="whitespace-pre-wrap leading-[1.65]">{parts.length > 0 ? parts : text}</p>;
+          return <p className="whitespace-pre-wrap break-words leading-[1.65]">{parts.length > 0 ? parts : text}</p>;
         };
 
         // Translation element
@@ -619,7 +620,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === NOTE MESSAGE ===
         if (msg.type === "note") {
           return (
-            <div className="inline-block rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-br-sm max-w-full [overflow-wrap:break-word]">
+            <div className="inline-flex w-fit max-w-full flex-col rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200/30 dark:border-amber-500/10 text-foreground rounded-br-sm [overflow-wrap:break-word]">
               <div className="flex items-center gap-1 mb-1 text-amber-500 whitespace-nowrap">
                 <StickyNote className="w-3 h-3 shrink-0" />
                 <span className="text-[10px] font-semibold">ملاحظة داخلية</span>
@@ -755,7 +756,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               {/* Caption text in a mini bubble */}
               {hasText && (
                 <div className={cn(
-                  "inline-block rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
+                  "inline-flex w-fit max-w-full flex-col rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed [overflow-wrap:break-word]",
                   msg.sender === "agent"
                     ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
                     : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
@@ -774,7 +775,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === PURE TEXT MESSAGE (no media) ===
         return (
           <div className={cn(
-            "inline-block rounded-2xl px-4 py-2 text-[14px] leading-relaxed max-w-full [overflow-wrap:break-word]",
+            "inline-flex w-fit max-w-full flex-col rounded-2xl px-4 py-2 text-[14px] leading-relaxed [overflow-wrap:break-word]",
             msg.sender === "agent"
               ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
               : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
