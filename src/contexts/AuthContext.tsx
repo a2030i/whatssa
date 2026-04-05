@@ -189,11 +189,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
           setTimeout(() => fetchUserData(session.user.id), 0);
+          // Log security event for sign-in
+          if (event === "SIGNED_IN") {
+            supabase.from("security_events").insert({
+              event_type: "auth.sign_in",
+              severity: "info",
+              actor_id: session.user.id,
+              actor_email: session.user.email,
+              metadata: { provider: session.user.app_metadata?.provider || "email" },
+            }).then(() => {});
+          }
         } else {
           setProfile(null);
           setUserRole(null);
