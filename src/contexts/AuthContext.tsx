@@ -196,7 +196,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setTimeout(() => fetchUserData(session.user.id), 0);
           // Log security event for sign-in
           if (event === "SIGNED_IN") {
-            supabase.from("security_events").insert({
+            (supabase as any).from("security_events").insert({
               event_type: "auth.sign_in",
               severity: "info",
               actor_id: session.user.id,
