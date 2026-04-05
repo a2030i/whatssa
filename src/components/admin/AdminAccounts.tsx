@@ -149,6 +149,30 @@ const AdminAccounts = () => {
     }
   };
 
+  const cleanupOrphanOrgs = async () => {
+    const orphans = orgs.filter((o) => {
+      if (superAdminOrgIds.has(o.id)) return false;
+      return profiles.filter((p) => p.org_id === o.id).length === 0;
+    });
+    if (orphans.length === 0) {
+      toast.info("لا توجد منظمات فارغة");
+      return;
+    }
+    setDeleting(true);
+    let deleted = 0;
+    for (const org of orphans) {
+      try {
+        const { data, error } = await invokeCloud("admin-delete-org", {
+          body: { org_id: org.id },
+        });
+        if (!error && !data?.error) deleted++;
+      } catch {}
+    }
+    toast.success(`تم حذف ${deleted} منظمة فارغة`);
+    setDeleting(false);
+    load();
+  };
+
   const { startImpersonation } = useAuth();
 
   const impersonateOrg = async (orgId: string) => {
@@ -164,14 +188,11 @@ const AdminAccounts = () => {
   };
 
   const filtered = orgs.filter((o) => {
-    // Hide super admin orgs
     if (superAdminOrgIds.has(o.id)) return false;
-    // Hide orphan orgs with 0 members (created by self-signup trigger for users who later joined another org)
-    const memberCount = profiles.filter((p) => p.org_id === o.id).length;
-    if (memberCount === 0) return false;
-    // Search filter
     return o.name?.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search);
   });
+
+  const orphanCount = filtered.filter((o) => profiles.filter((p) => p.org_id === o.id).length === 0).length;
 
   return (
     <div className="space-y-4">
