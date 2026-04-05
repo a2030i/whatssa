@@ -596,16 +596,24 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   )}
                   {(!mediaUrl || (msg.type !== "audio" && msg.type !== "video" && msg.type !== "document" && !isImageUrl(mediaUrl) && !mediaUrl.startsWith("storage:")) || textWithoutUrl) && textWithoutUrl && (
                     <p className="whitespace-pre-wrap leading-[1.65]">
-                      {textWithoutUrl.split(/(@[\u0600-\u06FF\w\d+]+)/g).map((part, i) => {
+                      {textWithoutUrl.split(/(@\+?[\u0600-\u06FF\w\d]+)/g).map((part, i) => {
                         if (!part.startsWith("@")) return <span key={i}>{part}</span>;
-                        // Try to resolve phone-based mentions to display names
-                        const mentionValue = part.slice(1);
-                        const isPhone = /^\d+$/.test(mentionValue);
+                        // Strip @ and optional + to get the raw value
+                        const mentionRaw = part.slice(1).replace(/^\+/, "");
+                        const isPhone = /^\d{6,}$/.test(mentionRaw);
                         let displayLabel = part;
-                        if (isPhone && conversation.conversationType === "group" && groupParticipants?.length) {
-                          const participant = groupParticipants.find(p => p.phone === mentionValue);
-                          if (participant && participant.name !== participant.phone) {
-                            displayLabel = `@${participant.name}`;
+                        if (isPhone) {
+                          // Try to resolve from group participants
+                          if (conversation.conversationType === "group" && groupParticipants?.length) {
+                            const participant = groupParticipants.find(p => p.phone === mentionRaw || p.rawDigits === mentionRaw);
+                            if (participant?.name && participant.name !== participant.phone && participant.name !== participant.rawDigits) {
+                              displayLabel = `@${participant.name}`;
+                            } else {
+                              // Show as formatted phone
+                              displayLabel = `@+${mentionRaw}`;
+                            }
+                          } else {
+                            displayLabel = `@+${mentionRaw}`;
                           }
                         }
                         return (
