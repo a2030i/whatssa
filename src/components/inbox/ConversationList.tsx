@@ -169,9 +169,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       if (activeQuickFilter !== "archived" && conv.isArchived) return false;
       if (activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.status === "closed") return false;
       switch (activeQuickFilter) {
-        case "active": if (conv.status !== "active") return false; break;
+        case "mine": if (conv.assignedToId !== myId) return false; break;
+        case "needsReply": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
-        case "assigned": if (!conv.assignedTo || conv.assignedTo === "غير معيّن") return false; break;
+        case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
         case "unread": if (conv.unread <= 0) return false; break;
         case "waiting": if (conv.status !== "waiting") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
