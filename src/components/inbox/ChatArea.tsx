@@ -1738,20 +1738,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-[#efeae2] dark:bg-[#0b141a]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'400\' height=\'400\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cdefs%3E%3Cpattern id=\'p\' width=\'80\' height=\'80\' patternUnits=\'userSpaceOnUse\' patternTransform=\'rotate(15)\'%3E%3Cpath d=\'M20 10c2 0 3 1 3 3s-1 3-3 3-3-1-3-3 1-3 3-3zm30 25c1.5 0 2.5 1 2.5 2.5s-1 2.5-2.5 2.5-2.5-1-2.5-2.5 1-2.5 2.5-2.5zm-35 30c1 0 2 .8 2 2s-1 2-2 2-2-.8-2-2 1-2 2-2zm45 10c1.5 0 2.5 1 2.5 2.5s-1 2.5-2.5 2.5-2.5-1-2.5-2.5 1-2.5 2.5-2.5z\' fill=\'%23d6cfc4\' fill-opacity=\'0.3\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'400\' height=\'400\' fill=\'url(%23p)\'/%3E%3C/svg%3E")' }}>
       {/* Header */}
       <div className="shrink-0 bg-card border-b border-border">
-        <div className="h-[56px] md:h-[60px] flex items-center justify-between px-4 md:px-5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <button className="w-8 h-8 md:w-9 md:h-9 rounded-full hover:bg-muted transition-all flex items-center justify-center shrink-0" onClick={onBack}>
+        <div className="h-[56px] md:h-[60px] flex items-center justify-between px-3 md:px-5">
+          <div className="flex items-center gap-2 min-w-0">
+            <button className="w-8 h-8 rounded-full hover:bg-muted transition-all flex items-center justify-center shrink-0" onClick={onBack}>
               <ArrowRight className="w-4.5 h-4.5 text-foreground" />
             </button>
             <button
-              className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => onShowCustomerInfo?.()}
             >
             <div className="relative shrink-0">
               {groupPicture ? (
-                <img src={groupPicture} alt={conversation.customerName} className="w-10 h-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                <img src={groupPicture} alt={conversation.customerName} className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
               ) : null}
-              <div className={cn("w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground", groupPicture ? "hidden" : "")}>
+              <div className={cn("w-9 h-9 md:w-10 md:h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
@@ -1759,71 +1759,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               )}
             </div>
             <div className="min-w-0 overflow-hidden">
-              <div className="flex items-center gap-1.5">
-                <p className="font-medium text-[15px] truncate max-w-[120px] md:max-w-[250px] tracking-tight">{conversation.customerName}</p>
-                {isMetaChannel ? (
-                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 font-medium shrink-0">
-                    <ShieldCheck className="w-2.5 h-2.5" />
-                    رسمي
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground font-medium shrink-0">
-                    <Wifi className="w-2.5 h-2.5" />
-                    غير رسمي
-                  </span>
-                )}
-                {isBlocked && (
-                  <span className="inline-flex items-center gap-0.5 text-[8px] px-1.5 py-0.5 rounded-md bg-destructive/10 text-destructive font-medium shrink-0">
-                    <Ban className="w-2.5 h-2.5" />
-                    محظور
+              <div className="flex items-center gap-1">
+                <p className="font-semibold text-[14px] truncate max-w-[140px] md:max-w-[250px]">{conversation.customerName}</p>
+                {isMetaChannel && (
+                  <span className="inline-flex items-center text-[7px] px-1 py-px rounded bg-emerald-500/10 text-emerald-600 font-bold shrink-0">
+                    <ShieldCheck className="w-2 h-2 ml-0.5" />رسمي
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5 font-light">{conversation.lastSeen || conversation.customerPhone}</p>
+              <p className="text-[10px] text-muted-foreground/60 truncate">{isMetaChannel ? "عبر الواتساب" : conversation.channelType === "evolution" ? "عبر الواتساب" : conversation.customerPhone}</p>
             </div>
             </button>
           </div>
-          <div className="flex items-center gap-1">
-            {/* 24h Window Timer - Meta API only */}
-            {/* Mobile quick actions */}
-            <div className="flex md:hidden items-center gap-0.5">
-              {onShowCustomerInfo && (
-                <button
-                  onClick={onShowCustomerInfo}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-primary/10 transition-colors"
-                  title="معلومات العميل"
-                >
-                  <Contact className="w-4 h-4 text-muted-foreground" />
-                </button>
-              )}
-              {conversation.status !== "closed" && (
-                <>
-                  <button
-                    onClick={() => setShowTransfer(true)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-secondary/80 transition-colors"
-                    title="تحويل"
-                  >
-                    <UserPlus className="w-4 h-4 text-primary" />
-                  </button>
-                  <button
-                    onClick={() => setShowClosureReason(true)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-destructive/10 transition-colors"
-                    title="إغلاق"
-                  >
-                    <XCircle className="w-4 h-4 text-destructive" />
-                  </button>
-                </>
-              )}
-            </div>
-            {conversation.status === "closed" && (
-              <button
-                onClick={() => { onStatusChange(conversation.id, "active"); toast.success("تم إعادة فتح المحادثة"); }}
-                className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center hover:bg-secondary active:bg-success/10 transition-colors"
-                title="إعادة فتح"
-              >
-                <CheckCircle2 className="w-4 h-4 text-success" />
-              </button>
-            )}
+          <div className="flex items-center gap-0.5">
             {isMetaChannel && (windowExpired ? (
               <div className="hidden sm:flex items-center gap-1 text-warning bg-warning/10 px-2 py-1 rounded-lg ml-2">
                 <Clock className="w-3 h-3" />
@@ -1844,9 +1792,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </div>
               </div>
             ))}
-            <button onClick={() => setShowMessageSearch(!showMessageSearch)} className={cn("p-2 rounded-lg hover:bg-secondary transition-colors", showMessageSearch ? "bg-primary/10 text-primary" : "")} title="بحث في الرسائل">
-              <SearchIcon className="w-4 h-4 text-muted-foreground" />
-            </button>
             {/* Desktop: Transfer button directly visible */}
             {conversation.status !== "closed" && (
               <button
