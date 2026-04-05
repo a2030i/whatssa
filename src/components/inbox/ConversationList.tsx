@@ -141,7 +141,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId).length,
     waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.unread === 0).length,
     unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
-    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
+    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId).length,
     mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
     closed: conversations.filter(c => c.status === "closed").length,
     archived: conversations.filter(c => c.isArchived).length,
@@ -172,7 +172,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
         case "waitingCustomer": if (conv.assignedToId !== myId || conv.unread > 0) return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
         case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
-        case "unread": if (conv.unread <= 0) return false; break;
+        case "unread": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
         case "archived": if (!conv.isArchived) return false; break;
       }
