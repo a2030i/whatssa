@@ -15,11 +15,12 @@ interface Props {
   excludeSupervisors?: boolean;
 }
 
-const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId }: Props) => {
+const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId, excludeSupervisors: defaultExclude }: Props) => {
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [agents, setAgents] = useState<{ id: string; full_name: string }[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState(defaultTeamId || "");
   const [selectedAgentId, setSelectedAgentId] = useState(defaultAgentId || "");
+  const [excludeSupervisors, setExcludeSupervisors] = useState(defaultExclude || false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
