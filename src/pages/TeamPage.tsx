@@ -117,20 +117,54 @@ const TeamPage = () => {
 
   const handleSave = async () => {
     if (!editingProfile) return;
-    await supabase.from("profiles").update({ team_id: formTeam || null, is_supervisor: formSupervisor }).eq("id", editingProfile.id);
+    
+    const isSupervisor = formRole === "supervisor";
+    const profileUpdate = await supabase.from("profiles").update({ 
+      team_id: formTeam || null, 
+      is_supervisor: isSupervisor 
+    }).eq("id", editingProfile.id);
+    
+    if (profileUpdate.error) {
+      toast.error("فشل تحديث الملف الشخصي: " + profileUpdate.error.message);
+      return;
+    }
 
     const currentRole = getStoredRole(editingProfile.id);
-    if (currentRole !== formRole) {
-      if (formRole === "admin") {
+    const targetDbRole = formRole === "admin" ? "admin" : "member";
+    
+    if (currentRole !== targetDbRole) {
+      let roleResult;
+      if (targetDbRole === "admin") {
         if (currentRole) {
-          await supabase.from("user_roles").update({ role: "admin" as any }).eq("user_id", editingProfile.id);
+          roleResult = await supabase.from("user_roles").update({ role: "admin" as any }).eq("user_id", editingProfile.id);
         } else {
-          await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "admin" as any });
+          roleResult = await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "admin" as any });
         }
       } else if (currentRole === "admin") {
+        // Downgrade from admin: delete admin role and insert member
         await supabase.from("user_roles").delete().eq("user_id", editingProfile.id).eq("role", "admin");
+        roleResult = await supabase.from("user_roles").insert({ user_id: editingProfile.id, role: "member" as any });
+      }
+      if (roleResult?.error) {
+        toast.error("فشل تحديث الدور: " + roleResult.error.message);
+        return;
       }
     }
+
+    // Update email if changed
+    if (formEmail.trim() && formEmail.trim() !== editingProfile.email) {
+      try {
+        const { error } = await invokeCloud("admin-create-user", {
+          body: { action: "update_email", user_id: editingProfile.id, new_email: formEmail.trim() },
+        });
+        if (error) {
+          toast.error("فشل تحديث البريد الإلكتروني");
+        }
+      } catch {
+        toast.error("فشل تحديث البريد الإلكتروني");
+      }
+    }
+
     toast.success("تم تحديث بيانات العضو");
     setDialogOpen(false);
     load();
