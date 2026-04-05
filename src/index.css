@@ -74,47 +74,47 @@
   }
 
   .dark {
-    --background: 220 16% 13%;
+    --background: 222 16% 10%;
     --foreground: 220 10% 92%;
 
-    --card: 220 14% 17%;
+    --card: 222 14% 14%;
     --card-foreground: 220 10% 92%;
 
-    --popover: 220 14% 17%;
+    --popover: 222 14% 14%;
     --popover-foreground: 220 10% 92%;
 
-    --primary: 145 58% 48%;
+    --primary: 160 58% 42%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 145 65% 55%;
+    --primary-glow: 160 65% 50%;
 
-    --secondary: 220 12% 21%;
+    --secondary: 220 12% 18%;
     --secondary-foreground: 220 10% 88%;
 
-    --muted: 220 12% 21%;
-    --muted-foreground: 220 8% 56%;
+    --muted: 220 12% 18%;
+    --muted-foreground: 215 12% 50%;
 
-    --accent: 145 25% 20%;
-    --accent-foreground: 145 55% 68%;
+    --accent: 160 20% 18%;
+    --accent-foreground: 160 50% 65%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 12% 24%;
-    --input: 220 12% 22%;
-    --ring: 145 58% 48%;
+    --border: 220 12% 22%;
+    --input: 220 12% 20%;
+    --ring: 160 58% 42%;
 
     /* Sidebar */
-    --sidebar-background: 220 18% 10%;
+    --sidebar-background: 222 18% 8%;
     --sidebar-foreground: 220 10% 82%;
-    --sidebar-primary: 145 58% 48%;
+    --sidebar-primary: 160 58% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 16%;
+    --sidebar-accent: 222 14% 14%;
     --sidebar-accent-foreground: 220 10% 92%;
-    --sidebar-border: 220 12% 18%;
-    --sidebar-ring: 145 58% 48%;
+    --sidebar-border: 220 12% 16%;
+    --sidebar-ring: 160 58% 42%;
 
     /* Custom tokens */
-    --whatsapp: 145 58% 48%;
+    --whatsapp: 160 58% 42%;
     --whatsapp-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
@@ -128,8 +128,12 @@
     --kpi-3: 280 55% 60%;
     --kpi-4: 30 85% 58%;
 
-    --gradient-start: 145 60% 48%;
-    --gradient-end: 160 65% 40%;
+    --gradient-start: 160 60% 42%;
+    --gradient-end: 165 65% 36%;
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.2);
   }
 }
 
