@@ -44,6 +44,7 @@ const InboxPage = () => {
   const [loading, setLoading] = useState(true);
   const [newConvOpen, setNewConvOpen] = useState(false);
   const [mobileCustomerInfoOpen, setMobileCustomerInfoOpen] = useState(false);
+  const [desktopInfoOpen, setDesktopInfoOpen] = useState(false);
   const selectedIdRef = useRef<string | null>(null);
   const deepLinkApplied = useRef(false);
 
@@ -962,6 +963,7 @@ const InboxPage = () => {
            onTagsChange={handleTagsChange}
            onEditMessage={handleEditMessage}
            onDeleteMessage={handleDeleteMessage}
+           onShowCustomerInfo={() => setDesktopInfoOpen(prev => !prev)}
            scrollToMessageId={scrollToMessageId}
            onScrollToMessageDone={() => setScrollToMessageId(null)}
             onDeleteConversation={handleDeleteConversation}
@@ -984,7 +986,11 @@ const InboxPage = () => {
         )
       )}
 
-      {selected && !isMobile && <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} onAssignAgent={handleAssignAgent} onAssignTeam={handleAssignTeam} />}
+      {selected && !isMobile && desktopInfoOpen && (
+        <div className="relative animate-in slide-in-from-left duration-200">
+          <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} onAssignAgent={handleAssignAgent} onAssignTeam={handleAssignTeam} />
+        </div>
+      )}
 
       <NewConversationDialog
         open={newConvOpen}
