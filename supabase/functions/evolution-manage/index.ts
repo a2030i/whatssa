@@ -149,7 +149,7 @@ serve(async (req) => {
 
     // Parallel: fetch profile + parse body simultaneously
     const [profileResult, rawBody] = await Promise.all([
-      adminClient.from("profiles").select("org_id").eq("id", user.id).maybeSingle(),
+      adminClient.from("profiles").select("org_id, full_name").eq("id", user.id).maybeSingle(),
       req.json().catch(() => ({} as Record<string, unknown>)),
     ]);
     const profile = profileResult.data;
@@ -1360,9 +1360,12 @@ serve(async (req) => {
       }
 
       if (editRes.ok) {
+        // Merge with existing metadata
+        const { data: editMsgData } = await adminClient.from("messages").select("metadata").eq("wa_message_id", editMsgId).maybeSingle();
+        const editExistingMeta = (editMsgData?.metadata as Record<string, unknown>) || {};
         await adminClient.from("messages").update({
           content: new_text,
-          metadata: { edited_at: new Date().toISOString() },
+          metadata: { ...editExistingMeta, edited_at: new Date().toISOString(), edited_by: profile?.full_name || userId },
         }).eq("wa_message_id", editMsgId);
 
         await logToSystem(adminClient, "info", "تم تعديل رسالة", {
@@ -1399,9 +1402,12 @@ serve(async (req) => {
       });
       const delData = await delRes.json();
       if (delRes.ok) {
+        // Merge with existing metadata
+        const { data: delMsgData } = await adminClient.from("messages").select("metadata").eq("wa_message_id", delMsgId).maybeSingle();
+        const delExistingMeta = (delMsgData?.metadata as Record<string, unknown>) || {};
         await adminClient.from("messages").update({
           content: "تم حذف هذه الرسالة",
-          metadata: { is_deleted: true, deleted_at: new Date().toISOString() },
+          metadata: { ...delExistingMeta, is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: profile?.full_name || userId },
         }).eq("wa_message_id", delMsgId);
         await logToSystem(adminClient, "info", `تم حذف رسالة`, { message_id: delMsgId }, orgId, userId);
       }

@@ -817,7 +817,7 @@ const InboxPage = () => {
     setAllMessages(prev => {
       const updated: Record<string, Message[]> = {};
       for (const [convId, msgs] of Object.entries(prev)) {
-        updated[convId] = msgs.map(m => m.id === msgId ? { ...m, text: "تم حذف هذه الرسالة", isDeleted: true } : m);
+        updated[convId] = msgs.map(m => m.id === msgId ? { ...m, text: "تم حذف هذه الرسالة", isDeleted: true, deletedBy: profile?.full_name || "موظف" } : m);
       }
       return updated;
     });
