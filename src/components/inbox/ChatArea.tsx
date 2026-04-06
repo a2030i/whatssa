@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2, Forward, Star, BarChart3, Timer as TimerIcon, Tag, Ticket } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2, Forward, Star, BarChart3, Timer as TimerIcon, Tag, Ticket, CornerDownLeft, WrapText } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
@@ -913,6 +913,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showTicketDialog, setShowTicketDialog] = useState(false);
   const [selectingMessages, setSelectingMessages] = useState(false);
   const [selectedMsgIds, setSelectedMsgIds] = useState<Set<string>>(new Set());
+  const [enterToSend, setEnterToSend] = useState(() => {
+    const saved = localStorage.getItem("enterToSend");
+    return saved !== null ? saved === "true" : true;
+  });
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
@@ -2501,13 +2505,30 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 اختر قالباً لإرسال رسالة...
               </button>
             ) : (
-              <Input
-                ref={inputRef}
+              <textarea
+                ref={inputRef as any}
                 placeholder={imagePreview ? "أضف تعليقاً (اختياري)..." : isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "أدخل الرسالة..."}
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
-                className="border-0 bg-transparent h-10 text-sm px-4 focus-visible:ring-0 focus-visible:ring-offset-0"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    if (enterToSend && !e.shiftKey) {
+                      e.preventDefault();
+                      imagePreview ? handleSendImage() : handleSend();
+                    } else if (!enterToSend && e.shiftKey) {
+                      e.preventDefault();
+                      imagePreview ? handleSendImage() : handleSend();
+                    }
+                  }
+                }}
+                rows={1}
+                className="border-0 bg-transparent min-h-[40px] max-h-[120px] text-sm px-4 py-2.5 focus-visible:ring-0 focus-visible:ring-offset-0 w-full resize-none outline-none"
+                style={{ height: "auto", overflow: "auto" }}
+                onInput={(e) => {
+                  const el = e.target as HTMLTextAreaElement;
+                  el.style.height = "auto";
+                  el.style.height = Math.min(el.scrollHeight, 120) + "px";
+                }}
               />
             )}
 
@@ -2711,6 +2732,32 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <button onClick={copyConversationLink} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-red-500 shrink-0" title="نسخ رابط المحادثة">
                 <Link2 className="w-4 h-4" />
               </button>
+              {/* Enter mode toggle */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title={enterToSend ? "Enter = إرسال" : "Enter = سطر جديد"}>
+                    {enterToSend ? <CornerDownLeft className="w-4 h-4" /> : <WrapText className="w-4 h-4" />}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-48 p-1" dir="rtl">
+                  <button
+                    onClick={() => { setEnterToSend(true); localStorage.setItem("enterToSend", "true"); }}
+                    className={cn("w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors", enterToSend ? "bg-primary/10 text-primary" : "hover:bg-secondary")}
+                  >
+                    <CornerDownLeft className="w-3.5 h-3.5" />
+                    <span>Enter = إرسال</span>
+                    {enterToSend && <Check className="w-3 h-3 mr-auto" />}
+                  </button>
+                  <button
+                    onClick={() => { setEnterToSend(false); localStorage.setItem("enterToSend", "false"); }}
+                    className={cn("w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors", !enterToSend ? "bg-primary/10 text-primary" : "hover:bg-secondary")}
+                  >
+                    <WrapText className="w-3.5 h-3.5" />
+                    <span>Enter = سطر جديد</span>
+                    {!enterToSend && <Check className="w-3 h-3 mr-auto" />}
+                  </button>
+                </PopoverContent>
+              </Popover>
             </div>
             {/* Send Button */}
             {(isNoteMode || !windowExpired) && (
