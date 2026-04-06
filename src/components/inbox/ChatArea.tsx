@@ -27,6 +27,7 @@ import ScheduleMessagePopover from "./ScheduleMessagePopover";
 import ForwardMessageDialog from "./ForwardMessageDialog";
 import PollCreatorDialog from "./PollCreatorDialog";
 import ContactCardDialog from "./ContactCardDialog";
+import CreateTicketDialog from "@/components/tickets/CreateTicketDialog";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
