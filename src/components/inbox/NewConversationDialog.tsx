@@ -94,6 +94,13 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [groupImageFile, setGroupImageFile] = useState<File | null>(null);
   const [groupImagePreview, setGroupImagePreview] = useState<string | null>(null);
   const groupImageInputRef = useRef<HTMLInputElement>(null);
+  // Email state
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailConfigs, setEmailConfigs] = useState<{ id: string; email_address: string; label: string | null }[]>([]);
+  const [selectedEmailConfig, setSelectedEmailConfig] = useState<string | null>(null);
 
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
   const fullPhone = `${countryCode}${localNumber.replace(/^0+/, "")}`;
