@@ -2732,6 +2732,32 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <button onClick={copyConversationLink} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-red-500 shrink-0" title="نسخ رابط المحادثة">
                 <Link2 className="w-4 h-4" />
               </button>
+              {/* Enter mode toggle */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title={enterToSend ? "Enter = إرسال" : "Enter = سطر جديد"}>
+                    {enterToSend ? <CornerDownLeft className="w-4 h-4" /> : <WrapText className="w-4 h-4" />}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" className="w-48 p-1" dir="rtl">
+                  <button
+                    onClick={() => { setEnterToSend(true); localStorage.setItem("enterToSend", "true"); }}
+                    className={cn("w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors", enterToSend ? "bg-primary/10 text-primary" : "hover:bg-secondary")}
+                  >
+                    <CornerDownLeft className="w-3.5 h-3.5" />
+                    <span>Enter = إرسال</span>
+                    {enterToSend && <Check className="w-3 h-3 mr-auto" />}
+                  </button>
+                  <button
+                    onClick={() => { setEnterToSend(false); localStorage.setItem("enterToSend", "false"); }}
+                    className={cn("w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors", !enterToSend ? "bg-primary/10 text-primary" : "hover:bg-secondary")}
+                  >
+                    <WrapText className="w-3.5 h-3.5" />
+                    <span>Enter = سطر جديد</span>
+                    {!enterToSend && <Check className="w-3 h-3 mr-auto" />}
+                  </button>
+                </PopoverContent>
+              </Popover>
             </div>
             {/* Send Button */}
             {(isNoteMode || !windowExpired) && (
