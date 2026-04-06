@@ -973,6 +973,48 @@ const IntegrationsPage = () => {
     }
   };
 
+  const reconnectUnofficial = async (config: WhatsAppConfig) => {
+    if (!config.evolution_instance_name) return;
+    setReconnectingId(config.id);
+    setReconnectQr(null);
+    try {
+      const { data } = await invokeCloud("evolution-manage", {
+        body: { action: "reconnect", instance_name: config.evolution_instance_name },
+      });
+      if (data?.qr_code) {
+        setReconnectQr(data.qr_code);
+        toast.success("تم توليد رمز QR جديد — امسحه من واتساب");
+      } else if (data?.status === "open") {
+        toast.success("✅ الرقم متصل بالفعل");
+        setReconnectingId(null);
+        loadConfigs(true);
+      } else {
+        toast.info("جاري إعادة الاتصال...");
+      }
+    } catch {
+      toast.error("فشل إعادة الاتصال");
+      setReconnectingId(null);
+    }
+  };
+
+  const syncMissedMessages = async (config: WhatsAppConfig) => {
+    if (!config.evolution_instance_name) return;
+    setSyncingMessagesId(config.id);
+    try {
+      const { data } = await invokeCloud("evolution-manage", {
+        body: { action: "sync_missed_messages", instance_name: config.evolution_instance_name },
+      });
+      if (data?.success) {
+        toast.success(`✅ تمت مزامنة ${data.synced || 0} رسالة فائتة`);
+      } else {
+        toast.error(data?.error || "فشلت المزامنة");
+      }
+    } catch {
+      toast.error("خطأ في المزامنة");
+    }
+    setSyncingMessagesId(null);
+  };
+
   // ── Inline Rate Limit Panel for unofficial cards ──
   const UnofficialRateLimitPanel = ({ configId, initialSettings }: { configId: string; initialSettings: any }) => {
     const defaults = {
