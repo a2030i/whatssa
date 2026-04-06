@@ -17,19 +17,25 @@ function log(step: string, detail: unknown) {
   console.log(`[whatsapp-complete-signup] [${step}]`, JSON.stringify(detail));
 }
 
-async function resolveMetaAppId(serviceClient: ReturnType<typeof createClient>) {
+async function resolveMetaCredentials(serviceClient: ReturnType<typeof createClient>) {
   const fallbackAppId = Deno.env.get("META_APP_ID") || "1306128431426603";
+  const fallbackSecret = Deno.env.get("META_APP_SECRET") || "";
 
   try {
     const { data } = await serviceClient
       .from("system_settings")
-      .select("value")
-      .eq("key", "meta_app_id")
-      .maybeSingle();
+      .select("key, value")
+      .in("key", ["meta_app_id", "meta_app_secret"]);
 
-    return data?.value ? String(data.value) : fallbackAppId;
+    let appId = fallbackAppId;
+    let appSecret = fallbackSecret;
+    (data || []).forEach((row: any) => {
+      if (row.key === "meta_app_id" && row.value) appId = String(row.value);
+      if (row.key === "meta_app_secret" && row.value) appSecret = String(row.value);
+    });
+    return { appId, appSecret };
   } catch {
-    return fallbackAppId;
+    return { appId: fallbackAppId, appSecret: fallbackSecret };
   }
 }
 
@@ -216,14 +222,13 @@ serve(async (req) => {
       previous_provider: userPreviousProvider,
     } = body;
 
-    const appSecret = Deno.env.get("META_APP_SECRET");
     const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    if (!appSecret) return error("META_APP_SECRET not configured", 500);
-
     const supabase = createClient(supabaseUrl, serviceKey);
-    const appId = await resolveMetaAppId(supabase);
+    const { appId, appSecret } = await resolveMetaCredentials(supabase);
+
+    if (!appSecret) return error("META_APP_SECRET not configured — احفظه من إعدادات السوبر أدمن أو كـ Edge Function Secret", 500);
 
     // ── Step 1: Obtain access token ──
     log("step1_token", { hasCode: !!code, hasDirect: !!directToken, hasConfigId: !!configId });

@@ -216,7 +216,7 @@ const AdminSettings = () => {
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground mt-1">
-              ⚠️ المفتاح السري محفوظ أيضاً كـ Edge Function Secret — عند التغيير يجب تحديثه هناك أيضاً.
+              ✅ المفتاح السري يُقرأ تلقائياً من هنا — لا حاجة لتحديثه في مكان آخر.
             </p>
           </div>
           <div>

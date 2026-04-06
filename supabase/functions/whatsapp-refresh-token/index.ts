@@ -27,10 +27,10 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const metaAppSecret = Deno.env.get("META_APP_SECRET")!;
 
     const adminClient = createClient(supabaseUrl, serviceKey);
-    const metaAppId = await resolveMetaAppId(adminClient);
+    const { appId: metaAppId, appSecret: resolvedSecret } = await resolveMetaCredentials(adminClient);
+    const metaAppSecret = resolvedSecret || Deno.env.get("META_APP_SECRET")!;
 
     // Get all configs with tokens expiring in the next 7 days or already expired
     const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();

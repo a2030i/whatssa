@@ -6,24 +6,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function resolveMetaAppId() {
+async function resolveMetaCredentials() {
   const fallbackAppId = Deno.env.get("META_APP_ID") || "1306128431426603";
+  const fallbackSecret = Deno.env.get("META_APP_SECRET") || "";
   const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-  if (!supabaseUrl || !serviceKey) return fallbackAppId;
+  if (!supabaseUrl || !serviceKey) return { appId: fallbackAppId, appSecret: fallbackSecret };
 
   try {
     const admin = createClient(supabaseUrl, serviceKey);
     const { data } = await admin
       .from("system_settings")
-      .select("value")
-      .eq("key", "meta_app_id")
-      .maybeSingle();
+      .select("key, value")
+      .in("key", ["meta_app_id", "meta_app_secret"]);
 
-    return data?.value ? String(data.value) : fallbackAppId;
+    let appId = fallbackAppId;
+    let appSecret = fallbackSecret;
+    (data || []).forEach((row: any) => {
+      if (row.key === "meta_app_id" && row.value) appId = String(row.value);
+      if (row.key === "meta_app_secret" && row.value) appSecret = String(row.value);
+    });
+    return { appId, appSecret };
   } catch {
-    return fallbackAppId;
+    return { appId: fallbackAppId, appSecret: fallbackSecret };
   }
 }
 
@@ -36,8 +42,7 @@ serve(async (req) => {
     const body = await req.json();
     const { code, access_token: directToken, redirect_uri: redirectUri } = body;
 
-    const appId = await resolveMetaAppId();
-    const appSecret = Deno.env.get("META_APP_SECRET");
+    const { appId, appSecret } = await resolveMetaCredentials();
 
     if (!appSecret) {
       return new Response(
