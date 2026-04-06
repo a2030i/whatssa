@@ -535,6 +535,21 @@ const EmailConfigSection = () => {
                         )}
                         اختبار الاتصال
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleFetchEmails(config.id)}
+                        disabled={fetchingId === config.id || !config.imap_host}
+                        className="text-[10px] h-7 px-2.5 gap-1"
+                        title={!config.imap_host ? "IMAP غير مهيأ" : "جلب الرسائل الواردة"}
+                      >
+                        {fetchingId === config.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Download className="w-3 h-3" />
+                        )}
+                        جلب الوارد
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => handleEdit(config)} className="text-[10px] h-7 px-2 gap-1">
                         <Settings className="w-3 h-3" /> إعدادات
                       </Button>
