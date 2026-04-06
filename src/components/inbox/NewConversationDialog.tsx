@@ -205,6 +205,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const evolutionChannels = useMemo(() => channels.filter(c => c.channel_type === "evolution"), [channels]);
   const hasEvolution = evolutionChannels.length > 0;
   const hasEmailConfigs = emailConfigs.length > 0;
+  const hasWhatsApp = channels.length > 0;
 
   const handleSendEmail = async () => {
     if (!emailTo || !emailSubject || !emailBody) {
