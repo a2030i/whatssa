@@ -179,7 +179,7 @@ class RawImapClient {
 
   async fetchMessages(seqSet: string): Promise<any[]> {
     const tag = this.nextTag();
-    const cmd = `${tag} FETCH ${seqSet} (BODY[HEADER.FIELDS (Subject From To Date Message-ID In-Reply-To References Content-Type Content-Transfer-Encoding)] BODY[TEXT])\r\n`;
+    const cmd = `${tag} FETCH ${seqSet} (BODY[HEADER.FIELDS (Subject From To Cc Date Message-ID In-Reply-To References Content-Type Content-Transfer-Encoding)] BODY[TEXT])\r\n`;
     const encoder = new TextEncoder();
     await this.conn.write(encoder.encode(cmd));
 
