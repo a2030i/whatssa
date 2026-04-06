@@ -1957,6 +1957,61 @@ const IntegrationsPage = () => {
               </div>
             </div>
 
+            {/* Webhook Status */}
+            {webhookStatus?.auto_configured ? (
+              <div className="bg-success/5 border border-success/20 rounded-xl p-4 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">{t("✅ الـ Webhook مضبوط تلقائياً", "✅ Webhook Auto-Configured")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("الرسائل الواردة ستصل مباشرة للمنصة.", "Incoming messages will be received automatically.")}</p>
+                </div>
+              </div>
+            ) : webhookStatus ? (
+              <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{t("⚠️ ضبط الـ Webhook يدوياً", "⚠️ Manual Webhook Setup Required")}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("لم يتم ضبط الـ Webhook تلقائياً. اتبع الخطوات التالية لاستقبال الرسائل:", "Webhook auto-setup failed. Follow these steps to receive messages:")}
+                    </p>
+                  </div>
+                </div>
+                <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside" dir={dir}>
+                  <li>
+                    {t("افتح ", "Go to ")}
+                    <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium">Meta App Dashboard</a>
+                    {t(" → اختر تطبيقك", " → Select your app")}
+                  </li>
+                  <li>{t("اذهب إلى WhatsApp → Configuration", "Go to WhatsApp → Configuration")}</li>
+                  <li>
+                    {t("في قسم Webhook، ألصق هذا الرابط:", "In Webhook section, paste this URL:")}
+                    <div className="mt-1 flex items-center gap-2">
+                      <Input
+                        value="https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook"
+                        readOnly
+                        className="bg-secondary border-0 text-[11px] flex-1 font-mono"
+                        dir="ltr"
+                      />
+                      <Button size="sm" variant="outline" className="h-7 px-2 shrink-0" onClick={() => { navigator.clipboard.writeText("https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook"); toast.success(t("تم النسخ", "Copied")); }}>
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </li>
+                  <li>
+                    {t("في Verify Token أدخل:", "Enter Verify Token:")}
+                    <div className="mt-1 flex items-center gap-2">
+                      <Input value="respondly_verify" readOnly className="bg-secondary border-0 text-[11px] flex-1 font-mono" dir="ltr" />
+                      <Button size="sm" variant="outline" className="h-7 px-2 shrink-0" onClick={() => { navigator.clipboard.writeText("respondly_verify"); toast.success(t("تم النسخ", "Copied")); }}>
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </li>
+                  <li>{t("اضغط Verify and Save ثم اشترك في حقل messages", "Click Verify and Save, then subscribe to the messages field")}</li>
+                </ol>
+              </div>
+            ) : null}
+
             <Button onClick={resetFlow} variant="outline" className="w-full gap-2">
               <CheckCircle2 className="w-4 h-4" />
               {t("تم — الذهاب لإدارة الأرقام", "Done — Go to Number Management")}
