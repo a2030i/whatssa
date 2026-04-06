@@ -50,8 +50,8 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    const orgId = await getCallerOrgId(authHeader);
-    if (!orgId) {
+    const callerOrgId = await getCallerOrgId(authHeader);
+    if (!callerOrgId) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -60,7 +60,22 @@ Deno.serve(async (req) => {
 
     const admin = getExternalClient();
     const rawBody = await req.json();
-    const { action, ...body } = rawBody;
+    const { action, org_id: overrideOrgId, ...body } = rawBody;
+
+    // Allow super_admin to override org_id for impersonation
+    let orgId = callerOrgId;
+    if (overrideOrgId && overrideOrgId !== callerOrgId) {
+      const { data: roleRow } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", (await admin.auth.getUser(authHeader!.replace("Bearer ", ""))).data.user?.id || "")
+        .eq("role", "super_admin")
+        .maybeSingle();
+      if (roleRow) {
+        orgId = overrideOrgId;
+        console.log("[email-config-manage] super_admin impersonation, using org_id:", orgId);
+      }
+    }
     console.log("[email-config-manage] action:", action, "orgId:", orgId);
 
     // LIST

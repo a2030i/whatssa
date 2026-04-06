@@ -149,8 +149,7 @@ const PROVIDERS: Record<ProviderKey, ProviderInfo> = {
 const DEFAULT_PROVIDER: ProviderKey = "gmail";
 
 const EmailConfigSection = () => {
-  const { profile } = useAuth();
-  const orgId = profile?.org_id;
+  const { profile, orgId } = useAuth();
   const [configs, setConfigs] = useState<EmailConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
