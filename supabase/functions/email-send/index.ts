@@ -19,15 +19,12 @@ async function getCallerProfile(authHeader: string | null) {
   const userClient = createClient(url, anonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-  const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return null;
-
-  const admin = getExternalClient();
-  const { data: profile } = await admin
+  // Use RLS-scoped query instead of auth.getUser()
+  const { data: profile } = await userClient
     .from("profiles")
     .select("id, org_id, full_name")
-    .eq("id", user.id)
-    .single();
+    .limit(1)
+    .maybeSingle();
   return profile;
 }
 

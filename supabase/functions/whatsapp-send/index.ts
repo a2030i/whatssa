@@ -84,24 +84,20 @@ serve(async (req) => {
       global: { headers: { Authorization: authorization } },
     });
 
-    const {
-      data: { user },
-      error: userError,
-    } = await authClient.auth.getUser();
+    // Use RLS-scoped query instead of auth.getUser()
+    const { data: profile, error: profileError } = await authClient
+      .from("profiles")
+      .select("id, org_id")
+      .limit(1)
+      .maybeSingle();
 
-    if (userError || !user) {
-      await logToSystem(adminClient, "warn", "فشل التحقق من المستخدم", { error: userError?.message });
+    if (profileError || !profile?.id) {
+      await logToSystem(adminClient, "warn", "فشل التحقق من المستخدم", { error: profileError?.message });
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("org_id")
-      .eq("id", user.id)
-      .maybeSingle();
-
     if (!profile?.org_id) {
-      await logToSystem(adminClient, "warn", "مستخدم بدون مؤسسة حاول إرسال رسالة", {}, null, user.id);
+      await logToSystem(adminClient, "warn", "مستخدم بدون مؤسسة حاول إرسال رسالة", {}, null, profile.id);
       return json({ error: "لا توجد مؤسسة مرتبطة بهذا الحساب" }, 400);
     }
 

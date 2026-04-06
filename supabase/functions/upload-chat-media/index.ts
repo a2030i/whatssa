@@ -65,14 +65,17 @@ serve(async (req) => {
       global: { headers: { Authorization: authorization } },
     });
 
-    const {
-      data: { user },
-      error: userError,
-    } = await authClient.auth.getUser();
+    // Use RLS-scoped query instead of auth.getUser()
+    const { data: userProfile, error: profileError } = await authClient
+      .from("profiles")
+      .select("id, org_id")
+      .limit(1)
+      .maybeSingle();
 
-    if (userError || !user) {
+    if (profileError || !userProfile?.id) {
       return json({ error: "Unauthorized" }, 401);
     }
+    const user = { id: userProfile.id };
 
     const body = await req.json();
 

@@ -58,22 +58,16 @@ serve(async (req) => {
       global: { headers: { Authorization: authorization } },
     });
 
-    const { data: { user }, error: userError } = await authClient.auth.getUser();
-    if (userError || !user) {
-      logToSystem(adminClient, "warn", "فشل التحقق من المستخدم (Evolution Send)", { error: userError?.message });
-      return json({ error: "Unauthorized" }, 401);
-    }
-
-    // Parallel: fetch profile and parse body simultaneously
+    // Use RLS-scoped query instead of auth.getUser() to avoid session_not_found
     const [profileResult, body] = await Promise.all([
-      adminClient.from("profiles").select("org_id, full_name").eq("id", user.id).maybeSingle(),
+      authClient.from("profiles").select("id, org_id, full_name").limit(1).maybeSingle(),
       req.json(),
     ]);
     const profile = profileResult.data;
 
-    if (!profile?.org_id) {
-      logToSystem(adminClient, "warn", "مستخدم بدون مؤسسة حاول إرسال رسالة Evolution", {}, null, user.id);
-      return json({ error: "لا توجد مؤسسة مرتبطة" }, 400);
+    if (profileResult.error || !profile?.org_id) {
+      logToSystem(adminClient, "warn", "فشل التحقق من المستخدم (Evolution Send)", { error: profileResult.error?.message });
+      return json({ error: "Unauthorized" }, 401);
     }
 
     const orgId = profile.org_id;
