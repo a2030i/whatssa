@@ -63,6 +63,17 @@ async function fetchWabaDetails(wabaId: string, accessToken: string) {
   return { ok: res.ok, data };
 }
 
+async function fetchPhoneNumbersForWaba(wabaId: string, accessToken: string) {
+  const res = await fetch(
+    `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,status,account_mode,platform_type,name_status,messaging_limit_tier,throughput`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const data = await res.json();
+  const phones = (data.data || []).map((phone: any) => ({ ...phone, waba_id: wabaId }));
+  log("fetch_waba_phones", { wabaId, status: res.status, count: phones.length, error: data?.error || null });
+  return { ok: res.ok, data, phones };
+}
+
 /** Determine onboarding type based on phone status and platform_type */
 function detectOnboardingType(phoneData: any): {
   onboarding_type: "new" | "existing" | "migrated";
@@ -286,14 +297,9 @@ serve(async (req) => {
 
     const results = [];
     for (const wabaId of wabaIds) {
-      const phonesRes = await fetch(
-        `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,status,account_mode,platform_type,name_status,messaging_limit_tier,throughput`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      const phonesData = await phonesRes.json();
-      const phones = phonesData.data || [];
-      results.push({ waba_id: wabaId, phone_numbers: phones });
-      resolvedPhones.push(...phones.map((p: any) => ({ ...p, waba_id: wabaId })));
+      const phonesResult = await fetchPhoneNumbersForWaba(wabaId, accessToken);
+      results.push({ waba_id: wabaId, phone_numbers: phonesResult.phones });
+      resolvedPhones.push(...phonesResult.phones);
     }
 
     log("step2_phones", { count: resolvedPhones.length });
@@ -301,6 +307,37 @@ serve(async (req) => {
     let selectedPhone = sessionPhoneId
       ? resolvedPhones.find((p: any) => p.id === sessionPhoneId)
       : null;
+
+    if (sessionPhoneId && !selectedPhone) {
+      const debugRes = await fetch(
+        `https://graph.facebook.com/v22.0/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
+      );
+      const debugData = await debugRes.json();
+      const granularScopes = debugData.data?.granular_scopes || [];
+      const waScope = granularScopes.find((s: any) => s.scope === "whatsapp_business_management");
+      const fallbackWabaIds = [...new Set((waScope?.target_ids || []).filter((id: string) => !wabaIds.includes(id)))];
+
+      for (const fallbackWabaId of fallbackWabaIds) {
+        const phonesResult = await fetchPhoneNumbersForWaba(fallbackWabaId, accessToken);
+        results.push({ waba_id: fallbackWabaId, phone_numbers: phonesResult.phones });
+        resolvedPhones.push(...phonesResult.phones);
+      }
+
+      selectedPhone = resolvedPhones.find((p: any) => p.id === sessionPhoneId) || null;
+      if (selectedPhone?.waba_id && !wabaIds.includes(selectedPhone.waba_id)) {
+        wabaIds.push(selectedPhone.waba_id);
+      }
+
+      log("step2_selected_phone_fallback", {
+        sessionPhoneId,
+        searchedWabas: fallbackWabaIds,
+        found: !!selectedPhone,
+      });
+    }
+
+    if (sessionPhoneId && !selectedPhone) {
+      return error("تعذر مطابقة الرقم المختار مع حسابات واتساب المصرح بها", 400);
+    }
 
     // ── Step 3: Save config with full metadata ──
     let savedConfig = null;
