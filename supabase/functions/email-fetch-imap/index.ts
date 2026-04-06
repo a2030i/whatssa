@@ -6,6 +6,40 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/**
+ * Decode RFC 2047 MIME encoded-words in email headers.
+ * Handles =?charset?B?base64?= and =?charset?Q?quoted-printable?=
+ */
+function decodeMimeWords(text: string | null | undefined): string {
+  if (!text) return "";
+  // Match encoded-word tokens: =?charset?encoding?encoded_text?=
+  return text.replace(
+    /=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g,
+    (_match, charset, encoding, encoded) => {
+      try {
+        if (encoding.toUpperCase() === "B") {
+          // Base64
+          const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+          return new TextDecoder(charset).decode(bytes);
+        } else {
+          // Quoted-Printable: underscores → spaces, =XX → byte
+          const qpDecoded = encoded
+            .replace(/_/g, " ")
+            .replace(/=([0-9A-Fa-f]{2})/g, (_: string, hex: string) =>
+              String.fromCharCode(parseInt(hex, 16))
+            );
+          const bytes = new Uint8Array(
+            [...qpDecoded].map((c) => c.charCodeAt(0))
+          );
+          return new TextDecoder(charset).decode(bytes);
+        }
+      } catch {
+        return encoded;
+      }
+    }
+  );
+}
+
 function getExternalClient() {
   const url = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
   const key = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY")!;
@@ -115,8 +149,8 @@ async function fetchEmailsForConfig(
         const senderEmail = fromAddr
           ? `${fromAddr.mailbox}@${fromAddr.host}`
           : "unknown@unknown.com";
-        const senderName = fromAddr?.name || senderEmail;
-        const subject = envelope.subject || "(بدون عنوان)";
+        const senderName = decodeMimeWords(fromAddr?.name) || senderEmail;
+        const subject = decodeMimeWords(envelope.subject) || "(بدون عنوان)";
         const messageId = envelope.messageId || `imap-${msg.seq}-${Date.now()}`;
         const date = envelope.date
           ? new Date(envelope.date).toISOString()
