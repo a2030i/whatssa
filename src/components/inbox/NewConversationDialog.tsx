@@ -241,19 +241,16 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const hasWhatsApp = channels.length > 0;
 
   const handleSendEmail = async () => {
-    if (!emailTo || !emailSubject || !emailBody) {
+    if (emailToList.length === 0 || !emailSubject || !emailBody) {
       toast.error("يرجى تعبئة جميع حقول الإيميل");
-      return;
-    }
-    if (!emailTo.includes("@")) {
-      toast.error("عنوان الإيميل غير صالح");
       return;
     }
     setSendingEmail(true);
     try {
       const { data, error } = await invokeCloud("email-send", {
         body: {
-          to: emailTo,
+          to: emailToList.join(", "),
+          cc: emailCcList.length > 0 ? emailCcList.join(", ") : undefined,
           subject: emailSubject,
           body: emailBody,
           config_id: selectedEmailConfig,
