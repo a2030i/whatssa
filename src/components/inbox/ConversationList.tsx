@@ -371,6 +371,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                 <SelectItem value="all">كل القنوات</SelectItem>
                 <SelectItem value="meta_api">رسمي (Meta API)</SelectItem>
                 <SelectItem value="evolution">غير رسمي (QR)</SelectItem>
+                <SelectItem value="email">إيميل</SelectItem>
               </SelectContent>
             </Select>
           </div>
