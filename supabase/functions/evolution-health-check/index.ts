@@ -142,11 +142,13 @@ Deno.serve(async (req) => {
         } else {
           // Instance is healthy — skip DB write if already connected (reduces IO)
           if (!channel.is_connected) {
-            await supabase.from("whatsapp_config").update({
+            const connectUpdate = {
               is_connected: true,
               registration_status: "connected",
               registration_error: null,
-            }).eq("id", channel.id);
+            };
+            await supabase.from("whatsapp_config").update(connectUpdate).eq("id", channel.id);
+            if (cloudDb) await cloudDb.from("whatsapp_config").update(connectUpdate).eq("id", channel.id);
           }
 
           results.push({ instance: instanceName, status: "connected" });
