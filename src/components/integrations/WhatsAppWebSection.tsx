@@ -285,20 +285,20 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
   };
 
   const createInstance = async () => {
-    const guessedName = `org_${(orgId || "").replace(/-/g, "").slice(0, 12)}`;
-
     if (unofficialCount >= maxUnofficialPhones && !isSuperAdmin) {
       toast.error(`وصلت للحد الأقصى (${maxUnofficialPhones} رقم غير رسمي). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
       return;
     }
     setIsCreating(true);
     try {
+      // Don't pass instance_name — let the backend generate a unique one
       const { data, error } = await invokeCloud("evolution-manage", {
         body: { action: "create" },
       });
 
       if (error || !data?.success) {
         const errorMessage = data?.error || error?.message || "فشل إنشاء الجلسة";
+        const guessedName = data?.instance_name || `org_${(orgId || "").replace(/-/g, "").slice(0, 12)}`;
 
         // If instance already exists on server, show reconnect options
         if (errorMessage.toLowerCase().includes("already")) {

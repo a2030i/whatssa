@@ -183,7 +183,24 @@ serve(async (req) => {
         : [];
     const asNumber = (value: unknown, fallback = 0) =>
       typeof value === "number" && Number.isFinite(value) ? value : fallback;
-    const instanceName = instance_name || `org_${orgId.replace(/-/g, "").slice(0, 12)}`;
+    // For "create" action without explicit instance_name, generate a unique name
+    let instanceName = instance_name || `org_${orgId.replace(/-/g, "").slice(0, 12)}`;
+    if (action === "create" && !instance_name) {
+      // Check if default name already has a connected config
+      const { data: existingConfigs } = await adminClient
+        .from("whatsapp_config")
+        .select("id, evolution_instance_name")
+        .eq("org_id", orgId)
+        .eq("channel_type", "evolution")
+        .order("created_at");
+      const existingNames = new Set((existingConfigs || []).map((c: any) => c.evolution_instance_name).filter(Boolean));
+      if (existingNames.has(instanceName)) {
+        // Generate unique name with counter suffix
+        let counter = 2;
+        while (existingNames.has(`${instanceName}_${counter}`)) counter++;
+        instanceName = `${instanceName}_${counter}`;
+      }
+    }
 
     const evoHeaders = {
       "Content-Type": "application/json",
