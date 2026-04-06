@@ -219,6 +219,13 @@ Deno.serve(async (req) => {
         ? plainBody
         : `📧 ${threadSubject}\n\n${plainBody}`;
 
+      const attachmentNames = (attachments && Array.isArray(attachments))
+        ? attachments.map((a: any) => a.filename)
+        : [];
+      const displayContent = attachmentNames.length > 0
+        ? `📎 ${attachmentNames.join(", ")}${plainBody ? `\n\n${subjectNorm === plainBody ? plainBody : `📧 ${threadSubject}\n\n${plainBody}`}` : ""}`
+        : (subjectNorm === plainBody ? plainBody : `📧 ${threadSubject}\n\n${plainBody}`);
+
       await admin.from("messages").insert({
         conversation_id: convId,
         sender: "agent",
@@ -235,6 +242,7 @@ Deno.serve(async (req) => {
           email_message_id: outgoingMessageId,
           email_in_reply_to: inReplyTo || null,
           email_references: references || null,
+          email_attachments: attachmentNames.length > 0 ? attachmentNames : null,
           sent_by: profile.id,
           sent_by_name: profile.full_name,
         },
