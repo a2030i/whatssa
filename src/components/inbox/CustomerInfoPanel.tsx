@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import InternalNotes from "./InternalNotes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import TicketsTab from "./TicketsTab";
 
 interface CustomerInfoPanelProps {
   conversation: Conversation;
