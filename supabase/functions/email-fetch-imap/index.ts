@@ -161,7 +161,6 @@ async function fetchEmailsForConfig(
             status: "active",
             last_message: `📧 ${subject}`,
             last_message_at: date,
-            last_message_sender: "customer",
             channel_id: null,
           };
 
