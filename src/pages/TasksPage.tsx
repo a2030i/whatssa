@@ -505,10 +505,10 @@ const TasksPage = () => {
             {effectiveRole !== "member" && (
               <div>
                 <Label>إسناد إلى</Label>
-                <Select value={newAssignee} onValueChange={setNewAssignee}>
+                <Select value={newAssignee || "none"} onValueChange={(v) => setNewAssignee(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">بدون إسناد</SelectItem>
+                    <SelectItem value="none">بدون إسناد</SelectItem>
                     {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
