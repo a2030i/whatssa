@@ -539,7 +539,7 @@ serve(async (req) => {
               .maybeSingle();
 
             if (closedConv) {
-              // Determine assignment: sticky (dedicated) or reset to unassigned
+              // Determine assignment: sticky (dedicated) or smart reassign or reset
               const reopenUpdate: Record<string, any> = {
                 status: "active",
                 closed_at: null,
@@ -555,12 +555,42 @@ serve(async (req) => {
                 reopenUpdate.assigned_to = closedConv.dedicated_agent_name;
                 reopenUpdate.assigned_at = new Date().toISOString();
               } else {
-                // Normal assignment: reset to unassigned
-                reopenUpdate.assigned_to_id = null;
-                reopenUpdate.assigned_to = null;
-                reopenUpdate.assigned_team_id = null;
-                reopenUpdate.assigned_team = null;
-                reopenUpdate.assigned_at = null;
+                // Smart reassignment: check org settings for smart_reassign_minutes
+                let smartReassigned = false;
+                const { data: orgSettings } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+                const smartMinutes = (orgSettings?.settings as any)?.smart_reassign_minutes;
+                if (smartMinutes && smartMinutes > 0) {
+                  // Find last agent message in this conversation within the time window
+                  const cutoff = new Date(Date.now() - smartMinutes * 60 * 1000).toISOString();
+                  const { data: lastAgentMsg } = await supabase
+                    .from("messages")
+                    .select("sender, metadata, created_at")
+                    .eq("conversation_id", closedConv.id)
+                    .eq("sender", "agent")
+                    .gte("created_at", cutoff)
+                    .order("created_at", { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                  if (lastAgentMsg) {
+                    const agentId = (lastAgentMsg.metadata as any)?.sent_by_id;
+                    const agentName = (lastAgentMsg.metadata as any)?.sent_by_name;
+                    if (agentId) {
+                      reopenUpdate.assigned_to_id = agentId;
+                      reopenUpdate.assigned_to = agentName || null;
+                      reopenUpdate.assigned_at = new Date().toISOString();
+                      smartReassigned = true;
+                      await logToSystem(supabase, "info", `إسناد ذكي: تم إعادة إسناد المحادثة لـ ${agentName || agentId} (آخر رد خلال ${smartMinutes} دقيقة)`, { conversation_id: closedConv.id, agent_id: agentId }, orgId);
+                    }
+                  }
+                }
+                if (!smartReassigned) {
+                  // Normal: reset to unassigned
+                  reopenUpdate.assigned_to_id = null;
+                  reopenUpdate.assigned_to = null;
+                  reopenUpdate.assigned_team_id = null;
+                  reopenUpdate.assigned_team = null;
+                  reopenUpdate.assigned_at = null;
+                }
               }
               await supabase.from("conversations").update(reopenUpdate).eq("id", closedConv.id);
               conversation = { ...closedConv, status: "active", unread_count: 1 };

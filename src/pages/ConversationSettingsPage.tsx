@@ -42,6 +42,7 @@ const ConversationSettingsPage = () => {
   const [defaultMaxConv, setDefaultMaxConv] = useState("");
   const [loadingAssign, setLoadingAssign] = useState(true);
   const [savingAssign, setSavingAssign] = useState(false);
+  const [smartReassignMinutes, setSmartReassignMinutes] = useState("");
 
   const [channels, setChannels] = useState<ChannelOption[]>([]);
   const [selectedOohChannel, setSelectedOohChannel] = useState<string>("global");
@@ -122,6 +123,7 @@ const ConversationSettingsPage = () => {
       setDefaultStrategy(data.default_assignment_strategy || "round_robin");
       setDefaultMaxConv(data.default_max_conversations ? String(data.default_max_conversations) : "");
       const settings = (data.settings as Record<string, any>) || {};
+      setSmartReassignMinutes(settings.smart_reassign_minutes ? String(settings.smart_reassign_minutes) : "");
       setOohSettings(prev => ({
         ...prev,
         global: { enabled: settings.out_of_hours_enabled || false, message: settings.out_of_hours_message || defaultOoh.message, work_start: settings.work_start || "09:00", work_end: settings.work_end || "17:00", work_days: Array.isArray(settings.work_days) ? settings.work_days : [0, 1, 2, 3, 4] }
@@ -136,8 +138,14 @@ const ConversationSettingsPage = () => {
 
   const saveAssignSettings = async () => {
     setSavingAssign(true);
-    await supabase.from("organizations").update({ default_assignment_strategy: defaultStrategy, default_max_conversations: defaultMaxConv ? parseInt(defaultMaxConv) : null }).eq("id", orgId);
-    toast.success("تم حفظ إعدادات الإسناد الافتراضية");
+    const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+    const currentSettings = (org?.settings as Record<string, any>) || {};
+    await supabase.from("organizations").update({
+      default_assignment_strategy: defaultStrategy,
+      default_max_conversations: defaultMaxConv ? parseInt(defaultMaxConv) : null,
+      settings: { ...currentSettings, smart_reassign_minutes: smartReassignMinutes ? parseInt(smartReassignMinutes) : null },
+    }).eq("id", orgId);
+    toast.success("تم حفظ إعدادات الإسناد");
     setSavingAssign(false);
   };
 
@@ -221,6 +229,14 @@ const ConversationSettingsPage = () => {
             <div className="flex items-center gap-3">
               <Input type="number" min="1" max="100" value={defaultMaxConv} onChange={(e) => setDefaultMaxConv(e.target.value)} placeholder="بدون حد" className="bg-secondary border-0 text-sm w-32" />
               <span className="text-[11px] text-muted-foreground">{defaultMaxConv ? `عند وصول الموظف لـ ${defaultMaxConv} محادثة لن يُسند له جديد` : "بدون حد أقصى"}</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">الإسناد الذكي عند إعادة الفتح</Label>
+            <p className="text-[11px] text-muted-foreground">عند رد العميل على محادثة مغلقة، يتم إسنادها تلقائياً لآخر موظف رد عليه خلال المدة المحددة</p>
+            <div className="flex items-center gap-3">
+              <Input type="number" min="0" max="1440" value={smartReassignMinutes} onChange={(e) => setSmartReassignMinutes(e.target.value)} placeholder="معطل" className="bg-secondary border-0 text-sm w-32" />
+              <span className="text-[11px] text-muted-foreground">{smartReassignMinutes ? `خلال ${smartReassignMinutes} دقيقة (${Math.round(parseInt(smartReassignMinutes) / 60)} ساعة)` : "معطل — سيتم إعادة الفتح بدون إسناد"}</span>
             </div>
           </div>
           <div className="flex justify-end">
