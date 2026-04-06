@@ -1537,7 +1537,17 @@ const IntegrationsPage = () => {
           <div className="bg-card rounded-2xl border border-border p-5">
             <SallaIntegrationSection />
           </div>
+        {/* Manual connect removed */}
+      </>
+    );
+  };
 
+  // ============ MIGRATION INFO ============
+  if (flowStep === "migration_info") {
+    return (
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
+        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden p-6 space-y-4">
+          <h2 className="text-lg font-bold text-foreground">{t("معلومات النقل", "Migration Info")}</h2>
             {onboardingMode === "migrate_provider" && (
               <div className="space-y-3">
                 <div className="space-y-2">
@@ -1562,7 +1572,6 @@ const IntegrationsPage = () => {
                 </div>
               </div>
             )}
-
             <div className="pt-2 space-y-2">
               <Button onClick={proceedToMetaLogin} disabled={!sdkLoaded} className="w-full gap-2 py-5 text-sm font-bold rounded-xl">
                 {!sdkLoaded ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
@@ -1570,7 +1579,6 @@ const IntegrationsPage = () => {
               </Button>
               <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setFlowStep("choose_type")}>← رجوع</Button>
             </div>
-          </div>
         </div>
       </div>
     );
