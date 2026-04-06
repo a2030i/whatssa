@@ -204,6 +204,41 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const approvedTemplates = useMemo(() => templates.filter(t => t.status === "APPROVED"), [templates]);
   const evolutionChannels = useMemo(() => channels.filter(c => c.channel_type === "evolution"), [channels]);
   const hasEvolution = evolutionChannels.length > 0;
+  const hasEmailConfigs = emailConfigs.length > 0;
+
+  const handleSendEmail = async () => {
+    if (!emailTo || !emailSubject || !emailBody) {
+      toast.error("يرجى تعبئة جميع حقول الإيميل");
+      return;
+    }
+    if (!emailTo.includes("@")) {
+      toast.error("عنوان الإيميل غير صالح");
+      return;
+    }
+    setSendingEmail(true);
+    try {
+      const { data, error } = await invokeCloud("email-send", {
+        body: {
+          to: emailTo,
+          subject: emailSubject,
+          body: emailBody,
+          config_id: selectedEmailConfig,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success("✅ تم إرسال الإيميل بنجاح");
+      if (data?.conversation_id) {
+        onConversationCreated(data.conversation_id);
+      }
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err.message || "فشل إرسال الإيميل");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   const addGroupMember = () => {
     const raw = groupMemberInput.replace(/[^0-9]/g, "");
