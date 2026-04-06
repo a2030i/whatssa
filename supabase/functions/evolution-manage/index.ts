@@ -144,20 +144,17 @@ serve(async (req) => {
       global: { headers: { Authorization: authorization } },
     });
 
-    const { data: { user }, error: userError } = await authClient.auth.getUser();
-    if (userError || !user) return json({ error: "Unauthorized" }, 401);
-
-    // Parallel: fetch profile + parse body simultaneously
+    // Use RLS-scoped query instead of auth.getUser() to avoid session_not_found
     const [profileResult, rawBody] = await Promise.all([
-      adminClient.from("profiles").select("org_id, full_name").eq("id", user.id).maybeSingle(),
+      authClient.from("profiles").select("id, org_id, full_name").limit(1).maybeSingle(),
       req.json().catch(() => ({} as Record<string, unknown>)),
     ]);
     const profile = profileResult.data;
 
-    if (!profile?.org_id) return json({ error: "لا توجد مؤسسة مرتبطة" }, 400);
+    if (profileResult.error || !profile?.org_id) return json({ error: "Unauthorized" }, 401);
 
     const orgId = profile.org_id;
-    const userId = user.id;
+    const userId = profile.id;
 
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
