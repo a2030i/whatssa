@@ -1804,6 +1804,105 @@ const IntegrationsPage = () => {
     );
   }
 
+  // ============ MANUAL TOKEN CONNECT ============
+  if (flowStep === "manual_token") {
+    return (
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
+        <div className="flex justify-end mb-4">{reviewToggle}</div>
+        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
+          <div className="p-6 border-b border-border">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-primary" />
+              {t("ربط يدوي بالتوكن", "Manual Token Connect")}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {t("أدخل بيانات الاتصال يدوياً بدلاً من استخدام Embedded Signup", "Enter connection details manually instead of using Embedded Signup")}
+            </p>
+          </div>
+          <div className="p-5 space-y-4">
+            {/* Guide */}
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                {t("كيف تحصل على هذه البيانات؟", "How to get these credentials?")}
+              </p>
+              <ol className="text-[11px] text-muted-foreground space-y-1.5 pr-4 list-decimal list-inside" dir={dir}>
+                <li>{t("ادخل على", "Go to")} <a href="https://business.facebook.com/settings/system-users" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Meta Business Suite → System Users</a></li>
+                <li>{t("أنشئ System User بصلاحية Admin أو Employee", "Create a System User with Admin or Employee role")}</li>
+                <li>{t("اضغط 'Generate New Token' واختر تطبيقك ثم فعّل الصلاحيات:", "Click 'Generate New Token', select your app, then enable permissions:")}
+                  <span className="font-mono text-[10px] block mt-0.5 text-foreground">whatsapp_business_management, whatsapp_business_messaging</span>
+                </li>
+                <li>{t("انسخ التوكن (Permanent Token) والصقه هنا", "Copy the Permanent Token and paste it here")}</li>
+                <li>{t("للحصول على Phone Number ID و WABA ID:", "To get Phone Number ID and WABA ID:")}
+                  <span className="block mt-0.5">{t("ادخل على", "Go to")} <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Meta Developers → Apps</a> → WhatsApp → API Setup</span>
+                </li>
+              </ol>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">{t("Access Token (التوكن الدائم)", "Access Token (Permanent)")}</Label>
+                <Input
+                  value={manualAccessToken}
+                  onChange={(e) => setManualAccessToken(e.target.value)}
+                  placeholder="EAAxxxxxxx..."
+                  className="bg-secondary border-0 text-xs font-mono"
+                  dir="ltr"
+                  type="password"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Phone Number ID</Label>
+                <Input
+                  value={manualPhoneNumberId}
+                  onChange={(e) => setManualPhoneNumberId(e.target.value)}
+                  placeholder="1234567890..."
+                  className="bg-secondary border-0 text-xs font-mono"
+                  dir="ltr"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">WABA ID (WhatsApp Business Account ID)</Label>
+                <Input
+                  value={manualWabaId}
+                  onChange={(e) => setManualWabaId(e.target.value)}
+                  placeholder="1234567890..."
+                  className="bg-secondary border-0 text-xs font-mono"
+                  dir="ltr"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t("رمز PIN (اختياري — فقط إذا كان الرقم محمي بالتحقق بخطوتين)", "PIN (optional — only if 2FA is enabled)")}</Label>
+                <Input
+                  value={twoStepPin}
+                  onChange={(e) => setTwoStepPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                  className="bg-secondary border-0 text-xs w-32 text-center"
+                  dir="ltr"
+                  maxLength={6}
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 space-y-2">
+              <Button
+                onClick={handleManualTokenConnect}
+                disabled={manualConnecting || !manualAccessToken || !manualPhoneNumberId || !manualWabaId}
+                className="w-full gap-2 py-5 text-sm font-bold rounded-xl"
+              >
+                {manualConnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {t("ربط الرقم", "Connect Number")}
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setFlowStep("checklist")}>
+                {t("← رجوع", "← Back")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ============ CONNECTING / LOADING ============
   if (flowStep === "connecting") {
     return (
