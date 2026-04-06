@@ -1799,7 +1799,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground/60 truncate">{isMetaChannel ? "عبر الواتساب" : conversation.channelType === "evolution" ? "عبر الواتساب" : conversation.customerPhone}</p>
+              <p className="text-[10px] text-muted-foreground/60 truncate">{isEmailChannel ? `📧 ${conversation.customerPhone}` : isMetaChannel ? "عبر الواتساب" : conversation.channelType === "evolution" ? "عبر الواتساب" : conversation.customerPhone}</p>
             </div>
             </button>
           </div>
