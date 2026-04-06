@@ -15,7 +15,8 @@ import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from 
 
 const TYPING_TIMEOUT = 3000;
 
-const getSendFunction = (channelType?: string): string => {
+const getSendFunction = (channelType?: string, conversationType?: string): string => {
+  if (channelType === "email" || conversationType === "email") return "email-send";
   if (channelType === "meta_api") return "whatsapp-send";
   return "evolution-send"; // Default to evolution for evolution or unknown channels
 };
@@ -546,7 +547,8 @@ const InboxPage = () => {
       return;
     }
 
-    const sendFunction = getSendFunction(conversation.channelType);
+    const sendFunction = getSendFunction(conversation.channelType, conversation.conversationType);
+    const isEmail = sendFunction === "email-send";
 
     // Optimistic: add message to UI immediately
     const optimisticId = `optimistic-${Date.now()}`;
@@ -567,16 +569,23 @@ const InboxPage = () => {
       [convId]: [...(prev[convId] || []), optimisticMsg],
     }));
 
-    const { data, error } = await invokeCloud(sendFunction, {
-      body: {
-        to: conversation.customerPhone,
-        message: text,
-        conversation_id: convId,
-        channel_id: conversation.channelId,
-        sender_name: agentDisplayName,
-        reply_to: replyTo ? { wa_message_id: replyTo.waMessageId, sender_name: replyTo.senderName, text: replyTo.text, message_id: replyTo.id } : undefined,
-      },
-    });
+    const body = isEmail
+      ? {
+          to: conversation.customerPhone,
+          subject: text.length > 60 ? text.substring(0, 60) + "..." : text,
+          body: text,
+          conversation_id: convId,
+        }
+      : {
+          to: conversation.customerPhone,
+          message: text,
+          conversation_id: convId,
+          channel_id: conversation.channelId,
+          sender_name: agentDisplayName,
+          reply_to: replyTo ? { wa_message_id: replyTo.waMessageId, sender_name: replyTo.senderName, text: replyTo.text, message_id: replyTo.id } : undefined,
+        };
+
+    const { data, error } = await invokeCloud(sendFunction, { body });
 
     if (error || data?.error) {
       toast.error(data?.error || "فشل إرسال الرسالة");
