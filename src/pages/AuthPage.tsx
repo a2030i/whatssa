@@ -184,7 +184,11 @@ const AuthPage = () => {
           <div className="text-center lg:text-right space-y-2">
             <h2 className="text-2xl font-bold text-foreground">
               {step === "email" && "مرحباً بك 👋"}
-              {step === "password" && "تسجيل الدخول"}
+              {step === "password" && (
+                <>
+                  {getGreeting()} {userName ? `يا ${userName}` : ""} 👋
+                </>
+              )}
               {step === "set-password" && "تعيين كلمة المرور"}
               {step === "signup" && "إنشاء حساب جديد"}
             </h2>
