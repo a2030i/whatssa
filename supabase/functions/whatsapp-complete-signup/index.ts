@@ -498,6 +498,11 @@ serve(async (req) => {
         registration: registrationResult,
         onboarding: onboardingInfo,
         migration_prereqs: migrationPrereqs,
+        webhook_status: {
+          app_webhook: typeof appWebhookOk !== "undefined" ? appWebhookOk : null,
+          waba_subscription: typeof wabaWebhookOk !== "undefined" ? wabaWebhookOk : null,
+          auto_configured: (typeof appWebhookOk !== "undefined" && appWebhookOk) && (typeof wabaWebhookOk !== "undefined" && wabaWebhookOk),
+        },
         waba_details: wabaDetails ? {
           name: wabaDetails.name,
           business_verification_status: wabaDetails.business_verification_status,
