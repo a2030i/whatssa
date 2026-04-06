@@ -1101,7 +1101,7 @@ const IntegrationsPage = () => {
                             <div>
                               <p className="text-xs font-bold text-success">الرقم متصل</p>
                               <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">
-                                {config.display_phone || config.evolution_instance_name}
+                                {config.display_phone || config.business_name || "جاري جلب الرقم..."}
                               </p>
                             </div>
                           </div>
