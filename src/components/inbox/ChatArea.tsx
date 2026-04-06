@@ -635,9 +635,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
 
         // === STICKER ===
         if (msg.type === "sticker") {
+          const stickerUrl = msg.mediaUrl || getStorageUrlFromText(msg.text) || undefined;
           return (
             <div>
-              {mediaUrl && <ResolvedMedia url={mediaUrl} type="sticker" isAgent={msg.sender === "agent"} onImageClick={onImageClick} />}
+              {stickerUrl && <ResolvedMedia url={stickerUrl} type="sticker" isAgent={msg.sender === "agent"} onImageClick={onImageClick} />}
+              {!stickerUrl && <span className="text-xs text-muted-foreground">ملصق</span>}
               {timestampEl}
             </div>
           );
