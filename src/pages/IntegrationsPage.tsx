@@ -538,6 +538,7 @@ const IntegrationsPage = () => {
         }
         setConnectedPhone(data.selected_phone?.display_phone_number || manualPhoneNumberId);
         setWabaInfo(data.waba_details);
+        setWebhookStatus(data.webhook_status || null);
         setFlowStep("success");
         await loadConfigs(true);
       }
