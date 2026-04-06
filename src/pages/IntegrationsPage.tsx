@@ -117,6 +117,9 @@ const IntegrationsPage = () => {
   const [unofficialTestSending, setUnofficialTestSending] = useState(false);
   const [unofficialCheckingStatus, setUnofficialCheckingStatus] = useState<string | null>(null);
   const [syncingUnofficialPhoneIds, setSyncingUnofficialPhoneIds] = useState<string[]>([]);
+  const [reconnectingId, setReconnectingId] = useState<string | null>(null);
+  const [reconnectQr, setReconnectQr] = useState<string | null>(null);
+  const [syncingMessagesId, setSyncingMessagesId] = useState<string | null>(null);
   const [metaAppId, setMetaAppId] = useState("");
   const [metaConfigId, setMetaConfigId] = useState("");
   const [officialEnabled, setOfficialEnabled] = useState(false);
