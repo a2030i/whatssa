@@ -7,8 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabase } from "@/lib/supabase";
-import { supabase as cloudSupabase } from "@/integrations/supabase/client";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -197,12 +196,15 @@ const EmailConfigSection = () => {
 
   const loadConfigs = async () => {
     setLoading(true);
-    const { data } = await cloudSupabase
-      .from("email_configs")
-      .select("*")
-      .eq("org_id", orgId!)
-      .order("created_at", { ascending: false });
-    setConfigs((data as any[]) || []);
+    try {
+      const { data: res, error } = await invokeCloud("email-config-manage", {
+        body: { action: "list" },
+      });
+      if (error) throw error;
+      setConfigs(res?.data || []);
+    } catch (e) {
+      console.error("Failed to load email configs:", e);
+    }
     setLoading(false);
   };
 
@@ -246,11 +248,15 @@ const EmailConfigSection = () => {
       };
 
       if (editId) {
-        const { error } = await cloudSupabase.from("email_configs").update(payload).eq("id", editId);
+        const { error } = await invokeCloud("email-config-manage", {
+          body: { action: "update", id: editId, payload },
+        });
         if (error) throw error;
         toast.success("تم تحديث إعدادات البريد");
       } else {
-        const { error } = await cloudSupabase.from("email_configs").insert({ ...payload, org_id: orgId });
+        const { error } = await invokeCloud("email-config-manage", {
+          body: { action: "create", payload },
+        });
         if (error) throw error;
         toast.success("تم حفظ إعدادات البريد بنجاح");
       }
@@ -291,7 +297,9 @@ const EmailConfigSection = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("هل أنت متأكد من حذف هذا البريد؟")) return;
-    const { error } = await cloudSupabase.from("email_configs").delete().eq("id", id);
+    const { error } = await invokeCloud("email-config-manage", {
+      body: { action: "delete", id },
+    });
     if (error) {
       toast.error("خطأ في الحذف");
     } else {
@@ -301,7 +309,9 @@ const EmailConfigSection = () => {
   };
 
   const handleToggle = async (id: string, active: boolean) => {
-    await cloudSupabase.from("email_configs").update({ is_active: active }).eq("id", id);
+    await invokeCloud("email-config-manage", {
+      body: { action: "update", id, payload: { is_active: active } },
+    });
     loadConfigs();
   };
 
