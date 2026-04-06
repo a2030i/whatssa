@@ -55,7 +55,7 @@ serve(async (req) => {
 
     // If code provided, exchange it for a token
     if (code) {
-      const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}${redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ""}`;
+      const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}${redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ""}`;
       const tokenRes = await fetch(tokenUrl);
       const tokenData = await tokenRes.json();
 
@@ -70,7 +70,7 @@ serve(async (req) => {
       const shortLivedToken = tokenData.access_token;
 
       // Exchange for long-lived token
-      const longTokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedToken}`;
+      const longTokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedToken}`;
       const longTokenRes = await fetch(longTokenUrl);
       const longTokenData = await longTokenRes.json();
 
@@ -86,7 +86,7 @@ serve(async (req) => {
 
     // Get WhatsApp Business Account info using the token
     const debugRes = await fetch(
-      `https://graph.facebook.com/v21.0/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
+      `https://graph.facebook.com/v22.0/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
     );
     const debugData = await debugRes.json();
 
@@ -99,7 +99,7 @@ serve(async (req) => {
 
     if (wabaIds.length === 0) {
       const businessRes = await fetch(
-        `https://graph.facebook.com/v21.0/me/businesses?access_token=${accessToken}`
+        `https://graph.facebook.com/v22.0/me/businesses?access_token=${accessToken}`
       );
       const businessData = await businessRes.json();
 
@@ -118,7 +118,7 @@ serve(async (req) => {
     const results = [];
     for (const wabaId of wabaIds) {
       const phonesRes = await fetch(
-        `https://graph.facebook.com/v21.0/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating`,
+        `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const phonesData = await phonesRes.json();

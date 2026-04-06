@@ -44,7 +44,7 @@ async function resolveMetaCredentials(serviceClient: ReturnType<typeof createCli
 async function fetchPhoneDetails(phoneId: string, accessToken: string) {
   const fields = "id,display_phone_number,verified_name,quality_rating,code_verification_status,account_mode,status,health_status,name_status,messaging_limit_tier,throughput,platform_type";
   const res = await fetch(
-    `https://graph.facebook.com/v21.0/${phoneId}?fields=${fields}`,
+    `https://graph.facebook.com/v22.0/${phoneId}?fields=${fields}`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   const data = await res.json();
@@ -55,7 +55,7 @@ async function fetchPhoneDetails(phoneId: string, accessToken: string) {
 async function fetchWabaDetails(wabaId: string, accessToken: string) {
   const fields = "id,name,currency,timezone_id,message_template_namespace,business_verification_status,account_review_status,on_behalf_of_business_info";
   const res = await fetch(
-    `https://graph.facebook.com/v21.0/${wabaId}?fields=${fields}`,
+    `https://graph.facebook.com/v22.0/${wabaId}?fields=${fields}`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   const data = await res.json();
@@ -247,7 +247,7 @@ serve(async (req) => {
     }
 
     if (code) {
-      const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}${redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ""}`;
+      const tokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${encodeURIComponent(code)}${redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ""}`;
       const tokenRes = await fetch(tokenUrl);
       const tokenData = await tokenRes.json();
 
@@ -257,7 +257,7 @@ serve(async (req) => {
       }
 
       const shortLived = tokenData.access_token;
-      const longUrl = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLived}`;
+      const longUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLived}`;
       const longRes = await fetch(longUrl);
       const longData = await longRes.json();
       accessToken = longData.access_token || shortLived;
@@ -274,7 +274,7 @@ serve(async (req) => {
 
     if (wabaIds.length === 0) {
       const debugRes = await fetch(
-        `https://graph.facebook.com/v21.0/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
+        `https://graph.facebook.com/v22.0/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
       );
       const debugData = await debugRes.json();
       const granularScopes = debugData.data?.granular_scopes || [];
@@ -287,7 +287,7 @@ serve(async (req) => {
     const results = [];
     for (const wabaId of wabaIds) {
       const phonesRes = await fetch(
-        `https://graph.facebook.com/v21.0/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,status,account_mode,platform_type,name_status,messaging_limit_tier,throughput`,
+        `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,status,account_mode,platform_type,name_status,messaging_limit_tier,throughput`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const phonesData = await phonesRes.json();
@@ -432,7 +432,7 @@ serve(async (req) => {
       let wabaWebhookOk = false;
       try {
         const subscribeRes = await fetch(
-          `https://graph.facebook.com/v21.0/${wabaId}/subscribed_apps`,
+          `https://graph.facebook.com/v22.0/${wabaId}/subscribed_apps`,
           {
             method: "POST",
             headers: {
@@ -455,7 +455,7 @@ serve(async (req) => {
         const webhookUrl = `${Deno.env.get("SUPABASE_URL") || Deno.env.get("EXTERNAL_SUPABASE_URL")}/functions/v1/whatsapp-webhook`;
         const appToken = `${appId}|${appSecret}`;
         const whRes = await fetch(
-          `https://graph.facebook.com/v21.0/${appId}/subscriptions`,
+          `https://graph.facebook.com/v22.0/${appId}/subscriptions`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
