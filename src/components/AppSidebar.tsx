@@ -39,6 +39,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
       { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
       { label: "صندوق الوارد", icon: MessageSquare, path: "/inbox", emoji: "💬" },
       { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
+      { label: "التذاكر", icon: Ticket, path: "/tickets", emoji: "🎫" },
     ],
   },
   {

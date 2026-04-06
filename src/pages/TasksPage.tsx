@@ -55,6 +55,11 @@ interface ForwardConfig {
 }
 
 const TASK_TYPES = [
+  { value: "contact_customer", label: "تواصل مع عميل", icon: "📞" },
+  { value: "meeting", label: "اجتماع", icon: "🤝" },
+  { value: "follow_up", label: "متابعة", icon: "🔄" },
+  { value: "callback", label: "معاودة اتصال", icon: "📲" },
+  { value: "review", label: "مراجعة", icon: "📋" },
   { value: "modification", label: "تعديل بيانات", icon: "✏️" },
   { value: "complaint", label: "شكوى / ملاحظة", icon: "⚠️" },
   { value: "inquiry", label: "استفسار", icon: "❓" },
