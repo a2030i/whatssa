@@ -1379,6 +1379,8 @@ export type Database = {
       email_configs: {
         Row: {
           created_at: string
+          dedicated_agent_id: string | null
+          dedicated_team_id: string | null
           email_address: string
           encryption: string
           id: string
@@ -1386,6 +1388,7 @@ export type Database = {
           imap_port: number | null
           is_active: boolean
           is_verified: boolean
+          label: string | null
           org_id: string
           smtp_host: string
           smtp_password: string
@@ -1396,6 +1399,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          dedicated_agent_id?: string | null
+          dedicated_team_id?: string | null
           email_address: string
           encryption?: string
           id?: string
@@ -1403,6 +1408,7 @@ export type Database = {
           imap_port?: number | null
           is_active?: boolean
           is_verified?: boolean
+          label?: string | null
           org_id: string
           smtp_host?: string
           smtp_password: string
@@ -1413,6 +1419,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          dedicated_agent_id?: string | null
+          dedicated_team_id?: string | null
           email_address?: string
           encryption?: string
           id?: string
@@ -1420,6 +1428,7 @@ export type Database = {
           imap_port?: number | null
           is_active?: boolean
           is_verified?: boolean
+          label?: string | null
           org_id?: string
           smtp_host?: string
           smtp_password?: string
@@ -1429,6 +1438,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "email_configs_dedicated_agent_id_fkey"
+            columns: ["dedicated_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_configs_dedicated_team_id_fkey"
+            columns: ["dedicated_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "email_configs_org_id_fkey"
             columns: ["org_id"]

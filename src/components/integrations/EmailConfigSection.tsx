@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Mail, Save, Loader2, Trash2, Eye, EyeOff, CheckCircle2, Plus, Send, Settings, ExternalLink, Info } from "lucide-react";
+import { Mail, Save, Loader2, Trash2, Eye, EyeOff, CheckCircle2, Plus, Send, Settings, ExternalLink, Info, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,14 @@ interface EmailConfig {
   imap_port: number | null;
   is_active: boolean;
   is_verified: boolean;
+  label: string | null;
+  dedicated_agent_id: string | null;
+  dedicated_team_id: string | null;
+  sync_mode: string;
 }
+
+interface TeamOption { id: string; name: string; }
+interface AgentOption { id: string; full_name: string; }
 
 type ProviderKey = "gmail" | "outlook" | "yahoo" | "zoho" | "custom";
 
@@ -162,13 +169,30 @@ const EmailConfigSection = () => {
     imap_port: PROVIDERS.gmail.imap_port,
     is_active: true,
     sync_mode: "new_only" as string,
+    label: "" as string,
+    dedicated_agent_id: "" as string,
+    dedicated_team_id: "" as string,
   });
   const [editId, setEditId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [teams, setTeams] = useState<TeamOption[]>([]);
+  const [agents, setAgents] = useState<AgentOption[]>([]);
 
   useEffect(() => {
-    if (orgId) loadConfigs();
+    if (orgId) {
+      loadConfigs();
+      loadTeamsAndAgents();
+    }
   }, [orgId]);
+
+  const loadTeamsAndAgents = async () => {
+    const [{ data: t }, { data: a }] = await Promise.all([
+      supabase.from("teams").select("id, name").eq("org_id", orgId!),
+      supabase.from("profiles").select("id, full_name").eq("org_id", orgId!).eq("is_active", true),
+    ]);
+    setTeams((t as TeamOption[]) || []);
+    setAgents((a as AgentOption[]) || []);
+  };
 
   const loadConfigs = async () => {
     setLoading(true);
@@ -215,6 +239,9 @@ const EmailConfigSection = () => {
         imap_port: form.imap_port,
         is_active: form.is_active,
         sync_mode: form.sync_mode,
+        label: form.label || null,
+        dedicated_agent_id: form.dedicated_agent_id || null,
+        dedicated_team_id: form.dedicated_team_id || null,
       };
 
       if (editId) {
@@ -246,7 +273,10 @@ const EmailConfigSection = () => {
       imap_host: config.imap_host,
       imap_port: config.imap_port,
       is_active: config.is_active,
-      sync_mode: (config as any).sync_mode || "new_only",
+      sync_mode: config.sync_mode || "new_only",
+      label: config.label || "",
+      dedicated_agent_id: config.dedicated_agent_id || "",
+      dedicated_team_id: config.dedicated_team_id || "",
     });
     // detect provider from smtp_host
     const detected = (Object.entries(PROVIDERS) as [ProviderKey, ProviderInfo][]).find(
@@ -284,6 +314,7 @@ const EmailConfigSection = () => {
       email_address: "", smtp_host: p.smtp_host, smtp_port: p.smtp_port,
       smtp_username: "", smtp_password: "", encryption: p.encryption,
       imap_host: p.imap_host, imap_port: p.imap_port, is_active: true, sync_mode: "new_only",
+      label: "", dedicated_agent_id: "", dedicated_team_id: "",
     });
   };
 
@@ -577,6 +608,50 @@ const EmailConfigSection = () => {
                   <p className="text-[11px] font-semibold">قديمة + جديدة</p>
                   <p className="text-[9px] text-muted-foreground mt-0.5">آخر 100 رسالة + الجديدة</p>
                 </button>
+              </div>
+            </div>
+
+            {/* Channel Settings (Label + Routing) */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <p className="text-xs font-semibold flex items-center gap-1.5">
+                <Settings className="w-3.5 h-3.5 text-primary" /> إعدادات القناة
+              </p>
+              <div className="space-y-1.5">
+                <Label className="text-[11px]">اسم القناة (اختياري)</Label>
+                <Input
+                  placeholder="مثلاً: بريد المبيعات"
+                  value={form.label}
+                  onChange={(e) => setForm({ ...form, label: e.target.value })}
+                  className="h-9 text-xs"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] flex items-center gap-1"><User className="w-3 h-3" /> موظف مخصص</Label>
+                <Select value={form.dedicated_agent_id} onValueChange={(v) => setForm({ ...form, dedicated_agent_id: v === "_none" ? "" : v })}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="بدون — توزيع تلقائي" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">بدون — توزيع تلقائي</SelectItem>
+                    {agents.map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.full_name || "بدون اسم"}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] flex items-center gap-1"><Users className="w-3 h-3" /> فريق مخصص</Label>
+                <Select value={form.dedicated_team_id} onValueChange={(v) => setForm({ ...form, dedicated_team_id: v === "_none" ? "" : v })}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="بدون — كل الفرق" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">بدون — كل الفرق</SelectItem>
+                    {teams.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

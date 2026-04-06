@@ -19,7 +19,7 @@ export interface Conversation {
   lastCustomerMessageAt?: string;
   firstResponseAt?: string;
   conversationType?: "private" | "group" | "broadcast";
-  channelType?: "meta_api" | "evolution";
+  channelType?: "meta_api" | "evolution" | "email";
   channelId?: string;
   channelName?: string;
   profilePic?: string;
