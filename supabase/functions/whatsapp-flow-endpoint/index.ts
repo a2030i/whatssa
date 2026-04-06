@@ -151,14 +151,9 @@ serve(async (req) => {
       const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         global: { headers: { Authorization: authorization } },
       });
-      const { data: { user } } = await authClient.auth.getUser();
-      if (!user) return json({ error: "Unauthorized" }, 401);
-
-      const { data: profile } = await adminClient
-        .from("profiles")
-        .select("org_id")
-        .eq("id", user.id)
-        .maybeSingle();
+      const { data: profile } = await authClient
+        .from("profiles").select("id, org_id").limit(1).maybeSingle();
+      if (!profile?.id) return json({ error: "Unauthorized" }, 401);
 
       if (!profile?.org_id) return json({ error: "No organization" }, 400);
 
@@ -248,14 +243,9 @@ serve(async (req) => {
       const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         global: { headers: { Authorization: authorization } },
       });
-      const { data: { user } } = await authClient.auth.getUser();
-      if (!user) return json({ error: "Unauthorized" }, 401);
-
-      const { data: profile } = await adminClient
-        .from("profiles")
-        .select("org_id")
-        .eq("id", user.id)
-        .maybeSingle();
+      const { data: profile } = await authClient
+        .from("profiles").select("id, org_id").limit(1).maybeSingle();
+      if (!profile?.id) return json({ error: "Unauthorized" }, 401);
 
       if (!profile?.org_id) return json({ error: "No organization" }, 400);
 

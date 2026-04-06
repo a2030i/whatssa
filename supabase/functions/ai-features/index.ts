@@ -122,12 +122,10 @@ Deno.serve(async (req) => {
     const authClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authorization } },
     });
-    const { data: { user }, error: userError } = await authClient.auth.getUser();
-    if (userError || !user) return json({ error: "Unauthorized" }, 401);
-
-    const { data: profile } = await serviceClient
-      .from("profiles").select("org_id").eq("id", user.id).maybeSingle();
-    if (!profile?.org_id) return json({ error: "لا توجد مؤسسة" }, 400);
+    // Use RLS-scoped query instead of auth.getUser()
+    const { data: profile, error: profileError } = await authClient
+      .from("profiles").select("id, org_id").limit(1).maybeSingle();
+    if (profileError || !profile?.org_id) return json({ error: "Unauthorized" }, 401);
 
     const orgId = profile.org_id;
     const body = await req.json();

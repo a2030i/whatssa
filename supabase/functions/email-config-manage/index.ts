@@ -16,28 +16,33 @@ async function getCallerOrgId(authHeader: string | null) {
     console.error("[email-config-manage] No auth header provided");
     return null;
   }
-  const token = authHeader.replace(/^Bearer\s+/i, "");
-  const admin = getExternalClient();
-  const { data: { user }, error: authError } = await admin.auth.getUser(token);
-  if (authError) {
-    console.error("[email-config-manage] Auth error:", authError.message);
+
+  // Use a user-scoped client with the external anon key + user's JWT
+  // RLS on profiles table validates the JWT automatically
+  const url = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
+  const anonKey = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY")!;
+  const userClient = createClient(url, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  // Query profiles via RLS — this validates the JWT against the DB
+  const { data: profile, error: profileError } = await userClient
+    .from("profiles")
+    .select("org_id")
+    .limit(1)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error("[email-config-manage] Profile query error:", profileError.message, profileError.code);
     return null;
   }
-  if (!user) {
-    console.error("[email-config-manage] No user found from token");
+  if (!profile?.org_id) {
+    console.error("[email-config-manage] No profile/org_id found");
     return null;
   }
 
-  console.log("[email-config-manage] Authenticated user:", user.id);
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("org_id")
-    .eq("id", user.id)
-    .single();
-  if (profileError) {
-    console.error("[email-config-manage] Profile lookup error:", profileError.message);
-  }
-  return profile?.org_id || null;
+  console.log("[email-config-manage] Resolved org_id:", profile.org_id);
+  return profile.org_id;
 }
 
 Deno.serve(async (req) => {

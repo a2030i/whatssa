@@ -43,8 +43,14 @@ Deno.serve(async (req) => {
         { global: { headers: { Authorization: authHeader } } }
       );
 
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
+      // Use RLS-scoped query instead of auth.getUser()
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, org_id")
+        .limit(1)
+        .maybeSingle();
+
+      if (profileError || !profile?.id) {
         return new Response(JSON.stringify({ error: "غير مصرح" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -56,12 +62,6 @@ Deno.serve(async (req) => {
         Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
-
-      const { data: profile } = await serviceClient
-        .from("profiles")
-        .select("org_id")
-        .eq("id", user.id)
-        .single();
 
       if (!profile?.org_id) {
         return new Response(JSON.stringify({ error: "لا توجد مؤسسة" }), {
