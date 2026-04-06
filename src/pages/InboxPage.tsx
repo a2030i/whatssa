@@ -257,51 +257,82 @@ const InboxPage = () => {
 
     // Fetch messages if not already loaded
     const fetchMessages = async () => {
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("conversation_id", selectedId)
-        .order("created_at", { ascending: true });
+      // Fetch messages and email details in parallel
+      const conv = conversations.find(c => c.id === selectedId);
+      const isEmailConv = conv?.channelType === "email" || conv?.conversationType === "email";
 
-      if (error) {
-        console.error("Error fetching messages:", error);
+      const [msgResult, emailDetailsResult] = await Promise.all([
+        supabase
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", selectedId)
+          .order("created_at", { ascending: true }),
+        isEmailConv
+          ? supabase
+              .from("email_message_details" as any)
+              .select("*")
+              .eq("conversation_id", selectedId)
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+
+      if (msgResult.error) {
+        console.error("Error fetching messages:", msgResult.error);
         return;
       }
 
-      const mapped: Message[] = (data || []).map((message) => ({
-        id: message.id,
-        conversationId: message.conversation_id,
-        text: message.content,
-        sender: message.sender as "customer" | "agent" | "system",
-        timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
-        status: message.status as "sent" | "delivered" | "read" | undefined,
-        type: (message.message_type as Message["type"]) || "text",
-        mediaUrl: message.media_url || undefined,
-        senderName: (message.metadata as any)?.sender_name || undefined,
-        senderJid: (message.metadata as any)?.participant || undefined,
-        senderPhone: (message.metadata as any)?.sender_pn || undefined,
-        quoted: (message.metadata as any)?.quoted || undefined,
-        mentioned: (message.metadata as any)?.mentioned || undefined,
-        waMessageId: message.wa_message_id || undefined,
-        reactions: (message.metadata as any)?.reactions || undefined,
-        location: (message.metadata as any)?.location || undefined,
-        contacts: (message.metadata as any)?.contacts || undefined,
-        editedAt: (message.metadata as any)?.edited_at || undefined,
-        editedBy: (message.metadata as any)?.edited_by || undefined,
-        isDeleted: (message.metadata as any)?.is_deleted || false,
-        deletedBy: (message.metadata as any)?.deleted_by || undefined,
-        poll: (message.metadata as any)?.poll || undefined,
-        createdAt: message.created_at || undefined,
-        readBy: (message.metadata as any)?.read_by || undefined,
-        groupSize: (message.metadata as any)?.group_size || undefined,
-        emailMeta: (message.metadata as any)?.email_subject ? {
-          subject: (message.metadata as any)?.email_subject,
-          from: (message.metadata as any)?.email_from,
-          to: (message.metadata as any)?.email_to,
-          cc: (message.metadata as any)?.email_cc,
-          messageId: (message.metadata as any)?.email_message_id,
-        } : undefined,
-      }));
+      // Build a map of message_id -> email details for quick lookup
+      const emailDetailsMap = new Map<string, any>();
+      if (emailDetailsResult.data && Array.isArray(emailDetailsResult.data)) {
+        for (const d of emailDetailsResult.data) {
+          emailDetailsMap.set(d.message_id, d);
+        }
+      }
+
+      const mapped: Message[] = (msgResult.data || []).map((message) => {
+        // Try email_message_details first, fallback to metadata
+        const detail = emailDetailsMap.get(message.id);
+        const meta = message.metadata as any;
+        const hasEmailData = detail || meta?.email_subject;
+
+        return {
+          id: message.id,
+          conversationId: message.conversation_id,
+          text: message.content,
+          sender: message.sender as "customer" | "agent" | "system",
+          timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+          status: message.status as "sent" | "delivered" | "read" | undefined,
+          type: (message.message_type as Message["type"]) || "text",
+          mediaUrl: message.media_url || undefined,
+          senderName: meta?.sender_name || undefined,
+          senderJid: meta?.participant || undefined,
+          senderPhone: meta?.sender_pn || undefined,
+          quoted: meta?.quoted || undefined,
+          mentioned: meta?.mentioned || undefined,
+          waMessageId: message.wa_message_id || undefined,
+          reactions: meta?.reactions || undefined,
+          location: meta?.location || undefined,
+          contacts: meta?.contacts || undefined,
+          editedAt: meta?.edited_at || undefined,
+          editedBy: meta?.edited_by || undefined,
+          isDeleted: meta?.is_deleted || false,
+          deletedBy: meta?.deleted_by || undefined,
+          poll: meta?.poll || undefined,
+          createdAt: message.created_at || undefined,
+          readBy: meta?.read_by || undefined,
+          groupSize: meta?.group_size || undefined,
+          emailMeta: hasEmailData ? {
+            subject: detail?.email_subject || meta?.email_subject,
+            from: detail?.email_from || meta?.email_from,
+            fromName: detail?.email_from_name || meta?.email_from_name,
+            to: detail?.email_to || meta?.email_to,
+            cc: detail?.email_cc || meta?.email_cc,
+            bcc: detail?.email_bcc || meta?.email_bcc,
+            messageId: detail?.email_message_id || meta?.email_message_id,
+            attachments: detail?.email_attachments || (meta?.email_attachments ? meta.email_attachments.map((f: string) => ({ filename: f })) : undefined),
+            direction: detail?.direction || (message.sender === "customer" ? "inbound" : "outbound"),
+          } : undefined,
+        };
+      });
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
     };
