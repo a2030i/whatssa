@@ -196,12 +196,15 @@ const EmailConfigSection = () => {
 
   const loadConfigs = async () => {
     setLoading(true);
-    const { data } = await cloudSupabase
-      .from("email_configs")
-      .select("*")
-      .eq("org_id", orgId!)
-      .order("created_at", { ascending: false });
-    setConfigs((data as any[]) || []);
+    try {
+      const { data: res, error } = await invokeCloud("email-config-manage", {
+        body: { action: "list" },
+      });
+      if (error) throw error;
+      setConfigs(res?.data || []);
+    } catch (e) {
+      console.error("Failed to load email configs:", e);
+    }
     setLoading(false);
   };
 
