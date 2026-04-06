@@ -138,8 +138,14 @@ const ConversationSettingsPage = () => {
 
   const saveAssignSettings = async () => {
     setSavingAssign(true);
-    await supabase.from("organizations").update({ default_assignment_strategy: defaultStrategy, default_max_conversations: defaultMaxConv ? parseInt(defaultMaxConv) : null }).eq("id", orgId);
-    toast.success("تم حفظ إعدادات الإسناد الافتراضية");
+    const { data: org } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
+    const currentSettings = (org?.settings as Record<string, any>) || {};
+    await supabase.from("organizations").update({
+      default_assignment_strategy: defaultStrategy,
+      default_max_conversations: defaultMaxConv ? parseInt(defaultMaxConv) : null,
+      settings: { ...currentSettings, smart_reassign_minutes: smartReassignMinutes ? parseInt(smartReassignMinutes) : null },
+    }).eq("id", orgId);
+    toast.success("تم حفظ إعدادات الإسناد");
     setSavingAssign(false);
   };
 
