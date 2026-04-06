@@ -43,6 +43,7 @@ const DashboardPage = () => {
         </div>
       </div>
 
+      <WhatsAppSafetyBanner />
       <StatusBar data={data} />
       <TokenAlert data={data} />
       <VerificationCard data={data} />
