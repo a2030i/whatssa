@@ -1927,61 +1927,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </div>
 
         {/* Tags row */}
-        {(conversation.tags.length > 0 || true) && (
+        {conversation.tags.length > 0 && (
         <div className="flex items-center gap-1.5 px-4 pb-2.5 overflow-x-auto scrollbar-none">
-          {conversation.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 gap-0.5 shrink-0 group h-5 rounded-full font-normal border-0">
-              {tag}
-              <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 transition-opacity">
-                <X className="w-2 h-2" />
-              </button>
-            </Badge>
-          ))}
-          {showTagInput ? (
-            <div className="relative flex items-center gap-1 shrink-0">
-              <input
-                ref={tagInputRef}
-                value={newTagText}
-                onChange={(e) => setNewTagText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") addTag(); if (e.key === "Escape") { setShowTagInput(false); setNewTagText(""); } }}
-                placeholder="وسم جديد..."
-                className="w-24 text-[10px] bg-secondary rounded-md px-2 py-0.5 outline-none border-0"
-                autoFocus
-              />
-              <button onClick={addTag} className="text-primary"><Check className="w-3 h-3" /></button>
-              <button onClick={() => { setShowTagInput(false); setNewTagText(""); }} className="text-muted-foreground"><X className="w-3 h-3" /></button>
-              {(() => {
-                const suggestions = allOrgTags.filter(
-                  (t) => !conversation.tags.includes(t) && (newTagText === "" || t.includes(newTagText))
-                );
-                if (suggestions.length === 0) return null;
-                return (
-                  <div className="absolute top-full right-0 mt-1 z-50 bg-card border border-border rounded-lg shadow-lg max-h-32 overflow-y-auto min-w-[120px]">
-                    {suggestions.slice(0, 8).map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => {
-                          if (onTagsChange) {
-                            onTagsChange(conversation.id, [...conversation.tags, tag]);
-                            toast.success("تم إضافة الوسم");
-                          }
-                          setNewTagText("");
-                          setShowTagInput(false);
-                        }}
-                        className="w-full text-right px-3 py-1.5 text-[10px] hover:bg-secondary transition-colors truncate"
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          ) : (
-            <button onClick={() => setShowTagInput(true)} className="shrink-0 flex items-center gap-0.5 text-[9px] text-muted-foreground/50 hover:text-primary transition-colors px-1 py-0.5 rounded">
-              <Plus className="w-2.5 h-2.5" /> وسم
-            </button>
-          )}
+          {conversation.tags.map((tag) => {
+            const def = orgTagDefs.find(d => d.name === tag);
+            return (
+              <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 gap-1 shrink-0 group h-5 rounded-full font-normal border-0">
+                {def && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: def.color }} />}
+                {tag}
+                <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <X className="w-2 h-2" />
+                </button>
+              </Badge>
+            );
+          })}
         </div>
         )}
       </div>
