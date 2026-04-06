@@ -869,7 +869,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               {sendingEmail ? "جاري الإرسال..." : "إرسال الإيميل"}
             </Button>
-            </Button>
           </div>
         )}
 
