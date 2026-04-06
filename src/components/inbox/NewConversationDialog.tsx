@@ -144,7 +144,11 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setGroupMemberInput("");
       setGroupImageFile(null);
       setGroupImagePreview(null);
-      setEmailTo("");
+      setEmailToInput("");
+      setEmailToList([]);
+      setEmailCcInput("");
+      setEmailCcList([]);
+      setShowCcField(false);
       setEmailSubject("");
       setEmailBody("");
       setSelectedEmailConfig(null);
