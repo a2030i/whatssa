@@ -263,6 +263,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         body: {
           to: emailToList.join(", "),
           cc: emailCcList.length > 0 ? emailCcList.join(", ") : undefined,
+          bcc: emailBccList.length > 0 ? emailBccList.join(", ") : undefined,
           subject: emailSubject,
           body: emailBody,
           config_id: selectedEmailConfig,
