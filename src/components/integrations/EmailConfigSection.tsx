@@ -309,7 +309,9 @@ const EmailConfigSection = () => {
   };
 
   const handleToggle = async (id: string, active: boolean) => {
-    await cloudSupabase.from("email_configs").update({ is_active: active }).eq("id", id);
+    await invokeCloud("email-config-manage", {
+      body: { action: "update", id, payload: { is_active: active } },
+    });
     loadConfigs();
   };
 
