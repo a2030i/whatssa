@@ -301,7 +301,7 @@ const EmailConfigSection = () => {
   const handleDelete = async (id: string) => {
     if (!confirm("هل أنت متأكد من حذف هذا البريد؟")) return;
     const { error } = await invokeCloud("email-config-manage", {
-      body: { action: "delete", id },
+      body: { action: "delete", id, org_id: orgId },
     });
     if (error) {
       toast.error("خطأ في الحذف");
