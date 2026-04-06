@@ -1255,80 +1255,93 @@ const IntegrationsPage = () => {
                       </button>
 
                       {isExpanded && (
-                        <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-3 animate-fade-in">
-                          {/* Connection Status */}
-                          <div className="flex items-center justify-between bg-success/5 border border-success/20 rounded-lg p-3">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="w-5 h-5 text-success" />
-                              <div>
-                                <p className="text-xs font-bold text-success">الرقم متصل</p>
-                                <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">
-                                  {config.display_phone || config.business_name || "الرقم غير متاح"}
-                                </p>
-                              </div>
+                        <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-2.5 animate-fade-in">
+                          {/* Summary info — like email */}
+                          <div className="text-[11px] space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">الحالة:</span>
+                              <span className="text-success font-medium">✅ متصل</span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => checkUnofficialStatus(config)} disabled={unofficialCheckingStatus === config.id}>
-                                {unofficialCheckingStatus === config.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                                تحقق
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Label editing */}
-                          <div className="flex items-center gap-1.5 justify-center">
-                            {editingLabelId === config.id ? (
-                              <div className="flex items-center gap-1">
-                                <Input value={editingLabelText} onChange={(e) => setEditingLabelText(e.target.value)} className="h-7 text-xs text-center w-32 bg-secondary border-0" placeholder="اسم القناة" autoFocus onKeyDown={(e) => { if (e.key === "Enter") saveChannelLabel(config.id); if (e.key === "Escape") setEditingLabelId(null); }} />
-                                <button onClick={() => saveChannelLabel(config.id)} className="text-success hover:text-success/80"><Check className="w-3.5 h-3.5" /></button>
-                                <button onClick={() => setEditingLabelId(null)} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
+                            {config.display_phone && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">الرقم:</span>
+                                <span className="text-foreground font-mono text-[10px]" dir="ltr">{config.display_phone}</span>
                               </div>
-                            ) : (
-                              <button onClick={() => { setEditingLabelId(config.id); setEditingLabelText(config.channel_label || ""); }} className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1">
-                                <Pencil className="w-2.5 h-2.5" /> تعديل الاسم
-                              </button>
                             )}
-                          </div>
-
-                          {/* Test Message */}
-                          <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Send className="w-4 h-4 text-primary" />
-                              <h4 className="text-xs font-bold">إرسال رسالة اختبار</h4>
-                            </div>
-                            <div className="flex gap-2">
-                              <Input value={unofficialTestPhone} onChange={(e) => setUnofficialTestPhone(e.target.value)} placeholder="9665xxxxxxxx" className="h-8 text-xs flex-1" dir="ltr" />
-                              <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={() => sendUnofficialTestMessage(config.id)} disabled={unofficialTestSending || !unofficialTestPhone}>
-                                {unofficialTestSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                                إرسال
-                              </Button>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">النوع:</span>
+                              <span className="text-warning font-medium">غير رسمي (QR)</span>
                             </div>
                           </div>
 
-                          {/* Profile Editor */}
-                          <WhatsAppProfileEditor configId={config.id} channelType="evolution" />
-
-                          {/* Channel Routing */}
-                          {orgId && (
-                            <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
-                              <ChannelRoutingConfig configId={config.id} orgId={orgId} defaultTeamId={(config as any).default_team_id} defaultAgentId={(config as any).default_agent_id} excludeSupervisors={(config as any).exclude_supervisors} />
-                            </div>
-                          )}
-
-                          {/* Ban Protection */}
-                          <UnofficialRateLimitPanel configId={config.id} initialSettings={(config as any).rate_limit_settings} />
-
-                          {/* Actions */}
-                          <div className="flex gap-2 justify-end flex-wrap border-t border-border pt-2">
+                          {/* Action buttons — like email */}
+                          <div className="flex gap-2 justify-end flex-wrap">
+                            <Button size="sm" variant="outline" onClick={() => checkUnofficialStatus(config)} disabled={unofficialCheckingStatus === config.id} className="text-[10px] h-7 px-2.5 gap-1">
+                              {unofficialCheckingStatus === config.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                              تحقق
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setExpandedFullSettingsId(expandedFullSettingsId === config.id ? null : config.id)} className="text-[10px] h-7 px-2 gap-1">
+                              <Settings className="w-3 h-3" /> إعدادات
+                            </Button>
                             <Button size="sm" variant="ghost" onClick={() => logoutUnofficial(config)} className="text-[10px] h-7 px-2 text-destructive gap-1">
                               <LogOut className="w-3 h-3" /> فصل
                             </Button>
-                            {isSuperAdmin && (
-                              <Button variant="outline" size="sm" className="text-[10px] h-7 text-destructive border-destructive/30 gap-1" onClick={() => deleteUnofficialInstance(config)}>
-                                <Trash2 className="w-3 h-3" /> حذف نهائياً
-                              </Button>
-                            )}
                           </div>
+
+                          {/* Full settings — only when clicking إعدادات */}
+                          {expandedFullSettingsId === config.id && (
+                            <div className="space-y-3 border-t border-border pt-3 animate-fade-in">
+                              {/* Label editing */}
+                              <div className="flex items-center gap-1.5 justify-center">
+                                {editingLabelId === config.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <Input value={editingLabelText} onChange={(e) => setEditingLabelText(e.target.value)} className="h-7 text-xs text-center w-32 bg-secondary border-0" placeholder="اسم القناة" autoFocus onKeyDown={(e) => { if (e.key === "Enter") saveChannelLabel(config.id); if (e.key === "Escape") setEditingLabelId(null); }} />
+                                    <button onClick={() => saveChannelLabel(config.id)} className="text-success hover:text-success/80"><Check className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => setEditingLabelId(null)} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => { setEditingLabelId(config.id); setEditingLabelText(config.channel_label || ""); }} className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1">
+                                    <Pencil className="w-2.5 h-2.5" /> تعديل الاسم
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Test Message */}
+                              <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Send className="w-4 h-4 text-primary" />
+                                  <h4 className="text-xs font-bold">إرسال رسالة اختبار</h4>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Input value={unofficialTestPhone} onChange={(e) => setUnofficialTestPhone(e.target.value)} placeholder="9665xxxxxxxx" className="h-8 text-xs flex-1" dir="ltr" />
+                                  <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={() => sendUnofficialTestMessage(config.id)} disabled={unofficialTestSending || !unofficialTestPhone}>
+                                    {unofficialTestSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                                    إرسال
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* Profile Editor */}
+                              <WhatsAppProfileEditor configId={config.id} channelType="evolution" />
+
+                              {/* Channel Routing */}
+                              {orgId && (
+                                <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
+                                  <ChannelRoutingConfig configId={config.id} orgId={orgId} defaultTeamId={(config as any).default_team_id} defaultAgentId={(config as any).default_agent_id} excludeSupervisors={(config as any).exclude_supervisors} />
+                                </div>
+                              )}
+
+                              {/* Ban Protection */}
+                              <UnofficialRateLimitPanel configId={config.id} initialSettings={(config as any).rate_limit_settings} />
+
+                              {/* Delete (super admin) */}
+                              {isSuperAdmin && (
+                                <Button variant="outline" size="sm" className="w-full text-[10px] h-7 text-destructive border-destructive/30 gap-1" onClick={() => deleteUnofficialInstance(config)}>
+                                  <Trash2 className="w-3 h-3" /> حذف نهائياً
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
