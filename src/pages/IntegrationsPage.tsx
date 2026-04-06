@@ -1319,9 +1319,6 @@ const IntegrationsPage = () => {
           </div>
         )}
         {renderAllChannelsView(configs)}
-        <div className="border-t pt-6">
-          <EmailConfigSection />
-        </div>
       </div>
     );
   }
