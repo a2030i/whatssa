@@ -251,7 +251,7 @@ const EmailConfigSection = () => {
 
       if (editId) {
         const { error } = await invokeCloud("email-config-manage", {
-          body: { action: "update", id: editId, payload },
+          body: { action: "update", id: editId, payload, org_id: orgId },
         });
         if (error) throw error;
         toast.success("تم تحديث إعدادات البريد");
