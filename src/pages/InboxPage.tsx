@@ -372,9 +372,17 @@ const InboxPage = () => {
           emailMeta: message.metadata?.email_subject ? {
             subject: message.metadata?.email_subject,
             from: message.metadata?.email_from,
+            fromName: message.metadata?.email_from_name,
             to: message.metadata?.email_to,
             cc: message.metadata?.email_cc,
+            bcc: message.metadata?.email_bcc,
             messageId: message.metadata?.email_message_id,
+            attachments: message.metadata?.email_attachments
+              ? (Array.isArray(message.metadata.email_attachments)
+                ? message.metadata.email_attachments.map((f: any) => typeof f === "string" ? { filename: f } : f)
+                : undefined)
+              : undefined,
+            direction: message.sender === "customer" ? "inbound" : "outbound",
           } : undefined,
         };
         setAllMessages((prev) => ({
