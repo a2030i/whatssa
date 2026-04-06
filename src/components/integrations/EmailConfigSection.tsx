@@ -23,7 +23,14 @@ interface EmailConfig {
   imap_port: number | null;
   is_active: boolean;
   is_verified: boolean;
+  label: string | null;
+  dedicated_agent_id: string | null;
+  dedicated_team_id: string | null;
+  sync_mode: string;
 }
+
+interface TeamOption { id: string; name: string; }
+interface AgentOption { id: string; full_name: string; }
 
 type ProviderKey = "gmail" | "outlook" | "yahoo" | "zoho" | "custom";
 
