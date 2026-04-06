@@ -252,7 +252,7 @@ const IntegrationsPage = () => {
           registration_status: "pending",
           registration_error: "الرقم غير مسجّل في Cloud API — يحتاج إعادة تسجيل (Register)",
         }).eq("id", config.id);
-        loadConfigs();
+        loadConfigs(true);
       } else if (data.phone?.status === "CONNECTED" && config.registration_status !== "connected") {
         await supabase.from("whatsapp_config").update({
           is_connected: true,
@@ -260,7 +260,7 @@ const IntegrationsPage = () => {
           registration_error: null,
           registered_at: new Date().toISOString(),
         }).eq("id", config.id);
-        loadConfigs();
+        loadConfigs(true);
       }
     } catch {
       setMetaStatus(p => ({ ...p, [config.id]: { isLoading: false } }));
@@ -466,7 +466,7 @@ const IntegrationsPage = () => {
       toast.error(regError);
     }
 
-    await loadConfigs();
+    await loadConfigs(true);
     return data;
   };
 
@@ -482,7 +482,7 @@ const IntegrationsPage = () => {
     if (!confirm("هل تريد فصل هذا الرقم؟")) return;
     await supabase.from("whatsapp_config").delete().eq("id", configId);
     toast.success("تم فصل الرقم");
-    loadConfigs();
+    loadConfigs(true);
   };
 
   const retryRegister = async (config: WhatsAppConfig) => {
@@ -505,7 +505,7 @@ const IntegrationsPage = () => {
       } else {
         toast.error(friendlyError(data?.registration?.error || "خطأ غير معروف"));
       }
-      await loadConfigs();
+      await loadConfigs(true);
     } catch {
       toast.error("حدث خطأ");
     }
@@ -538,7 +538,7 @@ const IntegrationsPage = () => {
     await supabase.from("whatsapp_config").update({ channel_label: label || null }).eq("id", configId);
     setEditingLabelId(null);
     toast.success("تم تحديث اسم القناة");
-    loadConfigs();
+    loadConfigs(true);
   };
 
   const resetFlow = () => {
@@ -923,7 +923,7 @@ const IntegrationsPage = () => {
       toast.info(`الحالة: ${data?.status || "غير معروف"}`);
     }
     setUnofficialCheckingStatus(null);
-    loadConfigs();
+    loadConfigs(true);
   };
 
   const logoutUnofficial = async (config: WhatsAppConfig) => {
@@ -933,7 +933,7 @@ const IntegrationsPage = () => {
     });
     if (data?.success) {
       toast.success("تم فصل الرقم");
-      loadConfigs();
+      loadConfigs(true);
     }
   };
 
@@ -944,7 +944,7 @@ const IntegrationsPage = () => {
     });
     if (data?.success) {
       toast.success("تم حذف الجلسة");
-      loadConfigs();
+      loadConfigs(true);
     }
   };
 
