@@ -2515,7 +2515,13 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    if (enterToSend && !e.shiftKey) {
+                    // Email channels: Enter always sends, Shift+Enter for new line
+                    if (isEmailChannel) {
+                      if (!e.shiftKey) {
+                        e.preventDefault();
+                        imagePreview ? handleSendImage() : handleSend();
+                      }
+                    } else if (enterToSend && !e.shiftKey) {
                       e.preventDefault();
                       imagePreview ? handleSendImage() : handleSend();
                     } else if (!enterToSend && e.shiftKey) {
