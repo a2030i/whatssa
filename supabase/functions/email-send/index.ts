@@ -209,6 +209,7 @@ Deno.serve(async (req) => {
           email_subject: threadSubject,
           email_from: config.email_address,
           email_to: to,
+          email_cc: cc || null,
           email_message_id: outgoingMessageId,
           email_in_reply_to: inReplyTo || null,
           email_references: references || null,
