@@ -588,7 +588,9 @@ const InboxPage = () => {
       ? {
           to: conversation.customerPhone,
           subject: text.length > 60 ? text.substring(0, 60) + "..." : text,
-          body: text,
+          body: replyTo?.text
+            ? `${text}\n\n---\n\nفي ${new Date().toLocaleDateString("ar-SA")}، كتب ${replyTo.senderName || "العميل"}:\n> ${replyTo.text.split("\n").join("\n> ")}`
+            : text,
           conversation_id: convId,
         }
       : {

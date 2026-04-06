@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { to, cc, subject, body: emailBody, config_id, conversation_id } = await req.json();
+    const { to, cc, bcc, subject, body: emailBody, config_id, conversation_id } = await req.json();
     
     if (!to || !subject || !emailBody) {
       return new Response(JSON.stringify({ error: "to, subject, body are required" }), {
@@ -140,6 +140,9 @@ Deno.serve(async (req) => {
     if (cc) {
       sendOptions.cc = cc;
     }
+    if (bcc) {
+      sendOptions.bcc = bcc;
+    }
 
     await client.send(sendOptions);
 
@@ -210,6 +213,7 @@ Deno.serve(async (req) => {
           email_from: config.email_address,
           email_to: to,
           email_cc: cc || null,
+          email_bcc: bcc || null,
           email_message_id: outgoingMessageId,
           email_in_reply_to: inReplyTo || null,
           email_references: references || null,

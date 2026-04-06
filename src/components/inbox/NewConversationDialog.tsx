@@ -99,7 +99,10 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [emailToList, setEmailToList] = useState<string[]>([]);
   const [emailCcInput, setEmailCcInput] = useState("");
   const [emailCcList, setEmailCcList] = useState<string[]>([]);
+  const [emailBccInput, setEmailBccInput] = useState("");
+  const [emailBccList, setEmailBccList] = useState<string[]>([]);
   const [showCcField, setShowCcField] = useState(false);
+  const [showBccField, setShowBccField] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -117,6 +120,12 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     if (!email || !email.includes("@") || emailCcList.includes(email) || emailToList.includes(email)) return;
     setEmailCcList(prev => [...prev, email]);
     setEmailCcInput("");
+  };
+  const addEmailBcc = (val?: string) => {
+    const email = (val || emailBccInput).trim().toLowerCase();
+    if (!email || !email.includes("@") || emailBccList.includes(email) || emailToList.includes(email) || emailCcList.includes(email)) return;
+    setEmailBccList(prev => [...prev, email]);
+    setEmailBccInput("");
   };
 
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
@@ -148,7 +157,10 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setEmailToList([]);
       setEmailCcInput("");
       setEmailCcList([]);
+      setEmailBccInput("");
+      setEmailBccList([]);
       setShowCcField(false);
+      setShowBccField(false);
       setEmailSubject("");
       setEmailBody("");
       setSelectedEmailConfig(null);
@@ -251,6 +263,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         body: {
           to: emailToList.join(", "),
           cc: emailCcList.length > 0 ? emailCcList.join(", ") : undefined,
+          bcc: emailBccList.length > 0 ? emailBccList.join(", ") : undefined,
           subject: emailSubject,
           body: emailBody,
           config_id: selectedEmailConfig,
@@ -771,9 +784,14 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">📩 إلى</Label>
-                {!showCcField && (
-                  <button onClick={() => setShowCcField(true)} className="text-[10px] text-primary hover:underline">+ Cc</button>
-                )}
+                <div className="flex items-center gap-2">
+                  {!showCcField && (
+                    <button onClick={() => setShowCcField(true)} className="text-[10px] text-primary hover:underline">+ Cc</button>
+                  )}
+                  {!showBccField && (
+                    <button onClick={() => setShowBccField(true)} className="text-[10px] text-primary hover:underline">+ Bcc</button>
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-1 min-h-[40px] rounded-lg border border-input bg-background px-2 py-1.5" dir="ltr">
                 {emailToList.map((email, i) => (
@@ -832,6 +850,40 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                       }
                     }}
                     onBlur={() => addEmailCc()}
+                    className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* BCC - chips style */}
+            {showBccField && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">🔒 Bcc</Label>
+                <div className="flex flex-wrap items-center gap-1 min-h-[40px] rounded-lg border border-input bg-background px-2 py-1.5" dir="ltr">
+                  {emailBccList.map((email, i) => (
+                    <Badge key={i} variant="outline" className="gap-1 text-xs py-0.5 px-2 shrink-0 border-dashed">
+                      {email}
+                      <button onClick={() => setEmailBccList(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  <input
+                    type="email"
+                    placeholder={emailBccList.length === 0 ? "bcc@email.com" : ""}
+                    value={emailBccInput}
+                    onChange={(e) => setEmailBccInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") {
+                        e.preventDefault();
+                        addEmailBcc();
+                      }
+                      if (e.key === "Backspace" && !emailBccInput && emailBccList.length > 0) {
+                        setEmailBccList(prev => prev.slice(0, -1));
+                      }
+                    }}
+                    onBlur={() => addEmailBcc()}
                     className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
                   />
                 </div>
