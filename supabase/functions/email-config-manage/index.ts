@@ -63,11 +63,14 @@ Deno.serve(async (req) => {
 
     // CREATE
     if (action === "create") {
-      const { error } = await admin
+      console.log("[email-config-manage] creating with payload:", JSON.stringify(body.payload));
+      const { data, error } = await admin
         .from("email_configs")
-        .insert({ ...body.payload, org_id: orgId });
+        .insert({ ...body.payload, org_id: orgId })
+        .select();
+      console.log("[email-config-manage] create result:", JSON.stringify({ data, error }));
       if (error) throw error;
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ success: true, data }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
