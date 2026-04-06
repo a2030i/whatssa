@@ -342,7 +342,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       onTouchStart={canReply ? swipe.onTouchStart : undefined}
       onTouchMove={canReply ? swipe.onTouchMove : undefined}
       onTouchEnd={canReply ? swipe.onTouchEnd : undefined}
-      className="group relative w-fit max-w-[88%] md:max-w-[75%] lg:max-w-[75%]"
+      className="group relative w-fit max-w-[85%] md:max-w-[65%]"
       data-message-id={msg.id}
       data-wa-message-id={msg.waMessageId || undefined}
     >
@@ -520,9 +520,9 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // Timestamp element — separate footer row to avoid bubble width collapse
         const timestampEl = (
           <div className={cn(
-            "mt-1.5 flex w-full items-center justify-end gap-1 text-[10px] tracking-tight leading-none select-none",
+            "mt-1.5 flex w-full items-center justify-end gap-1 text-[11px] tracking-tight leading-none select-none",
             msg.type === "note" ? "text-amber-500/50"
-            : msg.sender === "customer" ? "text-white/55"
+            : msg.sender === "customer" ? "text-foreground/40 dark:text-white/45"
             : "text-muted-foreground/50"
           )}>
             <span>{msg.timestamp}</span>
@@ -757,11 +757,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               {/* Caption text in a mini bubble */}
               {hasText && (
                 <div className={cn(
-                  "inline-block min-w-[100px] max-w-full rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed",
+                  "inline-block min-w-[100px] max-w-full rounded-xl px-[14px] py-[10px] text-[14px]",
                   msg.sender === "agent"
                     ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                    : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
-                )} style={{ wordBreak: "normal", overflowWrap: "anywhere", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
+                    : "bg-[#d9fdd3] dark:bg-[hsl(158,45%,42%)] text-foreground dark:text-white rounded-bl-sm"
+                )} style={{ wordBreak: "normal", overflowWrap: "anywhere", whiteSpace: "pre-wrap", writingMode: "horizontal-tb", lineHeight: "1.6" }}>
                   {renderText(textWithoutUrl)}
                   {translationEl}
                   {timestampEl}
@@ -776,11 +776,11 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // === PURE TEXT MESSAGE (no media) ===
         return (
           <div className={cn(
-            "inline-block min-w-[100px] max-w-full rounded-2xl px-4 py-2 text-[14px] leading-relaxed",
+            "inline-block min-w-[100px] max-w-full rounded-xl px-[14px] py-[10px] text-[14px]",
             msg.sender === "agent"
               ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-              : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
-          )} style={{ wordBreak: "normal", overflowWrap: "anywhere", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
+              : "bg-[#d9fdd3] dark:bg-[hsl(158,45%,42%)] text-foreground dark:text-white rounded-bl-sm"
+          )} style={{ wordBreak: "normal", overflowWrap: "anywhere", whiteSpace: "pre-wrap", writingMode: "horizontal-tb", lineHeight: "1.6" }}>
             {groupSenderEl && (
               <div className="text-[10.5px] font-bold mb-0.5 text-white/80">{groupSenderEl}</div>
             )}
@@ -2125,7 +2125,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-8 md:py-6 space-y-0.5 md:space-y-1 bg-background">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden bg-background">
+        <div className="max-w-[720px] mx-auto px-4 py-5 md:px-5 md:py-6 space-y-[6px] md:space-y-[10px]">
         {messages.map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";
@@ -2142,7 +2143,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
             msg.sender === "agent" ? "justify-end" : msg.sender === "system" ? "justify-center" : "justify-start",
-            !isFirstInGroup && "mt-0.5"
+            isFirstInGroup ? "mt-[10px]" : "mt-[3px]"
           )}>
             {/* Selection checkbox */}
             {selectingMessages && msg.sender !== "system" && (
@@ -2337,6 +2338,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           </div>
         )}
         <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Quick Replies */}

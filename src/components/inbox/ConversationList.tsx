@@ -459,7 +459,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   setTimeout(() => document.addEventListener("click", dismiss), 0);
                 }}
                 className={cn(
-                  "w-full text-right px-3 py-3 rounded-xl transition-all group relative border",
+                  "w-full text-right px-3 py-3.5 rounded-xl transition-all group relative border min-h-[72px]",
                   isSelected && !bulkMode
                     ? "bg-primary/[0.06] border-primary/20 shadow-[0_1px_6px_hsl(var(--primary)/0.08)]"
                     : "border-transparent hover:bg-card hover:border-border/40 hover:shadow-[0_1px_4px_rgba(0,0,0,0.04)]",
@@ -515,14 +515,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   {/* Content */}
                   <div className="flex-1 min-w-0" style={{ writingMode: "horizontal-tb" }}>
                     <p className={cn(
-                      "text-[13.5px] leading-tight flex items-center gap-1",
+                      "text-[14.5px] leading-snug flex items-center gap-1",
                       hasUnread ? "font-bold text-foreground" : "font-semibold text-foreground/80"
                     )} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "normal", overflowWrap: "normal" }}>
                       {conv.isPinned && <Pin className="w-2.5 h-2.5 text-primary/50 shrink-0 rotate-45" />}
                       <span className="truncate">{displayName}</span>
                     </p>
                     <p className={cn(
-                      "text-[12px] truncate leading-snug mt-1",
+                      "text-[13px] truncate leading-normal mt-1",
                       hasUnread ? "text-foreground/65 font-medium" : "text-muted-foreground/60"
                     )} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "normal", overflowWrap: "normal" }}>
                       {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
