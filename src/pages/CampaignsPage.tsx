@@ -669,6 +669,7 @@ const CampaignsPage = () => {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader><DialogTitle>إنشاء حملة جديدة</DialogTitle></DialogHeader>
           <div className="space-y-5 mt-2">
+            <CampaignSafetyTips />
             {/* Name */}
             <div className="space-y-1.5">
               <Label className="text-xs">اسم الحملة *</Label>
