@@ -129,14 +129,19 @@ Deno.serve(async (req) => {
       customHeaders["References"] = references || inReplyTo;
     }
 
-    await client.send({
+    const sendOptions: any = {
       from: config.email_address,
       to,
       subject: threadSubject,
       content: emailBody,
       html: emailBody,
       headers: customHeaders,
-    });
+    };
+    if (cc) {
+      sendOptions.cc = cc;
+    }
+
+    await client.send(sendOptions);
 
     await client.close();
     console.log(`[email-send] Email sent successfully to ${to} (thread: ${inReplyTo ? "reply" : "new"})`);
