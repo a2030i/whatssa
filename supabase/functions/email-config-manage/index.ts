@@ -44,7 +44,9 @@ Deno.serve(async (req) => {
     }
 
     const admin = getExternalClient();
-    const { action, ...body } = await req.json();
+    const rawBody = await req.json();
+    const { action, ...body } = rawBody;
+    console.log("[email-config-manage] action:", action, "orgId:", orgId);
 
     // LIST
     if (action === "list") {
