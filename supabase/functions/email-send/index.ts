@@ -140,6 +140,9 @@ Deno.serve(async (req) => {
     if (cc) {
       sendOptions.cc = cc;
     }
+    if (bcc) {
+      sendOptions.bcc = bcc;
+    }
 
     await client.send(sendOptions);
 
