@@ -1699,22 +1699,84 @@ const IntegrationsPage = () => {
           </div>
           <div className="p-5 space-y-4">
             {/* Guide */}
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                {t("كيف تحصل على هذه البيانات؟", "How to get these credentials?")}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3">
+              <p className="text-xs font-bold text-primary flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4" />
+                {t("دليل الربط خطوة بخطوة", "Step-by-step Connection Guide")}
               </p>
-              <ol className="text-[11px] text-muted-foreground space-y-1.5 pr-4 list-decimal list-inside" dir={dir}>
-                <li>{t("ادخل على", "Go to")} <a href="https://business.facebook.com/settings/system-users" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Meta Business Suite → System Users</a></li>
-                <li>{t("أنشئ System User بصلاحية Admin أو Employee", "Create a System User with Admin or Employee role")}</li>
-                <li>{t("اضغط 'Generate New Token' واختر تطبيقك ثم فعّل الصلاحيات:", "Click 'Generate New Token', select your app, then enable permissions:")}
-                  <span className="font-mono text-[10px] block mt-0.5 text-foreground">whatsapp_business_management, whatsapp_business_messaging</span>
-                </li>
-                <li>{t("انسخ التوكن (Permanent Token) والصقه هنا", "Copy the Permanent Token and paste it here")}</li>
-                <li>{t("للحصول على Phone Number ID و WABA ID:", "To get Phone Number ID and WABA ID:")}
-                  <span className="block mt-0.5">{t("ادخل على", "Go to")} <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Meta Developers → Apps</a> → WhatsApp → API Setup</span>
-                </li>
-              </ol>
+
+              {/* Step 1: Create App */}
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
+                  {t("إنشاء تطبيق ميتا", "Create a Meta App")}
+                </p>
+                <div className="text-[11px] text-muted-foreground mr-7 space-y-1">
+                  <p>{t("ادخل على", "Go to")} <a href="https://developers.facebook.com/apps/create/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">developers.facebook.com/apps/create</a></p>
+                  <p>{t('اختر نوع التطبيق "Business" ← أدخل اسم التطبيق ← اضغط "Create App"', 'Select app type "Business" → Enter app name → Click "Create App"')}</p>
+                </div>
+              </div>
+
+              {/* Step 2: Add WhatsApp product */}
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                  {t("إضافة منتج واتساب", "Add WhatsApp Product")}
+                </p>
+                <div className="text-[11px] text-muted-foreground mr-7">
+                  <p>{t('من لوحة التطبيق ← اضغط "Add Product" ← ابحث عن WhatsApp ← اضغط "Set Up"', 'From App Dashboard → Click "Add Product" → Find WhatsApp → Click "Set Up"')}</p>
+                </div>
+              </div>
+
+              {/* Step 3: Get Phone Number ID & WABA ID */}
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+                  {t("نسخ Phone Number ID و WABA ID", "Copy Phone Number ID & WABA ID")}
+                </p>
+                <div className="text-[11px] text-muted-foreground mr-7 space-y-1">
+                  <p>{t("من القائمة الجانبية: WhatsApp → API Setup", "From sidebar: WhatsApp → API Setup")}</p>
+                  <p>{t("ستجد الأرقام المتاحة مع Phone Number ID في الأعلى", "You'll find available numbers with Phone Number ID at the top")}</p>
+                  <p>{t('الـ WABA ID موجود في عنوان الصفحة أو من "WhatsApp Accounts" في Business Settings', 'WABA ID is in the page header or from "WhatsApp Accounts" in Business Settings')}</p>
+                </div>
+              </div>
+
+              {/* Step 4: Create System User & Token */}
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold shrink-0">4</span>
+                  {t("إنشاء التوكن الدائم", "Create Permanent Token")}
+                </p>
+                <div className="text-[11px] text-muted-foreground mr-7 space-y-1">
+                  <p>{t("ادخل على", "Go to")} <a href="https://business.facebook.com/settings/system-users" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Business Settings → System Users</a></p>
+                  <p>{t('اضغط "Add" ← أدخل اسم المستخدم ← اختر الدور "Admin"', 'Click "Add" → Enter username → Select role "Admin"')}</p>
+                  <p>{t('اضغط "Generate New Token" ← اختر تطبيقك ← فعّل الصلاحيات:', 'Click "Generate New Token" → Select your app → Enable permissions:')}</p>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    <span className="font-mono text-[9px] bg-secondary px-1.5 py-0.5 rounded text-foreground">whatsapp_business_management</span>
+                    <span className="font-mono text-[9px] bg-secondary px-1.5 py-0.5 rounded text-foreground">whatsapp_business_messaging</span>
+                  </div>
+                  <p className="mt-1">{t('اضغط "Generate Token" ← انسخ التوكن فوراً (لن يظهر مرة أخرى!)', 'Click "Generate Token" → Copy the token immediately (it won\'t show again!)')}</p>
+                </div>
+              </div>
+
+              {/* Step 5: Assign assets */}
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold shrink-0">5</span>
+                  {t("ربط الأصول بالمستخدم", "Assign Assets to System User")}
+                </p>
+                <div className="text-[11px] text-muted-foreground mr-7 space-y-1">
+                  <p>{t('في صفحة System User ← اضغط "Assign Assets" ← Apps ← اختر تطبيقك ← فعّل "Full Control"', 'On System User page → Click "Assign Assets" → Apps → Select your app → Enable "Full Control"')}</p>
+                  <p>{t('ثم اذهب لتبويب "WhatsApp Accounts" ← اختر حسابك ← فعّل "Full Control"', 'Then go to "WhatsApp Accounts" tab → Select your account → Enable "Full Control"')}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-primary/20 pt-2 mt-2">
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-warning shrink-0" />
+                  {t("تأكد من نسخ التوكن فور إنشائه — ميتا لا تعرضه مرة أخرى", "Make sure to copy the token immediately — Meta won't show it again")}
+                </p>
+              </div>
             </div>
 
             <div className="space-y-3">
