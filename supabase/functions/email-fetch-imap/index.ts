@@ -162,7 +162,6 @@ async function fetchEmailsForConfig(
           // Default to most recent
           convMatch = existingConv[0];
         }
-          .maybeSingle();
 
         let convId: string;  
         
