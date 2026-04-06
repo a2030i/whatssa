@@ -89,6 +89,7 @@ const IntegrationsPage = () => {
   const dir = isReviewMode ? "ltr" : "rtl";
   // Manual connect removed
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedChannelBadgeId, setExpandedChannelBadgeId] = useState<string | null>(null);
   const [connectedPhone, setConnectedPhone] = useState<string>("");
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editingLabelText, setEditingLabelText] = useState("");
