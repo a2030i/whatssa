@@ -313,7 +313,7 @@ const EmailConfigSection = () => {
 
   const handleToggle = async (id: string, active: boolean) => {
     await invokeCloud("email-config-manage", {
-      body: { action: "update", id, payload: { is_active: active } },
+      body: { action: "update", id, payload: { is_active: active }, org_id: orgId },
     });
     loadConfigs();
   };
