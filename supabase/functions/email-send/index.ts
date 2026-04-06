@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { to, cc, bcc, subject, body: emailBody, config_id, conversation_id } = await req.json();
+    const { to, cc, bcc, subject, body: emailBody, config_id, conversation_id, attachments } = await req.json();
     
     if (!to || !subject || !emailBody) {
       return new Response(JSON.stringify({ error: "to, subject, body are required" }), {
