@@ -201,6 +201,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       if (channelFilter !== "all") {
         if (channelFilter === "meta_api" && conv.channelType !== "meta_api") return false;
         if (channelFilter === "evolution" && conv.channelType !== "evolution") return false;
+        if (channelFilter === "email" && conv.conversationType !== "email") return false;
       }
       if (selectedTags.length > 0 && !selectedTags.some((t) => conv.tags.includes(t))) return false;
       return true;
