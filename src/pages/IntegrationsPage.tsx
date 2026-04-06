@@ -580,11 +580,14 @@ const IntegrationsPage = () => {
     setIsLoading(false);
     setConnectedPhone("");
     setTestPhone("");
-    // manual connect state removed
     setOnboardingMode("new");
     setPreviousProvider("");
     setMigrationPrereqs(null);
     setWabaInfo(null);
+    setManualAccessToken("");
+    setManualPhoneNumberId("");
+    setManualWabaId("");
+    setManualConnecting(false);
   };
 
   const onboardingTypeLabel = (type?: string) => {
