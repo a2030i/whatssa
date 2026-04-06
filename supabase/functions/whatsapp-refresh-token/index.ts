@@ -5,7 +5,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const META_APP_ID = Deno.env.get("META_APP_ID") || "1306128431426603";
+async function resolveMetaAppId(adminClient: ReturnType<typeof createClient>) {
+  const fallbackAppId = Deno.env.get("META_APP_ID") || "1306128431426603";
+
+  try {
+    const { data } = await adminClient
+      .from("system_settings")
+      .select("value")
+      .eq("key", "meta_app_id")
+      .maybeSingle();
+
+    return data?.value ? String(data.value) : fallbackAppId;
+  } catch {
+    return fallbackAppId;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -16,6 +30,7 @@ Deno.serve(async (req) => {
     const metaAppSecret = Deno.env.get("META_APP_SECRET")!;
 
     const adminClient = createClient(supabaseUrl, serviceKey);
+    const metaAppId = await resolveMetaAppId(adminClient);
 
     // Get all configs with tokens expiring in the next 7 days or already expired
     const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -32,7 +47,7 @@ Deno.serve(async (req) => {
     for (const config of (configs || [])) {
       try {
         // Exchange token for a new long-lived token via Meta API
-        const url = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${META_APP_ID}&client_secret=${metaAppSecret}&fb_exchange_token=${config.access_token}`;
+        const url = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${metaAppId}&client_secret=${metaAppSecret}&fb_exchange_token=${config.access_token}`;
         const resp = await fetch(url);
         const data = await resp.json();
 
