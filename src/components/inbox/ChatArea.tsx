@@ -265,17 +265,18 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
 
 const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants, onCopyLink, onForward, onStar, translationText }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }>; onCopyLink?: (msgId: string) => void; onForward?: (msg: Message) => void; onStar?: (msg: Message) => void; translationText?: string }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
+  const isEmailConversation = conversation.channelType === "email" || conversation.conversationType === "email";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
-    onSwipe: () => canReply && onReply(msg),
+    onSwipe: () => canReply && !isEmailConversation && onReply(msg),
     direction: swipeDirection,
     threshold: 60,
   });
 
-  // Can edit agent text messages within 15 minutes
-  const canEdit = msg.sender === "agent" && msg.type === "text" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
+  // Can edit agent text messages within 15 minutes (not for email)
+  const canEdit = !isEmailConversation && msg.sender === "agent" && msg.type === "text" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
     (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
-  const canDelete = msg.sender === "agent" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
+  const canDelete = !isEmailConversation && msg.sender === "agent" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
     (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
