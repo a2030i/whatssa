@@ -2505,15 +2505,31 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 اختر قالباً لإرسال رسالة...
               </button>
             ) : (
-              <Input
-                ref={inputRef}
+              <textarea
+                ref={inputRef as any}
                 placeholder={imagePreview ? "أضف تعليقاً (اختياري)..." : isNoteMode ? "ملاحظة داخلية... @ لذكر موظف" : "أدخل الرسالة..."}
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && (imagePreview ? handleSendImage() : handleSend())}
-                className="border-0 bg-transparent h-10 text-sm px-4 focus-visible:ring-0 focus-visible:ring-offset-0"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    if (enterToSend && !e.shiftKey) {
+                      e.preventDefault();
+                      imagePreview ? handleSendImage() : handleSend();
+                    } else if (!enterToSend && e.shiftKey) {
+                      e.preventDefault();
+                      imagePreview ? handleSendImage() : handleSend();
+                    }
+                  }
+                }}
+                rows={1}
+                className="border-0 bg-transparent min-h-[40px] max-h-[120px] text-sm px-4 py-2.5 focus-visible:ring-0 focus-visible:ring-offset-0 w-full resize-none outline-none"
+                style={{ height: "auto", overflow: "auto" }}
+                onInput={(e) => {
+                  const el = e.target as HTMLTextAreaElement;
+                  el.style.height = "auto";
+                  el.style.height = Math.min(el.scrollHeight, 120) + "px";
+                }}
               />
-            )}
 
             {/* Tools Row inside input box */}
             {(!windowExpired || isNoteMode) && (
