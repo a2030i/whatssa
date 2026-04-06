@@ -13,17 +13,23 @@ Deno.serve(async (req) => {
     const extKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY")!;
     const ext = createClient(extUrl, extKey);
 
-    // POST = upsert a setting
-    if (req.method === "POST") {
-      const { key, value } = await req.json();
-      if (!key) throw new Error("key is required");
-      const { error } = await ext
-        .from("system_settings")
-        .upsert({ key, value, description: `Meta setting: ${key}` }, { onConflict: "key" });
-      if (error) throw error;
-      return new Response(JSON.stringify({ ok: true, key, value }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // POST with body = upsert a setting; POST without body = read
+    const contentLength = req.headers.get("content-length");
+    const hasBody = contentLength && parseInt(contentLength) > 0;
+    if (req.method === "POST" && hasBody) {
+      const text = await req.text();
+      if (text && text.trim()) {
+        const { key, value } = JSON.parse(text);
+        if (key) {
+          const { error } = await ext
+            .from("system_settings")
+            .upsert({ key, value, description: `Meta setting: ${key}` }, { onConflict: "key" });
+          if (error) throw error;
+          return new Response(JSON.stringify({ ok: true, key, value }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
     }
 
     const { data } = await ext
