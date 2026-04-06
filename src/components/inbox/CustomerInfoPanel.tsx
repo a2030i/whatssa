@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Tag, Clock, Mail, Phone, StickyNote, MessageSquare, User, Users, Building2, ChevronDown, ChevronUp, Edit3, Plus, X, ExternalLink, Copy, Package, CreditCard, MapPin, Truck, ShoppingBag, UserPlus, UserMinus, LogOut, Link2, Crown, Shield, Pin, Archive, Lock, Unlock, MoreVertical, ShieldCheck, ShieldOff, BarChart3 } from "lucide-react";
+import { Tag, Clock, Mail, Phone, StickyNote, MessageSquare, User, Users, Building2, ChevronDown, ChevronUp, Edit3, Plus, X, ExternalLink, Copy, Package, CreditCard, MapPin, Truck, ShoppingBag, UserPlus, UserMinus, LogOut, Link2, Crown, Shield, Pin, Archive, Lock, Unlock, MoreVertical, ShieldCheck, ShieldOff, BarChart3, Ticket } from "lucide-react";
 import { Conversation } from "@/data/mockData";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
