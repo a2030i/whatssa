@@ -186,10 +186,17 @@ Deno.serve(async (req) => {
 
     // Save sent message
     if (convId) {
+      const plainBody = emailBody.replace(/<[^>]*>/g, "").trim();
+      const subjectNorm = threadSubject.replace(/^Re:\s*/i, "").trim();
+      // Avoid duplicating text when subject equals body
+      const displayContent = subjectNorm === plainBody
+        ? plainBody
+        : `📧 ${threadSubject}\n\n${plainBody}`;
+
       await admin.from("messages").insert({
         conversation_id: convId,
         sender: "agent",
-        content: `📧 ${threadSubject}\n\n${emailBody.replace(/<[^>]*>/g, "")}`,
+        content: displayContent,
         message_type: "text",
         status: "sent",
         wa_message_id: outgoingMessageId,
