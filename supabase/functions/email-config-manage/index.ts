@@ -16,12 +16,9 @@ async function getCallerOrgId(authHeader: string | null) {
     console.error("[email-config-manage] No auth header provided");
     return null;
   }
-  const url = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
-  const anonKey = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY")!;
-  const userClient = createClient(url, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: { user }, error: authError } = await userClient.auth.getUser();
+  const token = authHeader.replace(/^Bearer\s+/i, "");
+  const admin = getExternalClient();
+  const { data: { user }, error: authError } = await admin.auth.getUser(token);
   if (authError) {
     console.error("[email-config-manage] Auth error:", authError.message);
     return null;
@@ -32,7 +29,6 @@ async function getCallerOrgId(authHeader: string | null) {
   }
 
   console.log("[email-config-manage] Authenticated user:", user.id);
-  const admin = getExternalClient();
   const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("org_id")
