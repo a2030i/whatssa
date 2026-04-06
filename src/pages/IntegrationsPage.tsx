@@ -107,6 +107,7 @@ const IntegrationsPage = () => {
   const [migrationPrereqs, setMigrationPrereqs] = useState<{ ready: boolean; issues: string[] } | null>(null);
   const [previousProvider, setPreviousProvider] = useState("");
   const [wabaInfo, setWabaInfo] = useState<any>(null);
+  const [webhookStatus, setWebhookStatus] = useState<{ app_webhook: boolean | null; waba_subscription: boolean | null; auto_configured: boolean } | null>(null);
   const [metaStatus, setMetaStatus] = useState<Record<string, {
     phoneStatus?: string;
     nameStatus?: string;
