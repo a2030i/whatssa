@@ -1967,7 +1967,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       </div>
 
       {/* Mobile Quick Action Toolbar */}
-      <div className="md:hidden flex items-center overflow-x-auto scrollbar-none border-b border-border/20 bg-card/80 shrink-0">
+      <div className="flex items-center overflow-x-auto scrollbar-none border-b border-border/20 bg-card/80 shrink-0">
         {conversation.status !== "closed" ? (
           <button
             onClick={() => setShowClosureReason(true)}
