@@ -78,6 +78,17 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <NotificationBell />
+          {!isAdmin && !isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => { signOut(); navigate("/auth"); }}
+              className="text-muted-foreground hover:text-destructive h-8 w-8"
+              title="تسجيل خروج"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
       <main className={`${isAdmin ? "md:mr-[250px]" : ""} min-h-screen ${isImpersonating ? "pt-[82px]" : "pt-12"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
