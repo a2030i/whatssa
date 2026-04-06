@@ -28,21 +28,23 @@ Deno.serve(async (req) => {
     let deletedConvs = 0;
 
     if (convIds.length > 0) {
-      // Delete messages first
-      const { count } = await ext
-        .from("messages")
-        .delete()
-        .in("conversation_id", convIds)
-        .select("id", { count: "exact", head: true });
-      deletedMsgs = count || 0;
+      // Delete messages first (batch by conv)
+      for (const cid of convIds) {
+        const { error: delMsgErr } = await ext
+          .from("messages")
+          .delete()
+          .eq("conversation_id", cid);
+        if (!delMsgErr) deletedMsgs++;
+      }
 
       // Delete conversations
-      const { count: convCount } = await ext
-        .from("conversations")
-        .delete()
-        .eq("conversation_type", "email")
-        .select("id", { count: "exact", head: true });
-      deletedConvs = convCount || 0;
+      for (const cid of convIds) {
+        const { error: delConvErr } = await ext
+          .from("conversations")
+          .delete()
+          .eq("id", cid);
+        if (!delConvErr) deletedConvs++;
+      }
     }
 
     return new Response(JSON.stringify({
