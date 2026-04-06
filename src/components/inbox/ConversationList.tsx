@@ -522,7 +522,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       <span className="truncate">{displayName}</span>
                     </p>
                     <p className={cn(
-                      "text-[12px] truncate leading-snug mt-1",
+                      "text-[13px] truncate leading-normal mt-1",
                       hasUnread ? "text-foreground/65 font-medium" : "text-muted-foreground/60"
                     )} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "normal", overflowWrap: "normal" }}>
                       {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
