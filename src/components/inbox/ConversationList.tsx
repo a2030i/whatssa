@@ -459,7 +459,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   setTimeout(() => document.addEventListener("click", dismiss), 0);
                 }}
                 className={cn(
-                  "w-full text-right px-3 py-3 rounded-xl transition-all group relative border",
+                  "w-full text-right px-3 py-3.5 rounded-xl transition-all group relative border min-h-[72px]",
                   isSelected && !bulkMode
                     ? "bg-primary/[0.06] border-primary/20 shadow-[0_1px_6px_hsl(var(--primary)/0.08)]"
                     : "border-transparent hover:bg-card hover:border-border/40 hover:shadow-[0_1px_4px_rgba(0,0,0,0.04)]",
