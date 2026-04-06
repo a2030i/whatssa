@@ -33,6 +33,8 @@ interface PhoneNumber {
   display_phone_number: string;
   verified_name: string;
   quality_rating: string;
+  waba_id?: string;
+  status?: string;
 }
 
 interface WabaResult {
@@ -430,20 +432,22 @@ const IntegrationsPage = () => {
       if (error || data?.error) { handleError(data?.error || "فشل في جلب بيانات الحساب"); return; }
 
       const allPhones: PhoneNumber[] = [];
-      let firstWabaId = "";
       if (data.results?.length > 0) {
         data.results.forEach((r: WabaResult) => {
-          if (!firstWabaId) firstWabaId = r.waba_id;
-          allPhones.push(...r.phone_numbers);
+          allPhones.push(...(r.phone_numbers || []).map((phone) => ({
+            ...phone,
+            waba_id: r.waba_id,
+          })));
         });
       }
 
       if (allPhones.length === 1) {
         // Auto-select if only one number
-        setBusinessAccountId(firstWabaId);
-        await selectPhone(allPhones[0], token, firstWabaId);
+        const selectedPhone = allPhones[0];
+        setBusinessAccountId(selectedPhone.waba_id || "");
+        await selectPhone(selectedPhone, token, selectedPhone.waba_id);
       } else if (allPhones.length > 0) {
-        setBusinessAccountId(firstWabaId);
+        setBusinessAccountId(allPhones[0].waba_id || "");
         setPhoneNumbers(allPhones);
         setFlowStep("pick_phone");
         setIsLoading(false);
@@ -461,7 +465,7 @@ const IntegrationsPage = () => {
       const result = await completeSignup({
         token: token || accessToken,
         phoneId: phone.id,
-        wabaId: wabaId || businessAccountId,
+        wabaId: wabaId || phone.waba_id || businessAccountId,
       });
       if (result) {
         // If migration, check prereqs before showing success
