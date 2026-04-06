@@ -161,6 +161,7 @@ const EmailConfigSection = () => {
     imap_host: PROVIDERS.gmail.imap_host,
     imap_port: PROVIDERS.gmail.imap_port,
     is_active: true,
+    sync_mode: "new_only" as string,
   });
   const [editId, setEditId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -213,6 +214,7 @@ const EmailConfigSection = () => {
         imap_host: form.imap_host,
         imap_port: form.imap_port,
         is_active: form.is_active,
+        sync_mode: form.sync_mode,
       };
 
       if (editId) {
@@ -244,6 +246,7 @@ const EmailConfigSection = () => {
       imap_host: config.imap_host,
       imap_port: config.imap_port,
       is_active: config.is_active,
+      sync_mode: (config as any).sync_mode || "new_only",
     });
     // detect provider from smtp_host
     const detected = (Object.entries(PROVIDERS) as [ProviderKey, ProviderInfo][]).find(
@@ -280,7 +283,7 @@ const EmailConfigSection = () => {
     setForm({
       email_address: "", smtp_host: p.smtp_host, smtp_port: p.smtp_port,
       smtp_username: "", smtp_password: "", encryption: p.encryption,
-      imap_host: p.imap_host, imap_port: p.imap_port, is_active: true,
+      imap_host: p.imap_host, imap_port: p.imap_port, is_active: true, sync_mode: "new_only",
     });
   };
 
@@ -545,6 +548,35 @@ const EmailConfigSection = () => {
                     readOnly={selectedProvider !== "custom"}
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Sync Mode */}
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <p className="text-xs font-semibold">عند الربط، استقبال الرسائل:</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setForm({ ...form, sync_mode: "new_only" })}
+                  className={`rounded-lg border-2 p-2.5 text-center transition-all ${
+                    form.sync_mode === "new_only"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <p className="text-[11px] font-semibold">الجديدة فقط</p>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">بعد الربط فقط</p>
+                </button>
+                <button
+                  onClick={() => setForm({ ...form, sync_mode: "fetch_recent" })}
+                  className={`rounded-lg border-2 p-2.5 text-center transition-all ${
+                    form.sync_mode === "fetch_recent"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <p className="text-[11px] font-semibold">قديمة + جديدة</p>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">آخر 100 رسالة + الجديدة</p>
+                </button>
               </div>
             </div>
 
