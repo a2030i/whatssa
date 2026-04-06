@@ -211,7 +211,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
   }, [autoOpen]);
 
   useEffect(() => {
-    if (!autoOpen) return;
+    if (!autoOpen || forNewNumber) return;
     if (existingConfig?.is_connected && (existingConfig?.evolution_instance_status === "connected" || existingConfig?.evolution_instance_status === "connecting")) {
       setInstanceStatus("connected");
       setQrCode(null);
@@ -231,7 +231,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
     setInstanceStatus("idle");
     setQrCode(null);
     setPairingCode(null);
-  }, [autoOpen, existingConfig?.evolution_instance_name, existingConfig?.evolution_instance_status, existingConfig?.is_connected]);
+  }, [autoOpen, forNewNumber, existingConfig?.evolution_instance_name, existingConfig?.evolution_instance_status, existingConfig?.is_connected]);
 
   const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
