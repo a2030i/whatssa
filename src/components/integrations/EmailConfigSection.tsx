@@ -239,6 +239,9 @@ const EmailConfigSection = () => {
         imap_port: form.imap_port,
         is_active: form.is_active,
         sync_mode: form.sync_mode,
+        label: form.label || null,
+        dedicated_agent_id: form.dedicated_agent_id || null,
+        dedicated_team_id: form.dedicated_team_id || null,
       };
 
       if (editId) {
