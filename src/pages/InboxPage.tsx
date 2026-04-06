@@ -15,7 +15,8 @@ import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from 
 
 const TYPING_TIMEOUT = 3000;
 
-const getSendFunction = (channelType?: string): string => {
+const getSendFunction = (channelType?: string, conversationType?: string): string => {
+  if (channelType === "email" || conversationType === "email") return "email-send";
   if (channelType === "meta_api") return "whatsapp-send";
   return "evolution-send"; // Default to evolution for evolution or unknown channels
 };
