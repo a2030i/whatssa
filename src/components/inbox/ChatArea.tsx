@@ -1433,6 +1433,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     const replyData = replyTo ? { id: replyTo.id, waMessageId: replyTo.waMessageId, senderName: replyTo.sender === "agent" ? "أنت" : (replyTo.senderName || conversation.customerName), text: replyTo.text } : undefined;
     onSendMessage(conversation.id, inputText.trim(), "text", replyData);
+    if (conversation.status === "closed") {
+      onStatusChange(conversation.id, "active");
+      toast.success("تم إعادة فتح المحادثة وإرسال الرسالة");
+    }
     setInputText("");
     setReplyTo(null);
     broadcastTyping(false);
@@ -2114,7 +2118,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Note Mode Banner */}
-      {isNoteMode && conversation.status !== "closed" && (
+      {isNoteMode && (
         <div className="shrink-0 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center gap-2">
           <StickyNote className="w-4 h-4 text-amber-500 shrink-0" />
           <p className="text-xs text-amber-600 font-medium flex-1">وضع الملاحظات الداخلية - الرسالة لن تُرسل للعميل</p>
@@ -2437,7 +2441,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Input Area */}
-      {!isRecording && conversation.status !== "closed" && (
+      {!isRecording && (
         <div className={cn("shrink-0 bg-card border-t", isNoteMode ? "border-amber-500/30" : "border-border/40")} style={{ boxShadow: '0 -1px 3px rgba(0,0,0,0.04)' }}>
           {/* Reply Preview Bar */}
           {replyTo && (
