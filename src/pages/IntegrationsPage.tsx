@@ -1766,6 +1766,9 @@ const IntegrationsPage = () => {
     <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir={dir}>
       <div className="flex justify-end">{reviewToggle}</div>
       {renderAllChannelsView(configs)}
+      <div className="border-t pt-6">
+        <EmailConfigSection />
+      </div>
     </div>
   );
 };
