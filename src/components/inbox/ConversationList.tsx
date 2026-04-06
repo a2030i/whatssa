@@ -145,12 +145,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   const myId = profile?.id;
   const counts = useMemo(() => ({
-    all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
-    mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId).length,
-    waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent").length,
-    unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
-    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId).length,
+    all: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType !== "group").length,
+    mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.conversationType !== "group").length,
+    waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent" && c.conversationType !== "group").length,
+    unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن") && c.conversationType !== "group").length,
+    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId && c.conversationType !== "group").length,
     mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
+    groups: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
     closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
     archived: conversations.filter(c => c.isArchived).length,
   }), [conversations, myId]);
@@ -161,6 +162,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: counts.waitingCustomer },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
     { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions, minRole: "supervisor" },
+    { id: "groups", label: "المجموعات", icon: Users, count: counts.groups },
     { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed, minRole: "supervisor" },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived, minRole: "supervisor" },
@@ -179,12 +181,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       // Hide archived unless specifically filtering for them
       if (activeQuickFilter !== "archived" && conv.isArchived) return false;
       if (activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.status === "closed") return false;
+      // Exclude groups from all private-focused filters
+      if (activeQuickFilter !== "groups" && activeQuickFilter !== "mentions" && activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.conversationType === "group") return false;
       switch (activeQuickFilter) {
         case "mine": if (conv.assignedToId !== myId) return false; break;
         case "waitingCustomer": if (conv.assignedToId !== myId || conv.lastMessageSender !== "agent") return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
         case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
         case "unread": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
+        case "groups": if (conv.conversationType !== "group") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
         case "archived": if (!conv.isArchived) return false; break;
       }
