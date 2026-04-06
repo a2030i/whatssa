@@ -145,9 +145,11 @@ const IntegrationsPage = () => {
       setMetaAppId(appId);
       setMetaConfigId(configId);
       setMetaSettingsLoaded(true);
-    }).catch(() => {
+    }).catch((err) => {
+      console.warn("[get-meta-settings] failed, using defaults:", err);
       setMetaAppId(DEFAULT_META_APP_ID);
       setMetaConfigId(DEFAULT_META_CONFIG_ID);
+      setOfficialEnabled(true);
       setMetaSettingsLoaded(true);
     });
   }, []);
