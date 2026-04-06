@@ -145,7 +145,8 @@ const InboxPage = () => {
 
       const mapped: Conversation[] = (data || []).map((conversation: any) => {
         const channelConfig = conversation.channel_id ? channelMap.get(conversation.channel_id) : null;
-        const channelType = channelConfig?.channel_type === "evolution" ? "evolution" : 
+        const channelType = conversation.conversation_type === "email" ? "email" as const :
+          channelConfig?.channel_type === "evolution" ? "evolution" : 
           channelConfig?.channel_type === "meta_api" ? "meta_api" : undefined;
 
         return {
