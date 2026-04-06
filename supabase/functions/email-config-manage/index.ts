@@ -44,7 +44,9 @@ Deno.serve(async (req) => {
     }
 
     const admin = getExternalClient();
-    const { action, ...body } = await req.json();
+    const rawBody = await req.json();
+    const { action, ...body } = rawBody;
+    console.log("[email-config-manage] action:", action, "orgId:", orgId);
 
     // LIST
     if (action === "list") {
@@ -61,11 +63,14 @@ Deno.serve(async (req) => {
 
     // CREATE
     if (action === "create") {
-      const { error } = await admin
+      console.log("[email-config-manage] creating with payload:", JSON.stringify(body.payload));
+      const { data, error } = await admin
         .from("email_configs")
-        .insert({ ...body.payload, org_id: orgId });
+        .insert({ ...body.payload, org_id: orgId })
+        .select();
+      console.log("[email-config-manage] create result:", JSON.stringify({ data, error }));
       if (error) throw error;
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ success: true, data }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -101,7 +106,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), {
+    console.error("[email-config-manage] ERROR:", e.message, e.details || "", e.hint || "");
+    return new Response(JSON.stringify({ error: e.message, details: e.details, hint: e.hint }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

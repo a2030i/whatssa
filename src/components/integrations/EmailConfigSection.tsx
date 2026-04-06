@@ -256,15 +256,17 @@ const EmailConfigSection = () => {
         if (error) throw error;
         toast.success("تم تحديث إعدادات البريد");
       } else {
-        const { error } = await invokeCloud("email-config-manage", {
+        const { data: res, error } = await invokeCloud("email-config-manage", {
           body: { action: "create", payload },
         });
         if (error) throw error;
+        if (res?.error) throw new Error(res.error + (res.details ? ` — ${res.details}` : ""));
         toast.success("تم حفظ إعدادات البريد بنجاح");
       }
       closeForm();
       loadConfigs();
     } catch (err: any) {
+      console.error("Email config save error:", err);
       toast.error(err.message || "حدث خطأ أثناء الحفظ");
     } finally {
       setSaving(false);

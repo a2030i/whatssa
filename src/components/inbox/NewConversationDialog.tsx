@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, FileText, Loader2, Plus, X, Save, Globe, ChevronDown, Users, Image as ImageIcon } from "lucide-react";
+import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, FileText, Loader2, Plus, X, Save, Globe, ChevronDown, Users, Image as ImageIcon, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ interface NewConversationDialogProps {
   onConversationCreated: (convId: string) => void;
 }
 
-type DialogMode = "private" | "group";
+type DialogMode = "private" | "group" | "email";
 type Step = "contact" | "channel" | "message";
 
 const COUNTRY_CODES = [
@@ -94,6 +94,13 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [groupImageFile, setGroupImageFile] = useState<File | null>(null);
   const [groupImagePreview, setGroupImagePreview] = useState<string | null>(null);
   const groupImageInputRef = useRef<HTMLInputElement>(null);
+  // Email state
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailConfigs, setEmailConfigs] = useState<{ id: string; email_address: string; label: string | null }[]>([]);
+  const [selectedEmailConfig, setSelectedEmailConfig] = useState<string | null>(null);
 
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
   const fullPhone = `${countryCode}${localNumber.replace(/^0+/, "")}`;
@@ -121,6 +128,10 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setGroupMemberInput("");
       setGroupImageFile(null);
       setGroupImagePreview(null);
+      setEmailTo("");
+      setEmailSubject("");
+      setEmailBody("");
+      setSelectedEmailConfig(null);
     }
   }, [open]);
 
@@ -133,6 +144,21 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         .filter((channel) => channel.org_id === orgId && channel.is_connected)
         .sort((a: any, b: any) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
       setChannels(connectedChannels);
+    };
+    load();
+  }, [orgId, open]);
+
+  // Load email configs
+  useEffect(() => {
+    if (!orgId || !open) return;
+    const load = async () => {
+      const { data: res } = await invokeCloud("email-config-manage", {
+        body: { action: "list" },
+      });
+      setEmailConfigs(res?.data || []);
+      if (res?.data?.length > 0) {
+        setSelectedEmailConfig(res.data[0].id);
+      }
     };
     load();
   }, [orgId, open]);
@@ -178,6 +204,41 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const approvedTemplates = useMemo(() => templates.filter(t => t.status === "APPROVED"), [templates]);
   const evolutionChannels = useMemo(() => channels.filter(c => c.channel_type === "evolution"), [channels]);
   const hasEvolution = evolutionChannels.length > 0;
+  const hasEmailConfigs = emailConfigs.length > 0;
+
+  const handleSendEmail = async () => {
+    if (!emailTo || !emailSubject || !emailBody) {
+      toast.error("يرجى تعبئة جميع حقول الإيميل");
+      return;
+    }
+    if (!emailTo.includes("@")) {
+      toast.error("عنوان الإيميل غير صالح");
+      return;
+    }
+    setSendingEmail(true);
+    try {
+      const { data, error } = await invokeCloud("email-send", {
+        body: {
+          to: emailTo,
+          subject: emailSubject,
+          body: emailBody,
+          config_id: selectedEmailConfig,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success("✅ تم إرسال الإيميل بنجاح");
+      if (data?.conversation_id) {
+        onConversationCreated(data.conversation_id);
+      }
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err.message || "فشل إرسال الإيميل");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   const addGroupMember = () => {
     const raw = groupMemberInput.replace(/[^0-9]/g, "");
@@ -410,11 +471,11 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
               <Plus className="w-4 h-4 text-primary" />
             </div>
-            {dialogMode === "group" ? "إنشاء قروب" : "محادثة جديدة"}
+            {dialogMode === "group" ? "إنشاء قروب" : dialogMode === "email" ? "إرسال إيميل" : "محادثة جديدة"}
           </DialogTitle>
 
-          {/* Mode toggle - only show if evolution channels exist */}
-          {hasEvolution && (
+          {/* Mode toggle */}
+          {(hasEvolution || hasEmailConfigs) && (
             <div className="flex items-center gap-1 mt-3 bg-muted rounded-lg p-1">
               <button
                 onClick={() => setDialogMode("private")}
@@ -423,17 +484,30 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   dialogMode === "private" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <MessageSquare className="w-3.5 h-3.5" /> محادثة
+                <MessageSquare className="w-3.5 h-3.5" /> واتساب
               </button>
-              <button
-                onClick={() => setDialogMode("group")}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors",
-                  dialogMode === "group" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Users className="w-3.5 h-3.5" /> قروب
-              </button>
+              {hasEvolution && (
+                <button
+                  onClick={() => setDialogMode("group")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors",
+                    dialogMode === "group" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Users className="w-3.5 h-3.5" /> قروب
+                </button>
+              )}
+              {hasEmailConfigs && (
+                <button
+                  onClick={() => setDialogMode("email")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors",
+                    dialogMode === "email" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Mail className="w-3.5 h-3.5" /> إيميل
+                </button>
+              )}
             </div>
           )}
 
@@ -618,6 +692,86 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             >
               {creatingGroup ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
               {creatingGroup ? "جاري الإنشاء..." : `إنشاء القروب (${groupMembers.length} عضو)`}
+            </Button>
+          </div>
+        )}
+
+        {/* ═══ EMAIL MODE ═══ */}
+        {dialogMode === "email" && (
+          <div className="p-4 space-y-4">
+            {/* From selector */}
+            {emailConfigs.length > 1 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">📤 من</Label>
+                <div className="grid gap-1.5">
+                  {emailConfigs.map((ec) => (
+                    <button
+                      key={ec.id}
+                      onClick={() => setSelectedEmailConfig(ec.id)}
+                      className={cn(
+                        "flex items-center gap-2 p-2.5 rounded-lg border text-right transition-all text-sm",
+                        selectedEmailConfig === ec.id
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-border/40 hover:border-border/80"
+                      )}
+                    >
+                      <Mail className="w-4 h-4 text-primary shrink-0" />
+                      <span className="truncate">{ec.label || ec.email_address}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {emailConfigs.length === 1 && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2.5">
+                <Mail className="w-3.5 h-3.5 text-primary" />
+                <span>من: {emailConfigs[0].label || emailConfigs[0].email_address}</span>
+              </div>
+            )}
+
+            {/* To */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">📩 إلى</Label>
+              <Input
+                type="email"
+                placeholder="example@email.com"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                className="h-10 text-sm bg-background"
+                dir="ltr"
+              />
+            </div>
+
+            {/* Subject */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">📝 الموضوع</Label>
+              <Input
+                placeholder="موضوع الإيميل..."
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                className="h-10 text-sm bg-background"
+              />
+            </div>
+
+            {/* Body */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">✉️ نص الرسالة</Label>
+              <Textarea
+                placeholder="اكتب نص الإيميل هنا..."
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                className="min-h-[120px] text-sm resize-none bg-background"
+              />
+            </div>
+
+            {/* Send */}
+            <Button
+              className="w-full h-11 gap-2"
+              disabled={!emailTo || !emailSubject || !emailBody || sendingEmail}
+              onClick={handleSendEmail}
+            >
+              {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {sendingEmail ? "جاري الإرسال..." : "إرسال الإيميل"}
             </Button>
           </div>
         )}
