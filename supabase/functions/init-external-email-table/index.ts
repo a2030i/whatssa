@@ -12,11 +12,31 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
     const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Use the Supabase Management/PostgREST won't work for DDL,
-    // so we use the pg REST endpoint for SQL execution
-    const dbUrl = Deno.env.get("SUPABASE_DB_URL");
-    
-    // Connect to external DB via its REST SQL endpoint
+    // Use service role client to create the table via rpc if available,
+    // otherwise try the SQL HTTP API
+    const admin = createClient(url, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    // Step 1: Check if table already exists by trying to query it
+    const { error: checkError } = await admin
+      .from("email_configs")
+      .select("id")
+      .limit(1);
+
+    if (!checkError) {
+      return new Response(JSON.stringify({ success: true, message: "Table already exists" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Step 2: If table doesn't exist, try the Supabase SQL HTTP endpoint
+    // Available at POST /pg/query for projects with the SQL API enabled
+    const endpoints = [
+      `${url}/sql`,
+      `${url}/pg/query`,
+    ];
+
     const sqlStatements = `
       CREATE TABLE IF NOT EXISTS public.email_configs (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -53,36 +73,37 @@ Deno.serve(async (req) => {
       END $$;
     `;
 
-    // Execute via the external Supabase SQL endpoint (requires service role)
-    const response = await fetch(`${url}/rest/v1/rpc/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": serviceKey,
-        "Authorization": `Bearer ${serviceKey}`,
-      },
-    });
+    let lastError = "";
+    for (const endpoint of endpoints) {
+      try {
+        const resp = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${serviceKey}`,
+            "apikey": serviceKey,
+          },
+          body: JSON.stringify({ query: sqlStatements }),
+        });
 
-    // Since we can't run DDL via PostgREST, we'll use the pg protocol
-    // through the Supabase SQL API (available at /pg endpoint for service role)
-    const sqlResponse = await fetch(`${url}/sql`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${serviceKey}`,
-      },
-      body: JSON.stringify({ query: sqlStatements }),
-    });
-
-    if (!sqlResponse.ok) {
-      const errorText = await sqlResponse.text();
-      // If /sql endpoint is not available, try alternative approach
-      throw new Error(`SQL endpoint returned ${sqlResponse.status}: ${errorText}`);
+        if (resp.ok) {
+          const result = await resp.json();
+          return new Response(JSON.stringify({ success: true, endpoint, result }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        lastError = `${endpoint}: ${resp.status} - ${await resp.text()}`;
+      } catch (e: any) {
+        lastError = `${endpoint}: ${e.message}`;
+      }
     }
 
-    const result = await sqlResponse.json();
-
-    return new Response(JSON.stringify({ success: true, result }), {
+    return new Response(JSON.stringify({ 
+      error: "Could not execute DDL via SQL API", 
+      details: lastError,
+      hint: "Please run the CREATE TABLE SQL manually in your Supabase SQL Editor"
+    }), {
+      status: 422,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
