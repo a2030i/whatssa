@@ -2338,6 +2338,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           </div>
         )}
         <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Quick Replies */}
