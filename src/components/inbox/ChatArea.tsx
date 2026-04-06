@@ -2590,6 +2590,31 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </button>
               </div>
             )}
+            {/* Always show note & mention buttons even when window expired */}
+            {windowExpired && !isNoteMode && (
+              <div className="flex items-center gap-0 px-2 pb-1.5 border-t border-border/10">
+                <button
+                  onClick={() => { setIsNoteMode(true); inputRef.current?.focus(); }}
+                  className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+                  title="ملاحظة داخلية"
+                >
+                  <StickyNote className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setInputText((prev) => prev + "@");
+                    setShowMentions(true);
+                    setMentionFilter("");
+                    setIsNoteMode(true);
+                    inputRef.current?.focus();
+                  }}
+                  className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0"
+                  title="اذكر موظف @"
+                >
+                  <AtSign className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Bottom Action Bar */}
