@@ -520,9 +520,9 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // Timestamp element — separate footer row to avoid bubble width collapse
         const timestampEl = (
           <div className={cn(
-            "mt-1.5 flex w-full items-center justify-end gap-1 text-[10px] tracking-tight leading-none select-none",
+            "mt-1.5 flex w-full items-center justify-end gap-1 text-[11px] tracking-tight leading-none select-none",
             msg.type === "note" ? "text-amber-500/50"
-            : msg.sender === "customer" ? "text-white/55"
+            : msg.sender === "customer" ? "text-foreground/40 dark:text-white/45"
             : "text-muted-foreground/50"
           )}>
             <span>{msg.timestamp}</span>
