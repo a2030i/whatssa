@@ -1537,7 +1537,7 @@ const IntegrationsPage = () => {
           <div className="bg-card rounded-2xl border border-border p-5">
             <SallaIntegrationSection />
           </div>
-        {/* Manual connect removed */}
+        </div>
       </>
     );
   };
