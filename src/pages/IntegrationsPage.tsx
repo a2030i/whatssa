@@ -89,6 +89,7 @@ const IntegrationsPage = () => {
   const dir = isReviewMode ? "ltr" : "rtl";
   // Manual connect removed
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedChannelBadgeId, setExpandedChannelBadgeId] = useState<string | null>(null);
   const [connectedPhone, setConnectedPhone] = useState<string>("");
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editingLabelText, setEditingLabelText] = useState("");
@@ -1195,8 +1196,8 @@ const IntegrationsPage = () => {
         <div className="space-y-3">
           <h2 className="text-base font-bold text-foreground">قنوات التواصل</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {/* WhatsApp — unified card */}
-            <div className="bg-card rounded-xl border border-border p-4 flex flex-col items-center text-center gap-2 hover:shadow-md transition-shadow">
+            {/* WhatsApp — unified card with expandable connected numbers */}
+            <div className="bg-card rounded-xl border border-border p-4 flex flex-col items-center text-center gap-2">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                 <MessageSquare className="w-5 h-5 text-emerald-600" />
               </div>
@@ -1204,17 +1205,114 @@ const IntegrationsPage = () => {
                 <h3 className="font-bold text-xs">واتساب</h3>
                 <p className="text-[10px] text-muted-foreground mt-0.5">رسمي أو عبر واتساب ويب</p>
               </div>
-              <div className="flex flex-col items-center gap-1.5 mt-auto w-full">
-                {connectedOfficialConfigs.length > 0 && (
-                  <Badge className="bg-success/10 text-success border-0 text-[10px] gap-1 px-2 py-0.5">
-                    <CheckCircle2 className="w-2.5 h-2.5" /> رسمي ({connectedOfficialConfigs.length})
-                  </Badge>
-                )}
-                {connectedUnofficialConfigs.length > 0 && (
-                  <Badge className="bg-warning/10 text-warning border-0 text-[10px] gap-1 px-2 py-0.5">
-                    <QrCode className="w-2.5 h-2.5" /> واتساب ويب ({connectedUnofficialConfigs.length})
-                  </Badge>
-                )}
+
+              <div className="flex flex-col items-center gap-1.5 w-full">
+                {/* Individual connected official numbers */}
+                {connectedOfficialConfigs.map((config) => {
+                  const isExpanded = expandedChannelBadgeId === config.id;
+                  const ms = metaStatus[config.id];
+                  return (
+                    <div key={config.id} className="w-full">
+                      <button
+                        onClick={() => setExpandedChannelBadgeId(isExpanded ? null : config.id)}
+                        className="w-full flex items-center justify-center gap-1.5"
+                      >
+                        <Badge className="text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer bg-success/10 text-success">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          {config.channel_label || config.display_phone || config.business_name || "رسمي"}
+                        </Badge>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-2 animate-fade-in">
+                          <div className="text-[11px] space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">الحالة:</span>
+                              <span className="text-success font-medium">✅ متصل رسمي</span>
+                            </div>
+                            {config.display_phone && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">الرقم:</span>
+                                <span className="text-foreground font-mono text-[10px]" dir="ltr">{config.display_phone}</span>
+                              </div>
+                            )}
+                            {ms?.qualityRating && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">الجودة:</span>
+                                <span className={cn("font-medium", ms.qualityRating === "GREEN" ? "text-success" : ms.qualityRating === "YELLOW" ? "text-warning" : "text-destructive")}>
+                                  {ms.qualityRating === "GREEN" ? "🟢 عالية" : ms.qualityRating === "YELLOW" ? "🟡 متوسطة" : "🔴 منخفضة"}
+                                </span>
+                              </div>
+                            )}
+                            {ms?.messagingLimit && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">حد الرسائل:</span>
+                                <span className="text-foreground">{ms.messagingLimit.replace("TIER_", "").replace("K", ",000")}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2 justify-end flex-wrap">
+                            <Button size="sm" variant="ghost" onClick={() => { setExpandedId(config.id); setExpandedChannelBadgeId(null); }} className="text-[10px] h-7 px-2.5 gap-1">
+                              <Settings className="w-3 h-3" /> الإعدادات الكاملة
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Individual connected unofficial numbers */}
+                {connectedUnofficialConfigs.map((config) => {
+                  const isExpanded = expandedChannelBadgeId === config.id;
+                  return (
+                    <div key={config.id} className="w-full">
+                      <button
+                        onClick={() => setExpandedChannelBadgeId(isExpanded ? null : config.id)}
+                        className="w-full flex items-center justify-center gap-1.5"
+                      >
+                        <Badge className="text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer bg-warning/10 text-warning">
+                          <QrCode className="w-2.5 h-2.5" />
+                          {config.channel_label || config.display_phone || config.business_name || "واتساب ويب"}
+                        </Badge>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-2 animate-fade-in">
+                          <div className="text-[11px] space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">الحالة:</span>
+                              <span className="text-success font-medium">✅ متصل</span>
+                            </div>
+                            {config.display_phone && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">الرقم:</span>
+                                <span className="text-foreground font-mono text-[10px]" dir="ltr">{config.display_phone}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">النوع:</span>
+                              <span className="text-warning font-medium">غير رسمي (QR)</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 justify-end flex-wrap">
+                            <Button size="sm" variant="outline" onClick={() => checkUnofficialStatus(config)} disabled={unofficialCheckingStatus === config.id} className="text-[10px] h-7 px-2.5 gap-1">
+                              {unofficialCheckingStatus === config.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                              تحقق
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => { setExpandedId(config.id); setExpandedChannelBadgeId(null); }} className="text-[10px] h-7 px-2.5 gap-1">
+                              <Settings className="w-3 h-3" /> الإعدادات الكاملة
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => logoutUnofficial(config)} className="text-[10px] h-7 px-2 text-destructive gap-1">
+                              <LogOut className="w-3 h-3" /> فصل
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
                 <Button size="sm" className="text-[10px] h-8 gap-1 rounded-lg px-4 w-full" onClick={() => setShowWhatsAppChoice(true)}>
                   <Plus className="w-3 h-3" /> إضافة رقم
                 </Button>
