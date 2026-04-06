@@ -144,6 +144,24 @@ Deno.serve(async (req) => {
       sendOptions.bcc = bcc;
     }
 
+    // Handle attachments
+    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+      sendOptions.attachments = attachments.map((att: any) => {
+        // Convert base64 string to Uint8Array for denomailer
+        const binaryStr = atob(att.content);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        return {
+          filename: att.filename,
+          content: bytes,
+          contentType: att.contentType || "application/octet-stream",
+        };
+      });
+      console.log(`[email-send] Sending with ${attachments.length} attachment(s)`);
+    }
+
     await client.send(sendOptions);
 
     await client.close();
