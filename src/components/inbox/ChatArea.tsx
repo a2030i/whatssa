@@ -775,6 +775,74 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           );
         }
 
+        // === EMAIL MESSAGE (professional layout) ===
+        if (isEmailChannel && msg.emailMeta) {
+          const em = msg.emailMeta;
+          // Strip the "📧 subject\n\n" prefix from display text if present
+          let emailDisplayText = textWithoutUrl;
+          if (em.subject) {
+            const prefix = `📧 ${em.subject}\n\n`;
+            if (emailDisplayText.startsWith(prefix)) {
+              emailDisplayText = emailDisplayText.slice(prefix.length);
+            } else if (emailDisplayText.startsWith(`📧 `)) {
+              const nlIdx = emailDisplayText.indexOf("\n\n");
+              if (nlIdx !== -1) emailDisplayText = emailDisplayText.slice(nlIdx + 2);
+            }
+          }
+          if (!emailDisplayText.trim()) emailDisplayText = textWithoutUrl;
+
+          return (
+            <div className={cn(
+              "inline-block min-w-[280px] max-w-full rounded-2xl overflow-hidden text-[14px] leading-relaxed",
+              msg.sender === "agent"
+                ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                : "bg-card text-foreground rounded-bl-sm shadow-[0_1px_4px_rgba(0,0,0,0.06)] border border-border/30"
+            )}>
+              {/* Email Header */}
+              <div className="px-4 pt-3 pb-2 border-b border-border/20 space-y-1.5">
+                {/* Subject */}
+                {em.subject && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <p className="text-[13px] font-bold text-foreground truncate">{em.subject}</p>
+                  </div>
+                )}
+                {/* From */}
+                {em.from && (
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="text-muted-foreground/70 font-medium min-w-[28px]">من:</span>
+                    <span className="text-foreground/80 truncate">{em.from}</span>
+                  </div>
+                )}
+                {/* To */}
+                {em.to && (
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="text-muted-foreground/70 font-medium min-w-[28px]">إلى:</span>
+                    <span className="text-foreground/80 truncate">{em.to}</span>
+                  </div>
+                )}
+                {/* CC */}
+                {em.cc && (
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <Users className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                    <span className="text-muted-foreground/70 font-medium">نسخة:</span>
+                    <span className="text-foreground/70 truncate">{em.cc}</span>
+                  </div>
+                )}
+              </div>
+              {/* Email Body */}
+              <div className="px-4 py-3" style={{ wordBreak: "normal", overflowWrap: "anywhere", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
+                {renderText(emailDisplayText)}
+                {translationEl}
+              </div>
+              {/* Footer */}
+              <div className="px-4 pb-2">
+                {timestampEl}
+              </div>
+            </div>
+          );
+        }
+
         // === PURE TEXT MESSAGE (no media) ===
         return (
           <div className={cn(
