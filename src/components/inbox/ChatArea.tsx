@@ -776,7 +776,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         }
 
         // === EMAIL MESSAGE (professional layout) ===
-        if (isEmailChannel && msg.emailMeta) {
+        const isEmailConv = conversation.channelType === "email" || conversation.conversationType === "email";
+        if (isEmailConv && msg.emailMeta) {
           const em = msg.emailMeta;
           // Strip the "📧 subject\n\n" prefix from display text if present
           let emailDisplayText = textWithoutUrl;
