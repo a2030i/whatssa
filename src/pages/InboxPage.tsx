@@ -145,7 +145,8 @@ const InboxPage = () => {
 
       const mapped: Conversation[] = (data || []).map((conversation: any) => {
         const channelConfig = conversation.channel_id ? channelMap.get(conversation.channel_id) : null;
-        const channelType = channelConfig?.channel_type === "evolution" ? "evolution" : 
+        const channelType = conversation.conversation_type === "email" ? "email" as const :
+          channelConfig?.channel_type === "evolution" ? "evolution" : 
           channelConfig?.channel_type === "meta_api" ? "meta_api" : undefined;
 
         return {
@@ -164,7 +165,7 @@ const InboxPage = () => {
           notes: conversation.notes || "",
           lastCustomerMessageAt: conversation.last_message_at || undefined,
           firstResponseAt: conversation.first_response_at || undefined,
-          conversationType: (conversation.conversation_type as "private" | "group" | "broadcast") || "private",
+          conversationType: (conversation.conversation_type as "private" | "group" | "broadcast" | "email") || "private",
           channelType,
           channelId: conversation.channel_id || undefined,
           channelName: channelConfig ? (channelConfig.display_phone || channelConfig.business_name || channelConfig.evolution_instance_name || "") : undefined,
