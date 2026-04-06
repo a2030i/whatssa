@@ -19,7 +19,7 @@ interface AppLayoutProps {
 }
 
 const AppLayout = ({ children }: AppLayoutProps) => {
-  const { isImpersonating, impersonatedOrgId, stopImpersonation, userRole, profile, isSuperAdmin } = useAuth();
+  const { isImpersonating, impersonatedOrgId, stopImpersonation, userRole, profile, isSuperAdmin, signOut } = useAuth();
   const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const isAdmin = effectiveRole === "admin";
   const navigate = useNavigate();
