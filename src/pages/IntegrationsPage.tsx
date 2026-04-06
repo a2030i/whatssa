@@ -352,7 +352,11 @@ const IntegrationsPage = () => {
         config_id: metaConfigId,
         response_type: "code",
         override_default_response_type: true,
-        scope: "whatsapp_business_management,whatsapp_business_messaging",
+        extras: {
+          feature: "whatsapp_embedded_signup",
+          sessionInfoVersion: 2,
+          ...(onboardingMode === "migrate_provider" ? { setup: { solutionID: undefined } } : {}),
+        },
       }
     );
   }, [metaConfigId]);
