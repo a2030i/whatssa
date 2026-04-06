@@ -429,6 +429,7 @@ serve(async (req) => {
       }
 
       // ── Step 5: Subscribe app to WABA webhooks ──
+      let wabaWebhookOk = false;
       try {
         const subscribeRes = await fetch(
           `https://graph.facebook.com/v21.0/${wabaId}/subscribed_apps`,
@@ -441,9 +442,48 @@ serve(async (req) => {
           }
         );
         const subscribeData = await subscribeRes.json();
-        log("step5_webhook_subscribe", { ok: subscribeRes.ok, data: subscribeData });
+        wabaWebhookOk = subscribeRes.ok && subscribeData.success;
+        log("step5_webhook_subscribe", { ok: wabaWebhookOk, data: subscribeData });
       } catch (subError: any) {
         log("step5_webhook_error", { error: subError.message });
+      }
+
+      // ── Step 5.5: Register app-level webhook URL ──
+      let appWebhookOk = false;
+      try {
+        const webhookVerifyToken = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN") || "respondly_verify";
+        const webhookUrl = `${Deno.env.get("SUPABASE_URL") || Deno.env.get("EXTERNAL_SUPABASE_URL")}/functions/v1/whatsapp-webhook`;
+        const appToken = `${appId}|${appSecret}`;
+        const whRes = await fetch(
+          `https://graph.facebook.com/v21.0/${appId}/subscriptions`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              object: "whatsapp_business_account",
+              callback_url: webhookUrl,
+              verify_token: webhookVerifyToken,
+              fields: ["messages"],
+              access_token: appToken,
+            }),
+          }
+        );
+        const whData = await whRes.json();
+        appWebhookOk = whRes.ok && whData.success;
+        log("step5_5_app_webhook", { ok: appWebhookOk, status: whRes.status, data: whData });
+      } catch (whErr: any) {
+        log("step5_5_app_webhook_error", { error: whErr.message });
+      }
+
+      // Store webhook status in config
+      const cId2 = savedConfig?.id;
+      if (cId2) {
+        await supabase.from("whatsapp_config").update({
+          settings: {
+            ...(savedConfig?.settings || {}),
+            webhook_auto_registered: appWebhookOk && wabaWebhookOk,
+          },
+        }).eq("id", cId2);
       }
     }
 
