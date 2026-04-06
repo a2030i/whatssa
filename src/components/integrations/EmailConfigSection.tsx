@@ -611,6 +611,50 @@ const EmailConfigSection = () => {
               </div>
             </div>
 
+            {/* Channel Settings (Label + Routing) */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <p className="text-xs font-semibold flex items-center gap-1.5">
+                <Settings className="w-3.5 h-3.5 text-primary" /> إعدادات القناة
+              </p>
+              <div className="space-y-1.5">
+                <Label className="text-[11px]">اسم القناة (اختياري)</Label>
+                <Input
+                  placeholder="مثلاً: بريد المبيعات"
+                  value={form.label}
+                  onChange={(e) => setForm({ ...form, label: e.target.value })}
+                  className="h-9 text-xs"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] flex items-center gap-1"><User className="w-3 h-3" /> موظف مخصص</Label>
+                <Select value={form.dedicated_agent_id} onValueChange={(v) => setForm({ ...form, dedicated_agent_id: v === "_none" ? "" : v })}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="بدون — توزيع تلقائي" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">بدون — توزيع تلقائي</SelectItem>
+                    {agents.map(a => (
+                      <SelectItem key={a.id} value={a.id}>{a.full_name || "بدون اسم"}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] flex items-center gap-1"><Users className="w-3 h-3" /> فريق مخصص</Label>
+                <Select value={form.dedicated_team_id} onValueChange={(v) => setForm({ ...form, dedicated_team_id: v === "_none" ? "" : v })}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="بدون — كل الفرق" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">بدون — كل الفرق</SelectItem>
+                    {teams.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {/* Active toggle */}
             <div className="flex items-center gap-2 pt-1">
               <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
