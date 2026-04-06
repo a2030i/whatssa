@@ -548,6 +548,35 @@ const EmailConfigSection = () => {
               </div>
             </div>
 
+            {/* Sync Mode */}
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <p className="text-xs font-semibold">عند الربط، استقبال الرسائل:</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setForm({ ...form, sync_mode: "new_only" })}
+                  className={`rounded-lg border-2 p-2.5 text-center transition-all ${
+                    form.sync_mode === "new_only"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <p className="text-[11px] font-semibold">الجديدة فقط</p>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">بعد الربط فقط</p>
+                </button>
+                <button
+                  onClick={() => setForm({ ...form, sync_mode: "fetch_recent" })}
+                  className={`rounded-lg border-2 p-2.5 text-center transition-all ${
+                    form.sync_mode === "fetch_recent"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <p className="text-[11px] font-semibold">قديمة + جديدة</p>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">آخر 100 رسالة + الجديدة</p>
+                </button>
+              </div>
+            </div>
+
             {/* Active toggle */}
             <div className="flex items-center gap-2 pt-1">
               <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
