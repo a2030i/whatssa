@@ -913,6 +913,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showTicketDialog, setShowTicketDialog] = useState(false);
   const [selectingMessages, setSelectingMessages] = useState(false);
   const [selectedMsgIds, setSelectedMsgIds] = useState<Set<string>>(new Set());
+  const [enterToSend, setEnterToSend] = useState(() => {
+    const saved = localStorage.getItem("enterToSend");
+    return saved !== null ? saved === "true" : true;
+  });
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
