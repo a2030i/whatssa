@@ -407,8 +407,7 @@ const IntegrationsPage = () => {
   const handleCodeExchange = async (code: string) => {
     try {
       console.log("[Embedded Signup] Exchanging code for token...");
-      const redirectUri = window.location.origin + "/integrations";
-      const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { code, redirect_uri: redirectUri } });
+      const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { code } });
       console.log("[Embedded Signup] Exchange result:", { data: data ? "received" : "null", error });
       if (error || data?.error) {
         handleError(data?.error || "فشل في تبادل الرمز");
@@ -2198,10 +2197,7 @@ const IntegrationsPage = () => {
                 {t("💡 تأكد أن الرقم غير مربوط بتطبيق واتساب على هاتفك. يجب فصله أولاً لربطه بالمنصة.", "💡 Make sure the number is not linked to any WhatsApp app on your phone. Disconnect it first.")}
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {t("💡 تأكد من إضافة دومين المنصة في إعدادات التطبيق: Facebook Login for Business → Settings → Allowed Domains", "💡 Make sure your platform domain is added in: Facebook Login for Business → Settings → Allowed Domains")}
-              </p>
-              <p className="text-xs font-mono text-muted-foreground bg-secondary rounded px-2 py-1 select-all">
-                {window.location.origin}
+                {t("💡 إذا تكرر الخطأ، جرّب فصل الرقم من واتساب على هاتفك ثم أعد المحاولة بعد دقيقة.", "💡 If the error persists, disconnect the number from WhatsApp on your phone and retry after a minute.")}
               </p>
             </div>
 
