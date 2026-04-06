@@ -856,6 +856,40 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
             )}
 
+            {/* BCC - chips style */}
+            {showBccField && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">🔒 Bcc</Label>
+                <div className="flex flex-wrap items-center gap-1 min-h-[40px] rounded-lg border border-input bg-background px-2 py-1.5" dir="ltr">
+                  {emailBccList.map((email, i) => (
+                    <Badge key={i} variant="outline" className="gap-1 text-xs py-0.5 px-2 shrink-0 border-dashed">
+                      {email}
+                      <button onClick={() => setEmailBccList(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  <input
+                    type="email"
+                    placeholder={emailBccList.length === 0 ? "bcc@email.com" : ""}
+                    value={emailBccInput}
+                    onChange={(e) => setEmailBccInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") {
+                        e.preventDefault();
+                        addEmailBcc();
+                      }
+                      if (e.key === "Backspace" && !emailBccInput && emailBccList.length > 0) {
+                        setEmailBccList(prev => prev.slice(0, -1));
+                      }
+                    }}
+                    onBlur={() => addEmailBcc()}
+                    className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Subject */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">📝 الموضوع</Label>
