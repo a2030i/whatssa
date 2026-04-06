@@ -1075,7 +1075,7 @@ const IntegrationsPage = () => {
                         </div>
                       )}
                       <p className="text-xs text-muted-foreground font-mono" dir="ltr">
-                        {config.display_phone || "الرقم قيد المزامنة"}
+                        {config.display_phone || config.business_name || "جاري جلب الرقم..."}
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
