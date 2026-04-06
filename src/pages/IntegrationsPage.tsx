@@ -623,6 +623,7 @@ const IntegrationsPage = () => {
     setPreviousProvider("");
     setMigrationPrereqs(null);
     setWabaInfo(null);
+    setWebhookStatus(null);
     setManualAccessToken("");
     setManualPhoneNumberId("");
     setManualWabaId("");
