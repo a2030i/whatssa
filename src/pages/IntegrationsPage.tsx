@@ -508,7 +508,43 @@ const IntegrationsPage = () => {
     setIsLoading(false);
   };
 
-  // handleManualConnect removed
+  // Manual token connect handler
+  const handleManualTokenConnect = async () => {
+    if (!manualAccessToken.trim() || !manualPhoneNumberId.trim() || !manualWabaId.trim()) {
+      toast.error("جميع الحقول مطلوبة");
+      return;
+    }
+    if (!orgId) { toast.error("تعذر تحديد المؤسسة"); return; }
+    setManualConnecting(true);
+    try {
+      const { data, error } = await invokeCloud("whatsapp-complete-signup", {
+        body: {
+          access_token: manualAccessToken.trim(),
+          phone_number_id: manualPhoneNumberId.trim(),
+          waba_id: manualWabaId.trim(),
+          org_id: orgId,
+          auto_register: true,
+          ...(twoStepPin ? { pin: twoStepPin } : {}),
+        },
+      });
+      if (error || data?.error) {
+        handleError(friendlyError(data?.error || "فشل في إكمال الربط"));
+      } else if (!data?.selected_phone || !data?.saved_config) {
+        handleError("تعذر تسجيل الرقم — حاول مرة أخرى");
+      } else {
+        if (data.registration && !data.registration.success) {
+          toast.error(friendlyError(data.registration.error || "فشل تسجيل الرقم"));
+        }
+        setConnectedPhone(data.selected_phone?.display_phone_number || manualPhoneNumberId);
+        setWabaInfo(data.waba_details);
+        setFlowStep("success");
+        await loadConfigs(true);
+      }
+    } catch {
+      handleError("حدث خطأ أثناء الربط");
+    }
+    setManualConnecting(false);
+  };
 
   const handleDisconnect = async (configId: string) => {
     if (!confirm("هل تريد فصل هذا الرقم؟")) return;
