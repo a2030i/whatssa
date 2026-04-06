@@ -281,7 +281,7 @@ const EmailConfigSection = () => {
     setForm({
       email_address: "", smtp_host: p.smtp_host, smtp_port: p.smtp_port,
       smtp_username: "", smtp_password: "", encryption: p.encryption,
-      imap_host: p.imap_host, imap_port: p.imap_port, is_active: true,
+      imap_host: p.imap_host, imap_port: p.imap_port, is_active: true, sync_mode: "new_only",
     });
   };
 
