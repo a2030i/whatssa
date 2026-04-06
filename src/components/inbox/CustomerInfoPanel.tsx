@@ -940,6 +940,11 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           </div>
         </TabsContent>
 
+        {/* Tickets Tab */}
+        <TabsContent value="tickets" className="mt-0">
+          <TicketsTab conversationId={conversation.id} customerPhone={conversation.customerPhone} orgId={orgId} />
+        </TabsContent>
+
         {/* Notes Tab */}
         <TabsContent value="notes" className="mt-0">
           <InternalNotes conversationId={conversation.id} />
