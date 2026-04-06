@@ -1376,6 +1376,65 @@ export type Database = {
           },
         ]
       }
+      email_configs: {
+        Row: {
+          created_at: string
+          email_address: string
+          encryption: string
+          id: string
+          imap_host: string | null
+          imap_port: number | null
+          is_active: boolean
+          is_verified: boolean
+          org_id: string
+          smtp_host: string
+          smtp_password: string
+          smtp_port: number
+          smtp_username: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email_address: string
+          encryption?: string
+          id?: string
+          imap_host?: string | null
+          imap_port?: number | null
+          is_active?: boolean
+          is_verified?: boolean
+          org_id: string
+          smtp_host?: string
+          smtp_password: string
+          smtp_port?: number
+          smtp_username: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email_address?: string
+          encryption?: string
+          id?: string
+          imap_host?: string | null
+          imap_port?: number | null
+          is_active?: boolean
+          is_verified?: boolean
+          org_id?: string
+          smtp_host?: string
+          smtp_password?: string
+          smtp_port?: number
+          smtp_username?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flow_submissions: {
         Row: {
           conversation_id: string | null
