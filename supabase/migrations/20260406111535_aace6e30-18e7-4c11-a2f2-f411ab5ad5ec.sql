@@ -1,0 +1,2 @@
+ALTER TABLE public.email_configs ADD COLUMN sync_mode text NOT NULL DEFAULT 'new_only';
+COMMENT ON COLUMN public.email_configs.sync_mode IS 'new_only = only new emails after connection, fetch_recent = fetch last N emails + new ones';

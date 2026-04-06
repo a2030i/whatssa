@@ -1391,6 +1391,7 @@ export type Database = {
           smtp_password: string
           smtp_port: number
           smtp_username: string
+          sync_mode: string
           updated_at: string
         }
         Insert: {
@@ -1407,6 +1408,7 @@ export type Database = {
           smtp_password: string
           smtp_port?: number
           smtp_username: string
+          sync_mode?: string
           updated_at?: string
         }
         Update: {
@@ -1423,6 +1425,7 @@ export type Database = {
           smtp_password?: string
           smtp_port?: number
           smtp_username?: string
+          sync_mode?: string
           updated_at?: string
         }
         Relationships: [
