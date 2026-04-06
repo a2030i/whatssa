@@ -121,6 +121,12 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     setEmailCcList(prev => [...prev, email]);
     setEmailCcInput("");
   };
+  const addEmailBcc = (val?: string) => {
+    const email = (val || emailBccInput).trim().toLowerCase();
+    if (!email || !email.includes("@") || emailBccList.includes(email) || emailToList.includes(email) || emailCcList.includes(email)) return;
+    setEmailBccList(prev => [...prev, email]);
+    setEmailBccInput("");
+  };
 
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
   const fullPhone = `${countryCode}${localNumber.replace(/^0+/, "")}`;
