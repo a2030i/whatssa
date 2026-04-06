@@ -404,8 +404,10 @@ const IntegrationsPage = () => {
 
   const handleCodeExchange = async (code: string) => {
     try {
+      console.log("[Embedded Signup] Exchanging code for token...");
       const redirectUri = window.location.origin + "/integrations";
       const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { code, redirect_uri: redirectUri } });
+      console.log("[Embedded Signup] Exchange result:", { data: data ? "received" : "null", error });
       if (error || data?.error) {
         handleError(data?.error || "فشل في تبادل الرمز");
         return;
@@ -415,7 +417,8 @@ const IntegrationsPage = () => {
       } else {
         handleError("لم يتم الحصول على التوكن");
       }
-    } catch {
+    } catch (e) {
+      console.error("[Embedded Signup] Code exchange error:", e);
       handleError("حدث خطأ أثناء الربط");
     }
   };
