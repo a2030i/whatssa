@@ -2118,7 +2118,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Note Mode Banner */}
-      {isNoteMode && conversation.status !== "closed" && (
+      {isNoteMode && (
         <div className="shrink-0 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center gap-2">
           <StickyNote className="w-4 h-4 text-amber-500 shrink-0" />
           <p className="text-xs text-amber-600 font-medium flex-1">وضع الملاحظات الداخلية - الرسالة لن تُرسل للعميل</p>
