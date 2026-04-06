@@ -113,6 +113,7 @@ const IntegrationsPage = () => {
   const [unofficialTestPhone, setUnofficialTestPhone] = useState("");
   const [unofficialTestSending, setUnofficialTestSending] = useState(false);
   const [unofficialCheckingStatus, setUnofficialCheckingStatus] = useState<string | null>(null);
+  const [syncingUnofficialPhoneIds, setSyncingUnofficialPhoneIds] = useState<string[]>([]);
   const [metaAppId, setMetaAppId] = useState("");
   const [metaConfigId, setMetaConfigId] = useState("");
   const [officialEnabled, setOfficialEnabled] = useState(false);
@@ -169,19 +170,28 @@ const IntegrationsPage = () => {
     setConfigs(officialConfigs);
     setUnofficialConfigs(unofficial);
 
-    // Auto-sync display_phone only on initial load, not when triggered by config changes
+    // Auto-sync missing phone numbers only on initial load, with a bounded loading state
     if (!skipAutoSync) {
-      const needsSync = unofficial.filter(uc => uc.is_connected && uc.evolution_instance_status === "connected" && !uc.display_phone && uc.evolution_instance_name);
-      for (const uc of needsSync) {
-        invokeCloud("evolution-manage", {
-          body: { action: "status", instance_name: uc.evolution_instance_name },
-        }).then(() => {
-          supabase.rpc("get_org_whatsapp_channels").then(({ data: refreshed }) => {
-            const updated = ((refreshed || []) as WhatsAppConfig[]).filter((c) => c.org_id === orgId && c.channel_type === "evolution");
-            setUnofficialConfigs(updated);
-          });
-        }).catch(() => {});
+      const needsSync = unofficial.filter((uc) => uc.is_connected && uc.evolution_instance_status === "connected" && !uc.display_phone && uc.evolution_instance_name);
+      setSyncingUnofficialPhoneIds(needsSync.map((uc) => uc.id));
+
+      if (needsSync.length > 0) {
+        await Promise.allSettled(
+          needsSync.map((uc) =>
+            invokeCloud("evolution-manage", {
+              body: { action: "status", instance_name: uc.evolution_instance_name },
+            })
+          )
+        );
+
+        const { data: refreshed } = await supabase.rpc("get_org_whatsapp_channels");
+        const updated = ((refreshed || []) as WhatsAppConfig[]).filter((c) => c.org_id === orgId && c.channel_type === "evolution");
+        setUnofficialConfigs(updated);
       }
+
+      setSyncingUnofficialPhoneIds([]);
+    } else {
+      setSyncingUnofficialPhoneIds([]);
     }
 
     const planData = orgRes?.data as any;
@@ -1076,7 +1086,7 @@ const IntegrationsPage = () => {
                         </div>
                       )}
                       <p className="text-xs text-muted-foreground font-mono" dir="ltr">
-                        {config.display_phone || config.business_name || "جاري جلب الرقم..."}
+                        {config.display_phone || config.business_name || (unofficialCheckingStatus === config.id || syncingUnofficialPhoneIds.includes(config.id) ? "جاري جلب الرقم..." : "الرقم غير متاح")}
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
@@ -1102,7 +1112,7 @@ const IntegrationsPage = () => {
                             <div>
                               <p className="text-xs font-bold text-success">الرقم متصل</p>
                               <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">
-                                {config.display_phone || config.business_name || "جاري جلب الرقم..."}
+                                {config.display_phone || config.business_name || (unofficialCheckingStatus === config.id || syncingUnofficialPhoneIds.includes(config.id) ? "جاري جلب الرقم..." : "الرقم غير متاح")}
                               </p>
                             </div>
                           </div>
