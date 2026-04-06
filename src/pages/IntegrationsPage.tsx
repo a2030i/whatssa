@@ -1064,13 +1064,21 @@ const IntegrationsPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* WhatsApp — unified card with expandable connected numbers */}
             <div className="bg-card rounded-xl border border-border p-4 flex flex-col items-center text-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-emerald-600" />
+              <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-success" />
               </div>
               <div>
                 <h3 className="font-bold text-xs">واتساب</h3>
                 <p className="text-[10px] text-muted-foreground mt-0.5">رسمي أو عبر واتساب ويب</p>
               </div>
+
+              {/* Summary badge like email */}
+              {allConnected.length > 0 && (
+                <Badge className="text-[10px] gap-1 px-2.5 py-0.5 border-0 bg-success/10 text-success">
+                  <MessageSquare className="w-2.5 h-2.5" />
+                  واتساب متصل ({allConnected.length})
+                </Badge>
+              )}
 
               <div className="flex flex-col items-center gap-1.5 w-full">
                 {/* Individual connected official numbers */}
