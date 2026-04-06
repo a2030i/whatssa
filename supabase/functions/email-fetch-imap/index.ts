@@ -556,6 +556,8 @@ async function fetchEmailsForConfig(
       try {
         const headers = msg.headers || {};
         const fromRaw = headers["from"] || "";
+        const toRaw = headers["to"] || "";
+        const ccRaw = headers["cc"] || "";
         const subject = decodeMimeWords(headers["subject"]) || "(بدون عنوان)";
         const emailMessageId = (headers["message-id"] || "").replace(/[<>]/g, "").trim() || `imap-${msg.seq}-${Date.now()}`;
         const dateStr = headers["date"] || "";
@@ -565,6 +567,8 @@ async function fetchEmailsForConfig(
         const fromMatch = fromRaw.match(/(?:"?([^"<]*)"?\s*)?<?([^>]+@[^>]+)>?/);
         const senderEmail = fromMatch ? fromMatch[2].trim() : "unknown@unknown.com";
         const senderName = decodeMimeWords(fromMatch?.[1]?.trim()) || senderEmail;
+        const toDecoded = decodeMimeWords(toRaw);
+        const ccDecoded = decodeMimeWords(ccRaw);
 
         // Skip own emails
         if (senderEmail.toLowerCase() === config.email_address.toLowerCase()) continue;
