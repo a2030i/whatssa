@@ -297,17 +297,39 @@ const IntegrationsPage = () => {
   };
 
   const loadFacebookSDK = () => {
+    // Add session logging event listener for Embedded Signup v4
+    if (!(window as any).__waEsListenerAdded) {
+      window.addEventListener('message', (event) => {
+        if (event.origin && !event.origin.endsWith('facebook.com')) return;
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'WA_EMBEDDED_SIGNUP') {
+            console.log('[Embedded Signup] session event:', data);
+            // If we get phone_number_id and waba_id from session info, store them
+            if (data.data?.phone_number_id && data.data?.waba_id) {
+              console.log('[Embedded Signup] Got IDs from session:', data.data.phone_number_id, data.data.waba_id);
+            }
+            if (data.event === 'CANCEL') {
+              console.log('[Embedded Signup] User cancelled at step:', data.data?.current_step);
+            }
+          }
+        } catch {
+          // non-JSON message, ignore
+        }
+      });
+      (window as any).__waEsListenerAdded = true;
+    }
+
     if (document.getElementById("facebook-jssdk")) {
-      // SDK already loaded — reinitialize with correct appId
       const FB = (window as any).FB;
       if (FB) {
-        FB.init({ appId: metaAppId, cookie: true, xfbml: true, version: "v21.0" });
+        FB.init({ appId: metaAppId, autoLogAppEvents: true, xfbml: true, version: "v22.0" });
         setSdkLoaded(true);
       }
       return;
     }
     (window as any).fbAsyncInit = function () {
-      (window as any).FB.init({ appId: metaAppId, cookie: true, xfbml: true, version: "v21.0" });
+      (window as any).FB.init({ appId: metaAppId, autoLogAppEvents: true, xfbml: true, version: "v22.0" });
       setSdkLoaded(true);
     };
     const script = document.createElement("script");
@@ -315,6 +337,7 @@ const IntegrationsPage = () => {
     script.src = "https://connect.facebook.net/en_US/sdk.js";
     script.async = true;
     script.defer = true;
+    script.crossOrigin = "anonymous";
     document.body.appendChild(script);
   };
 
