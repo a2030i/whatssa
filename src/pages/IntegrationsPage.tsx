@@ -297,17 +297,39 @@ const IntegrationsPage = () => {
   };
 
   const loadFacebookSDK = () => {
+    // Add session logging event listener for Embedded Signup v4
+    if (!(window as any).__waEsListenerAdded) {
+      window.addEventListener('message', (event) => {
+        if (event.origin && !event.origin.endsWith('facebook.com')) return;
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'WA_EMBEDDED_SIGNUP') {
+            console.log('[Embedded Signup] session event:', data);
+            // If we get phone_number_id and waba_id from session info, store them
+            if (data.data?.phone_number_id && data.data?.waba_id) {
+              console.log('[Embedded Signup] Got IDs from session:', data.data.phone_number_id, data.data.waba_id);
+            }
+            if (data.event === 'CANCEL') {
+              console.log('[Embedded Signup] User cancelled at step:', data.data?.current_step);
+            }
+          }
+        } catch {
+          // non-JSON message, ignore
+        }
+      });
+      (window as any).__waEsListenerAdded = true;
+    }
+
     if (document.getElementById("facebook-jssdk")) {
-      // SDK already loaded — reinitialize with correct appId
       const FB = (window as any).FB;
       if (FB) {
-        FB.init({ appId: metaAppId, cookie: true, xfbml: true, version: "v21.0" });
+        FB.init({ appId: metaAppId, autoLogAppEvents: true, xfbml: true, version: "v22.0" });
         setSdkLoaded(true);
       }
       return;
     }
     (window as any).fbAsyncInit = function () {
-      (window as any).FB.init({ appId: metaAppId, cookie: true, xfbml: true, version: "v21.0" });
+      (window as any).FB.init({ appId: metaAppId, autoLogAppEvents: true, xfbml: true, version: "v22.0" });
       setSdkLoaded(true);
     };
     const script = document.createElement("script");
@@ -315,6 +337,7 @@ const IntegrationsPage = () => {
     script.src = "https://connect.facebook.net/en_US/sdk.js";
     script.async = true;
     script.defer = true;
+    script.crossOrigin = "anonymous";
     document.body.appendChild(script);
   };
 
@@ -347,8 +370,11 @@ const IntegrationsPage = () => {
     setIsLoading(true);
     setErrorMessage("");
 
+    console.log("[Embedded Signup] Starting FB.login with config_id:", metaConfigId, "appId:", metaAppId);
+
     FB.login(
       (response: any) => {
+        console.log("[Embedded Signup] FB.login response:", JSON.stringify(response));
         if (response.authResponse) {
           const code = response.authResponse.code;
           const token = response.authResponse.accessToken;
@@ -360,7 +386,9 @@ const IntegrationsPage = () => {
             handleError("لم يتم الحصول على بيانات المصادقة");
           }
         } else {
-          handleError("تم إلغاء عملية الربط");
+          // Log the full response for debugging
+          console.error("[Embedded Signup] No authResponse. Status:", response?.status, "Full:", JSON.stringify(response));
+          handleError("تم إلغاء عملية الربط أو حدث خطأ في نافذة ميتا");
         }
       },
       {
@@ -368,18 +396,18 @@ const IntegrationsPage = () => {
         response_type: "code",
         override_default_response_type: true,
         extras: {
-          feature: "whatsapp_embedded_signup",
-          sessionInfoVersion: 2,
-          ...(onboardingMode === "migrate_provider" ? { setup: { solutionID: undefined } } : {}),
+          setup: {},
         },
       }
     );
-  }, [metaConfigId]);
+  }, [metaConfigId, metaAppId, onboardingMode]);
 
   const handleCodeExchange = async (code: string) => {
     try {
+      console.log("[Embedded Signup] Exchanging code for token...");
       const redirectUri = window.location.origin + "/integrations";
       const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { code, redirect_uri: redirectUri } });
+      console.log("[Embedded Signup] Exchange result:", { data: data ? "received" : "null", error });
       if (error || data?.error) {
         handleError(data?.error || "فشل في تبادل الرمز");
         return;
@@ -389,7 +417,8 @@ const IntegrationsPage = () => {
       } else {
         handleError("لم يتم الحصول على التوكن");
       }
-    } catch {
+    } catch (e) {
+      console.error("[Embedded Signup] Code exchange error:", e);
       handleError("حدث خطأ أثناء الربط");
     }
   };
@@ -2160,9 +2189,15 @@ const IntegrationsPage = () => {
           </div>
 
           <div className="p-6 space-y-3">
-            <div className="bg-muted/50 rounded-lg p-3">
+            <div className="bg-muted/50 rounded-lg p-3 space-y-2">
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {t("💡 تأكد أن الرقم غير مربوط بتطبيق واتساب على هاتفك. يجب فصله أولاً لربطه بالمنصة.", "💡 Make sure the number is not linked to any WhatsApp app on your phone. Disconnect it first.")}
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {t("💡 تأكد من إضافة دومين المنصة في إعدادات التطبيق: Facebook Login for Business → Settings → Allowed Domains", "💡 Make sure your platform domain is added in: Facebook Login for Business → Settings → Allowed Domains")}
+              </p>
+              <p className="text-xs font-mono text-muted-foreground bg-secondary rounded px-2 py-1 select-all">
+                {window.location.origin}
               </p>
             </div>
 
