@@ -169,6 +169,20 @@ const IntegrationsPage = () => {
     setConfigs(officialConfigs);
     setUnofficialConfigs(unofficial);
 
+    // Auto-sync display_phone for unofficial configs missing it
+    for (const uc of unofficial) {
+      if (uc.is_connected && uc.evolution_instance_status === "connected" && !uc.display_phone && uc.evolution_instance_name) {
+        invokeCloud("evolution-manage", {
+          body: { action: "status", instance_name: uc.evolution_instance_name },
+        }).then(() => {
+          supabase.rpc("get_org_whatsapp_channels").then(({ data: refreshed }) => {
+            const updated = ((refreshed || []) as WhatsAppConfig[]).filter((c) => c.org_id === orgId && c.channel_type === "evolution");
+            setUnofficialConfigs(updated);
+          });
+        }).catch(() => {});
+      }
+    }
+
     const planData = orgRes?.data as any;
     if (planData?.plans?.max_phone_numbers) setMaxPhones(planData.plans.max_phone_numbers);
 
