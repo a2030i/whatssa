@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
+import { supabase as cloudSupabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -196,7 +197,7 @@ const EmailConfigSection = () => {
 
   const loadConfigs = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await cloudSupabase
       .from("email_configs")
       .select("*")
       .eq("org_id", orgId!)
@@ -245,11 +246,11 @@ const EmailConfigSection = () => {
       };
 
       if (editId) {
-        const { error } = await supabase.from("email_configs").update(payload).eq("id", editId);
+        const { error } = await cloudSupabase.from("email_configs").update(payload).eq("id", editId);
         if (error) throw error;
         toast.success("تم تحديث إعدادات البريد");
       } else {
-        const { error } = await supabase.from("email_configs").insert({ ...payload, org_id: orgId });
+        const { error } = await cloudSupabase.from("email_configs").insert({ ...payload, org_id: orgId });
         if (error) throw error;
         toast.success("تم حفظ إعدادات البريد بنجاح");
       }
@@ -290,7 +291,7 @@ const EmailConfigSection = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("هل أنت متأكد من حذف هذا البريد؟")) return;
-    const { error } = await supabase.from("email_configs").delete().eq("id", id);
+    const { error } = await cloudSupabase.from("email_configs").delete().eq("id", id);
     if (error) {
       toast.error("خطأ في الحذف");
     } else {
@@ -300,7 +301,7 @@ const EmailConfigSection = () => {
   };
 
   const handleToggle = async (id: string, active: boolean) => {
-    await supabase.from("email_configs").update({ is_active: active }).eq("id", id);
+    await cloudSupabase.from("email_configs").update({ is_active: active }).eq("id", id);
     loadConfigs();
   };
 
