@@ -138,30 +138,46 @@ async function fetchEmailsForConfig(
         if (existing) continue;
 
         // Find or create conversation for this sender
-        const { data: existingConv } = await admin
+        // Thread by In-Reply-To or References header for grouping replies
+        const inReplyTo = envelope.inReplyTo || "";
+        const references = (msg.headers?.["References"] || msg.headers?.["references"] || "") as string;
+        
+        // Normalize subject for threading (strip Re:/Fwd: prefixes)
+        const normalizedSubject = subject.replace(/^(re|fwd|fw)\s*:\s*/gi, "").replace(/^\[.*?\]\s*/g, "").trim();
+        
+        // First try to find existing conversation by email address + open status
+        let { data: existingConv } = await admin
           .from("conversations")
           .select("id")
           .eq("org_id", orgId)
           .eq("customer_phone", senderEmail)
           .eq("conversation_type", "email")
           .neq("status", "closed")
-          .limit(1)
-          .maybeSingle();
+          .order("created_at", { ascending: false })
+          .limit(5);
 
-        let convId: string;
+        // If multiple open convos exist, try to match by subject
+        let convMatch: { id: string } | null = null;
+        if (existingConv && existingConv.length > 0) {
+          // Default to most recent
+          convMatch = existingConv[0];
+        }
 
-        if (existingConv) {
-          convId = existingConv.id;
+        let convId: string;  
+        
+        if (convMatch) {
+          convId = convMatch.id;
         } else {
           const insertData: Record<string, any> = {
             org_id: orgId,
             customer_phone: senderEmail,
-            customer_name: senderName,
+            customer_name: `${senderName}`,
             conversation_type: "email",
             status: "active",
-            last_message: `📧 ${subject}`,
+            last_message: subject,
             last_message_at: date,
             channel_id: null,
+            notes: `📧 ${subject}`,
           };
 
           if (config.dedicated_agent_id) {
@@ -199,7 +215,7 @@ async function fetchEmailsForConfig(
           convId = newConv.id;
         }
 
-        // Extract body content
+        // Extract body content - clean up for readability
         let bodyText = "";
         if (msg.body) {
           if (typeof msg.body === "string") {
@@ -207,13 +223,35 @@ async function fetchEmailsForConfig(
           } else if (msg.body.text) {
             bodyText = msg.body.text;
           } else if (msg.body.html) {
-            bodyText = msg.body.html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+            // Better HTML-to-text: preserve line breaks
+            bodyText = msg.body.html
+              .replace(/<br\s*\/?>/gi, "\n")
+              .replace(/<\/p>/gi, "\n\n")
+              .replace(/<\/div>/gi, "\n")
+              .replace(/<\/tr>/gi, "\n")
+              .replace(/<\/li>/gi, "\n")
+              .replace(/<[^>]*>/g, "")
+              .replace(/&nbsp;/gi, " ")
+              .replace(/&amp;/gi, "&")
+              .replace(/&lt;/gi, "<")
+              .replace(/&gt;/gi, ">")
+              .replace(/&quot;/gi, '"')
+              .replace(/\n{3,}/g, "\n\n")
+              .trim();
           } else {
             bodyText = JSON.stringify(msg.body).substring(0, 500);
           }
         }
 
-        const displayContent = `📧 ${subject}\n\n${bodyText}`.substring(0, 10000);
+        // Clean up quoted reply content (lines starting with >)
+        const cleanBody = bodyText
+          .replace(/^>.*$/gm, "")
+          .replace(/^On .* wrote:$/gm, "")
+          .replace(/^-{3,}\s*Original Message\s*-{3,}[\s\S]*$/m, "")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+        
+        const displayContent = cleanBody.substring(0, 10000) || "(بدون محتوى)";
 
         // Insert message
         const { error: msgError } = await admin.from("messages").insert({
@@ -230,6 +268,8 @@ async function fetchEmailsForConfig(
             email_from_name: senderName,
             email_to: config.email_address,
             imap_fetched: true,
+            email_in_reply_to: inReplyTo || undefined,
+            email_references: references || undefined,
           },
         });
 
@@ -240,7 +280,7 @@ async function fetchEmailsForConfig(
 
         // Update conversation last message
         await admin.from("conversations").update({
-          last_message: `📧 ${subject}`,
+          last_message: cleanBody.substring(0, 200) || subject,
           last_message_at: date,
           updated_at: new Date().toISOString(),
         }).eq("id", convId);

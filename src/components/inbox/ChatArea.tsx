@@ -929,6 +929,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const isGroup = conversation.conversationType === "group";
   const isEvolutionChannel = conversation.channelType === "evolution";
   const isMetaChannel = conversation.channelType === "meta_api";
+  const isEmailChannel = conversation.channelType === "email" || conversation.conversationType === "email";
 
   // Deep link: scroll to specific message
   useEffect(() => {
@@ -1798,7 +1799,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground/60 truncate">{isMetaChannel ? "عبر الواتساب" : conversation.channelType === "evolution" ? "عبر الواتساب" : conversation.customerPhone}</p>
+              <p className="text-[10px] text-muted-foreground/60 truncate">{isEmailChannel ? `📧 ${conversation.customerPhone}` : isMetaChannel ? "عبر الواتساب" : conversation.channelType === "evolution" ? "عبر الواتساب" : conversation.customerPhone}</p>
             </div>
             </button>
           </div>
@@ -2537,7 +2538,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             {/* Tools Row inside input box */}
             {(!windowExpired || isNoteMode) && (
               <div className="flex items-center gap-0 px-2 pb-1.5 border-t border-border/10">
-                {!isNoteMode && (
+                {!isNoteMode && !isEmailChannel && (
                   <>
                     <Popover>
                       <PopoverTrigger asChild>
@@ -2562,7 +2563,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 )}
                 <input ref={fileInputRef} type="file" accept={allowedFileTypes} className="hidden" onChange={handleFileSelect} />
                 <input ref={groupPicInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleChangeGroupPicture(file); if (e.target) e.target.value = ""; }} />
-                {!isNoteMode && (
+                {!isNoteMode && !isEmailChannel && (
                   <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
                     <Zap className="w-4 h-4" />
                   </button>
@@ -2587,12 +2588,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     <BarChart3 className="w-4 h-4" />
                   </button>
                 )}
-                {!isNoteMode && (
+                {!isNoteMode && !isEmailChannel && (
                   <button onClick={() => setShowContactCard(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال بطاقة اتصال">
                     <Contact className="w-4 h-4" />
                   </button>
                 )}
-                {!isNoteMode && !windowExpired && (
+                {!isNoteMode && !windowExpired && !isEmailChannel && (
                   <button onClick={() => setIsRecording(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="تسجيل صوتي">
                     <Mic className="w-4 h-4" />
                   </button>
@@ -2772,9 +2773,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
               ) : !isNoteMode ? (
-                <button onClick={() => setIsRecording(true)} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
-                  <Mic className="w-4 h-4 text-primary-foreground" />
-                </button>
+                isEmailChannel ? (
+                  <button disabled className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-muted">
+                    <Send className="w-4 h-4 text-muted-foreground" style={{ transform: "scaleX(-1)" }} />
+                  </button>
+                ) : (
+                  <button onClick={() => setIsRecording(true)} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
+                    <Mic className="w-4 h-4 text-primary-foreground" />
+                  </button>
+                )
               ) : (
                 <button disabled className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-muted">
                   <Send className="w-4 h-4 text-muted-foreground" style={{ transform: "scaleX(-1)" }} />
