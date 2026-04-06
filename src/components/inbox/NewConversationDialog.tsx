@@ -767,18 +767,76 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
             )}
 
-            {/* To */}
+            {/* To - chips style */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">📩 إلى</Label>
-              <Input
-                type="email"
-                placeholder="example@email.com"
-                value={emailTo}
-                onChange={(e) => setEmailTo(e.target.value)}
-                className="h-10 text-sm bg-background"
-                dir="ltr"
-              />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">📩 إلى</Label>
+                {!showCcField && (
+                  <button onClick={() => setShowCcField(true)} className="text-[10px] text-primary hover:underline">+ Cc</button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-1 min-h-[40px] rounded-lg border border-input bg-background px-2 py-1.5" dir="ltr">
+                {emailToList.map((email, i) => (
+                  <Badge key={i} variant="secondary" className="gap-1 text-xs py-0.5 px-2 shrink-0">
+                    {email}
+                    <button onClick={() => setEmailToList(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <input
+                  type="email"
+                  placeholder={emailToList.length === 0 ? "example@email.com" : ""}
+                  value={emailToInput}
+                  onChange={(e) => setEmailToInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") {
+                      e.preventDefault();
+                      addEmailTo();
+                    }
+                    if (e.key === "Backspace" && !emailToInput && emailToList.length > 0) {
+                      setEmailToList(prev => prev.slice(0, -1));
+                    }
+                  }}
+                  onBlur={() => addEmailTo()}
+                  className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
+                />
+              </div>
             </div>
+
+            {/* CC - chips style */}
+            {showCcField && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">📋 Cc</Label>
+                <div className="flex flex-wrap items-center gap-1 min-h-[40px] rounded-lg border border-input bg-background px-2 py-1.5" dir="ltr">
+                  {emailCcList.map((email, i) => (
+                    <Badge key={i} variant="outline" className="gap-1 text-xs py-0.5 px-2 shrink-0">
+                      {email}
+                      <button onClick={() => setEmailCcList(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  <input
+                    type="email"
+                    placeholder={emailCcList.length === 0 ? "cc@email.com" : ""}
+                    value={emailCcInput}
+                    onChange={(e) => setEmailCcInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") {
+                        e.preventDefault();
+                        addEmailCc();
+                      }
+                      if (e.key === "Backspace" && !emailCcInput && emailCcList.length > 0) {
+                        setEmailCcList(prev => prev.slice(0, -1));
+                      }
+                    }}
+                    onBlur={() => addEmailCc()}
+                    className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Subject */}
             <div className="space-y-1.5">
@@ -805,11 +863,12 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             {/* Send */}
             <Button
               className="w-full h-11 gap-2"
-              disabled={!emailTo || !emailSubject || !emailBody || sendingEmail}
+              disabled={emailToList.length === 0 || !emailSubject || !emailBody || sendingEmail}
               onClick={handleSendEmail}
             >
               {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               {sendingEmail ? "جاري الإرسال..." : "إرسال الإيميل"}
+            </Button>
             </Button>
           </div>
         )}
