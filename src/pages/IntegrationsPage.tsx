@@ -107,6 +107,7 @@ const IntegrationsPage = () => {
   const [migrationPrereqs, setMigrationPrereqs] = useState<{ ready: boolean; issues: string[] } | null>(null);
   const [previousProvider, setPreviousProvider] = useState("");
   const [wabaInfo, setWabaInfo] = useState<any>(null);
+  const [webhookStatus, setWebhookStatus] = useState<{ app_webhook: boolean | null; waba_subscription: boolean | null; auto_configured: boolean } | null>(null);
   const [metaStatus, setMetaStatus] = useState<Record<string, {
     phoneStatus?: string;
     nameStatus?: string;
@@ -443,6 +444,7 @@ const IntegrationsPage = () => {
         } else {
           setConnectedPhone(phone.display_phone_number);
           setWabaInfo(result.waba_details);
+          setWebhookStatus(result.webhook_status || null);
           setFlowStep("success");
         }
       }
@@ -537,6 +539,7 @@ const IntegrationsPage = () => {
         }
         setConnectedPhone(data.selected_phone?.display_phone_number || manualPhoneNumberId);
         setWabaInfo(data.waba_details);
+        setWebhookStatus(data.webhook_status || null);
         setFlowStep("success");
         await loadConfigs(true);
       }
@@ -620,6 +623,7 @@ const IntegrationsPage = () => {
     setPreviousProvider("");
     setMigrationPrereqs(null);
     setWabaInfo(null);
+    setWebhookStatus(null);
     setManualAccessToken("");
     setManualPhoneNumberId("");
     setManualWabaId("");
@@ -1534,9 +1538,6 @@ const IntegrationsPage = () => {
             <SallaIntegrationSection />
           </div>
         </div>
-
-
-        {/* Manual connect removed */}
       </>
     );
   };
@@ -1548,141 +1549,11 @@ const IntegrationsPage = () => {
     </Button>
   ) : null;
 
-  // ============ EMPTY STATE: Show all channels ============
-  if (configs.length === 0 && flowStep === "idle") {
-    return (
-      <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir={dir}>
-        <div className="flex justify-end">{reviewToggle}</div>
-        {isReviewMode && (
-          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-2">
-            <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">Meta App Review — whatsapp_business_management</Badge>
-            <h2 className="text-sm font-semibold">Recording Guide: Full End-to-End Flow</h2>
-            <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-              <li><strong>Step 1 — Connect WhatsApp:</strong> Click "Add Number" → "Official WhatsApp" → Complete the Meta login popup (shows permission grant).</li>
-              <li><strong>Step 2 — Select Phone:</strong> Pick your WhatsApp Business number from the list returned by Meta.</li>
-              <li><strong>Step 3 — Verify Connection:</strong> See the connected number card with status details.</li>
-              <li><strong>Step 4 — Manage Templates:</strong> Go to Templates page → Create a new template → Refresh to see approval status.</li>
-              <li><strong>Step 5 — Send Template:</strong> Select an approved template → Send it to a test phone number.</li>
-            </ol>
-            <p className="text-[10px] text-muted-foreground italic mt-2">Note: This app uses a System User Token for API access. The Meta login flow (Embedded Signup) is used for onboarding new WhatsApp numbers only.</p>
-          </div>
-        )}
-        {renderAllChannelsView(configs)}
-      </div>
-    );
-  }
-  // ============ CHOOSE ONBOARDING TYPE ============
-  if (flowStep === "choose_type") {
-    return (
-      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
-        <div className="flex justify-end mb-4">{reviewToggle}</div>
-        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
-          <div className="p-6 border-b border-border">
-            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-primary" />
-              {t("كيف تريد ربط رقمك؟", "How do you want to connect your number?")}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">{t("اختر نوع العملية بناءً على حالة رقمك الحالية", "Choose the operation type based on your current number status")}</p>
-          </div>
-          <div className="p-5 space-y-3">
-            {([
-              {
-                mode: "new" as OnboardingMode,
-                icon: Plus,
-                title: t("رقم جديد", "New number"),
-                desc: t("ربط رقم لأول مرة — لم يُستخدم مع WhatsApp Business API من قبل", "Connect a number for the first time — never used with WhatsApp Business API before"),
-                color: "text-primary",
-                bgColor: "bg-primary/10",
-                borderColor: "border-primary",
-              },
-              {
-                mode: "migrate_app" as OnboardingMode,
-                icon: Smartphone,
-                title: t("نقل من تطبيق واتساب أعمال", "Migrate from WhatsApp Business App"),
-                desc: t("نقل رقم مُستخدم حالياً على تطبيق WhatsApp Business العادي إلى Cloud API", "Migrate a number currently used on the regular WhatsApp Business app to Cloud API"),
-                color: "text-warning",
-                bgColor: "bg-warning/10",
-                borderColor: "border-warning",
-              },
-              {
-                mode: "migrate_provider" as OnboardingMode,
-                icon: ArrowLeftRight,
-                title: t("نقل من مزوّد آخر", "Migrate from another provider"),
-                desc: t("نقل رقم مربوط حالياً بمزوّد Cloud API آخر (مثل 360dialog, Twilio, MessageBird)", "Migrate a number currently connected to another Cloud API provider (e.g. 360dialog, Twilio, MessageBird)"),
-                color: "text-accent-foreground",
-                bgColor: "bg-accent/50",
-                borderColor: "border-accent",
-              },
-            ]).map((opt) => (
-              <button
-                key={opt.mode}
-                onClick={() => setOnboardingMode(opt.mode)}
-                className={cn(
-                  "w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all",
-                  isReviewMode ? "text-left" : "text-right",
-                  onboardingMode === opt.mode
-                    ? `${opt.borderColor} bg-muted/50`
-                    : "border-border hover:border-muted-foreground/30"
-                )}
-              >
-                <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0", opt.bgColor)}>
-                  <opt.icon className={cn("w-5 h-5", opt.color)} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-foreground">{opt.title}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{opt.desc}</p>
-                </div>
-                {onboardingMode === opt.mode && (
-                  <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
-                )}
-              </button>
-            ))}
-
-            <div className="pt-3 space-y-2">
-              <Button onClick={proceedFromTypeChoice} className="w-full gap-2 py-5 text-sm font-bold rounded-xl">
-                <ArrowRight className="w-4 h-4" />
-                {t("متابعة", "Continue")}
-              </Button>
-              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetFlow}>{t("← رجوع", "← Back")}</Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ============ MIGRATION INFO ============
   if (flowStep === "migration_info") {
     return (
-      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir="rtl">
-        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
-          <div className="p-6 border-b border-border">
-            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-              <ArrowLeftRight className="w-5 h-5 text-primary" />
-              {onboardingMode === "migrate_app" ? "نقل من تطبيق واتساب أعمال" : "نقل من مزوّد آخر"}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              {onboardingMode === "migrate_app"
-                ? "تأكد من المتطلبات التالية قبل البدء بنقل رقمك"
-                : "أدخل معلومات المزوّد الحالي لتسهيل عملية النقل"}
-            </p>
-          </div>
-          <div className="p-5 space-y-4">
-            {onboardingMode === "migrate_app" && (
-              <div className="space-y-3">
-                <div className="bg-warning/5 border border-warning/20 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-warning flex items-center gap-1.5 mb-2">
-                    <AlertTriangle className="w-3.5 h-3.5" /> متطلبات مهمة قبل النقل
-                  </p>
-                  <ul className="text-[11px] text-muted-foreground space-y-1.5 pr-4">
-                    <li>• <strong>فصل الرقم</strong> من تطبيق واتساب أعمال على هاتفك (حذف الحساب من التطبيق)</li>
-                    <li>• <strong>الانتظار دقيقتين</strong> على الأقل بعد فصل الرقم قبل بدء الربط</li>
-                    <li>• <strong>ملاحظة:</strong> سجل المحادثات السابقة لن يُنقل — فقط الرقم</li>
-                  </ul>
-                </div>
-              </div>
-            )}
-
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
+        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden p-6 space-y-4">
+          <h2 className="text-lg font-bold text-foreground">{t("معلومات النقل", "Migration Info")}</h2>
             {onboardingMode === "migrate_provider" && (
               <div className="space-y-3">
                 <div className="space-y-2">
@@ -1707,7 +1578,6 @@ const IntegrationsPage = () => {
                 </div>
               </div>
             )}
-
             <div className="pt-2 space-y-2">
               <Button onClick={proceedToMetaLogin} disabled={!sdkLoaded} className="w-full gap-2 py-5 text-sm font-bold rounded-xl">
                 {!sdkLoaded ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
@@ -1715,7 +1585,6 @@ const IntegrationsPage = () => {
               </Button>
               <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setFlowStep("choose_type")}>← رجوع</Button>
             </div>
-          </div>
         </div>
       </div>
     );
@@ -2087,6 +1956,61 @@ const IntegrationsPage = () => {
                 </Button>
               </div>
             </div>
+
+            {/* Webhook Status */}
+            {webhookStatus?.auto_configured ? (
+              <div className="bg-success/5 border border-success/20 rounded-xl p-4 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-foreground">{t("✅ الـ Webhook مضبوط تلقائياً", "✅ Webhook Auto-Configured")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("الرسائل الواردة ستصل مباشرة للمنصة.", "Incoming messages will be received automatically.")}</p>
+                </div>
+              </div>
+            ) : webhookStatus ? (
+              <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{t("⚠️ ضبط الـ Webhook يدوياً", "⚠️ Manual Webhook Setup Required")}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("لم يتم ضبط الـ Webhook تلقائياً. اتبع الخطوات التالية لاستقبال الرسائل:", "Webhook auto-setup failed. Follow these steps to receive messages:")}
+                    </p>
+                  </div>
+                </div>
+                <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside" dir={dir}>
+                  <li>
+                    {t("افتح ", "Go to ")}
+                    <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary underline font-medium">Meta App Dashboard</a>
+                    {t(" → اختر تطبيقك", " → Select your app")}
+                  </li>
+                  <li>{t("اذهب إلى WhatsApp → Configuration", "Go to WhatsApp → Configuration")}</li>
+                  <li>
+                    {t("في قسم Webhook، ألصق هذا الرابط:", "In Webhook section, paste this URL:")}
+                    <div className="mt-1 flex items-center gap-2">
+                      <Input
+                        value="https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook"
+                        readOnly
+                        className="bg-secondary border-0 text-[11px] flex-1 font-mono"
+                        dir="ltr"
+                      />
+                      <Button size="sm" variant="outline" className="h-7 px-2 shrink-0" onClick={() => { navigator.clipboard.writeText("https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook"); toast.success(t("تم النسخ", "Copied")); }}>
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </li>
+                  <li>
+                    {t("في Verify Token أدخل:", "Enter Verify Token:")}
+                    <div className="mt-1 flex items-center gap-2">
+                      <Input value="respondly_verify" readOnly className="bg-secondary border-0 text-[11px] flex-1 font-mono" dir="ltr" />
+                      <Button size="sm" variant="outline" className="h-7 px-2 shrink-0" onClick={() => { navigator.clipboard.writeText("respondly_verify"); toast.success(t("تم النسخ", "Copied")); }}>
+                        <Copy className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </li>
+                  <li>{t("اضغط Verify and Save ثم اشترك في حقل messages", "Click Verify and Save, then subscribe to the messages field")}</li>
+                </ol>
+              </div>
+            ) : null}
 
             <Button onClick={resetFlow} variant="outline" className="w-full gap-2">
               <CheckCircle2 className="w-4 h-4" />
