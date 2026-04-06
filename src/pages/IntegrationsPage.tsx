@@ -1219,6 +1219,19 @@ const IntegrationsPage = () => {
                   <Plus className="w-3 h-3" /> إضافة رقم
                 </Button>
               </div>
+            {/* Email Channel Card */}
+            <div className="bg-card rounded-xl border border-border p-4 flex flex-col items-center text-center gap-2 hover:shadow-md transition-shadow">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Send className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-bold text-xs">البريد الإلكتروني</h3>
+                <p className="text-[10px] text-muted-foreground mt-0.5">إرسال واستقبال عبر SMTP/IMAP</p>
+              </div>
+              <div className="flex flex-col items-center gap-1.5 mt-auto w-full">
+                <Badge variant="outline" className="text-[10px] gap-1 px-2 py-0.5 border-muted-foreground/30">قريباً</Badge>
+              </div>
+            </div>
             </div>
           </div>
         </div>
@@ -1306,9 +1319,6 @@ const IntegrationsPage = () => {
           </div>
         )}
         {renderAllChannelsView(configs)}
-        <div className="border-t pt-6">
-          <EmailConfigSection />
-        </div>
       </div>
     );
   }
@@ -1769,9 +1779,6 @@ const IntegrationsPage = () => {
     <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir={dir}>
       <div className="flex justify-end">{reviewToggle}</div>
       {renderAllChannelsView(configs)}
-      <div className="border-t pt-6">
-        <EmailConfigSection />
-      </div>
     </div>
   );
 };
