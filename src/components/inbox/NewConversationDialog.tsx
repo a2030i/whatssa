@@ -487,18 +487,20 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             {dialogMode === "group" ? "إنشاء قروب" : dialogMode === "email" ? "إرسال إيميل" : "محادثة جديدة"}
           </DialogTitle>
 
-          {/* Mode toggle */}
-          {(hasEvolution || hasEmailConfigs) && (
+          {/* Mode toggle - only show modes that have channels/configs */}
+          {(hasWhatsApp || hasEvolution || hasEmailConfigs) ? (
             <div className="flex items-center gap-1 mt-3 bg-muted rounded-lg p-1">
-              <button
-                onClick={() => setDialogMode("private")}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors",
-                  dialogMode === "private" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <MessageSquare className="w-3.5 h-3.5" /> واتساب
-              </button>
+              {hasWhatsApp && (
+                <button
+                  onClick={() => setDialogMode("private")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors",
+                    dialogMode === "private" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" /> واتساب
+                </button>
+              )}
               {hasEvolution && (
                 <button
                   onClick={() => setDialogMode("group")}
@@ -521,6 +523,11 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   <Mail className="w-3.5 h-3.5" /> إيميل
                 </button>
               )}
+            </div>
+          ) : (
+            <div className="mt-3 bg-warning/10 border border-warning/20 rounded-xl p-3 text-center">
+              <p className="text-xs text-warning font-medium">⚠️ لا توجد قنوات متصلة</p>
+              <p className="text-[10px] text-muted-foreground mt-1">يجب ربط رقم واتساب أو إعداد إيميل من صفحة التكاملات</p>
             </div>
           )}
 
