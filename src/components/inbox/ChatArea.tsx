@@ -830,6 +830,17 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   </div>
                 )}
               </div>
+              {/* Attachments */}
+              {em.attachments && em.attachments.length > 0 && (
+                <div className="px-4 py-2 border-t border-border/20 space-y-1">
+                  {em.attachments.map((att, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1.5 px-2 bg-secondary/40 rounded-lg">
+                      <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="text-[12px] text-foreground/80 truncate">{att.filename}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {/* Email Body */}
               <div className="px-4 py-3" style={{ wordBreak: "normal", overflowWrap: "anywhere", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
                 {renderText(emailDisplayText)}
