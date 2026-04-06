@@ -1433,6 +1433,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     const replyData = replyTo ? { id: replyTo.id, waMessageId: replyTo.waMessageId, senderName: replyTo.sender === "agent" ? "أنت" : (replyTo.senderName || conversation.customerName), text: replyTo.text } : undefined;
     onSendMessage(conversation.id, inputText.trim(), "text", replyData);
+    if (conversation.status === "closed") {
+      onStatusChange(conversation.id, "active");
+      toast.success("تم إعادة فتح المحادثة وإرسال الرسالة");
+    }
     setInputText("");
     setReplyTo(null);
     broadcastTyping(false);
