@@ -116,7 +116,7 @@ serve(async (req) => {
       if (!createRes.ok) {
         logToSystem(adminClient, "error", "فشل إنشاء قروب Evolution", {
           error: createData, group_name, members: formattedMembers,
-        }, orgId, user.id);
+        }, orgId, profile.id);
         return json({ error: createData?.message || createData?.response?.message || "فشل إنشاء القروب" }, createRes.status);
       }
 
@@ -141,13 +141,13 @@ serve(async (req) => {
           console.error("Failed to create group conversation:", convError);
           logToSystem(adminClient, "error", "فشل إنشاء محادثة القروب في قاعدة البيانات", {
             error: convError, group_jid: groupJid, group_name,
-          }, orgId, user.id);
+          }, orgId, profile.id);
         }
       }
 
       logToSystem(adminClient, "info", `تم إنشاء قروب "${group_name}" بنجاح`, {
         group_jid: groupJid, members: formattedMembers, instance: instanceName,
-      }, orgId, user.id);
+      }, orgId, profile.id);
 
       return json({ success: true, group_jid: groupJid, group_name });
     }
@@ -174,7 +174,7 @@ serve(async (req) => {
       const existingMeta = (msgResult.data?.metadata as Record<string, unknown>) || {};
       await adminClient.from("messages").update({
         content: "تم حذف هذه الرسالة",
-        metadata: { ...existingMeta, is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: profile?.full_name || user.id },
+        metadata: { ...existingMeta, is_deleted: true, deleted_at: new Date().toISOString(), deleted_by: profile?.full_name || profile.id },
       }).eq("wa_message_id", delete_message_id);
 
       const config = configResult.data;
@@ -218,19 +218,19 @@ serve(async (req) => {
               body: JSON.stringify(attempt.body),
             });
             if (res.ok) {
-              logToSystem(adminClient, "info", `تم حذف رسالة بنجاح`, { to, id: delete_message_id, url: attempt.url }, orgId, user.id);
+              logToSystem(adminClient, "info", `تم حذف رسالة بنجاح`, { to, id: delete_message_id, url: attempt.url }, orgId, profile.id);
               return;
             }
             const errData = await res.json().catch(() => ({}));
             // Try next if 404/405
             if (res.status === 404 || res.status === 405) continue;
-            logToSystem(adminClient, "error", `فشل حذف رسالة Evolution`, { error: errData, to, id: delete_message_id, url: attempt.url, status: res.status }, orgId, user.id);
+            logToSystem(adminClient, "error", `فشل حذف رسالة Evolution`, { error: errData, to, id: delete_message_id, url: attempt.url, status: res.status }, orgId, profile.id);
             return;
           } catch (e) {
             continue;
           }
         }
-        logToSystem(adminClient, "error", `فشل حذف رسالة — جميع المحاولات فشلت`, { to, id: delete_message_id }, orgId, user.id);
+        logToSystem(adminClient, "error", `فشل حذف رسالة — جميع المحاولات فشلت`, { to, id: delete_message_id }, orgId, profile.id);
       })();
 
       deletePromise;
@@ -322,7 +322,7 @@ serve(async (req) => {
           id: edit_message_id,
           remoteJid,
           endpoint: "/chat/updateMessage",
-        }, orgId, user.id);
+        }, orgId, profile.id);
         return json({ error: errData?.message || errData?.response?.message || "فشل تعديل الرسالة" }, editRes.status);
       }
 
@@ -331,7 +331,7 @@ serve(async (req) => {
       const editExistingMeta = (editMsgData?.metadata as Record<string, unknown>) || {};
       await adminClient.from("messages").update({
         content: message,
-        metadata: { ...editExistingMeta, is_edited: true, edited_at: new Date().toISOString(), edited_by: profile?.full_name || user.id },
+        metadata: { ...editExistingMeta, is_edited: true, edited_at: new Date().toISOString(), edited_by: profile?.full_name || profile.id },
       }).eq("wa_message_id", edit_message_id);
 
       return json({ success: true, edited: true });
@@ -342,7 +342,7 @@ serve(async (req) => {
     const EVOLUTION_URL = Deno.env.get("EVOLUTION_API_URL");
     const EVOLUTION_KEY = Deno.env.get("EVOLUTION_API_KEY");
     if (!EVOLUTION_URL || !EVOLUTION_KEY) {
-      logToSystem(adminClient, "error", "إعدادات Evolution API غير مكتملة", {}, orgId, user.id);
+      logToSystem(adminClient, "error", "إعدادات Evolution API غير مكتملة", {}, orgId, profile.id);
       return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
     }
 
@@ -356,7 +356,7 @@ serve(async (req) => {
 
     const config = configResult.data;
     if (!config || !config.evolution_instance_name) {
-      logToSystem(adminClient, "error", "واتساب ويب غير مربوط - فشل الإرسال", {}, orgId, user.id);
+      logToSystem(adminClient, "error", "واتساب ويب غير مربوط - فشل الإرسال", {}, orgId, profile.id);
       return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
     }
 
@@ -403,7 +403,7 @@ serve(async (req) => {
 
         logToSystem(adminClient, "info", `إرسال صوت Evolution إلى ${to}`, {
           to, instance: instanceName, media_type: "audio",
-        }, orgId, user.id);
+        }, orgId, profile.id);
 
         const response = await fetch(`${EVOLUTION_URL}/message/sendWhatsAppAudio/${instanceName}`, {
           method: "POST", headers: evoHeaders, body: JSON.stringify(audioBody),
@@ -413,7 +413,7 @@ serve(async (req) => {
         if (!response.ok) {
           logToSystem(adminClient, "error", `فشل إرسال صوت Evolution إلى ${to}`, {
             to, http_status: response.status, error: result?.message || "unknown",
-          }, orgId, user.id);
+          }, orgId, profile.id);
           return json({ error: result?.message || "فشل إرسال الصوت عبر Evolution" }, response.status);
         }
 
@@ -437,7 +437,7 @@ serve(async (req) => {
 
         logToSystem(adminClient, "info", `إرسال وسائط Evolution (${sentMessageType}) إلى ${to}`, {
           to, instance: instanceName, media_type: sentMessageType,
-        }, orgId, user.id);
+        }, orgId, profile.id);
 
         const response = await fetch(`${EVOLUTION_URL}/message/sendMedia/${instanceName}`, {
           method: "POST", headers: evoHeaders, body: JSON.stringify(mediaBody),
@@ -447,7 +447,7 @@ serve(async (req) => {
         if (!response.ok) {
           logToSystem(adminClient, "error", `فشل إرسال وسائط Evolution إلى ${to}`, {
             to, http_status: response.status, error: result?.message || "unknown",
-          }, orgId, user.id);
+          }, orgId, profile.id);
           return json({ error: result?.message || "فشل إرسال الوسائط عبر Evolution" }, response.status);
         }
 
@@ -465,7 +465,7 @@ serve(async (req) => {
 
       logToSystem(adminClient, "info", `إرسال تصويت Evolution إلى ${to}`, {
         to, instance: instanceName, poll_name,
-      }, orgId, user.id);
+      }, orgId, profile.id);
 
       const response = await fetch(`${EVOLUTION_URL}/message/sendPoll/${instanceName}`, {
         method: "POST", headers: evoHeaders, body: JSON.stringify(pollBody),
@@ -475,7 +475,7 @@ serve(async (req) => {
       if (!response.ok) {
         logToSystem(adminClient, "error", `فشل إرسال تصويت Evolution إلى ${to}`, {
           to, http_status: response.status, error: result?.message || "unknown",
-        }, orgId, user.id);
+        }, orgId, profile.id);
         return json({ error: result?.message || "فشل إرسال التصويت عبر Evolution" }, response.status);
       }
 
@@ -508,7 +508,7 @@ serve(async (req) => {
 
       logToSystem(adminClient, "info", `إرسال رسالة Evolution إلى ${to}`, {
         to, instance: instanceName, has_reply: !!reply_to,
-      }, orgId, user.id);
+      }, orgId, profile.id);
 
       const response = await fetch(`${EVOLUTION_URL}/message/sendText/${instanceName}`, {
         method: "POST", headers: evoHeaders, body: JSON.stringify(sendBody),
@@ -518,7 +518,7 @@ serve(async (req) => {
       if (!response.ok) {
         logToSystem(adminClient, "error", `فشل إرسال رسالة Evolution إلى ${to}`, {
           to, http_status: response.status, error: result?.message || "unknown", instance: instanceName,
-        }, orgId, user.id);
+        }, orgId, profile.id);
         return json({ error: result?.message || "فشل إرسال الرسالة عبر Evolution" }, response.status);
       }
 
@@ -527,7 +527,7 @@ serve(async (req) => {
 
     logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
       wa_message_id: waMessageId, type: sentMessageType,
-    }, orgId, user.id);
+    }, orgId, profile.id);
 
     // Create conversation if none exists
     if (!conversation) {
@@ -547,7 +547,7 @@ serve(async (req) => {
       conversation = newConv;
       logToSystem(adminClient, "info", `تم إنشاء محادثة جديدة (Evolution Send) للرقم ${to}`, {
         conversation_id: newConv?.id,
-      }, orgId, user.id);
+      }, orgId, profile.id);
     }
 
     if (conversation) {
