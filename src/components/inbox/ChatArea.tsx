@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2, Forward, Star, BarChart3, Timer as TimerIcon, Tag } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2, Forward, Star, BarChart3, Timer as TimerIcon, Tag, Ticket } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
@@ -27,6 +27,7 @@ import ScheduleMessagePopover from "./ScheduleMessagePopover";
 import ForwardMessageDialog from "./ForwardMessageDialog";
 import PollCreatorDialog from "./PollCreatorDialog";
 import ContactCardDialog from "./ContactCardDialog";
+import CreateTicketDialog from "@/components/tickets/CreateTicketDialog";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
@@ -906,6 +907,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showContactCard, setShowContactCard] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [showDisappearingMenu, setShowDisappearingMenu] = useState(false);
+  const [showTicketDialog, setShowTicketDialog] = useState(false);
+  const [selectingMessages, setSelectingMessages] = useState(false);
+  const [selectedMsgIds, setSelectedMsgIds] = useState<Set<string>>(new Set());
+  const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1823,6 +1828,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <DropdownMenuItem onClick={() => setShowFollowUp(true)}>
                   <Clock className="w-4 h-4 ml-2 text-primary" /> جدولة متابعة
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setShowTicketDialog(true);
+                  // Fetch agents for ticket dialog
+                  if (orgId) supabase.from("profiles").select("id, full_name").eq("org_id", orgId).eq("is_active", true).then(({data}) => setTicketAgents(data || []));
+                }}>
+                  <Ticket className="w-4 h-4 ml-2 text-primary" /> إنشاء تذكرة
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setSelectingMessages(!selectingMessages);
+                  setSelectedMsgIds(new Set());
+                }}>
+                  <Square className="w-4 h-4 ml-2 text-primary" /> {selectingMessages ? "إلغاء تحديد الرسائل" : "تحديد رسائل لتذكرة"}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowTransfer(true)} className="md:hidden">
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
@@ -2062,6 +2080,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             msg.sender === "agent" ? "justify-end" : msg.sender === "system" ? "justify-center" : "justify-start",
             !isFirstInGroup && "mt-0.5"
           )}>
+            {/* Selection checkbox */}
+            {selectingMessages && msg.sender !== "system" && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setSelectedMsgIds(prev => { const n = new Set(prev); n.has(msg.id) ? n.delete(msg.id) : n.add(msg.id); return n; }); }}
+                className={cn("shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center self-center mr-1 transition-colors",
+                  selectedMsgIds.has(msg.id) ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30 hover:border-primary/50"
+                )}
+              >
+                {selectedMsgIds.has(msg.id) && <Check className="w-3 h-3" />}
+              </button>
+            )}
             {msg.sender === "system" ? (
               <div className="bg-card border border-border/30 text-muted-foreground text-[11px] px-5 py-2 rounded-xl font-medium shadow-[0_1px_3px_rgba(0,0,0,0.04)] max-w-[85%] text-center leading-relaxed">
                 {msg.text}
@@ -2978,6 +3007,35 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           })()}
         </DialogContent>
       </Dialog>
+      {/* Message Selection Floating Bar */}
+      {selectingMessages && selectedMsgIds.size > 0 && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 bg-card border border-border shadow-lg rounded-xl px-4 py-2.5 flex items-center gap-3">
+          <span className="text-xs font-medium text-muted-foreground">{selectedMsgIds.size} رسالة محددة</span>
+          <Button size="sm" className="h-7 text-xs gap-1" onClick={() => {
+            if (orgId) supabase.from("profiles").select("id, full_name").eq("org_id", orgId).eq("is_active", true).then(({data}) => setTicketAgents(data || []));
+            setShowTicketDialog(true);
+          }}>
+            <Ticket className="w-3 h-3" /> إنشاء تذكرة
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setSelectingMessages(false); setSelectedMsgIds(new Set()); }}>
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
+      )}
+
+      {/* Create Ticket Dialog */}
+      <CreateTicketDialog
+        open={showTicketDialog}
+        onOpenChange={(open) => { setShowTicketDialog(open); if (!open) { setSelectingMessages(false); setSelectedMsgIds(new Set()); } }}
+        onCreated={() => { toast.success("تم إنشاء التذكرة"); setSelectingMessages(false); setSelectedMsgIds(new Set()); }}
+        agents={ticketAgents}
+        conversationId={conversation.id}
+        customerPhone={conversation.customerPhone}
+        customerName={conversation.customerName}
+        messageIds={Array.from(selectedMsgIds)}
+        messagePreviews={messages.filter(m => selectedMsgIds.has(m.id)).map(m => ({ sender: m.sender, text: m.text, timestamp: m.timestamp }))}
+        defaultDescription={selectedMsgIds.size > 0 ? `تذكرة من محادثة: ${conversation.customerName}` : undefined}
+      />
     </div>
   );
 };

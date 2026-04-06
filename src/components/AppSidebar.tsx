@@ -4,7 +4,7 @@ import {
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
   Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock, ClipboardList,
-  Workflow, Send, Warehouse, DollarSign, Package, ClipboardCheck
+  Workflow, Send, Warehouse, DollarSign, Package, ClipboardCheck, Ticket
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
       { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
       { label: "صندوق الوارد", icon: MessageSquare, path: "/inbox", emoji: "💬" },
       { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
+      { label: "التذاكر", icon: Ticket, path: "/tickets", emoji: "🎫" },
     ],
   },
   {

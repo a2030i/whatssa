@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Tag, Clock, Mail, Phone, StickyNote, MessageSquare, User, Users, Building2, ChevronDown, ChevronUp, Edit3, Plus, X, ExternalLink, Copy, Package, CreditCard, MapPin, Truck, ShoppingBag, UserPlus, UserMinus, LogOut, Link2, Crown, Shield, Pin, Archive, Lock, Unlock, MoreVertical, ShieldCheck, ShieldOff, BarChart3 } from "lucide-react";
+import { Tag, Clock, Mail, Phone, StickyNote, MessageSquare, User, Users, Building2, ChevronDown, ChevronUp, Edit3, Plus, X, ExternalLink, Copy, Package, CreditCard, MapPin, Truck, ShoppingBag, UserPlus, UserMinus, LogOut, Link2, Crown, Shield, Pin, Archive, Lock, Unlock, MoreVertical, ShieldCheck, ShieldOff, BarChart3, Ticket } from "lucide-react";
 import { Conversation } from "@/data/mockData";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import InternalNotes from "./InternalNotes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import TicketsTab from "./TicketsTab";
 
 interface CustomerInfoPanelProps {
   conversation: Conversation;
@@ -455,7 +456,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   return (
     <div className={isMobileSheet ? "flex flex-col overflow-y-auto bg-card" : "w-[280px] h-full border-r border-border bg-card hidden xl:flex flex-col overflow-y-auto"}>
       <Tabs defaultValue={isGroup ? "members" : "info"} className="flex flex-col">
-        <TabsList className={`mx-2 mt-2 mb-0 grid shrink-0 ${isGroup ? (isEcommerce ? "grid-cols-4" : "grid-cols-3") : (isEcommerce ? "grid-cols-3" : "grid-cols-2")}`}>
+        <TabsList className={`mx-2 mt-2 mb-0 grid shrink-0 ${isGroup ? (isEcommerce ? "grid-cols-5" : "grid-cols-4") : (isEcommerce ? "grid-cols-4" : "grid-cols-3")}`}>
           <TabsTrigger value="info" className="text-xs">معلومات</TabsTrigger>
           {isGroup && (
             <TabsTrigger value="members" className="text-xs gap-1">
@@ -473,6 +474,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
               )}
             </TabsTrigger>
           )}
+          <TabsTrigger value="tickets" className="text-xs">تذاكر</TabsTrigger>
           <TabsTrigger value="notes" className="text-xs">ملاحظات</TabsTrigger>
         </TabsList>
 
@@ -937,6 +939,11 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* Tickets Tab */}
+        <TabsContent value="tickets" className="mt-0">
+          <TicketsTab conversationId={conversation.id} customerPhone={conversation.customerPhone} orgId={orgId} />
         </TabsContent>
 
         {/* Notes Tab */}
