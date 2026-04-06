@@ -257,7 +257,7 @@ const EmailConfigSection = () => {
         toast.success("تم تحديث إعدادات البريد");
       } else {
         const { data: res, error } = await invokeCloud("email-config-manage", {
-          body: { action: "create", payload },
+          body: { action: "create", payload, org_id: orgId },
         });
         if (error) throw error;
         if (res?.error) throw new Error(res.error + (res.details ? ` — ${res.details}` : ""));
