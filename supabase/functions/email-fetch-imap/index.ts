@@ -597,7 +597,7 @@ async function fetchEmailsForConfig(
         const displayContent = cleanBody.substring(0, 10000) || subject || "(بدون محتوى)";
 
         // Insert message
-        const { error: msgError } = await admin.from("messages").insert({
+        const { data: insertedMsg, error: msgError } = await admin.from("messages").insert({
           conversation_id: convId,
           sender: "customer",
           content: displayContent,
@@ -616,11 +616,35 @@ async function fetchEmailsForConfig(
             email_in_reply_to: inReplyTo || undefined,
             email_references: refsRaw || undefined,
           },
-        });
+        }).select("id").single();
 
         if (msgError) {
           errors.push(`Msg save failed: ${msgError.message}`);
           continue;
+        }
+
+        // Insert into email_message_details (dedicated table)
+        if (insertedMsg?.id) {
+          try {
+            await admin.from("email_message_details").insert({
+              message_id: insertedMsg.id,
+              conversation_id: convId,
+              org_id: orgId,
+              email_subject: subject,
+              email_from: senderEmail,
+              email_from_name: senderName,
+              email_to: toDecoded || config.email_address,
+              email_cc: ccDecoded || null,
+              email_message_id: emailMessageId,
+              email_in_reply_to: inReplyTo || null,
+              email_references: refsRaw || null,
+              email_attachments: [],
+              direction: "inbound",
+              created_at: date,
+            });
+          } catch (detailErr: any) {
+            console.warn("[email-fetch] email_message_details insert skipped:", detailErr.message);
+          }
         }
 
         await admin.from("conversations").update({

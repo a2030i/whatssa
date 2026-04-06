@@ -27,6 +27,15 @@ async function getCallerProfile(authHeader: string | null) {
   return profile;
 }
 
+/** Try to insert into email_message_details; silently skip if table doesn't exist */
+async function insertEmailDetails(admin: any, details: Record<string, any>) {
+  try {
+    await admin.from("email_message_details").insert(details);
+  } catch (e: any) {
+    console.warn("[email-send] email_message_details insert skipped:", e.message);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -74,29 +83,51 @@ Deno.serve(async (req) => {
     let threadSubject = subject;
 
     if (conversation_id) {
-      // Find the latest customer message with email_message_id in metadata
-      const { data: threadMsgs } = await admin
-        .from("messages")
-        .select("metadata, wa_message_id")
+      // Try email_message_details first, fallback to metadata
+      const { data: detailMsgs } = await admin
+        .from("email_message_details")
+        .select("email_message_id, email_references, email_subject")
         .eq("conversation_id", conversation_id)
-        .eq("sender", "customer")
+        .eq("direction", "inbound")
         .order("created_at", { ascending: false })
         .limit(5);
 
-      if (threadMsgs && threadMsgs.length > 0) {
-        for (const msg of threadMsgs) {
-          const meta = msg.metadata as Record<string, any> | null;
-          // wa_message_id stores the email Message-ID for email conversations
-          const msgId = meta?.email_message_id || msg.wa_message_id;
-          if (msgId) {
-            inReplyTo = msgId.startsWith("<") ? msgId : `<${msgId}>`;
-            // Build references chain
-            const existingRefs = meta?.email_references || "";
-            references = existingRefs ? `${existingRefs} ${inReplyTo}` : inReplyTo;
-            // Use original subject with Re: prefix
-            const origSubject = meta?.email_subject || subject;
+      let found = false;
+      if (detailMsgs && detailMsgs.length > 0) {
+        for (const d of detailMsgs) {
+          if (d.email_message_id) {
+            inReplyTo = d.email_message_id.startsWith("<") ? d.email_message_id : `<${d.email_message_id}>`;
+            references = d.email_references ? `${d.email_references} ${inReplyTo}` : inReplyTo;
+            const origSubject = d.email_subject || subject;
             threadSubject = origSubject.startsWith("Re:") ? origSubject : `Re: ${origSubject}`;
+            found = true;
             break;
+          }
+        }
+      }
+
+      // Fallback to metadata for backwards compatibility
+      if (!found) {
+        const { data: threadMsgs } = await admin
+          .from("messages")
+          .select("metadata, wa_message_id")
+          .eq("conversation_id", conversation_id)
+          .eq("sender", "customer")
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        if (threadMsgs && threadMsgs.length > 0) {
+          for (const msg of threadMsgs) {
+            const meta = msg.metadata as Record<string, any> | null;
+            const msgId = meta?.email_message_id || msg.wa_message_id;
+            if (msgId) {
+              inReplyTo = msgId.startsWith("<") ? msgId : `<${msgId}>`;
+              const existingRefs = meta?.email_references || "";
+              references = existingRefs ? `${existingRefs} ${inReplyTo}` : inReplyTo;
+              const origSubject = meta?.email_subject || subject;
+              threadSubject = origSubject.startsWith("Re:") ? origSubject : `Re: ${origSubject}`;
+              break;
+            }
           }
         }
       }
@@ -129,6 +160,10 @@ Deno.serve(async (req) => {
       customHeaders["References"] = references || inReplyTo;
     }
 
+    const attachmentNames: string[] = (attachments && Array.isArray(attachments))
+      ? attachments.map((a: any) => a.filename)
+      : [];
+
     const sendOptions: any = {
       from: config.email_address,
       to,
@@ -137,17 +172,12 @@ Deno.serve(async (req) => {
       html: emailBody,
       headers: customHeaders,
     };
-    if (cc) {
-      sendOptions.cc = cc;
-    }
-    if (bcc) {
-      sendOptions.bcc = bcc;
-    }
+    if (cc) sendOptions.cc = cc;
+    if (bcc) sendOptions.bcc = bcc;
 
     // Handle attachments
     if (attachments && Array.isArray(attachments) && attachments.length > 0) {
       sendOptions.attachments = attachments.map((att: any) => {
-        // Convert base64 string to Uint8Array for denomailer
         const binaryStr = atob(att.content);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) {
@@ -163,7 +193,6 @@ Deno.serve(async (req) => {
     }
 
     await client.send(sendOptions);
-
     await client.close();
     console.log(`[email-send] Email sent successfully to ${to} (thread: ${inReplyTo ? "reply" : "new"})`);
 
@@ -210,23 +239,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Save sent message
+    // Save sent message + email details
     if (convId) {
       const plainBody = emailBody.replace(/<[^>]*>/g, "").trim();
       const subjectNorm = threadSubject.replace(/^Re:\s*/i, "").trim();
-      // Avoid duplicating text when subject equals body
-      const displayContent = subjectNorm === plainBody
-        ? plainBody
-        : `📧 ${threadSubject}\n\n${plainBody}`;
 
-      const attachmentNames = (attachments && Array.isArray(attachments))
-        ? attachments.map((a: any) => a.filename)
-        : [];
-      const displayContent = attachmentNames.length > 0
-        ? `📎 ${attachmentNames.join(", ")}${plainBody ? `\n\n${subjectNorm === plainBody ? plainBody : `📧 ${threadSubject}\n\n${plainBody}`}` : ""}`
-        : (subjectNorm === plainBody ? plainBody : `📧 ${threadSubject}\n\n${plainBody}`);
+      let displayContent: string;
+      if (attachmentNames.length > 0) {
+        const bodyPart = subjectNorm === plainBody ? plainBody : `📧 ${threadSubject}\n\n${plainBody}`;
+        displayContent = `📎 ${attachmentNames.join(", ")}${plainBody ? `\n\n${bodyPart}` : ""}`;
+      } else {
+        displayContent = subjectNorm === plainBody ? plainBody : `📧 ${threadSubject}\n\n${plainBody}`;
+      }
 
-      await admin.from("messages").insert({
+      const { data: insertedMsg } = await admin.from("messages").insert({
         conversation_id: convId,
         sender: "agent",
         content: displayContent,
@@ -246,7 +272,28 @@ Deno.serve(async (req) => {
           sent_by: profile.id,
           sent_by_name: profile.full_name,
         },
-      });
+      }).select("id").single();
+
+      // Insert into email_message_details table
+      if (insertedMsg?.id) {
+        await insertEmailDetails(admin, {
+          message_id: insertedMsg.id,
+          conversation_id: convId,
+          org_id: profile.org_id,
+          email_subject: threadSubject,
+          email_from: config.email_address,
+          email_to: to,
+          email_cc: cc || null,
+          email_bcc: bcc || null,
+          email_message_id: outgoingMessageId,
+          email_in_reply_to: inReplyTo || null,
+          email_references: references || null,
+          email_attachments: attachmentNames.length > 0 ? attachmentNames.map(n => ({ filename: n })) : [],
+          sent_by: profile.id,
+          sent_by_name: profile.full_name,
+          direction: "outbound",
+        });
+      }
 
       await admin.from("conversations").update({
         last_message: `📧 ${threadSubject}`,

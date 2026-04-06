@@ -69,9 +69,13 @@ export interface MessageContact {
 export interface EmailMeta {
   subject?: string;
   from?: string;
+  fromName?: string;
   to?: string;
   cc?: string;
+  bcc?: string;
   messageId?: string;
+  attachments?: Array<{ filename: string }>;
+  direction?: "inbound" | "outbound";
 }
 
 export interface Message {
