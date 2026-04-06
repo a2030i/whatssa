@@ -370,8 +370,11 @@ const IntegrationsPage = () => {
     setIsLoading(true);
     setErrorMessage("");
 
+    console.log("[Embedded Signup] Starting FB.login with config_id:", metaConfigId, "appId:", metaAppId);
+
     FB.login(
       (response: any) => {
+        console.log("[Embedded Signup] FB.login response:", JSON.stringify(response));
         if (response.authResponse) {
           const code = response.authResponse.code;
           const token = response.authResponse.accessToken;
@@ -383,7 +386,9 @@ const IntegrationsPage = () => {
             handleError("لم يتم الحصول على بيانات المصادقة");
           }
         } else {
-          handleError("تم إلغاء عملية الربط");
+          // Log the full response for debugging
+          console.error("[Embedded Signup] No authResponse. Status:", response?.status, "Full:", JSON.stringify(response));
+          handleError("تم إلغاء عملية الربط أو حدث خطأ في نافذة ميتا");
         }
       },
       {
@@ -391,13 +396,11 @@ const IntegrationsPage = () => {
         response_type: "code",
         override_default_response_type: true,
         extras: {
-          feature: "whatsapp_embedded_signup",
-          sessionInfoVersion: 2,
-          ...(onboardingMode === "migrate_provider" ? { setup: { solutionID: undefined } } : {}),
+          setup: {},
         },
       }
     );
-  }, [metaConfigId]);
+  }, [metaConfigId, metaAppId, onboardingMode]);
 
   const handleCodeExchange = async (code: string) => {
     try {
