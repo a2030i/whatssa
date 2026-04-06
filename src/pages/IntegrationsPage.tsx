@@ -1288,13 +1288,14 @@ const IntegrationsPage = () => {
                 {/* Individual connected unofficial numbers */}
                 {connectedUnofficialConfigs.map((config) => {
                   const isExpanded = expandedChannelBadgeId === config.id;
+                  const isActuallyConnected = config.is_connected && (config.registration_status === "connected" || config.evolution_instance_status === "connected");
                   return (
                     <div key={config.id} className="w-full">
                       <button
                         onClick={() => setExpandedChannelBadgeId(isExpanded ? null : config.id)}
                         className="w-full flex items-center justify-center gap-1.5"
                       >
-                        <Badge className="text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer bg-warning/10 text-warning">
+                        <Badge className={cn("text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer", isActuallyConnected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
                           <QrCode className="w-2.5 h-2.5" />
                           {config.channel_label || config.display_phone || config.business_name || "واتساب ويب"}
                         </Badge>
@@ -1302,11 +1303,14 @@ const IntegrationsPage = () => {
 
                       {isExpanded && (
                         <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-2.5 animate-fade-in">
-                          {/* Summary info — like email */}
+                          {/* Summary info */}
                           <div className="text-[11px] space-y-1">
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground">الحالة:</span>
-                              <span className="text-success font-medium">✅ متصل</span>
+                              {isActuallyConnected 
+                                ? <span className="text-success font-medium">✅ متصل</span>
+                                : <span className="text-destructive font-medium">❌ منفصل</span>
+                              }
                             </div>
                             {config.display_phone && (
                               <div className="flex items-center justify-between">
@@ -1318,14 +1322,44 @@ const IntegrationsPage = () => {
                               <span className="text-muted-foreground">النوع:</span>
                               <span className="text-warning font-medium">غير رسمي (QR)</span>
                             </div>
+                            {config.registration_error && !isActuallyConnected && (
+                              <div className="text-[10px] text-destructive/80 bg-destructive/5 rounded p-1.5 mt-1">
+                                {config.registration_error}
+                              </div>
+                            )}
                           </div>
 
-                          {/* Action buttons — like email */}
+                          {/* Reconnect QR display */}
+                          {reconnectingId === config.id && reconnectQr && (
+                            <div className="flex flex-col items-center gap-2 p-3 bg-background rounded-lg border border-border">
+                              <p className="text-[11px] text-muted-foreground">امسح رمز QR من واتساب لإعادة الاتصال</p>
+                              <img src={reconnectQr} alt="QR Code" className="w-48 h-48 rounded" />
+                              <Button size="sm" variant="ghost" className="text-[10px] h-7" onClick={() => { setReconnectingId(null); setReconnectQr(null); loadConfigs(true); }}>
+                                <X className="w-3 h-3 mr-1" /> إغلاق
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Action buttons */}
                           <div className="flex gap-2 justify-end flex-wrap">
                             <Button size="sm" variant="outline" onClick={() => checkUnofficialStatus(config)} disabled={unofficialCheckingStatus === config.id} className="text-[10px] h-7 px-2.5 gap-1">
                               {unofficialCheckingStatus === config.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                               تحقق
                             </Button>
+                            {/* Reconnect button — generates new QR without deleting */}
+                            {!isActuallyConnected && (
+                              <Button size="sm" variant="outline" onClick={() => reconnectUnofficial(config)} disabled={reconnectingId === config.id} className="text-[10px] h-7 px-2.5 gap-1 text-success border-success/30">
+                                {reconnectingId === config.id && !reconnectQr ? <Loader2 className="w-3 h-3 animate-spin" /> : <QrCode className="w-3 h-3" />}
+                                إعادة اتصال
+                              </Button>
+                            )}
+                            {/* Sync missed messages */}
+                            {isActuallyConnected && (
+                              <Button size="sm" variant="outline" onClick={() => syncMissedMessages(config)} disabled={syncingMessagesId === config.id} className="text-[10px] h-7 px-2.5 gap-1">
+                                {syncingMessagesId === config.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowLeftRight className="w-3 h-3" />}
+                                مزامنة الرسائل
+                              </Button>
+                            )}
                             <Button size="sm" variant="ghost" onClick={() => setExpandedFullSettingsId(expandedFullSettingsId === config.id ? null : config.id)} className="text-[10px] h-7 px-2 gap-1">
                               <Settings className="w-3 h-3" /> إعدادات
                             </Button>
