@@ -265,17 +265,18 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
 
 const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants, onCopyLink, onForward, onStar, translationText }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }>; onCopyLink?: (msgId: string) => void; onForward?: (msg: Message) => void; onStar?: (msg: Message) => void; translationText?: string }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
+  const isEmailConversation = conversation.channelType === "email" || conversation.conversationType === "email";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
-    onSwipe: () => canReply && onReply(msg),
+    onSwipe: () => canReply && !isEmailConversation && onReply(msg),
     direction: swipeDirection,
     threshold: 60,
   });
 
-  // Can edit agent text messages within 15 minutes
-  const canEdit = msg.sender === "agent" && msg.type === "text" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
+  // Can edit agent text messages within 15 minutes (not for email)
+  const canEdit = !isEmailConversation && msg.sender === "agent" && msg.type === "text" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
     (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
-  const canDelete = msg.sender === "agent" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
+  const canDelete = !isEmailConversation && msg.sender === "agent" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
     (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -334,7 +335,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
     } catch { toast.error("فشل الترجمة"); }
   };
 
-  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (msg.sender === "customer" && msg.type === "text") || (msg.waMessageId && conversation.channelType === "evolution"));
+  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (!isEmailConversation && msg.sender === "customer" && msg.type === "text") || (!isEmailConversation && msg.waMessageId && conversation.channelType === "evolution"));
 
   return (
     <div
@@ -362,7 +363,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               <Languages className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
-          {msg.waMessageId && conversation.channelType === "evolution" && (
+          {!isEmailConversation && msg.waMessageId && conversation.channelType === "evolution" && (
             <Popover open={reactionPickerOpen} onOpenChange={setReactionPickerOpen}>
               <PopoverTrigger asChild>
                 <button
@@ -399,14 +400,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               <Trash2 className="w-3.5 h-3.5 text-destructive" />
             </button>
            )}
-          {/* Forward button */}
-          {onForward && msg.type === "text" && !msg.isDeleted && (
+          {!isEmailConversation && onForward && msg.type === "text" && !msg.isDeleted && (
             <button onClick={() => onForward(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="إعادة توجيه">
               <Forward className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
-          {/* Star button */}
-          {onStar && !msg.isDeleted && (
+          {!isEmailConversation && onStar && !msg.isDeleted && (
             <button onClick={() => onStar(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="تمييز">
               <Star className={cn("w-3.5 h-3.5", (msg as any).isStarred ? "text-amber-500 fill-amber-500" : "text-muted-foreground")} />
             </button>
@@ -442,12 +441,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   <Link2 className="w-3.5 h-3.5" /> نسخ رابط الرسالة
                 </DropdownMenuItem>
                )}
-              {onForward && msg.type === "text" && !msg.isDeleted && (
+              {!isEmailConversation && onForward && msg.type === "text" && !msg.isDeleted && (
                 <DropdownMenuItem onClick={() => onForward(msg)} className="text-xs gap-2">
                   <Forward className="w-3.5 h-3.5" /> إعادة توجيه
                 </DropdownMenuItem>
               )}
-              {onStar && !msg.isDeleted && (
+              {!isEmailConversation && onStar && !msg.isDeleted && (
                 <DropdownMenuItem onClick={() => onStar(msg)} className="text-xs gap-2">
                   <Star className={cn("w-3.5 h-3.5", (msg as any).isStarred ? "text-amber-500 fill-amber-500" : "")} /> {(msg as any).isStarred ? "إلغاء التمييز" : "تمييز ⭐"}
                 </DropdownMenuItem>
@@ -457,7 +456,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   <Languages className="w-3.5 h-3.5" /> ترجمة
                 </DropdownMenuItem>
               )}
-              {msg.waMessageId && conversation.channelType === "evolution" && (
+              {!isEmailConversation && msg.waMessageId && conversation.channelType === "evolution" && (
                 <>
                   <DropdownMenuSeparator />
                   <div className="px-2 py-1.5">
