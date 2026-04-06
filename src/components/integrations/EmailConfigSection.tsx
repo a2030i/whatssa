@@ -169,13 +169,30 @@ const EmailConfigSection = () => {
     imap_port: PROVIDERS.gmail.imap_port,
     is_active: true,
     sync_mode: "new_only" as string,
+    label: "" as string,
+    dedicated_agent_id: "" as string,
+    dedicated_team_id: "" as string,
   });
   const [editId, setEditId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [teams, setTeams] = useState<TeamOption[]>([]);
+  const [agents, setAgents] = useState<AgentOption[]>([]);
 
   useEffect(() => {
-    if (orgId) loadConfigs();
+    if (orgId) {
+      loadConfigs();
+      loadTeamsAndAgents();
+    }
   }, [orgId]);
+
+  const loadTeamsAndAgents = async () => {
+    const [{ data: t }, { data: a }] = await Promise.all([
+      supabase.from("teams").select("id, name").eq("org_id", orgId!),
+      supabase.from("profiles").select("id, full_name").eq("org_id", orgId!).eq("is_active", true),
+    ]);
+    setTeams((t as TeamOption[]) || []);
+    setAgents((a as AgentOption[]) || []);
+  };
 
   const loadConfigs = async () => {
     setLoading(true);
