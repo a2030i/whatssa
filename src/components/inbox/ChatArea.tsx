@@ -2773,9 +2773,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   <Send className="w-4 h-4 text-primary-foreground" style={{ transform: "scaleX(-1)" }} />
                 </button>
               ) : !isNoteMode ? (
-                <button onClick={() => setIsRecording(true)} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
-                  <Mic className="w-4 h-4 text-primary-foreground" />
-                </button>
+                isEmailChannel ? (
+                  <button disabled className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-muted">
+                    <Send className="w-4 h-4 text-muted-foreground" style={{ transform: "scaleX(-1)" }} />
+                  </button>
+                ) : (
+                  <button onClick={() => setIsRecording(true)} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 transition-all">
+                    <Mic className="w-4 h-4 text-primary-foreground" />
+                  </button>
+                )
               ) : (
                 <button disabled className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-muted">
                   <Send className="w-4 h-4 text-muted-foreground" style={{ transform: "scaleX(-1)" }} />
