@@ -123,6 +123,7 @@ const ConversationSettingsPage = () => {
       setDefaultStrategy(data.default_assignment_strategy || "round_robin");
       setDefaultMaxConv(data.default_max_conversations ? String(data.default_max_conversations) : "");
       const settings = (data.settings as Record<string, any>) || {};
+      setSmartReassignMinutes(settings.smart_reassign_minutes ? String(settings.smart_reassign_minutes) : "");
       setOohSettings(prev => ({
         ...prev,
         global: { enabled: settings.out_of_hours_enabled || false, message: settings.out_of_hours_message || defaultOoh.message, work_start: settings.work_start || "09:00", work_end: settings.work_end || "17:00", work_days: Array.isArray(settings.work_days) ? settings.work_days : [0, 1, 2, 3, 4] }
