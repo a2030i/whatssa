@@ -1,14 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { ImapClient } from "jsr:@bobbyg603/deno-imap@0.2.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-/**
- * Decode RFC 2047 MIME encoded-words in email headers.
- */
+/* ─── MIME / Decode helpers ─── */
+
 function decodeMimeWords(text: string | null | undefined): string {
   if (!text) return "";
   return text.replace(
@@ -24,9 +22,7 @@ function decodeMimeWords(text: string | null | undefined): string {
             .replace(/=([0-9A-Fa-f]{2})/g, (_: string, hex: string) =>
               String.fromCharCode(parseInt(hex, 16))
             );
-          const bytes = new Uint8Array(
-            [...qpDecoded].map((c) => c.charCodeAt(0))
-          );
+          const bytes = new Uint8Array([...qpDecoded].map((c) => c.charCodeAt(0)));
           return new TextDecoder(charset).decode(bytes);
         }
       } catch {
@@ -36,20 +32,14 @@ function decodeMimeWords(text: string | null | undefined): string {
   );
 }
 
-/**
- * Decode Quoted-Printable body content
- */
 function decodeQuotedPrintable(text: string): string {
   return text
-    .replace(/=\r?\n/g, "") // soft line breaks
+    .replace(/=\r?\n/g, "")
     .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) =>
       String.fromCharCode(parseInt(hex, 16))
     );
 }
 
-/**
- * Decode Base64 body content with charset support
- */
 function decodeBase64Body(text: string, charset = "utf-8"): string {
   try {
     const clean = text.replace(/\r?\n/g, "").trim();
@@ -60,9 +50,6 @@ function decodeBase64Body(text: string, charset = "utf-8"): string {
   }
 }
 
-/**
- * Extract plain text from HTML
- */
 function htmlToText(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, "\n")
@@ -81,64 +68,6 @@ function htmlToText(html: string): string {
     .trim();
 }
 
-/**
- * Extract readable body from all possible msg shapes
- */
-function extractBody(msg: any): string {
-  // 1. Try msg.body
-  if (msg.body) {
-    if (typeof msg.body === "string" && msg.body.trim().length > 0) {
-      return msg.body;
-    }
-    if (msg.body.text && typeof msg.body.text === "string" && msg.body.text.trim().length > 0) {
-      return msg.body.text;
-    }
-    if (msg.body.html && typeof msg.body.html === "string") {
-      return htmlToText(msg.body.html);
-    }
-  }
-
-  // 2. Try msg.bodyParts (some IMAP libs return parts array)
-  if (msg.bodyParts && Array.isArray(msg.bodyParts)) {
-    for (const part of msg.bodyParts) {
-      if (part.type === "text/plain" && part.content) {
-        return typeof part.content === "string" ? part.content : new TextDecoder().decode(part.content);
-      }
-    }
-    for (const part of msg.bodyParts) {
-      if (part.type === "text/html" && part.content) {
-        const html = typeof part.content === "string" ? part.content : new TextDecoder().decode(part.content);
-        return htmlToText(html);
-      }
-    }
-  }
-
-  // 3. Try raw body sections (BODY[1], BODY[TEXT], etc.)
-  for (const key of Object.keys(msg)) {
-    if (key.startsWith("body[") || key.startsWith("BODY[")) {
-      const val = msg[key];
-      if (typeof val === "string" && val.trim().length > 0) {
-        // Check if it looks like HTML
-        if (val.includes("<html") || val.includes("<body") || val.includes("<div")) {
-          return htmlToText(val);
-        }
-        return val;
-      }
-      if (val instanceof Uint8Array) {
-        return new TextDecoder().decode(val);
-      }
-    }
-  }
-
-  // 4. Try msg.text directly
-  if (msg.text && typeof msg.text === "string") return msg.text;
-
-  return "";
-}
-
-/**
- * Normalize subject for threading - strip Re:/Fwd:/[tags]
- */
 function normalizeSubject(subject: string): string {
   return subject
     .replace(/^(re|fwd|fw)\s*:\s*/gi, "")
@@ -147,9 +76,6 @@ function normalizeSubject(subject: string): string {
     .toLowerCase();
 }
 
-/**
- * Clean reply/quoted content from email body
- */
 function cleanQuotedContent(body: string): string {
   return body
     .replace(/^>.*$/gm, "")
@@ -160,19 +86,241 @@ function cleanQuotedContent(body: string): string {
     .trim();
 }
 
+/* ─── Raw IMAP client over TLS ─── */
+
+class RawImapClient {
+  private conn!: Deno.TlsConn;
+  private reader!: ReadableStreamDefaultReader<Uint8Array>;
+  private buffer = "";
+  private tagCounter = 0;
+
+  constructor(
+    private host: string,
+    private port: number,
+    private username: string,
+    private password: string,
+  ) {}
+
+  private nextTag(): string {
+    return `A${++this.tagCounter}`;
+  }
+
+  private async readLine(): Promise<string> {
+    while (!this.buffer.includes("\r\n")) {
+      const { value, done } = await this.reader.read();
+      if (done) throw new Error("Connection closed");
+      this.buffer += new TextDecoder().decode(value);
+    }
+    const idx = this.buffer.indexOf("\r\n");
+    const line = this.buffer.substring(0, idx);
+    this.buffer = this.buffer.substring(idx + 2);
+    return line;
+  }
+
+  private async readUntilTag(tag: string): Promise<string[]> {
+    const lines: string[] = [];
+    const timeout = 30000;
+    const start = Date.now();
+    while (true) {
+      if (Date.now() - start > timeout) throw new Error("IMAP timeout");
+      const line = await this.readLine();
+      lines.push(line);
+      if (line.startsWith(`${tag} `)) {
+        if (!line.startsWith(`${tag} OK`)) {
+          throw new Error(`IMAP error: ${line}`);
+        }
+        break;
+      }
+    }
+    return lines;
+  }
+
+  private async sendCommand(cmd: string): Promise<string[]> {
+    const tag = this.nextTag();
+    const encoder = new TextEncoder();
+    await this.conn.write(encoder.encode(`${tag} ${cmd}\r\n`));
+    return await this.readUntilTag(tag);
+  }
+
+  async connect(): Promise<void> {
+    this.conn = await Deno.connectTls({ hostname: this.host, port: this.port });
+    this.reader = this.conn.readable.getReader();
+    // Read server greeting
+    await this.readLine();
+  }
+
+  async login(): Promise<void> {
+    // Escape username/password for IMAP LOGIN
+    const escUser = `"${this.username.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+    const escPass = `"${this.password.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+    await this.sendCommand(`LOGIN ${escUser} ${escPass}`);
+  }
+
+  async selectInbox(): Promise<number> {
+    const lines = await this.sendCommand("SELECT INBOX");
+    let exists = 0;
+    for (const line of lines) {
+      const m = line.match(/\*\s+(\d+)\s+EXISTS/i);
+      if (m) exists = parseInt(m[1]);
+    }
+    return exists;
+  }
+
+  async searchUnseen(): Promise<number[]> {
+    const lines = await this.sendCommand("SEARCH UNSEEN");
+    for (const line of lines) {
+      if (line.startsWith("* SEARCH")) {
+        const ids = line.replace("* SEARCH", "").trim().split(/\s+/).filter(Boolean).map(Number);
+        return ids;
+      }
+    }
+    return [];
+  }
+
+  async fetchMessages(seqSet: string): Promise<any[]> {
+    const tag = this.nextTag();
+    const cmd = `${tag} FETCH ${seqSet} (BODY[HEADER.FIELDS (Subject From To Date Message-ID In-Reply-To References Content-Type Content-Transfer-Encoding)] BODY[TEXT])\r\n`;
+    const encoder = new TextEncoder();
+    await this.conn.write(encoder.encode(cmd));
+
+    // Read all response data until we get the tag completion
+    const messages: any[] = [];
+    let currentMsg: any = null;
+    let collectingHeader = false;
+    let collectingBody = false;
+    let headerData = "";
+    let bodyData = "";
+    let bodyBytesRemaining = 0;
+
+    const timeout = 60000;
+    const start = Date.now();
+
+    while (true) {
+      if (Date.now() - start > timeout) throw new Error("IMAP fetch timeout");
+
+      const line = await this.readLine();
+
+      // Tag completion
+      if (line.startsWith(`${tag} `)) {
+        if (currentMsg) {
+          currentMsg.headers = this.parseHeaders(headerData);
+          currentMsg.bodyText = bodyData;
+          messages.push(currentMsg);
+        }
+        if (!line.startsWith(`${tag} OK`)) {
+          throw new Error(`IMAP fetch error: ${line}`);
+        }
+        break;
+      }
+
+      // Start of a new FETCH response
+      const fetchMatch = line.match(/^\*\s+(\d+)\s+FETCH\s+\(/i);
+      if (fetchMatch) {
+        if (currentMsg) {
+          currentMsg.headers = this.parseHeaders(headerData);
+          currentMsg.bodyText = bodyData;
+          messages.push(currentMsg);
+        }
+        currentMsg = { seq: parseInt(fetchMatch[1]) };
+        headerData = "";
+        bodyData = "";
+        collectingHeader = false;
+        collectingBody = false;
+      }
+
+      // Detect literal start {N}
+      const literalMatch = line.match(/\{(\d+)\}$/);
+      if (literalMatch) {
+        const size = parseInt(literalMatch[1]);
+        if (line.includes("HEADER.FIELDS")) {
+          collectingHeader = true;
+          collectingBody = false;
+          bodyBytesRemaining = size;
+          headerData = "";
+        } else if (line.includes("BODY[TEXT]") || line.includes("BODY[1]")) {
+          collectingBody = true;
+          collectingHeader = false;
+          bodyBytesRemaining = size;
+          bodyData = "";
+        }
+        continue;
+      }
+
+      if (collectingHeader) {
+        if (line === "" || line === ")") {
+          collectingHeader = false;
+        } else {
+          headerData += line + "\n";
+        }
+      } else if (collectingBody) {
+        if (line === ")") {
+          collectingBody = false;
+        } else {
+          bodyData += line + "\n";
+        }
+      }
+    }
+
+    return messages;
+  }
+
+  private parseHeaders(raw: string): Record<string, string> {
+    const headers: Record<string, string> = {};
+    const lines = raw.split(/\r?\n/);
+    let currentKey = "";
+    let currentValue = "";
+
+    for (const line of lines) {
+      if (line.match(/^\s+/) && currentKey) {
+        // Continuation of previous header
+        currentValue += " " + line.trim();
+      } else {
+        if (currentKey) {
+          headers[currentKey.toLowerCase()] = currentValue;
+        }
+        const m = line.match(/^([^:]+):\s*(.*)/);
+        if (m) {
+          currentKey = m[1];
+          currentValue = m[2];
+        } else {
+          currentKey = "";
+          currentValue = "";
+        }
+      }
+    }
+    if (currentKey) {
+      headers[currentKey.toLowerCase()] = currentValue;
+    }
+    return headers;
+  }
+
+  async disconnect(): Promise<void> {
+    try {
+      const tag = this.nextTag();
+      const encoder = new TextEncoder();
+      await this.conn.write(encoder.encode(`${tag} LOGOUT\r\n`));
+    } catch (_) {}
+    try { this.reader.releaseLock(); } catch (_) {}
+    try { this.conn.close(); } catch (_) {}
+  }
+}
+
+/* ─── Supabase helpers ─── */
+
 function getExternalClient() {
-  const url = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
-  const key = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY")!;
-  return createClient(url, key);
+  return createClient(
+    Deno.env.get("EXTERNAL_SUPABASE_URL")!,
+    Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY")!,
+  );
 }
 
 async function getCallerProfile(authHeader: string | null) {
   if (!authHeader) return null;
-  const url = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
-  const anonKey = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY")!;
-  const userClient = createClient(url, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
+  const userClient = createClient(
+    Deno.env.get("EXTERNAL_SUPABASE_URL")!,
+    Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
   const { data: profile } = await userClient
     .from("profiles")
     .select("id, org_id, full_name")
@@ -181,33 +329,20 @@ async function getCallerProfile(authHeader: string | null) {
   return profile;
 }
 
-/**
- * Find existing conversation by email thread (subject + references chain)
- * Each unique email subject = separate conversation thread
- */
+/* ─── Threading ─── */
+
 async function findOrCreateConversation(
-  admin: any,
-  orgId: string,
-  senderEmail: string,
-  senderName: string,
-  subject: string,
-  messageId: string,
-  inReplyTo: string,
-  references: string,
-  date: string,
-  config: any,
+  admin: any, orgId: string, senderEmail: string, senderName: string,
+  subject: string, messageId: string, inReplyTo: string, references: string,
+  date: string, config: any,
 ): Promise<string | null> {
   const normSubject = normalizeSubject(subject);
 
-  // Strategy 1: Match by In-Reply-To or References header
-  // If this email is a reply, find the conversation that has the parent message
+  // Strategy 1: Match by In-Reply-To
   if (inReplyTo) {
     const { data: parentMsg } = await admin
-      .from("messages")
-      .select("conversation_id")
-      .eq("wa_message_id", inReplyTo)
-      .limit(1)
-      .maybeSingle();
+      .from("messages").select("conversation_id")
+      .eq("wa_message_id", inReplyTo).limit(1).maybeSingle();
     if (parentMsg) return parentMsg.conversation_id;
   }
 
@@ -216,58 +351,40 @@ async function findOrCreateConversation(
     const refIds = references.split(/\s+/).filter(Boolean);
     for (const refId of refIds.reverse()) {
       const { data: refMsg } = await admin
-        .from("messages")
-        .select("conversation_id")
-        .eq("wa_message_id", refId.trim())
-        .limit(1)
-        .maybeSingle();
+        .from("messages").select("conversation_id")
+        .eq("wa_message_id", refId.trim()).limit(1).maybeSingle();
       if (refMsg) return refMsg.conversation_id;
     }
   }
 
-  // Strategy 2: Match by normalized subject within same org
-  // Find any conversation (from any sender) with matching subject
+  // Strategy 2: Match by normalized subject
   if (normSubject.length > 0) {
     const { data: convs } = await admin
-      .from("conversations")
-      .select("id, notes")
-      .eq("org_id", orgId)
-      .eq("conversation_type", "email")
+      .from("conversations").select("id, notes")
+      .eq("org_id", orgId).eq("conversation_type", "email")
       .neq("status", "closed")
-      .order("created_at", { ascending: false })
-      .limit(50);
+      .order("created_at", { ascending: false }).limit(50);
 
-    if (convs && convs.length > 0) {
+    if (convs) {
       for (const conv of convs) {
-        // notes stores "📧 <subject>" — extract and compare
         const convSubject = (conv.notes || "").replace(/^📧\s*/, "").trim();
-        if (normalizeSubject(convSubject) === normSubject) {
-          return conv.id;
-        }
+        if (normalizeSubject(convSubject) === normSubject) return conv.id;
       }
     }
   }
 
-  // Strategy 3: No match — create new conversation
+  // Strategy 3: Create new
   const insertData: Record<string, any> = {
-    org_id: orgId,
-    customer_phone: senderEmail,
-    customer_name: senderName,
-    conversation_type: "email",
-    status: "active",
-    last_message: subject,
-    last_message_at: date,
-    channel_id: null,
+    org_id: orgId, customer_phone: senderEmail, customer_name: senderName,
+    conversation_type: "email", status: "active",
+    last_message: subject, last_message_at: date, channel_id: null,
     notes: `📧 ${subject.replace(/^(re|fwd|fw)\s*:\s*/gi, "").replace(/^\[.*?\]\s*/g, "").trim()}`,
   };
 
   if (config.dedicated_agent_id) {
     insertData.assigned_to_id = config.dedicated_agent_id;
     const { data: agentProfile } = await admin
-      .from("profiles")
-      .select("full_name")
-      .eq("id", config.dedicated_agent_id)
-      .single();
+      .from("profiles").select("full_name").eq("id", config.dedicated_agent_id).single();
     if (agentProfile) {
       insertData.assigned_to = agentProfile.full_name;
       insertData.assigned_at = new Date().toISOString();
@@ -276,33 +393,111 @@ async function findOrCreateConversation(
   if (config.dedicated_team_id) {
     insertData.assigned_team_id = config.dedicated_team_id;
     const { data: team } = await admin
-      .from("teams")
-      .select("name")
-      .eq("id", config.dedicated_team_id)
-      .single();
+      .from("teams").select("name").eq("id", config.dedicated_team_id).single();
     if (team) insertData.assigned_team = team.name;
   }
 
   const { data: newConv, error: convError } = await admin
-    .from("conversations")
-    .insert(insertData)
-    .select("id")
-    .single();
+    .from("conversations").insert(insertData).select("id").single();
 
   if (convError) {
-    console.error(`Conv create failed for ${senderEmail}: ${convError.message}`);
+    console.error(`Conv create failed: ${convError.message}`);
     return null;
   }
   return newConv.id;
 }
 
-/**
- * Fetch emails from a single IMAP config
- */
+/* ─── Body extraction from raw IMAP text ─── */
+
+function extractAndDecodeBody(rawBody: string, headers: Record<string, string>): string {
+  const contentType = headers["content-type"] || "";
+  const cte = (headers["content-transfer-encoding"] || "").toLowerCase().trim();
+  const charsetMatch = contentType.match(/charset=["']?([^;"'\s]+)/i);
+  const charset = charsetMatch ? charsetMatch[1] : "utf-8";
+
+  let body = rawBody;
+
+  // Handle multipart
+  const boundaryMatch = contentType.match(/boundary=["']?([^;"'\s]+)/i);
+  if (boundaryMatch) {
+    const boundary = boundaryMatch[1];
+    body = extractFromMultipart(rawBody, boundary);
+  }
+
+  // Decode transfer encoding
+  if (cte === "base64") {
+    body = decodeBase64Body(body, charset);
+  } else if (cte === "quoted-printable") {
+    body = decodeQuotedPrintable(body);
+    if (charset.toLowerCase() !== "utf-8") {
+      try {
+        const bytes = new Uint8Array([...body].map(c => c.charCodeAt(0)));
+        body = new TextDecoder(charset).decode(bytes);
+      } catch {}
+    }
+  }
+
+  // If HTML, convert to text
+  if (contentType.includes("text/html") || body.includes("<html") || body.includes("<body") || body.includes("<div")) {
+    body = htmlToText(body);
+  }
+
+  body = decodeMimeWords(body);
+  return body;
+}
+
+function extractFromMultipart(raw: string, boundary: string): string {
+  const parts = raw.split(`--${boundary}`);
+  let textPlain = "";
+  let textHtml = "";
+
+  for (const part of parts) {
+    if (part.trim() === "--" || part.trim() === "") continue;
+
+    const headerEnd = part.indexOf("\r\n\r\n");
+    const altEnd = part.indexOf("\n\n");
+    const splitIdx = headerEnd !== -1 ? headerEnd : altEnd;
+    if (splitIdx === -1) continue;
+
+    const partHeaders = part.substring(0, splitIdx).toLowerCase();
+    const partBody = part.substring(splitIdx + (headerEnd !== -1 ? 4 : 2));
+
+    // Check for nested multipart
+    const nestedBoundary = partHeaders.match(/boundary=["']?([^;"'\s]+)/i);
+    if (nestedBoundary) {
+      const nested = extractFromMultipart(partBody, nestedBoundary[1]);
+      if (nested) return nested;
+    }
+
+    let decoded = partBody;
+    if (partHeaders.includes("base64")) {
+      const charsetM = partHeaders.match(/charset=["']?([^;"'\s]+)/i);
+      decoded = decodeBase64Body(partBody, charsetM ? charsetM[1] : "utf-8");
+    } else if (partHeaders.includes("quoted-printable")) {
+      decoded = decodeQuotedPrintable(partBody);
+      const charsetM = partHeaders.match(/charset=["']?([^;"'\s]+)/i);
+      if (charsetM && charsetM[1].toLowerCase() !== "utf-8") {
+        try {
+          const bytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
+          decoded = new TextDecoder(charsetM[1]).decode(bytes);
+        } catch {}
+      }
+    }
+
+    if (partHeaders.includes("text/plain")) {
+      textPlain = decoded;
+    } else if (partHeaders.includes("text/html")) {
+      textHtml = htmlToText(decoded);
+    }
+  }
+
+  return textPlain || textHtml;
+}
+
+/* ─── Fetch emails for a single config ─── */
+
 async function fetchEmailsForConfig(
-  admin: any,
-  config: any,
-  orgId: string,
+  admin: any, config: any, orgId: string,
 ): Promise<{ fetched: number; errors: string[] }> {
   const errors: string[] = [];
   let fetched = 0;
@@ -312,153 +507,88 @@ async function fetchEmailsForConfig(
     return { fetched, errors };
   }
 
-  let client: ImapClient | null = null;
+  const client = new RawImapClient(
+    config.imap_host, config.imap_port,
+    config.smtp_username, config.smtp_password,
+  );
 
   try {
-    const useTls = config.encryption === "ssl" || config.imap_port === 993;
-
-    client = new ImapClient({
-      host: config.imap_host,
-      port: config.imap_port,
-      tls: useTls,
-      username: config.smtp_username,
-      password: config.smtp_password,
-    });
-
     await client.connect();
-    await client.authenticate();
+    await client.login();
     console.log(`[email-fetch] Connected to ${config.imap_host} for ${config.email_address}`);
 
-    const inbox = await client.selectMailbox("INBOX");
-    const totalMessages = inbox.exists || 0;
+    const totalMessages = await client.selectInbox();
     console.log(`[email-fetch] INBOX has ${totalMessages} messages`);
 
     if (totalMessages === 0) {
-      client.disconnect();
+      await client.disconnect();
       return { fetched: 0, errors };
     }
 
     // Determine which messages to fetch
     let messageIds: number[] = [];
-    try {
-      if (config.sync_mode === "all") {
-        const start = Math.max(1, totalMessages - 99);
-        messageIds = Array.from({ length: totalMessages - start + 1 }, (_, i) => start + i);
-      } else {
-        messageIds = await client.search({ flags: { has: ["\\Unseen"] } });
-      }
-    } catch (searchErr: any) {
-      console.log(`[email-fetch] Search failed, falling back to last 20:`, searchErr.message);
-      const start = Math.max(1, totalMessages - 19);
+    if (config.sync_mode === "all") {
+      const start = Math.max(1, totalMessages - 99);
       messageIds = Array.from({ length: totalMessages - start + 1 }, (_, i) => start + i);
+    } else {
+      try {
+        messageIds = await client.searchUnseen();
+      } catch (e: any) {
+        console.log(`[email-fetch] Search failed, using last 20:`, e.message);
+        const start = Math.max(1, totalMessages - 19);
+        messageIds = Array.from({ length: totalMessages - start + 1 }, (_, i) => start + i);
+      }
     }
 
-    if (!messageIds || messageIds.length === 0) {
+    if (messageIds.length === 0) {
       console.log(`[email-fetch] No new messages for ${config.email_address}`);
-      client.disconnect();
+      await client.disconnect();
       return { fetched: 0, errors };
     }
 
     const toFetch = messageIds.slice(-30);
     console.log(`[email-fetch] Fetching ${toFetch.length} messages`);
 
-    // Fetch with body content
-    const fetchRange = toFetch.join(",");
-    const messages = await client.fetch(fetchRange, {
-      envelope: true,
-      body: true,
-      headers: ["Subject", "From", "To", "Date", "Message-ID", "In-Reply-To", "References", "Content-Type", "Content-Transfer-Encoding"],
-    });
+    const seqSet = toFetch.join(",");
+    const messages = await client.fetchMessages(seqSet);
 
     for (const msg of messages) {
       try {
-        const envelope = msg.envelope;
-        if (!envelope) continue;
+        const headers = msg.headers || {};
+        const fromRaw = headers["from"] || "";
+        const subject = decodeMimeWords(headers["subject"]) || "(بدون عنوان)";
+        const emailMessageId = (headers["message-id"] || "").replace(/[<>]/g, "").trim() || `imap-${msg.seq}-${Date.now()}`;
+        const dateStr = headers["date"] || "";
+        const date = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
 
-        const fromAddr = envelope.from?.[0];
-        const senderEmail = fromAddr
-          ? `${fromAddr.mailbox}@${fromAddr.host}`
-          : "unknown@unknown.com";
-        const senderName = decodeMimeWords(fromAddr?.name) || senderEmail;
-        const subject = decodeMimeWords(envelope.subject) || "(بدون عنوان)";
-        const emailMessageId = envelope.messageId || `imap-${msg.seq}-${Date.now()}`;
-        const date = envelope.date
-          ? new Date(envelope.date).toISOString()
-          : new Date().toISOString();
+        // Parse From header
+        const fromMatch = fromRaw.match(/(?:"?([^"<]*)"?\s*)?<?([^>]+@[^>]+)>?/);
+        const senderEmail = fromMatch ? fromMatch[2].trim() : "unknown@unknown.com";
+        const senderName = decodeMimeWords(fromMatch?.[1]?.trim()) || senderEmail;
 
-        // Skip our own outgoing emails
-        if (senderEmail.toLowerCase() === config.email_address.toLowerCase()) {
-          continue;
-        }
+        // Skip own emails
+        if (senderEmail.toLowerCase() === config.email_address.toLowerCase()) continue;
 
-        // Dedup by messageId
+        // Dedup
         const { data: existing } = await admin
-          .from("messages")
-          .select("id")
-          .eq("wa_message_id", emailMessageId)
-          .limit(1)
-          .maybeSingle();
-
+          .from("messages").select("id")
+          .eq("wa_message_id", emailMessageId).limit(1).maybeSingle();
         if (existing) continue;
 
-        // Get threading headers
-        const inReplyTo = envelope.inReplyTo || 
-          (msg.headers?.["In-Reply-To"] || msg.headers?.["in-reply-to"] || "");
-        const references = (msg.headers?.["References"] || msg.headers?.["references"] || "") as string;
+        const inReplyTo = (headers["in-reply-to"] || "").replace(/[<>]/g, "").trim();
+        const refsRaw = (headers["references"] || "").trim();
 
-        // Find or create threaded conversation
         const convId = await findOrCreateConversation(
           admin, orgId, senderEmail, senderName, subject,
-          emailMessageId, inReplyTo, references, date, config,
+          emailMessageId, inReplyTo, refsRaw, date, config,
         );
         if (!convId) {
           errors.push(`Could not find/create conversation for ${senderEmail}`);
           continue;
         }
 
-        // Extract body content
-        let bodyText = extractBody(msg);
-
-        // If body is still empty, try fetching raw body separately
-        if (!bodyText || bodyText.trim().length === 0) {
-          console.log(`[email-fetch] Body empty for msg ${msg.seq}, trying raw fetch`);
-          try {
-            const rawMessages = await client.fetch(String(msg.seq), {
-              body: true,
-            });
-            if (rawMessages && rawMessages.length > 0) {
-              bodyText = extractBody(rawMessages[0]);
-            }
-          } catch (rawErr: any) {
-            console.log(`[email-fetch] Raw fetch failed: ${rawErr.message}`);
-          }
-        }
-
-        // Decode content-transfer-encoding if needed
-        const cte = (msg.headers?.["Content-Transfer-Encoding"] || 
-                     msg.headers?.["content-transfer-encoding"] || "").toString().toLowerCase().trim();
-        const contentType = (msg.headers?.["Content-Type"] || 
-                            msg.headers?.["content-type"] || "").toString();
-        const charsetMatch = contentType.match(/charset=["']?([^;"'\s]+)/i);
-        const charset = charsetMatch ? charsetMatch[1] : "utf-8";
-
-        if (bodyText && cte === "base64") {
-          bodyText = decodeBase64Body(bodyText, charset);
-        } else if (bodyText && cte === "quoted-printable") {
-          bodyText = decodeQuotedPrintable(bodyText);
-          // Re-decode charset if not utf-8
-          if (charset.toLowerCase() !== "utf-8") {
-            try {
-              const bytes = new Uint8Array([...bodyText].map(c => c.charCodeAt(0)));
-              bodyText = new TextDecoder(charset).decode(bytes);
-            } catch {}
-          }
-        }
-
-        // Also decode any MIME words in the body
-        bodyText = decodeMimeWords(bodyText);
-
-        // Clean quoted content
+        // Extract and decode body
+        let bodyText = extractAndDecodeBody(msg.bodyText || "", headers);
         const cleanBody = cleanQuotedContent(bodyText);
         const displayContent = cleanBody.substring(0, 10000) || subject || "(بدون محتوى)";
 
@@ -478,7 +608,7 @@ async function fetchEmailsForConfig(
             email_to: config.email_address,
             imap_fetched: true,
             email_in_reply_to: inReplyTo || undefined,
-            email_references: references || undefined,
+            email_references: refsRaw || undefined,
           },
         });
 
@@ -487,7 +617,6 @@ async function fetchEmailsForConfig(
           continue;
         }
 
-        // Update conversation last message with body preview (not subject)
         await admin.from("conversations").update({
           last_message: cleanBody.substring(0, 200) || subject,
           last_message_at: date,
@@ -503,27 +632,18 @@ async function fetchEmailsForConfig(
       }
     }
 
-    // Mark fetched as seen
-    if (config.sync_mode !== "all") {
-      try {
-        for (const id of toFetch) {
-          try {
-            await client.addFlags(String(id), ["\\Seen"]);
-          } catch (_) {}
-        }
-      } catch (_) {}
-    }
-
-    client.disconnect();
+    await client.disconnect();
     console.log(`[email-fetch] Done for ${config.email_address}: fetched=${fetched} errors=${errors.length}`);
   } catch (e: any) {
     errors.push(`IMAP error for ${config.email_address}: ${e.message}`);
     console.error(`[email-fetch] IMAP error:`, e.message);
-    try { if (client) client.disconnect(); } catch (_) {}
+    try { await client.disconnect(); } catch (_) {}
   }
 
   return { fetched, errors };
 }
+
+/* ─── Main handler ─── */
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -534,29 +654,19 @@ Deno.serve(async (req) => {
     let configId: string | undefined;
 
     const authHeader = req.headers.get("Authorization");
-
     if (authHeader && !authHeader.includes(Deno.env.get("SUPABASE_ANON_KEY") || "___")) {
       const profile = await getCallerProfile(authHeader);
       if (!profile?.org_id) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       orgId = profile.org_id;
-      try {
-        const body = await req.json();
-        configId = body?.config_id;
-      } catch (_) {}
+      try { const body = await req.json(); configId = body?.config_id; } catch (_) {}
     }
 
-    let query = admin
-      .from("email_configs")
-      .select("*")
-      .eq("is_active", true)
-      .not("imap_host", "is", null)
-      .neq("imap_host", "");
-
+    let query = admin.from("email_configs").select("*")
+      .eq("is_active", true).not("imap_host", "is", null).neq("imap_host", "");
     if (orgId) query = query.eq("org_id", orgId);
     if (configId) query = query.eq("id", configId);
 
@@ -565,8 +675,7 @@ Deno.serve(async (req) => {
     if (configError) {
       console.error("[email-fetch] Config query error:", configError);
       return new Response(JSON.stringify({ error: configError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -579,14 +688,11 @@ Deno.serve(async (req) => {
     console.log(`[email-fetch] Processing ${configs.length} email config(s)`);
 
     const results: Array<{ config_id: string; email: string; fetched: number; errors: string[] }> = [];
-
     for (const config of configs) {
       const result = await fetchEmailsForConfig(admin, config, config.org_id);
       results.push({
-        config_id: config.id,
-        email: config.email_address,
-        fetched: result.fetched,
-        errors: result.errors,
+        config_id: config.id, email: config.email_address,
+        fetched: result.fetched, errors: result.errors,
       });
     }
 
@@ -594,18 +700,15 @@ Deno.serve(async (req) => {
     const totalErrors = results.reduce((sum, r) => sum + r.errors.length, 0);
 
     return new Response(JSON.stringify({
-      success: true,
-      total_fetched: totalFetched,
-      total_errors: totalErrors,
-      results,
+      success: true, total_fetched: totalFetched,
+      total_errors: totalErrors, results,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
     console.error("[email-fetch] ERROR:", e.message);
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
