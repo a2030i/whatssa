@@ -155,7 +155,7 @@ const IntegrationsPage = () => {
     if (orgId) loadConfigs();
   }, [orgId]);
 
-  const loadConfigs = async () => {
+  const loadConfigs = async (skipAutoSync = false) => {
     if (!orgId) return;
     const [allConfigsRes, orgRes] = await Promise.all([
       supabase.rpc("get_org_whatsapp_channels"),
@@ -169,9 +169,10 @@ const IntegrationsPage = () => {
     setConfigs(officialConfigs);
     setUnofficialConfigs(unofficial);
 
-    // Auto-sync display_phone for unofficial configs missing it
-    for (const uc of unofficial) {
-      if (uc.is_connected && uc.evolution_instance_status === "connected" && !uc.display_phone && uc.evolution_instance_name) {
+    // Auto-sync display_phone only on initial load, not when triggered by config changes
+    if (!skipAutoSync) {
+      const needsSync = unofficial.filter(uc => uc.is_connected && uc.evolution_instance_status === "connected" && !uc.display_phone && uc.evolution_instance_name);
+      for (const uc of needsSync) {
         invokeCloud("evolution-manage", {
           body: { action: "status", instance_name: uc.evolution_instance_name },
         }).then(() => {
