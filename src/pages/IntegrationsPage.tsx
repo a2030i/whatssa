@@ -99,6 +99,11 @@ const IntegrationsPage = () => {
   const [testPhone, setTestPhone] = useState("");
   const [twoStepPin, setTwoStepPin] = useState("");
   const [onboardingMode, setOnboardingMode] = useState<OnboardingMode>("new");
+  // Manual token connect state
+  const [manualAccessToken, setManualAccessToken] = useState("");
+  const [manualPhoneNumberId, setManualPhoneNumberId] = useState("");
+  const [manualWabaId, setManualWabaId] = useState("");
+  const [manualConnecting, setManualConnecting] = useState(false);
   const [migrationPrereqs, setMigrationPrereqs] = useState<{ ready: boolean; issues: string[] } | null>(null);
   const [previousProvider, setPreviousProvider] = useState("");
   const [wabaInfo, setWabaInfo] = useState<any>(null);
