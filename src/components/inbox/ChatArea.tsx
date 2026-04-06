@@ -873,6 +873,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showTagInput, setShowTagInput] = useState(false);
   const [newTagText, setNewTagText] = useState("");
   const [allOrgTags, setAllOrgTags] = useState<string[]>([]);
+  const [showTagPopover, setShowTagPopover] = useState(false);
+  const [orgTagDefs, setOrgTagDefs] = useState<Array<{ id: string; name: string; color: string; count: number }>>([]);
+  const [newTagDefName, setNewTagDefName] = useState("");
   const [savedReplies, setSavedReplies] = useState<Array<{ id: string; shortcut: string; title: string; content: string; category: string }>>([]);
   const [showSavedReplies, setShowSavedReplies] = useState(false);
   const [savedReplyFilter, setSavedReplyFilter] = useState("");
@@ -1378,7 +1381,24 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         setAllOrgTags(Array.from(tagSet).sort());
       }
     };
+    const loadTagDefs = async () => {
+      const { data: defs } = await supabase
+        .from("customer_tag_definitions")
+        .select("id, name, color")
+        .order("name");
+      if (defs) {
+        // Count conversations per tag
+        const { data: convs } = await supabase
+          .from("conversations")
+          .select("tags")
+          .not("tags", "eq", "{}");
+        const countMap: Record<string, number> = {};
+        (convs || []).forEach((c: any) => (c.tags || []).forEach((t: string) => { countMap[t] = (countMap[t] || 0) + 1; }));
+        setOrgTagDefs(defs.map((d: any) => ({ id: d.id, name: d.name, color: d.color || "#25D366", count: countMap[d.name] || 0 })));
+      }
+    };
     loadOrgTags();
+    loadTagDefs();
   }, []);
 
   const handleSend = () => {
@@ -1907,61 +1927,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         </div>
 
         {/* Tags row */}
-        {(conversation.tags.length > 0 || true) && (
+        {conversation.tags.length > 0 && (
         <div className="flex items-center gap-1.5 px-4 pb-2.5 overflow-x-auto scrollbar-none">
-          {conversation.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 gap-0.5 shrink-0 group h-5 rounded-full font-normal border-0">
-              {tag}
-              <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 transition-opacity">
-                <X className="w-2 h-2" />
-              </button>
-            </Badge>
-          ))}
-          {showTagInput ? (
-            <div className="relative flex items-center gap-1 shrink-0">
-              <input
-                ref={tagInputRef}
-                value={newTagText}
-                onChange={(e) => setNewTagText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") addTag(); if (e.key === "Escape") { setShowTagInput(false); setNewTagText(""); } }}
-                placeholder="وسم جديد..."
-                className="w-24 text-[10px] bg-secondary rounded-md px-2 py-0.5 outline-none border-0"
-                autoFocus
-              />
-              <button onClick={addTag} className="text-primary"><Check className="w-3 h-3" /></button>
-              <button onClick={() => { setShowTagInput(false); setNewTagText(""); }} className="text-muted-foreground"><X className="w-3 h-3" /></button>
-              {(() => {
-                const suggestions = allOrgTags.filter(
-                  (t) => !conversation.tags.includes(t) && (newTagText === "" || t.includes(newTagText))
-                );
-                if (suggestions.length === 0) return null;
-                return (
-                  <div className="absolute top-full right-0 mt-1 z-50 bg-card border border-border rounded-lg shadow-lg max-h-32 overflow-y-auto min-w-[120px]">
-                    {suggestions.slice(0, 8).map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => {
-                          if (onTagsChange) {
-                            onTagsChange(conversation.id, [...conversation.tags, tag]);
-                            toast.success("تم إضافة الوسم");
-                          }
-                          setNewTagText("");
-                          setShowTagInput(false);
-                        }}
-                        className="w-full text-right px-3 py-1.5 text-[10px] hover:bg-secondary transition-colors truncate"
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          ) : (
-            <button onClick={() => setShowTagInput(true)} className="shrink-0 flex items-center gap-0.5 text-[9px] text-muted-foreground/50 hover:text-primary transition-colors px-1 py-0.5 rounded">
-              <Plus className="w-2.5 h-2.5" /> وسم
-            </button>
-          )}
+          {conversation.tags.map((tag) => {
+            const def = orgTagDefs.find(d => d.name === tag);
+            return (
+              <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 gap-1 shrink-0 group h-5 rounded-full font-normal border-0">
+                {def && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: def.color }} />}
+                {tag}
+                <button onClick={() => removeTag(tag)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <X className="w-2 h-2" />
+                </button>
+              </Badge>
+            );
+          })}
         </div>
         )}
       </div>
@@ -1996,9 +1975,90 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         >
           <SearchIcon className="w-3.5 h-3.5" />
         </button>
-        <button onClick={() => setShowTagInput(!showTagInput)} className="px-3 py-2 text-muted-foreground hover:bg-secondary transition-colors">
-          <Tag className="w-3.5 h-3.5" />
-        </button>
+        <Popover open={showTagPopover} onOpenChange={setShowTagPopover}>
+          <PopoverTrigger asChild>
+            <button className={cn("px-3 py-2 transition-colors", showTagPopover ? "text-primary bg-primary/5" : "text-muted-foreground hover:bg-secondary")}>
+              <Tag className="w-3.5 h-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 p-0 max-h-80 overflow-y-auto" dir="rtl">
+            <div className="p-2 border-b border-border">
+              <p className="text-xs font-semibold text-foreground">الوسوم</p>
+            </div>
+            <div className="p-1">
+              {orgTagDefs.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-3">لا توجد وسوم معرّفة</p>
+              )}
+              {orgTagDefs.map((td) => {
+                const isActive = conversation.tags.includes(td.name);
+                return (
+                  <button
+                    key={td.id}
+                    onClick={() => {
+                      if (!onTagsChange) return;
+                      if (isActive) {
+                        onTagsChange(conversation.id, conversation.tags.filter(t => t !== td.name));
+                        toast.success("تم حذف الوسم");
+                      } else {
+                        onTagsChange(conversation.id, [...conversation.tags, td.name]);
+                        toast.success("تم إضافة الوسم");
+                      }
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-colors",
+                      isActive ? "bg-primary/10 text-primary" : "hover:bg-secondary text-foreground"
+                    )}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: td.color }} />
+                    <span className="flex-1 text-right truncate">{td.name}</span>
+                    <span className="text-[10px] text-muted-foreground">{td.count}</span>
+                    {isActive && <Check className="w-3 h-3 text-primary shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+            {(userRole === "admin" || isSuperAdmin || profile?.is_supervisor) && (
+              <div className="p-2 border-t border-border">
+                <div className="flex items-center gap-1">
+                  <input
+                    value={newTagDefName}
+                    onChange={(e) => setNewTagDefName(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter" && newTagDefName.trim() && orgId) {
+                        const { data, error } = await supabase.from("customer_tag_definitions").insert({ name: newTagDefName.trim(), org_id: orgId }).select().single();
+                        if (!error && data) {
+                          setOrgTagDefs(prev => [...prev, { id: data.id, name: data.name, color: data.color || "#25D366", count: 0 }]);
+                          setNewTagDefName("");
+                          toast.success("تم إضافة الوسم الجديد");
+                        } else {
+                          toast.error("فشل إضافة الوسم");
+                        }
+                      }
+                    }}
+                    placeholder="إضافة وسم جديد..."
+                    className="flex-1 text-xs bg-secondary rounded-md px-2 py-1.5 outline-none border-0"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!newTagDefName.trim() || !orgId) return;
+                      const { data, error } = await supabase.from("customer_tag_definitions").insert({ name: newTagDefName.trim(), org_id: orgId }).select().single();
+                      if (!error && data) {
+                        setOrgTagDefs(prev => [...prev, { id: data.id, name: data.name, color: data.color || "#25D366", count: 0 }]);
+                        setNewTagDefName("");
+                        toast.success("تم إضافة الوسم الجديد");
+                      } else {
+                        toast.error("فشل إضافة الوسم");
+                      }
+                    }}
+                    className="text-primary p-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
         {conversation.status !== "closed" && (
           <>
             <button onClick={() => setShowTransfer(true)} className="px-3 py-2 text-muted-foreground hover:bg-secondary transition-colors">
