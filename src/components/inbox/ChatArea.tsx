@@ -2143,7 +2143,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
             msg.sender === "agent" ? "justify-end" : msg.sender === "system" ? "justify-center" : "justify-start",
-            !isFirstInGroup && "mt-0.5"
+            isFirstInGroup ? "mt-[10px]" : "mt-[3px]"
           )}>
             {/* Selection checkbox */}
             {selectingMessages && msg.sender !== "system" && (
