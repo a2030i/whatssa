@@ -1,9 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+async function resolveMetaAppId() {
+  const fallbackAppId = Deno.env.get("META_APP_ID") || "1306128431426603";
+  const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!supabaseUrl || !serviceKey) return fallbackAppId;
+
+  try {
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { data } = await admin
+      .from("system_settings")
+      .select("value")
+      .eq("key", "meta_app_id")
+      .maybeSingle();
+
+    return data?.value ? String(data.value) : fallbackAppId;
+  } catch {
+    return fallbackAppId;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -14,7 +36,7 @@ serve(async (req) => {
     const body = await req.json();
     const { code, access_token: directToken, redirect_uri: redirectUri } = body;
 
-    const appId = Deno.env.get("META_APP_ID") || "1306128431426603";
+    const appId = await resolveMetaAppId();
     const appSecret = Deno.env.get("META_APP_SECRET");
 
     if (!appSecret) {

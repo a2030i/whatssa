@@ -119,9 +119,9 @@ const AdminMeta = () => {
         <div className="space-y-3">
           {[
             { label: "Webhook URL", value: WEBHOOK_URL },
-            { label: "Valid OAuth Redirect URI", value: "https://respondly.chat/settings" },
-            { label: "App Domain", value: "respondly.chat" },
-            { label: "Privacy Policy URL", value: "https://respondly.chat/privacy" },
+            { label: "Valid OAuth Redirect URI", value: `${window.location.origin}/integrations` },
+            { label: "App Domain", value: window.location.hostname },
+            { label: "Privacy Policy URL", value: `${window.location.origin}/privacy` },
           ].map((item) => (
             <div key={item.label}>
               <label className="text-[10px] text-muted-foreground">{item.label}</label>
