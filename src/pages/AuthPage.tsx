@@ -16,9 +16,17 @@ const AuthPage = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [userName, setUserName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "صباح الخير";
+    if (hour >= 12 && hour < 17) return "مساء الخير";
+    return "مساء الخير";
+  };
 
   const handleEmailNext = async (e: React.FormEvent) => {
     e.preventDefault();
