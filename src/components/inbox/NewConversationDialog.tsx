@@ -40,7 +40,7 @@ interface NewConversationDialogProps {
   onConversationCreated: (convId: string) => void;
 }
 
-type DialogMode = "private" | "group";
+type DialogMode = "private" | "group" | "email";
 type Step = "contact" | "channel" | "message";
 
 const COUNTRY_CODES = [
