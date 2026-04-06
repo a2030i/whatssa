@@ -1549,6 +1549,68 @@ const IntegrationsPage = () => {
     </Button>
   ) : null;
 
+  // ============ CHOOSE TYPE ============
+  if (flowStep === "choose_type") {
+    return (
+      <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
+        <div className="flex justify-end mb-4">{reviewToggle}</div>
+        <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
+          <div className="p-6 border-b border-border">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              {t("اختر نوع العملية", "Choose Operation Type")}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {t("هل تريد ربط رقم جديد أم نقل رقم موجود؟", "Do you want to connect a new number or migrate an existing one?")}
+            </p>
+          </div>
+          <div className="p-5 space-y-3">
+            <button
+              onClick={() => { setOnboardingMode("new"); proceedFromTypeChoice(); }}
+              className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-right ${onboardingMode === "new" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-primary/5"}`}
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Plus className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm text-foreground">{t("ربط رقم جديد", "Connect New Number")}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t("إضافة رقم واتساب لأول مرة عبر Meta", "Add a WhatsApp number for the first time via Meta")}</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { setOnboardingMode("migrate_app"); setFlowStep("migration_info"); }}
+              className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-border hover:border-warning/50 hover:bg-warning/5 transition-all text-right"
+            >
+              <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+                <ArrowLeftRight className="w-5 h-5 text-warning" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm text-foreground">{t("نقل رقم من تطبيق آخر", "Migrate from Another App")}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t("نقل رقم مربوط حالياً مع مزوّد آخر", "Migrate a number currently linked with another provider")}</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => { setOnboardingMode("migrate_provider"); setFlowStep("migration_info"); }}
+              className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-border hover:border-warning/50 hover:bg-warning/5 transition-all text-right"
+            >
+              <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+                <ArrowLeftRight className="w-5 h-5 text-warning" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm text-foreground">{t("نقل من مزوّد BSP آخر", "Migrate from Another BSP")}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t("نقل من Twilio أو 360dialog أو غيره", "Migrate from Twilio, 360dialog, etc.")}</p>
+              </div>
+            </button>
+
+            <Button variant="ghost" size="sm" className="w-full text-xs mt-2" onClick={resetFlow}>{t("← رجوع", "← Back")}</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (flowStep === "migration_info") {
     return (
       <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
