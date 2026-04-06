@@ -502,6 +502,158 @@ serve(async (req) => {
       return json({ success: true, logged_out: instanceName });
     }
 
+    // ── RECONNECT (restart + new QR without deleting instance) ──
+    if (action === "reconnect") {
+      // Try restart first
+      try {
+        await fetch(`${EVOLUTION_URL}/instance/restart/${instanceName}`, {
+          method: "PUT",
+          headers: evoHeaders,
+        });
+      } catch {}
+
+      // Small delay for restart to take effect
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Now get new QR
+      const connectRes = await fetch(`${EVOLUTION_URL}/instance/connect/${instanceName}`, {
+        headers: evoHeaders,
+      });
+      const connectData = await connectRes.json();
+      const qr = connectData.base64 || connectData.qrcode?.base64 || null;
+
+      await adminClient
+        .from("whatsapp_config")
+        .update({
+          evolution_instance_status: "reconnecting",
+          registration_status: "reconnecting",
+          registration_error: null,
+        })
+        .eq("evolution_instance_name", instanceName)
+        .eq("org_id", orgId);
+
+      await logToSystem(adminClient, "info", `إعادة اتصال Evolution: ${instanceName}`, {}, orgId, userId);
+
+      return json({
+        success: true,
+        qr_code: qr,
+        status: qr ? "qr_ready" : "waiting",
+        instance_name: instanceName,
+      });
+    }
+
+    // ── SYNC MISSED MESSAGES ──
+    if (action === "sync_missed_messages") {
+      const syncResults: any[] = [];
+      
+      // Get all conversations for this org
+      const { data: conversations } = await adminClient
+        .from("conversations")
+        .select("id, customer_phone, last_message_at")
+        .eq("org_id", orgId)
+        .order("last_message_at", { ascending: false })
+        .limit(50);
+
+      if (!conversations || conversations.length === 0) {
+        return json({ success: true, synced: 0, message: "لا توجد محادثات للمزامنة" });
+      }
+
+      for (const conv of conversations) {
+        try {
+          // Fetch recent messages from Evolution API
+          const phone = conv.customer_phone.replace(/\D/g, "");
+          const jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+          
+          const msgRes = await fetch(`${EVOLUTION_URL}/chat/findMessages/${instanceName}`, {
+            method: "POST",
+            headers: { ...evoHeaders, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              where: { key: { remoteJid: jid } },
+              limit: 20,
+            }),
+          });
+
+          if (!msgRes.ok) continue;
+          const messages = await msgRes.json();
+          const msgArray = Array.isArray(messages) ? messages : messages?.messages || [];
+
+          let syncedCount = 0;
+          for (const msg of msgArray) {
+            const msgTimestamp = msg.messageTimestamp 
+              ? new Date(typeof msg.messageTimestamp === "number" ? msg.messageTimestamp * 1000 : msg.messageTimestamp)
+              : null;
+
+            // Only sync messages after last known message
+            if (!msgTimestamp || (conv.last_message_at && msgTimestamp <= new Date(conv.last_message_at))) continue;
+
+            const waMessageId = msg.key?.id;
+            if (!waMessageId) continue;
+
+            // Check if already exists
+            const { data: existing } = await adminClient
+              .from("messages")
+              .select("id")
+              .eq("wa_message_id", waMessageId)
+              .maybeSingle();
+
+            if (existing) continue;
+
+            const content = msg.message?.conversation 
+              || msg.message?.extendedTextMessage?.text 
+              || msg.message?.imageMessage?.caption 
+              || msg.message?.videoMessage?.caption 
+              || (msg.message?.audioMessage ? "🎤 رسالة صوتية" : "")
+              || (msg.message?.imageMessage ? "📷 صورة" : "")
+              || (msg.message?.videoMessage ? "🎥 فيديو" : "")
+              || (msg.message?.documentMessage ? "📄 ملف" : "")
+              || (msg.message?.stickerMessage ? "🏷️ ملصق" : "")
+              || "رسالة";
+
+            const sender = msg.key?.fromMe ? "agent" : "customer";
+
+            await adminClient.from("messages").insert({
+              conversation_id: conv.id,
+              content,
+              sender,
+              wa_message_id: waMessageId,
+              message_type: "text",
+              status: "delivered",
+              created_at: msgTimestamp.toISOString(),
+            });
+
+            syncedCount++;
+          }
+
+          if (syncedCount > 0) {
+            // Update conversation last_message
+            const lastMsg = msgArray[0];
+            if (lastMsg) {
+              const lastContent = lastMsg.message?.conversation || lastMsg.message?.extendedTextMessage?.text || "رسالة";
+              const lastTs = lastMsg.messageTimestamp
+                ? new Date(typeof lastMsg.messageTimestamp === "number" ? lastMsg.messageTimestamp * 1000 : lastMsg.messageTimestamp)
+                : new Date();
+              
+              await adminClient.from("conversations").update({
+                last_message: lastContent,
+                last_message_at: lastTs.toISOString(),
+                unread_count: syncedCount,
+              }).eq("id", conv.id);
+            }
+            syncResults.push({ phone: conv.customer_phone, synced: syncedCount });
+          }
+        } catch (err) {
+          console.error(`[sync] Error syncing ${conv.customer_phone}:`, err);
+        }
+
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      const totalSynced = syncResults.reduce((a, r) => a + r.synced, 0);
+      await logToSystem(adminClient, "info", `مزامنة ${totalSynced} رسالة فائتة`, { results: syncResults }, orgId, userId);
+
+      return json({ success: true, synced: totalSynced, details: syncResults });
+    }
+
     // ── PAIRING CODE (Phone Number Linking) ──
     if (action === "pairing_code") {
       const phoneNumber = asString(payload.phone_number);
