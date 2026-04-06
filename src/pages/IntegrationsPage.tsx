@@ -176,17 +176,21 @@ const IntegrationsPage = () => {
       setSyncingUnofficialPhoneIds(needsSync.map((uc) => uc.id));
 
       if (needsSync.length > 0) {
-        await Promise.allSettled(
-          needsSync.map((uc) =>
-            invokeCloud("evolution-manage", {
-              body: { action: "status", instance_name: uc.evolution_instance_name },
-            })
-          )
-        );
+        // Ensure we have a valid session before calling edge functions
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await Promise.allSettled(
+            needsSync.map((uc) =>
+              invokeCloud("evolution-manage", {
+                body: { action: "status", instance_name: uc.evolution_instance_name },
+              })
+            )
+          );
 
-        const { data: refreshed } = await supabase.rpc("get_org_whatsapp_channels");
-        const updated = ((refreshed || []) as WhatsAppConfig[]).filter((c) => c.org_id === orgId && c.channel_type === "evolution");
-        setUnofficialConfigs(updated);
+          const { data: refreshed } = await supabase.rpc("get_org_whatsapp_channels");
+          const updated = ((refreshed || []) as WhatsAppConfig[]).filter((c) => c.org_id === orgId && c.channel_type === "evolution");
+          setUnofficialConfigs(updated);
+        }
       }
 
       setSyncingUnofficialPhoneIds([]);
