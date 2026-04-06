@@ -214,6 +214,7 @@ const EmailConfigSection = () => {
         imap_host: form.imap_host,
         imap_port: form.imap_port,
         is_active: form.is_active,
+        sync_mode: form.sync_mode,
       };
 
       if (editId) {
