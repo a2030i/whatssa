@@ -17,6 +17,22 @@ function log(step: string, detail: unknown) {
   console.log(`[whatsapp-complete-signup] [${step}]`, JSON.stringify(detail));
 }
 
+async function resolveMetaAppId(serviceClient: ReturnType<typeof createClient>) {
+  const fallbackAppId = Deno.env.get("META_APP_ID") || "1306128431426603";
+
+  try {
+    const { data } = await serviceClient
+      .from("system_settings")
+      .select("value")
+      .eq("key", "meta_app_id")
+      .maybeSingle();
+
+    return data?.value ? String(data.value) : fallbackAppId;
+  } catch {
+    return fallbackAppId;
+  }
+}
+
 // ── Helpers ──
 
 async function fetchPhoneDetails(phoneId: string, accessToken: string) {
@@ -200,7 +216,6 @@ serve(async (req) => {
       previous_provider: userPreviousProvider,
     } = body;
 
-    const appId = Deno.env.get("META_APP_ID") || "1306128431426603";
     const appSecret = Deno.env.get("META_APP_SECRET");
     const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -208,6 +223,7 @@ serve(async (req) => {
     if (!appSecret) return error("META_APP_SECRET not configured", 500);
 
     const supabase = createClient(supabaseUrl, serviceKey);
+    const appId = await resolveMetaAppId(supabase);
 
     // ── Step 1: Obtain access token ──
     log("step1_token", { hasCode: !!code, hasDirect: !!directToken, hasConfigId: !!configId });
