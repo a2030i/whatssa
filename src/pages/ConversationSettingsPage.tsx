@@ -231,6 +231,14 @@ const ConversationSettingsPage = () => {
               <span className="text-[11px] text-muted-foreground">{defaultMaxConv ? `عند وصول الموظف لـ ${defaultMaxConv} محادثة لن يُسند له جديد` : "بدون حد أقصى"}</span>
             </div>
           </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">الإسناد الذكي عند إعادة الفتح</Label>
+            <p className="text-[11px] text-muted-foreground">عند رد العميل على محادثة مغلقة، يتم إسنادها تلقائياً لآخر موظف رد عليه خلال المدة المحددة</p>
+            <div className="flex items-center gap-3">
+              <Input type="number" min="0" max="1440" value={smartReassignMinutes} onChange={(e) => setSmartReassignMinutes(e.target.value)} placeholder="معطل" className="bg-secondary border-0 text-sm w-32" />
+              <span className="text-[11px] text-muted-foreground">{smartReassignMinutes ? `خلال ${smartReassignMinutes} دقيقة (${Math.round(parseInt(smartReassignMinutes) / 60)} ساعة)` : "معطل — سيتم إعادة الفتح بدون إسناد"}</span>
+            </div>
+          </div>
           <div className="flex justify-end">
             <Button size="sm" onClick={saveAssignSettings} disabled={savingAssign || loadingAssign} className="gap-1.5">
               <Save className="w-3.5 h-3.5" />
