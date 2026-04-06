@@ -149,8 +149,7 @@ const PROVIDERS: Record<ProviderKey, ProviderInfo> = {
 const DEFAULT_PROVIDER: ProviderKey = "gmail";
 
 const EmailConfigSection = () => {
-  const { profile } = useAuth();
-  const orgId = profile?.org_id;
+  const { profile, orgId } = useAuth();
   const [configs, setConfigs] = useState<EmailConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -201,7 +200,7 @@ const EmailConfigSection = () => {
     setLoading(true);
     try {
       const { data: res, error } = await invokeCloud("email-config-manage", {
-        body: { action: "list" },
+        body: { action: "list", org_id: orgId },
       });
       if (error) throw error;
       setConfigs(res?.data || []);
@@ -252,13 +251,13 @@ const EmailConfigSection = () => {
 
       if (editId) {
         const { error } = await invokeCloud("email-config-manage", {
-          body: { action: "update", id: editId, payload },
+          body: { action: "update", id: editId, payload, org_id: orgId },
         });
         if (error) throw error;
         toast.success("تم تحديث إعدادات البريد");
       } else {
         const { data: res, error } = await invokeCloud("email-config-manage", {
-          body: { action: "create", payload },
+          body: { action: "create", payload, org_id: orgId },
         });
         if (error) throw error;
         if (res?.error) throw new Error(res.error + (res.details ? ` — ${res.details}` : ""));
@@ -302,7 +301,7 @@ const EmailConfigSection = () => {
   const handleDelete = async (id: string) => {
     if (!confirm("هل أنت متأكد من حذف هذا البريد؟")) return;
     const { error } = await invokeCloud("email-config-manage", {
-      body: { action: "delete", id },
+      body: { action: "delete", id, org_id: orgId },
     });
     if (error) {
       toast.error("خطأ في الحذف");
@@ -314,7 +313,7 @@ const EmailConfigSection = () => {
 
   const handleToggle = async (id: string, active: boolean) => {
     await invokeCloud("email-config-manage", {
-      body: { action: "update", id, payload: { is_active: active } },
+      body: { action: "update", id, payload: { is_active: active }, org_id: orgId },
     });
     loadConfigs();
   };
