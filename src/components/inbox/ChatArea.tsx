@@ -2613,27 +2613,27 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             {(!windowExpired || isNoteMode) && (
               <div className="flex items-center gap-0 px-2 pb-1.5 border-t border-border/10">
                 {!isNoteMode && !isEmailChannel && (
-                  <>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
-                          <Smile className="w-4 h-4" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-2" side="top" align="start">
-                        <div className="grid grid-cols-8 gap-1">
-                          {emojis.map((e) => (
-                            <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
-                              {e}
-                            </button>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                    <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => fileInputRef.current?.click()}>
-                      <Paperclip className="w-4 h-4" />
-                    </button>
-                  </>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
+                        <Smile className="w-4 h-4" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-2" side="top" align="start">
+                      <div className="grid grid-cols-8 gap-1">
+                        {emojis.map((e) => (
+                          <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+                {!isNoteMode && (
+                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => fileInputRef.current?.click()} title="إرفاق ملف">
+                    <Paperclip className="w-4 h-4" />
+                  </button>
                 )}
                 <input ref={fileInputRef} type="file" accept={allowedFileTypes} className="hidden" onChange={handleFileSelect} />
                 <input ref={groupPicInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleChangeGroupPicture(file); if (e.target) e.target.value = ""; }} />
