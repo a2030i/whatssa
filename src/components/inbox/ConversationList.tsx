@@ -162,6 +162,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: counts.waitingCustomer },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
     { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions, minRole: "supervisor" },
+    { id: "groups", label: "المجموعات", icon: Users, count: counts.groups },
     { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed, minRole: "supervisor" },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived, minRole: "supervisor" },
