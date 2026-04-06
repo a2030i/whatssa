@@ -145,13 +145,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   const myId = profile?.id;
   const counts = useMemo(() => ({
-    all: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType !== "group").length,
-    mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.conversationType !== "group").length,
-    waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent" && c.conversationType !== "group").length,
-    unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن") && c.conversationType !== "group").length,
-    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId && c.conversationType !== "group").length,
+    all: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType !== "group" && c.conversationType !== "email").length,
+    mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.conversationType !== "group" && c.conversationType !== "email").length,
+    waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent" && c.conversationType !== "group" && c.conversationType !== "email").length,
+    unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن") && c.conversationType !== "group" && c.conversationType !== "email").length,
+    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId && c.conversationType !== "group" && c.conversationType !== "email").length,
     mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
     groups: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
+    emails: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "email").length,
     closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
     archived: conversations.filter(c => c.isArchived).length,
   }), [conversations, myId]);
