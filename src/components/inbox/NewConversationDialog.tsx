@@ -784,9 +784,14 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">📩 إلى</Label>
-                {!showCcField && (
-                  <button onClick={() => setShowCcField(true)} className="text-[10px] text-primary hover:underline">+ Cc</button>
-                )}
+                <div className="flex items-center gap-2">
+                  {!showCcField && (
+                    <button onClick={() => setShowCcField(true)} className="text-[10px] text-primary hover:underline">+ Cc</button>
+                  )}
+                  {!showBccField && (
+                    <button onClick={() => setShowBccField(true)} className="text-[10px] text-primary hover:underline">+ Bcc</button>
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-1 min-h-[40px] rounded-lg border border-input bg-background px-2 py-1.5" dir="ltr">
                 {emailToList.map((email, i) => (
