@@ -179,7 +179,7 @@ class RawImapClient {
 
   async fetchMessages(seqSet: string): Promise<any[]> {
     const tag = this.nextTag();
-    const cmd = `${tag} FETCH ${seqSet} (BODY[HEADER.FIELDS (Subject From To Date Message-ID In-Reply-To References Content-Type Content-Transfer-Encoding)] BODY[TEXT])\r\n`;
+    const cmd = `${tag} FETCH ${seqSet} (BODY[HEADER.FIELDS (Subject From To Cc Date Message-ID In-Reply-To References Content-Type Content-Transfer-Encoding)] BODY[TEXT])\r\n`;
     const encoder = new TextEncoder();
     await this.conn.write(encoder.encode(cmd));
 
@@ -556,6 +556,8 @@ async function fetchEmailsForConfig(
       try {
         const headers = msg.headers || {};
         const fromRaw = headers["from"] || "";
+        const toRaw = headers["to"] || "";
+        const ccRaw = headers["cc"] || "";
         const subject = decodeMimeWords(headers["subject"]) || "(بدون عنوان)";
         const emailMessageId = (headers["message-id"] || "").replace(/[<>]/g, "").trim() || `imap-${msg.seq}-${Date.now()}`;
         const dateStr = headers["date"] || "";
@@ -565,6 +567,8 @@ async function fetchEmailsForConfig(
         const fromMatch = fromRaw.match(/(?:"?([^"<]*)"?\s*)?<?([^>]+@[^>]+)>?/);
         const senderEmail = fromMatch ? fromMatch[2].trim() : "unknown@unknown.com";
         const senderName = decodeMimeWords(fromMatch?.[1]?.trim()) || senderEmail;
+        const toDecoded = decodeMimeWords(toRaw);
+        const ccDecoded = decodeMimeWords(ccRaw);
 
         // Skip own emails
         if (senderEmail.toLowerCase() === config.email_address.toLowerCase()) continue;
@@ -605,7 +609,9 @@ async function fetchEmailsForConfig(
             email_subject: subject,
             email_from: senderEmail,
             email_from_name: senderName,
-            email_to: config.email_address,
+            email_to: toDecoded || config.email_address,
+            email_cc: ccDecoded || undefined,
+            email_message_id: emailMessageId,
             imap_fetched: true,
             email_in_reply_to: inReplyTo || undefined,
             email_references: refsRaw || undefined,

@@ -294,6 +294,13 @@ const InboxPage = () => {
         createdAt: message.created_at || undefined,
         readBy: (message.metadata as any)?.read_by || undefined,
         groupSize: (message.metadata as any)?.group_size || undefined,
+        emailMeta: (message.metadata as any)?.email_subject ? {
+          subject: (message.metadata as any)?.email_subject,
+          from: (message.metadata as any)?.email_from,
+          to: (message.metadata as any)?.email_to,
+          cc: (message.metadata as any)?.email_cc,
+          messageId: (message.metadata as any)?.email_message_id,
+        } : undefined,
       }));
 
       setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
@@ -331,6 +338,13 @@ const InboxPage = () => {
           createdAt: message.created_at || undefined,
           readBy: message.metadata?.read_by || undefined,
           groupSize: message.metadata?.group_size || undefined,
+          emailMeta: message.metadata?.email_subject ? {
+            subject: message.metadata?.email_subject,
+            from: message.metadata?.email_from,
+            to: message.metadata?.email_to,
+            cc: message.metadata?.email_cc,
+            messageId: message.metadata?.email_message_id,
+          } : undefined,
         };
         setAllMessages((prev) => ({
           ...prev,
