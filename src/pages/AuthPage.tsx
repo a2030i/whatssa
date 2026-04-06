@@ -41,9 +41,9 @@ const AuthPage = () => {
         setIsLoading(false);
         return;
       }
+      setUserName(data?.profile?.full_name?.split(" ")[0] || "");
       setStep("password");
     } catch {
-      // If check fails, proceed anyway
       setStep("password");
     }
     setIsLoading(false);
