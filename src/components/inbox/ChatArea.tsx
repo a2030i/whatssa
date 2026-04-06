@@ -1381,7 +1381,24 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         setAllOrgTags(Array.from(tagSet).sort());
       }
     };
+    const loadTagDefs = async () => {
+      const { data: defs } = await supabase
+        .from("customer_tag_definitions")
+        .select("id, name, color")
+        .order("name");
+      if (defs) {
+        // Count conversations per tag
+        const { data: convs } = await supabase
+          .from("conversations")
+          .select("tags")
+          .not("tags", "eq", "{}");
+        const countMap: Record<string, number> = {};
+        (convs || []).forEach((c: any) => (c.tags || []).forEach((t: string) => { countMap[t] = (countMap[t] || 0) + 1; }));
+        setOrgTagDefs(defs.map((d: any) => ({ id: d.id, name: d.name, color: d.color || "#25D366", count: countMap[d.name] || 0 })));
+      }
+    };
     loadOrgTags();
+    loadTagDefs();
   }, []);
 
   const handleSend = () => {
