@@ -242,8 +242,6 @@ async function fetchEmailsForConfig(
         await admin.from("conversations").update({
           last_message: `📧 ${subject}`,
           last_message_at: date,
-          last_message_sender: "customer",
-          unread_count: 1,
           updated_at: new Date().toISOString(),
         }).eq("id", convId);
 
