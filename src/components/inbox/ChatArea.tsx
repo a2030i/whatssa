@@ -2530,6 +2530,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   el.style.height = Math.min(el.scrollHeight, 120) + "px";
                 }}
               />
+            )}
 
             {/* Tools Row inside input box */}
             {(!windowExpired || isNoteMode) && (
