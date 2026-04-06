@@ -2538,7 +2538,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             {/* Tools Row inside input box */}
             {(!windowExpired || isNoteMode) && (
               <div className="flex items-center gap-0 px-2 pb-1.5 border-t border-border/10">
-                {!isNoteMode && (
+                {!isNoteMode && !isEmailChannel && (
                   <>
                     <Popover>
                       <PopoverTrigger asChild>
@@ -2563,7 +2563,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 )}
                 <input ref={fileInputRef} type="file" accept={allowedFileTypes} className="hidden" onChange={handleFileSelect} />
                 <input ref={groupPicInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleChangeGroupPicture(file); if (e.target) e.target.value = ""; }} />
-                {!isNoteMode && (
+                {!isNoteMode && !isEmailChannel && (
                   <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
                     <Zap className="w-4 h-4" />
                   </button>
@@ -2588,12 +2588,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     <BarChart3 className="w-4 h-4" />
                   </button>
                 )}
-                {!isNoteMode && (
+                {!isNoteMode && !isEmailChannel && (
                   <button onClick={() => setShowContactCard(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="إرسال بطاقة اتصال">
                     <Contact className="w-4 h-4" />
                   </button>
                 )}
-                {!isNoteMode && !windowExpired && (
+                {!isNoteMode && !windowExpired && !isEmailChannel && (
                   <button onClick={() => setIsRecording(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="تسجيل صوتي">
                     <Mic className="w-4 h-4" />
                   </button>
