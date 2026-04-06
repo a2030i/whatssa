@@ -273,7 +273,10 @@ const EmailConfigSection = () => {
       imap_host: config.imap_host,
       imap_port: config.imap_port,
       is_active: config.is_active,
-      sync_mode: (config as any).sync_mode || "new_only",
+      sync_mode: config.sync_mode || "new_only",
+      label: config.label || "",
+      dedicated_agent_id: config.dedicated_agent_id || "",
+      dedicated_team_id: config.dedicated_team_id || "",
     });
     // detect provider from smtp_host
     const detected = (Object.entries(PROVIDERS) as [ProviderKey, ProviderInfo][]).find(
