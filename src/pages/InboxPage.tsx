@@ -448,6 +448,55 @@ const InboxPage = () => {
     };
   }, []);
 
+  // Listen for email attachment sends from ChatArea
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const { conversationId, text, attachment } = (e as CustomEvent).detail;
+      const conversation = conversations.find((c) => c.id === conversationId);
+      if (!conversation) return;
+
+      // Optimistic message
+      const optimisticId = `optimistic-${Date.now()}`;
+      const optimisticMsg: Message = {
+        id: optimisticId,
+        conversationId,
+        text: `📎 ${attachment.filename}${text && text !== `📎 ${attachment.filename}` ? `\n${text}` : ""}`,
+        sender: "agent",
+        timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+        status: "sent",
+        type: "text",
+        createdAt: new Date().toISOString(),
+        senderName: profile?.full_name || "النظام",
+      };
+      setAllMessages((prev) => ({
+        ...prev,
+        [conversationId]: [...(prev[conversationId] || []), optimisticMsg],
+      }));
+
+      const { data, error } = await invokeCloud("email-send", {
+        body: {
+          to: conversation.customerPhone,
+          subject: text || `📎 ${attachment.filename}`,
+          body: text || `📎 ${attachment.filename}`,
+          conversation_id: conversationId,
+          attachments: [attachment],
+        },
+      });
+
+      if (error || data?.error) {
+        toast.error(data?.error || "فشل إرسال المرفق");
+        setAllMessages((prev) => ({
+          ...prev,
+          [conversationId]: (prev[conversationId] || []).filter((m) => m.id !== optimisticId),
+        }));
+      } else {
+        toast.success("تم إرسال المرفق بنجاح");
+      }
+    };
+    window.addEventListener("email-send-attachment", handler);
+    return () => window.removeEventListener("email-send-attachment", handler);
+  }, [conversations, profile]);
+
   useEffect(() => {
     if (!selectedId) return;
 
