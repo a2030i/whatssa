@@ -522,7 +522,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           <div className={cn(
             "mt-1.5 flex w-full items-center justify-end gap-1 text-[11px] tracking-tight leading-none select-none",
             msg.type === "note" ? "text-amber-500/50"
-            : msg.sender === "customer" ? "text-foreground/40 dark:text-white/45"
+            : msg.sender === "customer" ? "text-white/55"
             : "text-muted-foreground/50"
           )}>
             <span>{msg.timestamp}</span>
