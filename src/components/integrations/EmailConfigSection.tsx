@@ -246,7 +246,7 @@ const EmailConfigSection = () => {
       };
 
       if (editId) {
-        const { error } = await supabase.from("email_configs").update(payload).eq("id", editId);
+        const { error } = await cloudSupabase.from("email_configs").update(payload).eq("id", editId);
         if (error) throw error;
         toast.success("تم تحديث إعدادات البريد");
       } else {
