@@ -128,6 +128,10 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setGroupMemberInput("");
       setGroupImageFile(null);
       setGroupImagePreview(null);
+      setEmailTo("");
+      setEmailSubject("");
+      setEmailBody("");
+      setSelectedEmailConfig(null);
     }
   }, [open]);
 
@@ -140,6 +144,21 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         .filter((channel) => channel.org_id === orgId && channel.is_connected)
         .sort((a: any, b: any) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
       setChannels(connectedChannels);
+    };
+    load();
+  }, [orgId, open]);
+
+  // Load email configs
+  useEffect(() => {
+    if (!orgId || !open) return;
+    const load = async () => {
+      const { data: res } = await invokeCloud("email-config-manage", {
+        body: { action: "list" },
+      });
+      setEmailConfigs(res?.data || []);
+      if (res?.data?.length > 0) {
+        setSelectedEmailConfig(res.data[0].id);
+      }
     };
     load();
   }, [orgId, open]);
