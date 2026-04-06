@@ -181,12 +181,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       // Hide archived unless specifically filtering for them
       if (activeQuickFilter !== "archived" && conv.isArchived) return false;
       if (activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.status === "closed") return false;
+      // Exclude groups from all private-focused filters
+      if (activeQuickFilter !== "groups" && activeQuickFilter !== "mentions" && activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.conversationType === "group") return false;
       switch (activeQuickFilter) {
         case "mine": if (conv.assignedToId !== myId) return false; break;
         case "waitingCustomer": if (conv.assignedToId !== myId || conv.lastMessageSender !== "agent") return false; break;
         case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
         case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
         case "unread": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
+        case "groups": if (conv.conversationType !== "group") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
         case "archived": if (!conv.isArchived) return false; break;
       }
