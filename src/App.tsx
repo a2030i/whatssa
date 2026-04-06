@@ -43,6 +43,7 @@ import WarehousesPage from "./pages/WarehousesPage";
 import LockedFeaturesPage from "./pages/LockedFeaturesPage";
 import LandingPage from "./pages/LandingPage";
 import TasksPage from "./pages/TasksPage";
+import TicketsPage from "./pages/TicketsPage";
 import ForceChangePasswordPage from "./pages/ForceChangePasswordPage";
 import SystemStatusPage from "./pages/SystemStatusPage";
 import EmergencyAdminPage from "./pages/EmergencyAdminPage";
