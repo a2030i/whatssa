@@ -1745,6 +1745,39 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
   const handleSendImage = async () => {
     if (!imagePreview) return;
+
+    // Email channels: send attachment via email-send edge function
+    if (isEmailChannel) {
+      setIsUploading(true);
+      try {
+        const base64 = await blobToBase64(imagePreview.file);
+        const caption = inputText.trim();
+        const attachment = {
+          filename: imagePreview.file.name,
+          content: base64,
+          contentType: imagePreview.file.type || "application/octet-stream",
+        };
+        // Use onSendMessage but pass attachment info via custom event
+        window.dispatchEvent(new CustomEvent("email-send-attachment", {
+          detail: {
+            conversationId: conversation.id,
+            text: caption || `📎 ${imagePreview.file.name}`,
+            attachment,
+          },
+        }));
+        setImagePreview(null);
+        setInputText("");
+        URL.revokeObjectURL(imagePreview.url);
+        toast.success("جاري إرسال المرفق...");
+      } catch (err: any) {
+        console.error("Email attachment error:", err);
+        toast.error("فشل إرفاق الملف: " + (err.message || "خطأ غير معروف"));
+      } finally {
+        setIsUploading(false);
+      }
+      return;
+    }
+
     if (windowExpired) {
       toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
       return;
@@ -1770,7 +1803,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       const isEvolution = conversation.channelType === "evolution" || !conversation.channelType;
 
       if (isEvolution) {
-        // Send via evolution-send with media support
         const { data, error } = await invokeCloud("evolution-send", {
           body: {
             to: conversation.customerPhone,
@@ -1784,7 +1816,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           throw new Error(data?.error || "فشل إرسال الوسائط");
         }
       } else {
-        // Send via Meta API with media upload
         const { data, error } = await invokeCloud("whatsapp-send", {
           body: {
             to: conversation.customerPhone,
@@ -2613,27 +2644,27 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             {(!windowExpired || isNoteMode) && (
               <div className="flex items-center gap-0 px-2 pb-1.5 border-t border-border/10">
                 {!isNoteMode && !isEmailChannel && (
-                  <>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
-                          <Smile className="w-4 h-4" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-2" side="top" align="start">
-                        <div className="grid grid-cols-8 gap-1">
-                          {emojis.map((e) => (
-                            <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
-                              {e}
-                            </button>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                    <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => fileInputRef.current?.click()}>
-                      <Paperclip className="w-4 h-4" />
-                    </button>
-                  </>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
+                        <Smile className="w-4 h-4" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-2" side="top" align="start">
+                      <div className="grid grid-cols-8 gap-1">
+                        {emojis.map((e) => (
+                          <button key={e} onClick={() => handleEmoji(e)} className="w-8 h-8 flex items-center justify-center rounded hover:bg-secondary transition-colors text-lg">
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+                {!isNoteMode && (
+                  <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" onClick={() => fileInputRef.current?.click()} title="إرفاق ملف">
+                    <Paperclip className="w-4 h-4" />
+                  </button>
                 )}
                 <input ref={fileInputRef} type="file" accept={allowedFileTypes} className="hidden" onChange={handleFileSelect} />
                 <input ref={groupPicInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleChangeGroupPicture(file); if (e.target) e.target.value = ""; }} />

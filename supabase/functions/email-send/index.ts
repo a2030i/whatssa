@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { to, cc, bcc, subject, body: emailBody, config_id, conversation_id } = await req.json();
+    const { to, cc, bcc, subject, body: emailBody, config_id, conversation_id, attachments } = await req.json();
     
     if (!to || !subject || !emailBody) {
       return new Response(JSON.stringify({ error: "to, subject, body are required" }), {
@@ -144,6 +144,24 @@ Deno.serve(async (req) => {
       sendOptions.bcc = bcc;
     }
 
+    // Handle attachments
+    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+      sendOptions.attachments = attachments.map((att: any) => {
+        // Convert base64 string to Uint8Array for denomailer
+        const binaryStr = atob(att.content);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        return {
+          filename: att.filename,
+          content: bytes,
+          contentType: att.contentType || "application/octet-stream",
+        };
+      });
+      console.log(`[email-send] Sending with ${attachments.length} attachment(s)`);
+    }
+
     await client.send(sendOptions);
 
     await client.close();
@@ -201,6 +219,13 @@ Deno.serve(async (req) => {
         ? plainBody
         : `📧 ${threadSubject}\n\n${plainBody}`;
 
+      const attachmentNames = (attachments && Array.isArray(attachments))
+        ? attachments.map((a: any) => a.filename)
+        : [];
+      const displayContent = attachmentNames.length > 0
+        ? `📎 ${attachmentNames.join(", ")}${plainBody ? `\n\n${subjectNorm === plainBody ? plainBody : `📧 ${threadSubject}\n\n${plainBody}`}` : ""}`
+        : (subjectNorm === plainBody ? plainBody : `📧 ${threadSubject}\n\n${plainBody}`);
+
       await admin.from("messages").insert({
         conversation_id: convId,
         sender: "agent",
@@ -217,6 +242,7 @@ Deno.serve(async (req) => {
           email_message_id: outgoingMessageId,
           email_in_reply_to: inReplyTo || null,
           email_references: references || null,
+          email_attachments: attachmentNames.length > 0 ? attachmentNames : null,
           sent_by: profile.id,
           sent_by_name: profile.full_name,
         },
