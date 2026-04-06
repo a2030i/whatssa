@@ -157,7 +157,10 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setEmailToList([]);
       setEmailCcInput("");
       setEmailCcList([]);
+      setEmailBccInput("");
+      setEmailBccList([]);
       setShowCcField(false);
+      setShowBccField(false);
       setEmailSubject("");
       setEmailBody("");
       setSelectedEmailConfig(null);
