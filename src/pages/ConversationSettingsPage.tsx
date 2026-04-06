@@ -42,6 +42,7 @@ const ConversationSettingsPage = () => {
   const [defaultMaxConv, setDefaultMaxConv] = useState("");
   const [loadingAssign, setLoadingAssign] = useState(true);
   const [savingAssign, setSavingAssign] = useState(false);
+  const [smartReassignMinutes, setSmartReassignMinutes] = useState("");
 
   const [channels, setChannels] = useState<ChannelOption[]>([]);
   const [selectedOohChannel, setSelectedOohChannel] = useState<string>("global");
