@@ -197,7 +197,7 @@ const EmailConfigSection = () => {
 
   const loadConfigs = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await cloudSupabase
       .from("email_configs")
       .select("*")
       .eq("org_id", orgId!)
