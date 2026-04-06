@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Mail, Save, Loader2, Trash2, Eye, EyeOff, CheckCircle2, Plus, Send, Settings, ExternalLink, Info, Users, User } from "lucide-react";
+import { Mail, Save, Loader2, Trash2, Eye, EyeOff, CheckCircle2, Plus, Send, Settings, ExternalLink, Info, Users, User, Zap, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -177,6 +177,8 @@ const EmailConfigSection = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [teams, setTeams] = useState<TeamOption[]>([]);
   const [agents, setAgents] = useState<AgentOption[]>([]);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<Record<string, { ok: boolean; message: string; latency_ms?: number } | null>>({});
 
   useEffect(() => {
     if (orgId) {
@@ -285,7 +287,6 @@ const EmailConfigSection = () => {
       dedicated_agent_id: config.dedicated_agent_id || "",
       dedicated_team_id: config.dedicated_team_id || "",
     });
-    // detect provider from smtp_host
     const detected = (Object.entries(PROVIDERS) as [ProviderKey, ProviderInfo][]).find(
       ([, p]) => p.smtp_host === config.smtp_host
     );
@@ -315,6 +316,29 @@ const EmailConfigSection = () => {
     loadConfigs();
   };
 
+  const handleTestConnection = async (configId: string) => {
+    setTestingId(configId);
+    setTestResult(prev => ({ ...prev, [configId]: null }));
+    try {
+      const { data, error } = await invokeCloud("email-test-connection", {
+        body: { config_id: configId },
+      });
+      if (error) throw error;
+      setTestResult(prev => ({ ...prev, [configId]: data }));
+      if (data?.ok) {
+        toast.success("✅ الاتصال ناجح!");
+        loadConfigs(); // reload to get updated is_verified
+      } else {
+        toast.error(data?.message || "فشل الاتصال");
+      }
+    } catch (e: any) {
+      setTestResult(prev => ({ ...prev, [configId]: { ok: false, message: e.message || "خطأ غير متوقع" } }));
+      toast.error("فشل اختبار الاتصال");
+    } finally {
+      setTestingId(null);
+    }
+  };
+
   const closeForm = () => {
     setShowForm(false);
     setEditId(null);
@@ -332,6 +356,15 @@ const EmailConfigSection = () => {
   const openNewForm = () => {
     closeForm();
     setShowForm(true);
+  };
+
+  const getAgentName = (id: string | null) => {
+    if (!id) return null;
+    return agents.find(a => a.id === id)?.full_name || null;
+  };
+  const getTeamName = (id: string | null) => {
+    if (!id) return null;
+    return teams.find(t => t.id === id)?.name || null;
   };
 
   const guide = PROVIDERS[selectedProvider].guide;
@@ -360,46 +393,135 @@ const EmailConfigSection = () => {
           <p className="text-[10px] text-muted-foreground mt-0.5">إرسال واستقبال عبر SMTP / IMAP</p>
         </div>
 
-        <div className="flex flex-col items-center gap-1.5 w-full">
-          {configs.map((config) => (
-            <div key={config.id} className="w-full">
-              <button
-                onClick={() => setExpandedId(expandedId === config.id ? null : config.id)}
-                className="w-full flex items-center justify-center gap-1.5"
-              >
-                <Badge
-                  className={`text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer ${
-                    config.is_active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  <CheckCircle2 className="w-2.5 h-2.5" />
-                  {config.email_address}
-                </Badge>
-              </button>
+        {/* Connected emails summary */}
+        {configs.length > 0 && (
+          <Badge className="text-[10px] gap-1 px-2.5 py-0.5 border-0 bg-primary/10 text-primary">
+            <Mail className="w-2.5 h-2.5" />
+            بريد متصل ({configs.length})
+          </Badge>
+        )}
 
-              {expandedId === config.id && (
-                <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-2">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <div className="flex items-center gap-2">
-                      <Switch checked={config.is_active} onCheckedChange={(v) => handleToggle(config.id, v)} />
-                      <span className="text-muted-foreground">{config.is_active ? "مفعّل" : "معطّل"}</span>
+        <div className="flex flex-col items-center gap-1.5 w-full">
+          {configs.map((config) => {
+            const result = testResult[config.id];
+            const agentName = getAgentName(config.dedicated_agent_id);
+            const teamName = getTeamName(config.dedicated_team_id);
+
+            return (
+              <div key={config.id} className="w-full">
+                <button
+                  onClick={() => setExpandedId(expandedId === config.id ? null : config.id)}
+                  className="w-full flex items-center justify-center gap-1.5"
+                >
+                  <Badge
+                    className={`text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer ${
+                      config.is_verified
+                        ? "bg-success/10 text-success"
+                        : config.is_active
+                        ? "bg-warning/10 text-warning"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {config.is_verified ? (
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                    ) : config.is_active ? (
+                      <Clock className="w-2.5 h-2.5" />
+                    ) : (
+                      <XCircle className="w-2.5 h-2.5" />
+                    )}
+                    {config.label || config.email_address}
+                  </Badge>
+                </button>
+
+                {expandedId === config.id && (
+                  <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-2.5">
+                    {/* Connection info */}
+                    <div className="text-[11px] space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Switch checked={config.is_active} onCheckedChange={(v) => handleToggle(config.id, v)} />
+                          <span className="text-muted-foreground">{config.is_active ? "مفعّل" : "معطّل"}</span>
+                        </div>
+                        <span className="text-muted-foreground" dir="ltr">
+                          {config.smtp_host}:{config.smtp_port}
+                        </span>
+                      </div>
+
+                      {/* Status */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">الحالة:</span>
+                        <span className={config.is_verified ? "text-success font-medium" : "text-warning font-medium"}>
+                          {config.is_verified ? "✅ متصل ومتحقق" : "⏳ بانتظار التحقق"}
+                        </span>
+                      </div>
+
+                      {/* Sync mode */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">المزامنة:</span>
+                        <span className="text-foreground">
+                          {config.sync_mode === "fetch_recent" ? "قديمة + جديدة" : "الجديدة فقط"}
+                        </span>
+                      </div>
+
+                      {/* Dedicated agent */}
+                      {agentName && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">موظف مخصص:</span>
+                          <span className="text-foreground flex items-center gap-1">
+                            <User className="w-2.5 h-2.5" /> {agentName}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Dedicated team */}
+                      {teamName && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">فريق مخصص:</span>
+                          <span className="text-foreground flex items-center gap-1">
+                            <Users className="w-2.5 h-2.5" /> {teamName}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <span className="text-muted-foreground" dir="ltr">
-                      {config.smtp_host}:{config.smtp_port} • {config.encryption.toUpperCase()}
-                    </span>
+
+                    {/* Test result */}
+                    {result && (
+                      <div className={`rounded-md p-2 text-[10px] ${result.ok ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                        {result.ok ? "✅" : "❌"} {result.message}
+                        {result.latency_ms != null && result.ok && (
+                          <span className="text-muted-foreground mr-1">({result.latency_ms}ms)</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2 justify-end flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleTestConnection(config.id)}
+                        disabled={testingId === config.id}
+                        className="text-[10px] h-7 px-2.5 gap-1"
+                      >
+                        {testingId === config.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Zap className="w-3 h-3" />
+                        )}
+                        اختبار الاتصال
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleEdit(config)} className="text-[10px] h-7 px-2 gap-1">
+                        <Settings className="w-3 h-3" /> إعدادات
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDelete(config.id)} className="text-[10px] h-7 px-2 text-destructive gap-1">
+                        <Trash2 className="w-3 h-3" /> حذف
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2 justify-end">
-                    <Button size="sm" variant="ghost" onClick={() => handleEdit(config)} className="text-[10px] h-6 px-2 gap-1">
-                      <Settings className="w-3 h-3" /> إعدادات
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleDelete(config.id)} className="text-[10px] h-6 px-2 text-destructive gap-1">
-                      <Trash2 className="w-3 h-3" /> حذف
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
 
           <Button size="sm" className="text-[10px] h-8 gap-1 rounded-lg px-4 w-full" onClick={openNewForm}>
             <Plus className="w-3 h-3" /> إضافة بريد
