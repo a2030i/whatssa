@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Mail, Save, Loader2, Trash2, Eye, EyeOff, CheckCircle2, Plus, Send, Settings, ExternalLink, Info, Users, User, Zap, XCircle, Clock } from "lucide-react";
+import { Mail, Save, Loader2, Trash2, Eye, EyeOff, CheckCircle2, Plus, Send, Settings, ExternalLink, Info, Users, User, Zap, XCircle, Clock, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -178,6 +178,7 @@ const EmailConfigSection = () => {
   const [teams, setTeams] = useState<TeamOption[]>([]);
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [fetchingId, setFetchingId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, { ok: boolean; message: string; latency_ms?: number } | null>>({});
 
   useEffect(() => {
@@ -338,6 +339,28 @@ const EmailConfigSection = () => {
       toast.error("فشل اختبار الاتصال");
     } finally {
       setTestingId(null);
+    }
+  };
+
+  const handleFetchEmails = async (configId: string) => {
+    setFetchingId(configId);
+    try {
+      const { data, error } = await invokeCloud("email-fetch-imap", {
+        body: { config_id: configId },
+      });
+      if (error) throw error;
+      if (data?.total_fetched > 0) {
+        toast.success(`📬 تم جلب ${data.total_fetched} رسالة جديدة`);
+      } else {
+        toast.info("لا توجد رسائل جديدة");
+      }
+      if (data?.total_errors > 0) {
+        console.warn("[email-fetch] Errors:", data.results);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "فشل جلب الرسائل");
+    } finally {
+      setFetchingId(null);
     }
   };
 
@@ -511,6 +534,21 @@ const EmailConfigSection = () => {
                           <Zap className="w-3 h-3" />
                         )}
                         اختبار الاتصال
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleFetchEmails(config.id)}
+                        disabled={fetchingId === config.id || !config.imap_host}
+                        className="text-[10px] h-7 px-2.5 gap-1"
+                        title={!config.imap_host ? "IMAP غير مهيأ" : "جلب الرسائل الواردة"}
+                      >
+                        {fetchingId === config.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Download className="w-3 h-3" />
+                        )}
+                        جلب الوارد
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => handleEdit(config)} className="text-[10px] h-7 px-2 gap-1">
                         <Settings className="w-3 h-3" /> إعدادات
