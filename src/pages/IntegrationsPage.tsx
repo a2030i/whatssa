@@ -1057,140 +1057,6 @@ const IntegrationsPage = () => {
 
     return (
       <>
-        {/* Connected Numbers */}
-        {hasAnyConnected && !expandedId && (
-          <div className="space-y-3">
-            <h2 className="text-base font-bold text-foreground">الأرقام المتصلة</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {connectedOfficialConfigs.map(renderConfigCard)}
-              {connectedUnofficialConfigs.map((config) => {
-                const isUnofficialExpanded = expandedId === config.id;
-                return (
-                  <div key={config.id} className="bg-card rounded-xl border border-border p-4 flex flex-col items-center text-center gap-2 hover:shadow-md transition-shadow">
-                    <div className="w-14 h-14 rounded-2xl bg-warning/10 flex items-center justify-center">
-                      <QrCode className="w-7 h-7 text-warning" />
-                    </div>
-                    <div className="space-y-1">
-                      {editingLabelId === config.id ? (
-                        <div className="flex items-center gap-1 justify-center">
-                          <Input
-                            value={editingLabelText}
-                            onChange={(e) => setEditingLabelText(e.target.value)}
-                            className="h-7 text-sm text-center w-32"
-                            placeholder="اسم القناة"
-                            autoFocus
-                            onKeyDown={(e) => { if (e.key === "Enter") saveChannelLabel(config.id); if (e.key === "Escape") setEditingLabelId(null); }}
-                          />
-                          <button onClick={() => saveChannelLabel(config.id)} className="text-success hover:text-success/80"><Check className="w-4 h-4" /></button>
-                          <button onClick={() => setEditingLabelId(null)} className="text-destructive hover:text-destructive/80"><X className="w-4 h-4" /></button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 justify-center group">
-                          <h3 className="font-bold text-sm">{config.channel_label || config.business_name || "واتساب ويب"}</h3>
-                          <button
-                            onClick={() => { setEditingLabelId(config.id); setEditingLabelText(config.channel_label || ""); }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary"
-                          >
-                            <Pencil className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
-                      <p className="text-xs text-muted-foreground font-mono" dir="ltr">
-                        {config.display_phone || config.business_name || (unofficialCheckingStatus === config.id || syncingUnofficialPhoneIds.includes(config.id) ? "جاري جلب الرقم..." : "الرقم غير متاح")}
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      قناة غير رسمية عبر واتساب ويب
-                    </p>
-                    <div className="flex items-center gap-2 flex-wrap justify-center mt-auto">
-                      <Badge variant="outline" className="text-[10px] px-2 py-0 text-warning border-warning/30">غير رسمي</Badge>
-                      <Badge className="bg-success/10 text-success border-0 text-xs gap-1 px-3 py-1">
-                        <CheckCircle2 className="w-3 h-3" /> متصل
-                      </Badge>
-                      <Button variant="outline" size="sm" className="text-xs h-8 gap-1 rounded-lg" onClick={() => setExpandedId(isUnofficialExpanded ? null : config.id)}>
-                        {isUnofficialExpanded ? "إخفاء" : "إعدادات"}
-                      </Button>
-                    </div>
-
-                    {/* Expanded Settings */}
-                    {isUnofficialExpanded && (
-                      <div className="w-full mt-3 pt-3 border-t border-border space-y-3 text-right animate-fade-in">
-                        {/* Connection Status */}
-                        <div className="flex items-center justify-between bg-success/5 border border-success/20 rounded-lg p-3">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-success" />
-                            <div>
-                              <p className="text-xs font-bold text-success">الرقم متصل</p>
-                              <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">
-                                {config.display_phone || config.business_name || (unofficialCheckingStatus === config.id || syncingUnofficialPhoneIds.includes(config.id) ? "جاري جلب الرقم..." : "الرقم غير متاح")}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => checkUnofficialStatus(config)} disabled={unofficialCheckingStatus === config.id}>
-                              {unofficialCheckingStatus === config.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                              تحقق
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 text-destructive" onClick={() => logoutUnofficial(config)}>
-                              <LogOut className="w-3 h-3" /> فصل
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Test Message */}
-                        <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Send className="w-4 h-4 text-primary" />
-                            <h4 className="text-xs font-bold">إرسال رسالة اختبار</h4>
-                          </div>
-                          <div className="flex gap-2">
-                            <Input
-                              value={unofficialTestPhone}
-                              onChange={(e) => setUnofficialTestPhone(e.target.value)}
-                              placeholder="9665xxxxxxxx"
-                              className="h-8 text-xs flex-1"
-                              dir="ltr"
-                            />
-                            <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={() => sendUnofficialTestMessage(config.id)} disabled={unofficialTestSending || !unofficialTestPhone}>
-                              {unofficialTestSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                              إرسال
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Profile Editor */}
-                        <WhatsAppProfileEditor configId={config.id} channelType="evolution" />
-
-                        {/* Channel Routing */}
-                        {orgId && (
-                          <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
-                            <ChannelRoutingConfig
-                              configId={config.id}
-                              orgId={orgId}
-                              defaultTeamId={(config as any).default_team_id}
-                              defaultAgentId={(config as any).default_agent_id}
-                              excludeSupervisors={(config as any).exclude_supervisors}
-                            />
-                          </div>
-                        )}
-
-                        {/* Ban Protection */}
-                        <UnofficialRateLimitPanel configId={config.id} initialSettings={(config as any).rate_limit_settings} />
-
-                        {/* Delete */}
-                        {isSuperAdmin && (
-                          <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={() => deleteUnofficialInstance(config)}>
-                            <Trash2 className="w-3.5 h-3.5" /> حذف الجلسة نهائياً
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* WhatsApp Channel */}
         <div className="space-y-3">
@@ -1224,7 +1090,8 @@ const IntegrationsPage = () => {
                       </button>
 
                       {isExpanded && (
-                        <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-2 animate-fade-in">
+                        <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-3 animate-fade-in">
+                          {/* Status info */}
                           <div className="text-[11px] space-y-1">
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground">الحالة:</span>
@@ -1236,26 +1103,100 @@ const IntegrationsPage = () => {
                                 <span className="text-foreground font-mono text-[10px]" dir="ltr">{config.display_phone}</span>
                               </div>
                             )}
-                            {ms?.qualityRating && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">الجودة:</span>
-                                <span className={cn("font-medium", ms.qualityRating === "GREEN" ? "text-success" : ms.qualityRating === "YELLOW" ? "text-warning" : "text-destructive")}>
-                                  {ms.qualityRating === "GREEN" ? "🟢 عالية" : ms.qualityRating === "YELLOW" ? "🟡 متوسطة" : "🔴 منخفضة"}
-                                </span>
+                          </div>
+
+                          {/* Label editing */}
+                          <div className="flex items-center gap-1.5 justify-center">
+                            {editingLabelId === config.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input value={editingLabelText} onChange={(e) => setEditingLabelText(e.target.value)} className="h-7 text-xs text-center w-32 bg-secondary border-0" placeholder="اسم القناة" autoFocus onKeyDown={(e) => { if (e.key === "Enter") saveChannelLabel(config.id); if (e.key === "Escape") setEditingLabelId(null); }} />
+                                <button onClick={() => saveChannelLabel(config.id)} className="text-success hover:text-success/80"><Check className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => setEditingLabelId(null)} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
                               </div>
-                            )}
-                            {ms?.messagingLimit && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">حد الرسائل:</span>
-                                <span className="text-foreground">{ms.messagingLimit.replace("TIER_", "").replace("K", ",000")}</span>
-                              </div>
+                            ) : (
+                              <button onClick={() => { setEditingLabelId(config.id); setEditingLabelText((config as any).channel_label || ""); }} className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1">
+                                <Pencil className="w-2.5 h-2.5" /> تعديل الاسم
+                              </button>
                             )}
                           </div>
-                          <div className="flex gap-2 justify-end flex-wrap">
-                            <Button size="sm" variant="ghost" onClick={() => { setExpandedId(config.id); setExpandedChannelBadgeId(null); }} className="text-[10px] h-7 px-2.5 gap-1">
-                              <Settings className="w-3 h-3" /> الإعدادات الكاملة
-                            </Button>
-                          </div>
+
+                          {/* Registration retry for pending/failed */}
+                          {(config.registration_status === "failed" || !config.registration_status || config.registration_status === "pending") && (
+                            <div className="flex items-center gap-2 justify-center">
+                              <Input value={twoStepPin} onChange={(e) => setTwoStepPin(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="PIN (اختياري)" className="bg-secondary border-0 text-xs w-24 h-8 text-center" dir="ltr" maxLength={6} />
+                              <Button variant="outline" size="sm" className="text-xs h-8 gap-1 text-primary" onClick={() => retryRegister(config)} disabled={isLoading}>
+                                <RefreshCw className="w-3 h-3" /> تسجيل
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Meta Status */}
+                          {ms && !ms.isLoading && renderMetaStatus(config, ms)}
+                          {ms?.isLoading && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 justify-center">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري جلب حالة الرقم...
+                            </div>
+                          )}
+
+                          {/* Webhook & IDs (super admin) */}
+                          {isSuperAdmin && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Input value={WEBHOOK_URL} readOnly className="bg-secondary border-0 text-[11px] flex-1" dir="ltr" />
+                                <Button size="sm" variant="outline" className="shrink-0 h-8 w-8 p-0" onClick={() => copyToClipboard(WEBHOOK_URL, "URL")}>
+                                  <Copy className="w-3 h-3" />
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground">
+                                <div><span className="font-medium">Phone ID:</span> <span className="font-mono" dir="ltr">{config.phone_number_id}</span></div>
+                                <div><span className="font-medium">WABA ID:</span> <span className="font-mono" dir="ltr">{config.business_account_id}</span></div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Registration error */}
+                          {config.registration_status === "failed" && config.registration_error && (
+                            <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 text-right">
+                              <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5" /> سبب الفشل
+                              </p>
+                              <p className="text-[11px] text-foreground mt-1">{friendlyError(config.registration_error)}</p>
+                            </div>
+                          )}
+
+                          {/* Test Message */}
+                          {config.registration_status === "connected" && (
+                            <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Send className="w-4 h-4 text-primary" />
+                                <h4 className="text-xs font-bold">إرسال رسالة اختبار</h4>
+                              </div>
+                              <div className="flex gap-2">
+                                <Input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="9665xxxxxxxx" className="h-8 text-xs flex-1" dir="ltr" />
+                                <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={sendTestMessage} disabled={testSending || !testPhone}>
+                                  {testSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                                  إرسال
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Profile Editor */}
+                          {config.registration_status === "connected" && (
+                            <WhatsAppProfileEditor configId={config.id} channelType="meta_api" />
+                          )}
+
+                          {/* Channel Routing */}
+                          {config.registration_status === "connected" && orgId && (
+                            <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
+                              <ChannelRoutingConfig configId={config.id} orgId={orgId} defaultTeamId={(config as any).default_team_id} defaultAgentId={(config as any).default_agent_id} excludeSupervisors={(config as any).exclude_supervisors} />
+                            </div>
+                          )}
+
+                          {/* Disconnect */}
+                          <Button variant="ghost" size="sm" className="w-full text-xs text-destructive gap-1" onClick={() => handleDisconnect(config.id)}>
+                            <Trash2 className="w-3 h-3" /> فصل الرقم
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -1278,34 +1219,79 @@ const IntegrationsPage = () => {
                       </button>
 
                       {isExpanded && (
-                        <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-2 animate-fade-in">
-                          <div className="text-[11px] space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-muted-foreground">الحالة:</span>
-                              <span className="text-success font-medium">✅ متصل</span>
-                            </div>
-                            {config.display_phone && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground">الرقم:</span>
-                                <span className="text-foreground font-mono text-[10px]" dir="ltr">{config.display_phone}</span>
+                        <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-3 animate-fade-in">
+                          {/* Connection Status */}
+                          <div className="flex items-center justify-between bg-success/5 border border-success/20 rounded-lg p-3">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-5 h-5 text-success" />
+                              <div>
+                                <p className="text-xs font-bold text-success">الرقم متصل</p>
+                                <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">
+                                  {config.display_phone || config.business_name || "الرقم غير متاح"}
+                                </p>
                               </div>
-                            )}
-                            <div className="flex items-center justify-between">
-                              <span className="text-muted-foreground">النوع:</span>
-                              <span className="text-warning font-medium">غير رسمي (QR)</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1" onClick={() => checkUnofficialStatus(config)} disabled={unofficialCheckingStatus === config.id}>
+                                {unofficialCheckingStatus === config.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                                تحقق
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex gap-2 justify-end flex-wrap">
-                            <Button size="sm" variant="outline" onClick={() => checkUnofficialStatus(config)} disabled={unofficialCheckingStatus === config.id} className="text-[10px] h-7 px-2.5 gap-1">
-                              {unofficialCheckingStatus === config.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                              تحقق
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => { setExpandedId(config.id); setExpandedChannelBadgeId(null); }} className="text-[10px] h-7 px-2.5 gap-1">
-                              <Settings className="w-3 h-3" /> الإعدادات الكاملة
-                            </Button>
+
+                          {/* Label editing */}
+                          <div className="flex items-center gap-1.5 justify-center">
+                            {editingLabelId === config.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input value={editingLabelText} onChange={(e) => setEditingLabelText(e.target.value)} className="h-7 text-xs text-center w-32 bg-secondary border-0" placeholder="اسم القناة" autoFocus onKeyDown={(e) => { if (e.key === "Enter") saveChannelLabel(config.id); if (e.key === "Escape") setEditingLabelId(null); }} />
+                                <button onClick={() => saveChannelLabel(config.id)} className="text-success hover:text-success/80"><Check className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => setEditingLabelId(null)} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
+                              </div>
+                            ) : (
+                              <button onClick={() => { setEditingLabelId(config.id); setEditingLabelText(config.channel_label || ""); }} className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1">
+                                <Pencil className="w-2.5 h-2.5" /> تعديل الاسم
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Test Message */}
+                          <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Send className="w-4 h-4 text-primary" />
+                              <h4 className="text-xs font-bold">إرسال رسالة اختبار</h4>
+                            </div>
+                            <div className="flex gap-2">
+                              <Input value={unofficialTestPhone} onChange={(e) => setUnofficialTestPhone(e.target.value)} placeholder="9665xxxxxxxx" className="h-8 text-xs flex-1" dir="ltr" />
+                              <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={() => sendUnofficialTestMessage(config.id)} disabled={unofficialTestSending || !unofficialTestPhone}>
+                                {unofficialTestSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                                إرسال
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Profile Editor */}
+                          <WhatsAppProfileEditor configId={config.id} channelType="evolution" />
+
+                          {/* Channel Routing */}
+                          {orgId && (
+                            <div className="bg-muted/30 rounded-xl border border-border p-3 space-y-2">
+                              <ChannelRoutingConfig configId={config.id} orgId={orgId} defaultTeamId={(config as any).default_team_id} defaultAgentId={(config as any).default_agent_id} excludeSupervisors={(config as any).exclude_supervisors} />
+                            </div>
+                          )}
+
+                          {/* Ban Protection */}
+                          <UnofficialRateLimitPanel configId={config.id} initialSettings={(config as any).rate_limit_settings} />
+
+                          {/* Actions */}
+                          <div className="flex gap-2 justify-end flex-wrap border-t border-border pt-2">
                             <Button size="sm" variant="ghost" onClick={() => logoutUnofficial(config)} className="text-[10px] h-7 px-2 text-destructive gap-1">
                               <LogOut className="w-3 h-3" /> فصل
                             </Button>
+                            {isSuperAdmin && (
+                              <Button variant="outline" size="sm" className="text-[10px] h-7 text-destructive border-destructive/30 gap-1" onClick={() => deleteUnofficialInstance(config)}>
+                                <Trash2 className="w-3 h-3" /> حذف نهائياً
+                              </Button>
+                            )}
                           </div>
                         </div>
                       )}
