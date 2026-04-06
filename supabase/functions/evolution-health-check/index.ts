@@ -90,12 +90,14 @@ Deno.serve(async (req) => {
             console.error(`[evolution-health] Restart failed for ${instanceName}:`, restartErr);
           }
 
-          // Update DB status
-          await supabase.from("whatsapp_config").update({
+          // Update DB status (primary + Cloud)
+          const disconnectUpdate = {
             is_connected: false,
             registration_status: "disconnected",
             registration_error: `انقطع الاتصال — الحالة: ${state}. تمت محاولة إعادة الاتصال تلقائياً.`,
-          }).eq("id", channel.id);
+          };
+          await supabase.from("whatsapp_config").update(disconnectUpdate).eq("id", channel.id);
+          if (cloudDb) await cloudDb.from("whatsapp_config").update(disconnectUpdate).eq("id", channel.id);
 
           // Notify org admins
           const { data: admins } = await supabase
