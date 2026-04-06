@@ -111,7 +111,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   useEffect(() => {
     if (open) {
       setStep("contact");
-      setDialogMode("private");
       setSelectedChannel(null);
       setCountryCode("966");
       setLocalNumber("");
@@ -132,8 +131,21 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setEmailSubject("");
       setEmailBody("");
       setSelectedEmailConfig(null);
+      // Don't set dialogMode here - will be set after channels/email load
     }
   }, [open]);
+
+  // Auto-select default mode based on available channels
+  useEffect(() => {
+    if (!open) return;
+    if (channels.length > 0) {
+      setDialogMode("private");
+    } else if (emailConfigs.length > 0) {
+      setDialogMode("email");
+    } else {
+      setDialogMode("private");
+    }
+  }, [open, channels.length, emailConfigs.length]);
 
   // Load channels
   useEffect(() => {
