@@ -95,12 +95,29 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [groupImagePreview, setGroupImagePreview] = useState<string | null>(null);
   const groupImageInputRef = useRef<HTMLInputElement>(null);
   // Email state
-  const [emailTo, setEmailTo] = useState("");
+  const [emailToInput, setEmailToInput] = useState("");
+  const [emailToList, setEmailToList] = useState<string[]>([]);
+  const [emailCcInput, setEmailCcInput] = useState("");
+  const [emailCcList, setEmailCcList] = useState<string[]>([]);
+  const [showCcField, setShowCcField] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailConfigs, setEmailConfigs] = useState<{ id: string; email_address: string; label: string | null }[]>([]);
   const [selectedEmailConfig, setSelectedEmailConfig] = useState<string | null>(null);
+
+  const addEmailTo = (val?: string) => {
+    const email = (val || emailToInput).trim().toLowerCase();
+    if (!email || !email.includes("@") || emailToList.includes(email)) return;
+    setEmailToList(prev => [...prev, email]);
+    setEmailToInput("");
+  };
+  const addEmailCc = (val?: string) => {
+    const email = (val || emailCcInput).trim().toLowerCase();
+    if (!email || !email.includes("@") || emailCcList.includes(email) || emailToList.includes(email)) return;
+    setEmailCcList(prev => [...prev, email]);
+    setEmailCcInput("");
+  };
 
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
   const fullPhone = `${countryCode}${localNumber.replace(/^0+/, "")}`;
