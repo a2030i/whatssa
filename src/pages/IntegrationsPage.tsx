@@ -1542,7 +1542,13 @@ const IntegrationsPage = () => {
     );
   };
 
-  // ============ MIGRATION INFO ============
+  const reviewToggle = isSuperAdmin ? (
+    <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => setIsReviewMode(p => !p)}>
+      <Globe className="w-4 h-4" />
+      {isReviewMode ? "Arabic mode" : "Meta Review Mode"}
+    </Button>
+  ) : null;
+
   if (flowStep === "migration_info") {
     return (
       <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
