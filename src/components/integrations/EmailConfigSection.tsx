@@ -178,6 +178,7 @@ const EmailConfigSection = () => {
   const [teams, setTeams] = useState<TeamOption[]>([]);
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [fetchingId, setFetchingId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, { ok: boolean; message: string; latency_ms?: number } | null>>({});
 
   useEffect(() => {
