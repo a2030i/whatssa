@@ -8,7 +8,7 @@ import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Shield, X } from "lucide-react";
+import { Shield, X, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/use-mobile";
 import useNotificationSound from "@/hooks/useNotificationSound";
