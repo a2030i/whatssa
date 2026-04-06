@@ -246,6 +246,7 @@ const EmailConfigSection = () => {
       imap_port: config.imap_port,
       is_active: config.is_active,
       sync_mode: (config as any).sync_mode || "new_only",
+    });
     // detect provider from smtp_host
     const detected = (Object.entries(PROVIDERS) as [ProviderKey, ProviderInfo][]).find(
       ([, p]) => p.smtp_host === config.smtp_host
