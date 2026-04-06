@@ -66,7 +66,7 @@ interface WhatsAppConfig {
 
 type OnboardingMode = "new" | "migrate_app" | "migrate_provider";
 
-type FlowStep = "idle" | "choose_type" | "checklist" | "migration_info" | "connecting" | "pick_phone" | "migration_prereqs" | "success" | "error";
+type FlowStep = "idle" | "choose_type" | "checklist" | "migration_info" | "connecting" | "pick_phone" | "migration_prereqs" | "success" | "error" | "manual_token";
 
 const IntegrationsPage = () => {
   const { orgId, isSuperAdmin, isImpersonating } = useAuth();
