@@ -47,6 +47,7 @@ import TicketsPage from "./pages/TicketsPage";
 import ForceChangePasswordPage from "./pages/ForceChangePasswordPage";
 import SystemStatusPage from "./pages/SystemStatusPage";
 import EmergencyAdminPage from "./pages/EmergencyAdminPage";
+import SafetyGuidePage from "./pages/SafetyGuidePage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
