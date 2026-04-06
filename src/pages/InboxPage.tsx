@@ -341,6 +341,7 @@ const InboxPage = () => {
                 const withoutOptimistic = (prev[selectedId] || []).filter((m) =>
                   !(m.id.startsWith("optimistic-") && m.sender === "agent" && (
                     m.text === newMessage.text ||
+                    newMessage.text?.includes(m.text) ||
                     (m.type === "audio" && newMessage.type === "audio")
                   ))
                 );
