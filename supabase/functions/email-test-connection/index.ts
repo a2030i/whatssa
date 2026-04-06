@@ -14,23 +14,18 @@ function getExternalClient() {
 async function getCallerOrgId(authHeader: string | null) {
   if (!authHeader) return null;
 
-  const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
-  const userRes = await fetch(`${externalUrl}/auth/v1/user`, {
-    headers: {
-      Authorization: authHeader,
-      apikey: Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY")!,
-    },
+  const url = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
+  const anonKey = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY")!;
+  const userClient = createClient(url, anonKey, {
+    global: { headers: { Authorization: authHeader } },
   });
-  if (!userRes.ok) return null;
-  const user = await userRes.json();
-  if (!user?.id) return null;
 
-  const admin = getExternalClient();
-  const { data: profile } = await admin
+  const { data: profile } = await userClient
     .from("profiles")
     .select("org_id")
-    .eq("id", user.id)
-    .single();
+    .limit(1)
+    .maybeSingle();
+
   return profile?.org_id || null;
 }
 
