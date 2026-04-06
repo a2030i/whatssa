@@ -2437,7 +2437,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Input Area */}
-      {!isRecording && conversation.status !== "closed" && (
+      {!isRecording && (
         <div className={cn("shrink-0 bg-card border-t", isNoteMode ? "border-amber-500/30" : "border-border/40")} style={{ boxShadow: '0 -1px 3px rgba(0,0,0,0.04)' }}>
           {/* Reply Preview Bar */}
           {replyTo && (
