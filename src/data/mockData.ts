@@ -66,6 +66,14 @@ export interface MessageContact {
   email?: string;
 }
 
+export interface EmailMeta {
+  subject?: string;
+  from?: string;
+  to?: string;
+  cc?: string;
+  messageId?: string;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -96,11 +104,12 @@ export interface Message {
   poll?: {
     question: string;
     options: { id: string; title: string }[];
-    votes?: Record<string, string[]>; // option_id -> voter phones
+    votes?: Record<string, string[]>;
   };
   createdAt?: string;
   readBy?: string[];
   groupSize?: number;
+  emailMeta?: EmailMeta;
 }
 
 export interface Agent {
