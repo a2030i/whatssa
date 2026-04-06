@@ -250,7 +250,7 @@ const EmailConfigSection = () => {
         if (error) throw error;
         toast.success("تم تحديث إعدادات البريد");
       } else {
-        const { error } = await supabase.from("email_configs").insert({ ...payload, org_id: orgId });
+        const { error } = await cloudSupabase.from("email_configs").insert({ ...payload, org_id: orgId });
         if (error) throw error;
         toast.success("تم حفظ إعدادات البريد بنجاح");
       }
