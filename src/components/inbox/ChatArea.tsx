@@ -1828,6 +1828,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <DropdownMenuItem onClick={() => setShowFollowUp(true)}>
                   <Clock className="w-4 h-4 ml-2 text-primary" /> جدولة متابعة
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setShowTicketDialog(true);
+                  // Fetch agents for ticket dialog
+                  if (orgId) supabase.from("profiles").select("id, full_name").eq("org_id", orgId).eq("is_active", true).then(({data}) => setTicketAgents(data || []));
+                }}>
+                  <Ticket className="w-4 h-4 ml-2 text-primary" /> إنشاء تذكرة
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setSelectingMessages(!selectingMessages);
+                  setSelectedMsgIds(new Set());
+                }}>
+                  <Square className="w-4 h-4 ml-2 text-primary" /> {selectingMessages ? "إلغاء تحديد الرسائل" : "تحديد رسائل لتذكرة"}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowTransfer(true)} className="md:hidden">
                   <UserPlus className="w-4 h-4 ml-2 text-primary" /> تحويل لموظف آخر
                 </DropdownMenuItem>
