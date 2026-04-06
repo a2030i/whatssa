@@ -444,6 +444,7 @@ const IntegrationsPage = () => {
         } else {
           setConnectedPhone(phone.display_phone_number);
           setWabaInfo(result.waba_details);
+          setWebhookStatus(result.webhook_status || null);
           setFlowStep("success");
         }
       }
