@@ -471,11 +471,11 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
               <Plus className="w-4 h-4 text-primary" />
             </div>
-            {dialogMode === "group" ? "إنشاء قروب" : "محادثة جديدة"}
+            {dialogMode === "group" ? "إنشاء قروب" : dialogMode === "email" ? "إرسال إيميل" : "محادثة جديدة"}
           </DialogTitle>
 
-          {/* Mode toggle - only show if evolution channels exist */}
-          {hasEvolution && (
+          {/* Mode toggle */}
+          {(hasEvolution || hasEmailConfigs) && (
             <div className="flex items-center gap-1 mt-3 bg-muted rounded-lg p-1">
               <button
                 onClick={() => setDialogMode("private")}
@@ -484,17 +484,30 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   dialogMode === "private" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <MessageSquare className="w-3.5 h-3.5" /> محادثة
+                <MessageSquare className="w-3.5 h-3.5" /> واتساب
               </button>
-              <button
-                onClick={() => setDialogMode("group")}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors",
-                  dialogMode === "group" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Users className="w-3.5 h-3.5" /> قروب
-              </button>
+              {hasEvolution && (
+                <button
+                  onClick={() => setDialogMode("group")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors",
+                    dialogMode === "group" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Users className="w-3.5 h-3.5" /> قروب
+                </button>
+              )}
+              {hasEmailConfigs && (
+                <button
+                  onClick={() => setDialogMode("email")}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors",
+                    dialogMode === "email" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Mail className="w-3.5 h-3.5" /> إيميل
+                </button>
+              )}
             </div>
           )}
 
