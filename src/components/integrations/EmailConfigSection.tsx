@@ -248,11 +248,15 @@ const EmailConfigSection = () => {
       };
 
       if (editId) {
-        const { error } = await cloudSupabase.from("email_configs").update(payload).eq("id", editId);
+        const { error } = await invokeCloud("email-config-manage", {
+          body: { action: "update", id: editId, payload },
+        });
         if (error) throw error;
         toast.success("تم تحديث إعدادات البريد");
       } else {
-        const { error } = await cloudSupabase.from("email_configs").insert({ ...payload, org_id: orgId });
+        const { error } = await invokeCloud("email-config-manage", {
+          body: { action: "create", payload },
+        });
         if (error) throw error;
         toast.success("تم حفظ إعدادات البريد بنجاح");
       }
