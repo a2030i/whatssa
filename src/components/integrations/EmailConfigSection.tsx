@@ -342,6 +342,28 @@ const EmailConfigSection = () => {
     }
   };
 
+  const handleFetchEmails = async (configId: string) => {
+    setFetchingId(configId);
+    try {
+      const { data, error } = await invokeCloud("email-fetch-imap", {
+        body: { config_id: configId },
+      });
+      if (error) throw error;
+      if (data?.total_fetched > 0) {
+        toast.success(`📬 تم جلب ${data.total_fetched} رسالة جديدة`);
+      } else {
+        toast.info("لا توجد رسائل جديدة");
+      }
+      if (data?.total_errors > 0) {
+        console.warn("[email-fetch] Errors:", data.results);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "فشل جلب الرسائل");
+    } finally {
+      setFetchingId(null);
+    }
+  };
+
   const closeForm = () => {
     setShowForm(false);
     setEditId(null);
