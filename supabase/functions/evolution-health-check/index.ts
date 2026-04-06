@@ -16,10 +16,16 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Primary DB (external if configured, otherwise Cloud)
   const supabase = createClient(
     Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
+
+  // Cloud DB (always write here too so UI stays in sync)
+  const cloudDb = Deno.env.get("EXTERNAL_SUPABASE_URL")
+    ? createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
+    : null;
 
   const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
   const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY");
@@ -84,12 +90,14 @@ Deno.serve(async (req) => {
             console.error(`[evolution-health] Restart failed for ${instanceName}:`, restartErr);
           }
 
-          // Update DB status
-          await supabase.from("whatsapp_config").update({
+          // Update DB status (primary + Cloud)
+          const disconnectUpdate = {
             is_connected: false,
             registration_status: "disconnected",
             registration_error: `انقطع الاتصال — الحالة: ${state}. تمت محاولة إعادة الاتصال تلقائياً.`,
-          }).eq("id", channel.id);
+          };
+          await supabase.from("whatsapp_config").update(disconnectUpdate).eq("id", channel.id);
+          if (cloudDb) await cloudDb.from("whatsapp_config").update(disconnectUpdate).eq("id", channel.id);
 
           // Notify org admins
           const { data: admins } = await supabase
@@ -134,11 +142,13 @@ Deno.serve(async (req) => {
         } else {
           // Instance is healthy — skip DB write if already connected (reduces IO)
           if (!channel.is_connected) {
-            await supabase.from("whatsapp_config").update({
+            const connectUpdate = {
               is_connected: true,
               registration_status: "connected",
               registration_error: null,
-            }).eq("id", channel.id);
+            };
+            await supabase.from("whatsapp_config").update(connectUpdate).eq("id", channel.id);
+            if (cloudDb) await cloudDb.from("whatsapp_config").update(connectUpdate).eq("id", channel.id);
           }
 
           results.push({ instance: instanceName, status: "connected" });

@@ -173,17 +173,18 @@ const IntegrationsPage = () => {
     setConfigs(officialConfigs);
     setUnofficialConfigs(unofficial);
 
-    // Auto-sync missing phone numbers only on initial load, with a bounded loading state
+    // Auto-sync Evolution channels on initial load: check live status + missing phone numbers
     if (!skipAutoSync) {
-      const needsSync = unofficial.filter((uc) => uc.is_connected && uc.evolution_instance_status === "connected" && !uc.display_phone && uc.evolution_instance_name);
-      setSyncingUnofficialPhoneIds(needsSync.map((uc) => uc.id));
+      const connectedUnofficial = unofficial.filter((uc) => uc.evolution_instance_name);
+      const needsPhoneSync = connectedUnofficial.filter((uc) => uc.is_connected && uc.evolution_instance_status === "connected" && !uc.display_phone);
+      setSyncingUnofficialPhoneIds(connectedUnofficial.map((uc) => uc.id));
 
-      if (needsSync.length > 0) {
-        // Ensure we have a valid session before calling edge functions
+      if (connectedUnofficial.length > 0) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.access_token) {
+          // Check live status for ALL evolution channels to sync DB state
           await Promise.allSettled(
-            needsSync.map((uc) =>
+            connectedUnofficial.map((uc) =>
               invokeCloud("evolution-manage", {
                 body: { action: "status", instance_name: uc.evolution_instance_name },
               })

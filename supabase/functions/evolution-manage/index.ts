@@ -328,8 +328,21 @@ serve(async (req) => {
             evolution_instance_status: "connected",
             is_connected: true,
             registration_status: "connected",
+            registration_error: null,
             ...(identity.display_phone ? { display_phone: identity.display_phone } : {}),
             ...(identity.business_name ? { business_name: identity.business_name } : {}),
+          })
+          .eq("evolution_instance_name", instanceName)
+          .eq("org_id", orgId);
+      } else {
+        // Update DB to reflect disconnected state
+        await adminClient
+          .from("whatsapp_config")
+          .update({
+            evolution_instance_status: state,
+            is_connected: false,
+            registration_status: "disconnected",
+            registration_error: `الحالة: ${state}`,
           })
           .eq("evolution_instance_name", instanceName)
           .eq("org_id", orgId);
