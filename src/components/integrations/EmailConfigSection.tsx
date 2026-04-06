@@ -161,6 +161,7 @@ const EmailConfigSection = () => {
     imap_host: PROVIDERS.gmail.imap_host,
     imap_port: PROVIDERS.gmail.imap_port,
     is_active: true,
+    sync_mode: "new_only" as string,
   });
   const [editId, setEditId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
