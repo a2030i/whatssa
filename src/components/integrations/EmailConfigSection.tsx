@@ -200,7 +200,7 @@ const EmailConfigSection = () => {
     setLoading(true);
     try {
       const { data: res, error } = await invokeCloud("email-config-manage", {
-        body: { action: "list" },
+        body: { action: "list", org_id: orgId },
       });
       if (error) throw error;
       setConfigs(res?.data || []);
