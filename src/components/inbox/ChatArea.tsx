@@ -3007,6 +3007,35 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           })()}
         </DialogContent>
       </Dialog>
+      {/* Message Selection Floating Bar */}
+      {selectingMessages && selectedMsgIds.size > 0 && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 bg-card border border-border shadow-lg rounded-xl px-4 py-2.5 flex items-center gap-3">
+          <span className="text-xs font-medium text-muted-foreground">{selectedMsgIds.size} رسالة محددة</span>
+          <Button size="sm" className="h-7 text-xs gap-1" onClick={() => {
+            if (orgId) supabase.from("profiles").select("id, full_name").eq("org_id", orgId).eq("is_active", true).then(({data}) => setTicketAgents(data || []));
+            setShowTicketDialog(true);
+          }}>
+            <Ticket className="w-3 h-3" /> إنشاء تذكرة
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setSelectingMessages(false); setSelectedMsgIds(new Set()); }}>
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
+      )}
+
+      {/* Create Ticket Dialog */}
+      <CreateTicketDialog
+        open={showTicketDialog}
+        onOpenChange={(open) => { setShowTicketDialog(open); if (!open) { setSelectingMessages(false); setSelectedMsgIds(new Set()); } }}
+        onCreated={() => { toast.success("تم إنشاء التذكرة"); setSelectingMessages(false); setSelectedMsgIds(new Set()); }}
+        agents={ticketAgents}
+        conversationId={conversation.id}
+        customerPhone={conversation.customerPhone}
+        customerName={conversation.customerName}
+        messageIds={Array.from(selectedMsgIds)}
+        messagePreviews={messages.filter(m => selectedMsgIds.has(m.id)).map(m => ({ sender: m.sender, text: m.text, timestamp: m.timestamp }))}
+        defaultDescription={selectedMsgIds.size > 0 ? `تذكرة من محادثة: ${conversation.customerName}` : undefined}
+      />
     </div>
   );
 };
