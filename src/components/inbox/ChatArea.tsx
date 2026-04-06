@@ -929,6 +929,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const isGroup = conversation.conversationType === "group";
   const isEvolutionChannel = conversation.channelType === "evolution";
   const isMetaChannel = conversation.channelType === "meta_api";
+  const isEmailChannel = conversation.channelType === "email" || conversation.conversationType === "email";
 
   // Deep link: scroll to specific message
   useEffect(() => {
