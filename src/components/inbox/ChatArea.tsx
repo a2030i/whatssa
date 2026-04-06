@@ -441,12 +441,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   <Link2 className="w-3.5 h-3.5" /> نسخ رابط الرسالة
                 </DropdownMenuItem>
                )}
-              {onForward && msg.type === "text" && !msg.isDeleted && (
+              {!isEmailConversation && onForward && msg.type === "text" && !msg.isDeleted && (
                 <DropdownMenuItem onClick={() => onForward(msg)} className="text-xs gap-2">
                   <Forward className="w-3.5 h-3.5" /> إعادة توجيه
                 </DropdownMenuItem>
               )}
-              {onStar && !msg.isDeleted && (
+              {!isEmailConversation && onStar && !msg.isDeleted && (
                 <DropdownMenuItem onClick={() => onStar(msg)} className="text-xs gap-2">
                   <Star className={cn("w-3.5 h-3.5", (msg as any).isStarred ? "text-amber-500 fill-amber-500" : "")} /> {(msg as any).isStarred ? "إلغاء التمييز" : "تمييز ⭐"}
                 </DropdownMenuItem>
@@ -456,7 +456,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   <Languages className="w-3.5 h-3.5" /> ترجمة
                 </DropdownMenuItem>
               )}
-              {msg.waMessageId && conversation.channelType === "evolution" && (
+              {!isEmailConversation && msg.waMessageId && conversation.channelType === "evolution" && (
                 <>
                   <DropdownMenuSeparator />
                   <div className="px-2 py-1.5">
