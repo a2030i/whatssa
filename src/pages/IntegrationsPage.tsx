@@ -1796,6 +1796,15 @@ const IntegrationsPage = () => {
                 {!sdkLoaded ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
                 {t("تأكدت — متابعة الربط", "Confirmed — Continue to Connect")}
               </Button>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 border-t border-border" />
+                <span className="text-[10px] text-muted-foreground">{t("أو", "or")}</span>
+                <div className="flex-1 border-t border-border" />
+              </div>
+              <Button variant="outline" size="sm" className="w-full text-xs gap-1.5" onClick={() => setFlowStep("manual_token")}>
+                <KeyRound className="w-3.5 h-3.5" />
+                {t("ربط يدوي بالتوكن (بدون Embedded Signup)", "Manual connect with token (without Embedded Signup)")}
+              </Button>
               <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetFlow}>{t("← رجوع", "← Back")}</Button>
             </div>
           </div>
