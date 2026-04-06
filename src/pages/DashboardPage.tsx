@@ -6,6 +6,7 @@ import AccountHealth from "@/components/dashboard/AccountHealth";
 import SmartInsight from "@/components/dashboard/SmartInsight";
 import VerificationCard from "@/components/dashboard/VerificationCard";
 import TokenAlert from "@/components/dashboard/TokenAlert";
+import WhatsAppSafetyBanner from "@/components/dashboard/WhatsAppSafetyBanner";
 import { Loader2, LayoutDashboard } from "lucide-react";
 
 const DashboardPage = () => {
@@ -42,6 +43,7 @@ const DashboardPage = () => {
         </div>
       </div>
 
+      <WhatsAppSafetyBanner />
       <StatusBar data={data} />
       <TokenAlert data={data} />
       <VerificationCard data={data} />

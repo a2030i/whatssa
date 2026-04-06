@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Plus, Megaphone, Send, Clock, FileText, AlertCircle, Search, Target, CalendarDays, Upload, X, Eye, Users, Check, Ban, MessageSquare, BarChart3, ArrowRight, Download, ShoppingCart, TrendingUp, Mail, MailOpen, Reply, XCircle, GitCompareArrows, ChevronDown, ChevronUp, AlertTriangle, Shield, Repeat, RefreshCw, RotateCcw, ExternalLink } from "lucide-react";
+import CampaignSafetyTips from "@/components/campaigns/CampaignSafetyTips";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -668,6 +669,7 @@ const CampaignsPage = () => {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader><DialogTitle>إنشاء حملة جديدة</DialogTitle></DialogHeader>
           <div className="space-y-5 mt-2">
+            <CampaignSafetyTips />
             {/* Name */}
             <div className="space-y-1.5">
               <Label className="text-xs">اسم الحملة *</Label>
