@@ -1745,6 +1745,39 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
   const handleSendImage = async () => {
     if (!imagePreview) return;
+
+    // Email channels: send attachment via email-send edge function
+    if (isEmailChannel) {
+      setIsUploading(true);
+      try {
+        const base64 = await blobToBase64(imagePreview.file);
+        const caption = inputText.trim();
+        const attachment = {
+          filename: imagePreview.file.name,
+          content: base64,
+          contentType: imagePreview.file.type || "application/octet-stream",
+        };
+        // Use onSendMessage but pass attachment info via custom event
+        window.dispatchEvent(new CustomEvent("email-send-attachment", {
+          detail: {
+            conversationId: conversation.id,
+            text: caption || `📎 ${imagePreview.file.name}`,
+            attachment,
+          },
+        }));
+        setImagePreview(null);
+        setInputText("");
+        URL.revokeObjectURL(imagePreview.url);
+        toast.success("جاري إرسال المرفق...");
+      } catch (err: any) {
+        console.error("Email attachment error:", err);
+        toast.error("فشل إرفاق الملف: " + (err.message || "خطأ غير معروف"));
+      } finally {
+        setIsUploading(false);
+      }
+      return;
+    }
+
     if (windowExpired) {
       toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
       return;
@@ -1770,7 +1803,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       const isEvolution = conversation.channelType === "evolution" || !conversation.channelType;
 
       if (isEvolution) {
-        // Send via evolution-send with media support
         const { data, error } = await invokeCloud("evolution-send", {
           body: {
             to: conversation.customerPhone,
@@ -1784,7 +1816,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           throw new Error(data?.error || "فشل إرسال الوسائط");
         }
       } else {
-        // Send via Meta API with media upload
         const { data, error } = await invokeCloud("whatsapp-send", {
           body: {
             to: conversation.customerPhone,
