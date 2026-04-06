@@ -13,6 +13,7 @@ import SallaIntegrationSection from "@/components/integrations/SallaIntegrationS
 import ChannelRoutingConfig from "@/components/integrations/ChannelRoutingConfig";
 import WhatsAppProfileEditor from "@/components/integrations/WhatsAppProfileEditor";
 import { QRCodeSection } from "@/components/integrations/CatalogQRSection";
+import EmailConfigSection from "@/components/integrations/EmailConfigSection";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
