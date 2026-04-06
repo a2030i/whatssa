@@ -113,31 +113,43 @@ const IntegrationsPage = () => {
   const [unofficialTestPhone, setUnofficialTestPhone] = useState("");
   const [unofficialTestSending, setUnofficialTestSending] = useState(false);
   const [unofficialCheckingStatus, setUnofficialCheckingStatus] = useState<string | null>(null);
-  const [metaAppId, setMetaAppId] = useState(DEFAULT_META_APP_ID);
-  const [metaConfigId, setMetaConfigId] = useState(DEFAULT_META_CONFIG_ID);
+  const [metaAppId, setMetaAppId] = useState("");
+  const [metaConfigId, setMetaConfigId] = useState("");
   const [officialEnabled, setOfficialEnabled] = useState(false);
+  const [metaSettingsLoaded, setMetaSettingsLoaded] = useState(false);
 
+  // Load Meta settings first, then load SDK with correct appId
   useEffect(() => {
-    loadFacebookSDK();
-    // Load Meta settings via Cloud edge function (bypasses external DB RLS)
     invokeCloud("get-meta-settings").then(({ data, error }) => {
       console.log("[get-meta-settings] raw response:", { data, error });
-      // data may come as a JSON string from the edge function
       let settings: any[] = [];
       if (Array.isArray(data)) {
         settings = data;
       } else if (typeof data === "string") {
         try { settings = JSON.parse(data); } catch { /* ignore */ }
       }
+      let appId = DEFAULT_META_APP_ID;
+      let configId = DEFAULT_META_CONFIG_ID;
       settings.forEach((s: any) => {
-        if (s.key === "meta_app_id" && s.value) setMetaAppId(String(s.value));
-        if (s.key === "meta_config_id" && s.value) setMetaConfigId(String(s.value));
+        if (s.key === "meta_app_id" && s.value) appId = String(s.value);
+        if (s.key === "meta_config_id" && s.value) configId = String(s.value);
         if (s.key === "official_whatsapp_enabled") setOfficialEnabled(s.value === true || s.value === "true");
       });
-    }).catch((err) => {
-      console.error("[get-meta-settings] fetch error:", err);
+      setMetaAppId(appId);
+      setMetaConfigId(configId);
+      setMetaSettingsLoaded(true);
+    }).catch(() => {
+      setMetaAppId(DEFAULT_META_APP_ID);
+      setMetaConfigId(DEFAULT_META_CONFIG_ID);
+      setMetaSettingsLoaded(true);
     });
   }, []);
+
+  // Load Facebook SDK only after we have the correct appId
+  useEffect(() => {
+    if (!metaSettingsLoaded || !metaAppId) return;
+    loadFacebookSDK();
+  }, [metaSettingsLoaded, metaAppId]);
 
   useEffect(() => {
     if (orgId) loadConfigs();
