@@ -8,7 +8,7 @@ import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Shield, X } from "lucide-react";
+import { Shield, X, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/use-mobile";
 import useNotificationSound from "@/hooks/useNotificationSound";
@@ -19,7 +19,7 @@ interface AppLayoutProps {
 }
 
 const AppLayout = ({ children }: AppLayoutProps) => {
-  const { isImpersonating, impersonatedOrgId, stopImpersonation, userRole, profile, isSuperAdmin } = useAuth();
+  const { isImpersonating, impersonatedOrgId, stopImpersonation, userRole, profile, isSuperAdmin, signOut } = useAuth();
   const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const isAdmin = effectiveRole === "admin";
   const navigate = useNavigate();
@@ -78,6 +78,17 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <NotificationBell />
+          {!isAdmin && !isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => { signOut(); navigate("/auth"); }}
+              className="text-muted-foreground hover:text-destructive h-8 w-8"
+              title="تسجيل خروج"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
       <main className={`${isAdmin ? "md:mr-[250px]" : ""} min-h-screen ${isImpersonating ? "pt-[82px]" : "pt-12"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
