@@ -15,12 +15,10 @@ import AdminMeta from "@/components/admin/AdminMeta";
 import AdminBaileys from "@/components/admin/AdminBaileys";
 import AdminLogs from "@/components/admin/AdminLogs";
 import AdminEmergency from "@/components/admin/AdminEmergency";
-import AdminWhiteLabel from "@/components/admin/AdminWhiteLabel";
 
 const tabs = [
   { id: "overview", label: "نظرة عامة" },
   { id: "accounts", label: "الحسابات" },
-  { id: "whitelabel", label: "وايت ليبل" },
   { id: "finance", label: "المالية" },
   { id: "plans", label: "الباقات" },
   { id: "coupons", label: "الكوبونات" },
@@ -35,13 +33,12 @@ const tabs = [
 const AdminDashboard = () => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("whitelabel");
+  const [activeTab, setActiveTab] = useState("overview");
 
   const renderTab = () => {
     switch (activeTab) {
       case "overview": return <AdminOverview />;
       case "accounts": return <AdminAccounts />;
-      case "whitelabel": return <AdminWhiteLabel />;
       case "finance": return <AdminFinance />;
       case "plans": return <AdminPlans />;
       case "coupons": return <AdminCoupons />;

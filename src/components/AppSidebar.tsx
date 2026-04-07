@@ -10,7 +10,6 @@ import {
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useWhiteLabel } from "@/contexts/WhiteLabelContext";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -107,7 +106,6 @@ const AppSidebar = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, signOut } = useAuth();
-  const { brand, platformName } = useWhiteLabel();
   const [collapsed, setCollapsed] = useState(false);
   const displayRole = userRole === "super_admin"
     ? "super_admin"
@@ -229,11 +227,7 @@ const AppSidebar = () => {
       {/* Logo Area */}
       {!collapsed && (
         <div className="px-4 pt-5 pb-3 text-center">
-          {brand?.logo_url ? (
-            <img src={brand.logo_url} alt={platformName} className="h-8 mx-auto object-contain" />
-          ) : (
-            <h2 className="text-2xl font-extrabold text-sidebar-accent-foreground tracking-tight">{platformName}</h2>
-          )}
+          <h2 className="text-2xl font-extrabold text-sidebar-accent-foreground tracking-tight">Respondly</h2>
           <p className="text-[10px] text-sidebar-foreground/35 mt-0.5">نظام إدارة المحادثات</p>
         </div>
       )}

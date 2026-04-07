@@ -7,12 +7,10 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, ArrowRight, Mail, KeyRound, MessageSquare, Shield, Zap } from "lucide-react";
 import { MessageSquareText } from "lucide-react";
-import { useWhiteLabel } from "@/contexts/WhiteLabelContext";
 
 type Step = "email" | "password" | "set-password" | "signup";
 
 const AuthPage = () => {
-  const { brand, platformName } = useWhiteLabel();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -141,11 +139,7 @@ const AuthPage = () => {
 
         <div className="relative z-10 max-w-lg text-center space-y-8">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/30">
-            {brand?.logo_url ? (
-              <img src={brand.logo_url} alt={platformName} className="w-10 h-10 object-contain" />
-            ) : (
-              <MessageSquareText className="w-8 h-8 text-primary-glow" />
-            )}
+            <MessageSquareText className="w-8 h-8 text-primary-glow" />
           </div>
           
           <div className="space-y-3">
@@ -182,11 +176,7 @@ const AuthPage = () => {
           {/* Logo (mobile only) */}
           <div className="lg:hidden text-center">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-primary/15 flex items-center justify-center border border-primary/20">
-              {brand?.logo_url ? (
-                <img src={brand.logo_url} alt={platformName} className="w-8 h-8 object-contain" />
-              ) : (
-                <MessageSquareText className="w-7 h-7 text-primary" />
-              )}
+              <MessageSquareText className="w-7 h-7 text-primary" />
             </div>
           </div>
 
@@ -430,7 +420,7 @@ const AuthPage = () => {
               ← العودة للصفحة الرئيسية
             </Link>
             <p className="text-[11px] text-muted-foreground/60">
-              © {new Date().getFullYear()} {platformName} — جميع الحقوق محفوظة
+              © {new Date().getFullYear()} Respondly — جميع الحقوق محفوظة
             </p>
           </div>
         </div>

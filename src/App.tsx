@@ -4,7 +4,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { WhiteLabelProvider } from "@/contexts/WhiteLabelContext";
 import AppLayout from "./components/AppLayout";
 import AuthPage from "./pages/AuthPage";
 import InboxPage from "./pages/InboxPage";
@@ -57,7 +56,7 @@ import { Loader2 } from "lucide-react";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children, minRole }: { children: React.ReactNode; minRole?: "admin" | "supervisor" | "member" }) => {
-  const { user, isLoading, mustChangePassword, userRole, profile, isSuperAdmin, isImpersonating } = useAuth();
+  const { user, isLoading, mustChangePassword, userRole, profile, isSuperAdmin } = useAuth();
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -65,9 +64,6 @@ const ProtectedRoute = ({ children, minRole }: { children: React.ReactNode; minR
   );
   if (!user) return <Navigate to="/auth" replace />;
   if (mustChangePassword) return <Navigate to="/change-password" replace />;
-
-  // Super admin without impersonation goes to admin panel only
-  if (isSuperAdmin && !isImpersonating) return <Navigate to="/admin" replace />;
 
   // Role-based access check
   if (minRole && !isSuperAdmin) {
@@ -182,9 +178,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AuthProvider>
-          <WhiteLabelProvider>
-            <AppRoutes />
-          </WhiteLabelProvider>
+          <AppRoutes />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
