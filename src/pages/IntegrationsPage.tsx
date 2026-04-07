@@ -763,6 +763,14 @@ const IntegrationsPage = () => {
     setIsLoading(false);
   };
 
+  // Keep refs in sync with latest function versions (for postMessage listener)
+  handleCodeExchangeRef.current = handleCodeExchange;
+  handleDirectTokenRef.current = handleDirectToken;
+  handleErrorRef.current = handleError;
+  loadConfigsRef.current = loadConfigs;
+  configsRef.current = configs;
+  orgIdRef.current = orgId || null;
+
   // Manual token connect handler
   const handleManualTokenConnect = async () => {
     if (!manualAccessToken.trim() || !manualPhoneNumberId.trim() || !manualWabaId.trim()) {
