@@ -427,12 +427,21 @@ const IntegrationsPage = () => {
   const handleDirectToken = async (token: string) => {
     try {
       setAccessToken(token);
+      console.log("[Embedded Signup] Calling exchange-token with access_token...");
       const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { access_token: token } });
+      console.log("[Embedded Signup] Exchange response:", JSON.stringify({ 
+        error, 
+        waba_ids: data?.waba_ids, 
+        resultsCount: data?.results?.length,
+        message: data?.message,
+        businesses: data?.businesses?.length,
+      }));
       if (error || data?.error) { handleError(data?.error || "فشل في جلب بيانات الحساب"); return; }
 
       const allPhones: PhoneNumber[] = [];
       if (data.results?.length > 0) {
         data.results.forEach((r: WabaResult) => {
+          console.log("[Embedded Signup] WABA:", r.waba_id, "phones:", r.phone_numbers?.length);
           allPhones.push(...(r.phone_numbers || []).map((phone) => ({
             ...phone,
             waba_id: r.waba_id,
@@ -440,8 +449,9 @@ const IntegrationsPage = () => {
         });
       }
 
+      console.log("[Embedded Signup] Total phones found:", allPhones.length);
+
       if (allPhones.length === 1) {
-        // Auto-select if only one number
         const selectedPhone = allPhones[0];
         setBusinessAccountId(selectedPhone.waba_id || "");
         await selectPhone(selectedPhone, token, selectedPhone.waba_id);
@@ -451,9 +461,11 @@ const IntegrationsPage = () => {
         setFlowStep("pick_phone");
         setIsLoading(false);
       } else {
+        console.error("[Embedded Signup] No phones found. WABA IDs:", data.waba_ids, "Message:", data.message);
         handleError("لا توجد أرقام واتساب مربوطة بحسابك");
       }
-    } catch {
+    } catch (e) {
+      console.error("[Embedded Signup] handleDirectToken error:", e);
       handleError("حدث خطأ");
     }
   };
