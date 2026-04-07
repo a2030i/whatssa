@@ -48,6 +48,7 @@ import ForceChangePasswordPage from "./pages/ForceChangePasswordPage";
 import SystemStatusPage from "./pages/SystemStatusPage";
 import EmergencyAdminPage from "./pages/EmergencyAdminPage";
 import SafetyGuidePage from "./pages/SafetyGuidePage";
+import GrowthToolsPage from "./pages/GrowthToolsPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
