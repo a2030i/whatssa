@@ -505,7 +505,7 @@ const TemplatesPage = () => {
     setIsDeleting(true);
 
     const { data, error } = await invokeCloud("whatsapp-templates", {
-      body: { action: "delete", name: deleteTarget.name },
+      body: { action: "delete", name: deleteTarget.name, channel_id: deleteTarget.channelId || undefined },
     });
 
     if (error || data?.error) {
