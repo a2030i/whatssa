@@ -126,7 +126,6 @@ const TasksPage = () => {
     fetchTasks();
     fetchConfigs();
     fetchAgents();
-    fetchCustomers();
     }
   }, [profile?.org_id]);
 
