@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
-import { BarChart3, Users, MessageSquare, Clock, TrendingUp, UserCheck, Phone, FileText, Star, Download, Megaphone, CheckCircle2 } from "lucide-react";
+import { BarChart3, Users, MessageSquare, Clock, TrendingUp, UserCheck, Phone, FileText, Star, Download, Megaphone, CheckCircle2, Target } from "lucide-react";
+import AgentPerformanceReport from "@/components/reports/AgentPerformanceReport";
 
 interface AgentStats {
   id: string;
@@ -368,13 +369,19 @@ const ReportsPage = () => {
         </Card>
       )}
 
-      <Tabs defaultValue="agents" className="space-y-4">
-        <TabsList>
+      <Tabs defaultValue="performance" className="space-y-4">
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="performance" className="gap-1"><Target className="w-3 h-3" /> أداء متقدم</TabsTrigger>
           <TabsTrigger value="agents">أداء الموظفين</TabsTrigger>
           <TabsTrigger value="campaigns">الحملات</TabsTrigger>
           <TabsTrigger value="ratings">التقييمات</TabsTrigger>
           <TabsTrigger value="conversations">المحادثات</TabsTrigger>
         </TabsList>
+
+        {/* Advanced Agent Performance */}
+        <TabsContent value="performance">
+          <AgentPerformanceReport period={period} />
+        </TabsContent>
 
         {/* Agent Performance */}
         <TabsContent value="agents">
