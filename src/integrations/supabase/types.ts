@@ -4510,7 +4510,12 @@ export type Database = {
       validate_coupon: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
-      app_role: "super_admin" | "admin" | "member" | "supervisor"
+      app_role:
+        | "super_admin"
+        | "admin"
+        | "member"
+        | "supervisor"
+        | "partner_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4638,7 +4643,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "admin", "member", "supervisor"],
+      app_role: [
+        "super_admin",
+        "admin",
+        "member",
+        "supervisor",
+        "partner_admin",
+      ],
     },
   },
 } as const
