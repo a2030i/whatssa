@@ -27,6 +27,69 @@ import { toast } from "sonner";
 const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
 const DEFAULT_META_APP_ID = "1306128431426603";
 const DEFAULT_META_CONFIG_ID = "1492677925851114";
+const POPUP_CANCEL_GRACE_MS = 5000;
+
+const GENERIC_META_ERROR_MESSAGES = [
+  "حدث خطأ",
+  "حدث خطأ أثناء الربط",
+  "فشل في إكمال الربط",
+  "تم إلغاء عملية الربط من نافذة Meta",
+  "تعذر استكمال الربط بعد إغلاق نافذة Meta.",
+  "تعذر استكمال الربط بعد إغلاق نافذة Meta",
+  "لم يتم الحصول على بيانات المصادقة",
+];
+
+const readErrorMessage = (error: unknown, fallback: string) => {
+  if (typeof error === "string" && error.trim()) return error;
+
+  if (error instanceof Error && error.message?.trim()) {
+    return error.message.trim();
+  }
+
+  if (error && typeof error === "object") {
+    const candidate = [
+      (error as any).message,
+      (error as any).error,
+      (error as any).details,
+      (error as any).description,
+      (error as any).reason,
+    ].find((value) => typeof value === "string" && value.trim());
+
+    if (candidate) return String(candidate).trim();
+  }
+
+  return fallback;
+};
+
+const isGenericMetaErrorMessage = (message?: string | null) => {
+  const normalized = message?.trim();
+  return !!normalized && GENERIC_META_ERROR_MESSAGES.includes(normalized);
+};
+
+const buildMetaPopupCancelMessage = (payload: any) => {
+  const currentStep = payload?.current_step || payload?.currentStep;
+  const detail = [
+    payload?.error_message,
+    payload?.error,
+    payload?.error_reason,
+    payload?.error_description,
+    payload?.message,
+  ].find((value) => typeof value === "string" && value.trim());
+
+  if (currentStep && detail) {
+    return `أوقفت Meta الربط عند خطوة "${currentStep}". السبب: ${detail}`;
+  }
+
+  if (currentStep) {
+    return `أغلقت Meta نافذة الربط عند خطوة "${currentStep}" قبل اكتمال العملية.`;
+  }
+
+  if (detail) {
+    return `أوقفت Meta عملية الربط. السبب: ${detail}`;
+  }
+
+  return "تم إلغاء عملية الربط من نافذة Meta";
+};
 
 interface PhoneNumber {
   id: string;
@@ -138,6 +201,7 @@ const IntegrationsPage = () => {
   const [officialEnabled, setOfficialEnabled] = useState(false);
   const [metaSettingsLoaded, setMetaSettingsLoaded] = useState(false);
   const embeddedSignupSelectionRef = useRef<EmbeddedSignupSelection | null>(null);
+  const embeddedSignupFinishedAtRef = useRef<number | null>(null);
   const [embeddedSignupFinishedAt, setEmbeddedSignupFinishedAt] = useState<number | null>(null);
   const embeddedSignupRecoveryInFlightRef = useRef(false);
 
@@ -147,6 +211,7 @@ const IntegrationsPage = () => {
 
   const clearEmbeddedSignupSelection = useCallback(() => {
     embeddedSignupSelectionRef.current = null;
+    embeddedSignupFinishedAtRef.current = null;
     setEmbeddedSignupFinishedAt(null);
   }, []);
 
@@ -335,11 +400,18 @@ const IntegrationsPage = () => {
             }
             if (data.event === 'FINISH') {
               console.log('[Embedded Signup] Popup finished, scheduling auth recovery');
-              setEmbeddedSignupFinishedAt(Date.now());
+              const finishedAt = Date.now();
+              embeddedSignupFinishedAtRef.current = finishedAt;
+              setEmbeddedSignupFinishedAt(finishedAt);
             }
             if (data.event === 'CANCEL') {
               console.log('[Embedded Signup] User cancelled at step:', data.data?.current_step);
-              handleError('تم إلغاء عملية الربط من نافذة Meta');
+              const finishedAt = embeddedSignupFinishedAtRef.current;
+              if (finishedAt && Date.now() - finishedAt < POPUP_CANCEL_GRACE_MS) {
+                console.log('[Embedded Signup] Ignoring CANCEL because FINISH was already received');
+                return;
+              }
+              handleError(buildMetaPopupCancelMessage(data.data || data));
             }
           }
         } catch {
@@ -453,7 +525,7 @@ const IntegrationsPage = () => {
       }
     } catch (e) {
       console.error("[Embedded Signup] Code exchange error:", e);
-      handleError("حدث خطأ أثناء الربط");
+      handleError(readErrorMessage(e, "حدث خطأ أثناء تبادل الرمز مع Meta"));
     }
   };
 
@@ -521,7 +593,7 @@ const IntegrationsPage = () => {
       }
     } catch (e) {
       console.error("[Embedded Signup] handleDirectToken error:", e);
-      handleError("حدث خطأ");
+      handleError(readErrorMessage(e, "تعذر جلب بيانات الحساب من Meta"));
     }
   };
 
@@ -626,8 +698,8 @@ const IntegrationsPage = () => {
         }
         clearEmbeddedSignupSelection();
       }
-    } catch {
-      handleError("فشل في إكمال الربط");
+    } catch (e) {
+      handleError(readErrorMessage(e, "فشل في إكمال الربط"));
     }
     setIsLoading(false);
   };
@@ -683,7 +755,13 @@ const IntegrationsPage = () => {
   };
 
   const handleError = (msg: string) => {
-    setErrorMessage(msg);
+    const nextMessage = friendlyError(msg || "حدث خطأ غير معروف أثناء الربط");
+    setErrorMessage((previous) => {
+      if (previous && !isGenericMetaErrorMessage(previous) && isGenericMetaErrorMessage(nextMessage)) {
+        return previous;
+      }
+      return nextMessage;
+    });
     setFlowStep("error");
     setIsLoading(false);
   };
@@ -721,8 +799,8 @@ const IntegrationsPage = () => {
         setFlowStep("success");
         await loadConfigs(true);
       }
-    } catch {
-      handleError("حدث خطأ أثناء الربط");
+    } catch (e) {
+      handleError(readErrorMessage(e, "حدث خطأ أثناء الربط"));
     }
     setManualConnecting(false);
   };
@@ -791,6 +869,7 @@ const IntegrationsPage = () => {
   };
 
   const resetFlow = () => {
+    clearEmbeddedSignupSelection();
     setFlowStep("idle");
     setPhoneNumbers([]);
     setErrorMessage("");
@@ -823,6 +902,43 @@ const IntegrationsPage = () => {
     };
     return map[issue] || { title: issue, desc: "" };
   };
+
+  const getMetaErrorTips = useCallback((message: string) => {
+    const lower = message.toLowerCase();
+
+    if (lower.includes("رمز التفويض") || lower.includes("المصادقة") || lower.includes("token") || lower.includes("session")) {
+      return [
+        t("المشكلة هنا من تفويض Meta نفسه، وليس من الرقم غالبًا. افتح نافذة الربط من جديد وأكملها بدون إغلاقها يدويًا.", "This points to Meta authorization itself, not usually the phone number. Restart the signup window and complete it without closing it manually."),
+        t("إذا ظهر هذا الخطأ مباشرة بعد إغلاق النافذة، فالعطل في رجوع التفويض من Meta للتطبيق وليس في حفظ الرقم داخل النظام.", "If this appears right after the popup closes, the failure is Meta not returning authorization to the app, not the phone save step."),
+      ];
+    }
+
+    if (lower.includes("صلاحيات") || lower.includes("permission") || lower.includes("#10")) {
+      return [
+        t("أعطِ جميع الصلاحيات المطلوبة أثناء تسجيل الدخول في Meta، خصوصًا صلاحيات WhatsApp Business.", "Grant all requested permissions during Meta login, especially WhatsApp Business permissions."),
+        t("إذا اخترت نشاطًا تجاريًا مختلفًا عن النشاط المرتبط بالرقم، أعد الربط واختر النشاط الصحيح.", "If you selected a different business than the phone belongs to, reconnect and choose the correct business."),
+      ];
+    }
+
+    if (lower.includes("pin") || lower.includes("خطوتين") || lower.includes("two-step")) {
+      return [
+        t("الرقم محمي بالتحقق بخطوتين داخل واتساب؛ أزل رمز PIN من الهاتف أولًا ثم أعد الربط.", "The number is protected by WhatsApp two-step verification; remove the PIN on the phone first, then reconnect."),
+        t("بعد إزالة الـ PIN انتظر قليلًا ثم أعد المحاولة.", "After removing the PIN, wait briefly and retry."),
+      ];
+    }
+
+    if (lower.includes("لا توجد أرقام") || (lower.includes("phone") && lower.includes("not found"))) {
+      return [
+        t("هذا يعني أن Meta لم ترجع رقمًا صالحًا داخل حساب الأعمال الذي سجلت به الدخول.", "This means Meta did not return a valid phone number inside the business account you used to log in."),
+        t("تأكد أن الرقم مضاف فعلًا داخل WhatsApp Manager وفي نفس حساب الأعمال الذي اخترته أثناء الربط.", "Make sure the phone number is actually added in WhatsApp Manager under the same business account you selected during signup."),
+      ];
+    }
+
+    return [
+      t("الرسالة أعلاه هي الآن السبب الفعلي القادم من Meta أو من خطوة الربط الخلفية، وليست رسالة عامة ثابتة.", "The message above is now the actual reason coming from Meta or the backend signup step, not a fixed generic message."),
+      t("إذا ظهر نفس النص مرة أخرى فهذا يعني أن هذه هي نقطة التعطل الحقيقية بالضبط.", "If the same text appears again, that means this is the exact real failure point."),
+    ];
+  }, [t]);
 
   const renderConfigCard = (config: WhatsAppConfig) => {
     const isConnected = config.registration_status === "connected";
@@ -2362,6 +2478,8 @@ const IntegrationsPage = () => {
 
   // ============ ERROR ============
   if (flowStep === "error") {
+    const errorTips = getMetaErrorTips(errorMessage);
+
     return (
       <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
         <div className="bg-card rounded-2xl shadow-card border border-destructive/30 overflow-hidden">
@@ -2375,12 +2493,11 @@ const IntegrationsPage = () => {
 
           <div className="p-6 space-y-3">
             <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {t("💡 تأكد أن الرقم غير مربوط بتطبيق واتساب على هاتفك. يجب فصله أولاً لربطه بالمنصة.", "💡 Make sure the number is not linked to any WhatsApp app on your phone. Disconnect it first.")}
-              </p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {t("💡 إذا تكرر الخطأ، جرّب فصل الرقم من واتساب على هاتفك ثم أعد المحاولة بعد دقيقة.", "💡 If the error persists, disconnect the number from WhatsApp on your phone and retry after a minute.")}
-              </p>
+              {errorTips.map((tip) => (
+                <p key={tip} className="text-xs text-muted-foreground leading-relaxed">
+                  💡 {tip}
+                </p>
+              ))}
             </div>
 
             <Button onClick={() => { resetFlow(); startConnect(); }} className="w-full gap-2">
