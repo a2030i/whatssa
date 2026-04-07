@@ -196,14 +196,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   useEffect(() => {
-    // Safety timeout: if auth takes too long (e.g. external DB slow after upgrade), stop loading
+    // Safety timeout: ALWAYS fires after 8s to prevent infinite loading
     const safetyTimeout = setTimeout(() => {
+      console.warn("Auth safety timeout reached — forcing load complete");
       setIsLoading(false);
-    }, 10000);
+    }, 8000);
+
+    let initialSessionHandled = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        clearTimeout(safetyTimeout);
+        if (!initialSessionHandled) return; // skip duplicate initial event
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -224,7 +227,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(safetyTimeout);
+      initialSessionHandled = true;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -234,8 +237,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error("Failed to fetch user data:", e);
         }
       }
+      clearTimeout(safetyTimeout);
       setIsLoading(false);
     }).catch(() => {
+      initialSessionHandled = true;
       clearTimeout(safetyTimeout);
       setIsLoading(false);
     });
