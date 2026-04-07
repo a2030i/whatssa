@@ -166,15 +166,29 @@ const TasksPage = () => {
     setAgents(data || []);
   };
 
+  const calcEndTime = (start: string, durationMin: number): string => {
+    const [h, m] = start.split(":").map(Number);
+    const totalMin = h * 60 + m + durationMin;
+    const eh = Math.floor(totalMin / 60) % 24;
+    const em = totalMin % 60;
+    return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+  };
+
+  const getEffectiveDuration = (): number => {
+    if (newDuration === "custom") return parseInt(newCustomDuration) || 0;
+    return parseInt(newDuration) || 0;
+  };
+
   const createTask = async () => {
     if (!newTitle.trim()) return toast.error("أدخل عنوان المهمة");
     if (!newTaskDate) return toast.error("اختر تاريخ المهمة");
-    if (!newStartTime || !newEndTime) return toast.error("حدد وقت البداية والنهاية");
-    if (newStartTime >= newEndTime) return toast.error("وقت النهاية يجب أن يكون بعد وقت البداية");
+    if (!newStartTime) return toast.error("حدد وقت البداية");
+    const dur = getEffectiveDuration();
+    if (dur <= 0) return toast.error("حدد مدة صحيحة");
     if (newAttendanceType === "in_person" && !newLocation.trim()) return toast.error("أدخل الموقع للمهمة الحضورية");
     
-    const assignee = effectiveRole === "member" ? profile!.id : (newAssignee || null);
-    const selectedCust = customers.find(c => c.id === selectedCustomerId);
+    const endTime = calcEndTime(newStartTime, dur);
+    const assignee = newAssignee || profile!.id;
     const { error } = await supabase.from("tasks").insert({
       org_id: profile!.org_id!,
       title: newTitle.trim(),
@@ -182,14 +196,12 @@ const TasksPage = () => {
       task_type: newType,
       priority: newPriority,
       assigned_to: assignee,
-      customer_phone: selectedCust?.phone || null,
-      customer_name: selectedCust?.name || null,
       created_by_type: "agent",
       created_by: profile!.id,
       attendance_type: newAttendanceType,
       task_date: newTaskDate,
       start_time: newStartTime,
-      end_time: newEndTime,
+      end_time: endTime,
       location: newAttendanceType === "in_person" ? newLocation.trim() : null,
     } as any);
     if (error) {
@@ -202,8 +214,8 @@ const TasksPage = () => {
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
     setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); 
-    setNewAssignee(""); setSelectedCustomerId("");
-    setNewAttendanceType("remote"); setNewTaskDate(""); setNewStartTime(""); setNewEndTime(""); setNewLocation("");
+    setNewAssignee(profile?.id || "");
+    setNewAttendanceType("remote"); setNewTaskDate(""); setNewStartTime(""); setNewDuration("30"); setNewCustomDuration(""); setNewLocation("");
     fetchTasks();
   };
 
