@@ -1179,9 +1179,16 @@ const IntegrationsPage = () => {
   };
 
   const renderAllChannelsView = (currentConfigs: WhatsAppConfig[]) => {
-    const connectedOfficialConfigs = currentConfigs.filter(c => (!(c as any).channel_type || (c as any).channel_type !== "evolution") && c.is_connected);
-    const connectedUnofficialConfigs = unofficialConfigs.filter(c => c.is_connected || c.evolution_instance_status === "connected" || c.evolution_instance_status === "connecting" || !!c.display_phone);
+    const allOfficialConfigs = currentConfigs.filter(c => (!(c as any).channel_type || (c as any).channel_type !== "evolution"));
+    const allUnofficialConfigs = unofficialConfigs;
+    const connectedOfficialConfigs = allOfficialConfigs.filter(c => c.is_connected);
+    const connectedUnofficialConfigs = allUnofficialConfigs.filter(c => c.is_connected || c.evolution_instance_status === "connected" || c.evolution_instance_status === "connecting" || !!c.display_phone);
+    // Show ALL channels (connected + disconnected) so users can reconnect
+    const displayOfficialConfigs = allOfficialConfigs;
+    const displayUnofficialConfigs = allUnofficialConfigs;
     const allConnected = [...connectedOfficialConfigs, ...connectedUnofficialConfigs];
+    const allChannels = [...allOfficialConfigs, ...allUnofficialConfigs];
+    const hasAnyChannel = allChannels.length > 0;
     const hasAnyConnected = allConnected.length > 0;
 
     return (
