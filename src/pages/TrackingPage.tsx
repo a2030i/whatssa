@@ -210,7 +210,7 @@ const TrackingPage = () => {
                             {event.status_label}
                           </p>
                           <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {new Date(event.created_at).toLocaleDateString("ar-SA", {
+                            {new Date(event.created_at).toLocaleDateString("ar-SA-u-ca-gregory", {
                               year: "numeric",
                               month: "short",
                               day: "numeric",

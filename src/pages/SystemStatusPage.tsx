@@ -126,7 +126,7 @@ const SystemStatusPage = () => {
             </div>
             {lastFullCheck && (
               <p className="text-xs text-muted-foreground mt-2">
-                آخر فحص: {lastFullCheck.toLocaleTimeString("ar-SA")}
+                آخر فحص: {lastFullCheck.toLocaleTimeString("ar-SA-u-ca-gregory")}
               </p>
             )}
           </CardContent>

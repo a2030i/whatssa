@@ -31,7 +31,7 @@ const formatTimestamp = (isoStr: string | null): string => {
   if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
   const diffHours = Math.floor(diffMin / 60);
   if (diffHours < 24) return `منذ ${diffHours} ساعة`;
-  return date.toLocaleDateString("ar-SA");
+  return date.toLocaleDateString("ar-SA-u-ca-gregory");
 };
 
 const InboxPage = () => {
@@ -299,7 +299,7 @@ const InboxPage = () => {
           conversationId: message.conversation_id,
           text: message.content,
           sender: message.sender as "customer" | "agent" | "system",
-          timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+          timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA-u-ca-gregory", { hour: "2-digit", minute: "2-digit" }),
           status: message.status as "sent" | "delivered" | "read" | undefined,
           type: (message.message_type as Message["type"]) || "text",
           mediaUrl: message.media_url || undefined,
@@ -348,7 +348,7 @@ const InboxPage = () => {
           conversationId: message.conversation_id,
           text: message.content,
           sender: message.sender,
-          timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+          timestamp: new Date(message.created_at || "").toLocaleTimeString("ar-SA-u-ca-gregory", { hour: "2-digit", minute: "2-digit" }),
           status: message.status,
           type: message.message_type || "text",
           mediaUrl: message.media_url || undefined,
@@ -501,7 +501,7 @@ const InboxPage = () => {
         conversationId,
         text: `📎 ${attachment.filename}${text && text !== `📎 ${attachment.filename}` ? `\n${text}` : ""}`,
         sender: "agent",
-        timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+        timestamp: new Date().toLocaleTimeString("ar-SA-u-ca-gregory", { hour: "2-digit", minute: "2-digit" }),
         status: "sent",
         type: "text",
         createdAt: new Date().toISOString(),
@@ -672,7 +672,7 @@ const InboxPage = () => {
       conversationId: convId,
       text,
       sender: "agent",
-      timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+      timestamp: new Date().toLocaleTimeString("ar-SA-u-ca-gregory", { hour: "2-digit", minute: "2-digit" }),
       status: "sent",
       type: "text",
       createdAt: new Date().toISOString(),
@@ -693,7 +693,7 @@ const InboxPage = () => {
           cc: overrides?.cc || undefined,
           subject: text.length > 60 ? text.substring(0, 60) + "..." : text,
           body: replyTo?.text
-            ? `${text}\n\n---\n\nفي ${new Date().toLocaleDateString("ar-SA")}، كتب ${replyTo.senderName || "العميل"}:\n> ${replyTo.text.split("\n").join("\n> ")}`
+            ? `${text}\n\n---\n\nفي ${new Date().toLocaleDateString("ar-SA-u-ca-gregory")}، كتب ${replyTo.senderName || "العميل"}:\n> ${replyTo.text.split("\n").join("\n> ")}`
             : text,
           conversation_id: convId,
         }
@@ -1037,7 +1037,7 @@ const InboxPage = () => {
         conversationId: convId,
         text: previewBody,
         sender: "agent" as const,
-        timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+        timestamp: new Date().toLocaleTimeString("ar-SA-u-ca-gregory", { hour: "2-digit", minute: "2-digit" }),
         status: "sent" as const,
         type: "template" as const,
         createdAt: new Date().toISOString(),

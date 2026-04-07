@@ -167,7 +167,7 @@ const ScheduledMessagesPage = () => {
                     <div className="flex items-center gap-2 mb-2">
                       {statusBadge(msg.status)}
                       <span className="text-xs text-muted-foreground">
-                        {new Date(msg.scheduled_at).toLocaleDateString("ar-SA", { 
+                        {new Date(msg.scheduled_at).toLocaleDateString("ar-SA-u-ca-gregory", { 
                           year: "numeric", month: "short", day: "numeric",
                           hour: "2-digit", minute: "2-digit"
                         })}

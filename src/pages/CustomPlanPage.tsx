@@ -142,7 +142,7 @@ const CustomPlanPage = () => {
                     </div>
                   </div>
                   <div className="text-left">
-                    <span className="text-lg font-bold text-primary">{val.toLocaleString("ar-SA")}</span>
+                    <span className="text-lg font-bold text-primary">{val.toLocaleString("ar-SA-u-ca-gregory")}</span>
                     {itemCost > 0 && (
                       <p className="text-[10px] text-muted-foreground">+{itemCost} ر.س</p>
                     )}
@@ -184,7 +184,7 @@ const CustomPlanPage = () => {
                       <item.icon className="w-3 h-3 text-muted-foreground" />
                       <span className="text-muted-foreground">{item.label}</span>
                     </div>
-                    <span className="font-bold">{val.toLocaleString("ar-SA")}</span>
+                    <span className="font-bold">{val.toLocaleString("ar-SA-u-ca-gregory")}</span>
                   </div>
                 );
               })}

@@ -179,7 +179,7 @@ const WalletPage = () => {
                   : <ArrowDownCircle className="w-4 h-4 text-destructive" />}
                 <div>
                   <p className="text-xs font-medium">{t.description || t.type}</p>
-                  <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleDateString("ar-SA")}</p>
+                  <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleDateString("ar-SA-u-ca-gregory")}</p>
                 </div>
               </div>
               <p className={`text-sm font-bold ${t.type === "debit" || t.type === "subscription" ? "text-destructive" : "text-primary"}`}>

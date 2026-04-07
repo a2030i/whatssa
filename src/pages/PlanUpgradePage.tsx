@@ -18,7 +18,7 @@ const planStyles = [
   { icon: Building2, gradient: "from-chart-4/10 to-chart-4/5", accent: "text-chart-4", badge: "" },
 ];
 
-const formatLimit = (val: number) => val >= 999999 ? "غير محدود" : val.toLocaleString("ar-SA");
+const formatLimit = (val: number) => val >= 999999 ? "غير محدود" : val.toLocaleString("ar-SA-u-ca-gregory");
 
 interface LimitRow {
   icon: any;

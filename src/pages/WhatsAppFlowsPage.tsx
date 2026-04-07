@@ -333,7 +333,7 @@ const WhatsAppFlowsPage = () => {
       const row: Record<string, any> = {
         "رقم الجوال": sub.customer_phone,
         "الاسم": sub.customer_name || "",
-        "التاريخ": new Date(sub.created_at).toLocaleString("ar-SA"),
+        "التاريخ": new Date(sub.created_at).toLocaleString("ar-SA-u-ca-gregory"),
         "الحالة": sub.status === "new" ? "جديد" : "تمت المعالجة",
       };
       fields.forEach(f => { row[f.label] = sub.responses[f.id] || sub.responses[f.label] || ""; });
@@ -419,7 +419,7 @@ const WhatsAppFlowsPage = () => {
                       {flow.flow_type === "form" ? "نموذج" : flow.flow_type === "order" ? "طلب" : flow.flow_type === "survey" ? "استبيان" : "حجز"}
                     </Badge>
                   </div>
-                  <span className="text-[10px] text-muted-foreground">{new Date(flow.created_at).toLocaleDateString("ar-SA")}</span>
+                  <span className="text-[10px] text-muted-foreground">{new Date(flow.created_at).toLocaleDateString("ar-SA-u-ca-gregory")}</span>
                 </div>
                 <h3 className="font-bold text-foreground mb-1">{flow.name}</h3>
                 {flow.description && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{flow.description}</p>}
@@ -774,7 +774,7 @@ const WhatsAppFlowsPage = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-semibold">{sub.customer_name || sub.customer_phone}</p>
-                          <p className="text-[10px] text-muted-foreground">{new Date(sub.created_at).toLocaleString("ar-SA")}</p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(sub.created_at).toLocaleString("ar-SA-u-ca-gregory")}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

@@ -362,7 +362,7 @@ const AdminEmergency = () => {
               {healthLogs.map((log, i) => (
                 <div key={i} className="flex items-center justify-between text-sm p-2 rounded border">
                   <span className="text-muted-foreground text-xs">
-                    {new Date(log.checked_at).toLocaleTimeString("ar-SA")}
+                    {new Date(log.checked_at).toLocaleTimeString("ar-SA-u-ca-gregory")}
                   </span>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">{log.latency_ms}ms</span>
@@ -381,7 +381,7 @@ const AdminEmergency = () => {
       </Card>
 
       <p className="text-center text-xs text-muted-foreground">
-        {lastCheck ? `آخر فحص: ${lastCheck.toLocaleTimeString("ar-SA")} — يتم الفحص تلقائياً كل 30 ثانية` : "جارٍ الفحص..."}
+        {lastCheck ? `آخر فحص: ${lastCheck.toLocaleTimeString("ar-SA-u-ca-gregory")} — يتم الفحص تلقائياً كل 30 ثانية` : "جارٍ الفحص..."}
       </p>
     </div>
   );

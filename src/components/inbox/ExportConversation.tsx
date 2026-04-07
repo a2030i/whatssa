@@ -63,7 +63,7 @@ const ExportConversation = ({ conversation, messages, asMenuItem }: ExportConver
         <h1>محادثة مع ${conversation.customerName}</h1>
         <div class="info">
           <p>الرقم: ${conversation.customerPhone} | الحالة: ${conversation.status}</p>
-          <p>تاريخ التصدير: ${new Date().toLocaleDateString("ar-SA")}</p>
+          <p>تاريخ التصدير: ${new Date().toLocaleDateString("ar-SA-u-ca-gregory")}</p>
         </div>
         ${messages.map((m) => {
           const sender = m.sender === "agent" ? "الموظف" : m.sender === "customer" ? conversation.customerName : "النظام";

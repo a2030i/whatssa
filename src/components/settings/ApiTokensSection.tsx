@@ -209,9 +209,9 @@ const ApiTokensSection = () => {
                 </div>
 
                 <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-                  <span>أُنشئ: {new Date(t.created_at).toLocaleDateString("ar-SA")}</span>
-                  {t.last_used_at && <span>آخر استخدام: {new Date(t.last_used_at).toLocaleDateString("ar-SA")}</span>}
-                  {t.expires_at && <span>ينتهي: {new Date(t.expires_at).toLocaleDateString("ar-SA")}</span>}
+                  <span>أُنشئ: {new Date(t.created_at).toLocaleDateString("ar-SA-u-ca-gregory")}</span>
+                  {t.last_used_at && <span>آخر استخدام: {new Date(t.last_used_at).toLocaleDateString("ar-SA-u-ca-gregory")}</span>}
+                  {t.expires_at && <span>ينتهي: {new Date(t.expires_at).toLocaleDateString("ar-SA-u-ca-gregory")}</span>}
                 </div>
               </div>
             );

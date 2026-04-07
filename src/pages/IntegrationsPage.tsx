@@ -806,7 +806,7 @@ const IntegrationsPage = () => {
 
             {config.registered_at && (
               <p className="text-[10px] text-muted-foreground text-center">
-                آخر تسجيل: {new Date(config.registered_at).toLocaleString("ar-SA")}
+                آخر تسجيل: {new Date(config.registered_at).toLocaleString("ar-SA-u-ca-gregory")}
               </p>
             )}
 

@@ -283,9 +283,9 @@ const CampaignsPage = () => {
       "الرقم": r.phone,
       "الاسم": r.customer_name || "",
       "الحالة": r.status === "pending" ? "قيد الانتظار" : r.status === "sent" ? "أُرسلت" : r.status === "delivered" ? "تم التوصيل" : r.status === "read" ? "تمت القراءة" : r.status === "failed" ? "فشل" : r.status,
-      "وقت الإرسال": r.sent_at ? new Date(r.sent_at).toLocaleString("ar-SA") : "",
-      "وقت التوصيل": r.delivered_at ? new Date(r.delivered_at).toLocaleString("ar-SA") : "",
-      "وقت القراءة": r.read_at ? new Date(r.read_at).toLocaleString("ar-SA") : "",
+      "وقت الإرسال": r.sent_at ? new Date(r.sent_at).toLocaleString("ar-SA-u-ca-gregory") : "",
+      "وقت التوصيل": r.delivered_at ? new Date(r.delivered_at).toLocaleString("ar-SA-u-ca-gregory") : "",
+      "وقت القراءة": r.read_at ? new Date(r.read_at).toLocaleString("ar-SA-u-ca-gregory") : "",
       "كود الخطأ": r.error_code || "",
       "سبب الخطأ": r.error_message || "",
     }));
@@ -470,7 +470,7 @@ const CampaignsPage = () => {
         });
         const timeData = Object.values(monthlyMap).sort((a, b) => a.month.localeCompare(b.month)).map((m) => ({
           ...m,
-          label: new Date(m.month + "-01").toLocaleDateString("ar-SA", { month: "short", year: "2-digit" }),
+          label: new Date(m.month + "-01").toLocaleDateString("ar-SA-u-ca-gregory", { month: "short", year: "2-digit" }),
         }));
 
         // Pie data for status distribution
@@ -618,7 +618,7 @@ const CampaignsPage = () => {
                   <div>
                     <h3 className="font-semibold">{campaign.name}</h3>
                     <p className="text-xs text-muted-foreground">
-                      {campaign.sent_at ? `أُرسلت: ${new Date(campaign.sent_at).toLocaleDateString("ar-SA")}` : campaign.scheduled_at ? `مجدولة: ${new Date(campaign.scheduled_at).toLocaleDateString("ar-SA")}` : `أُنشئت: ${new Date(campaign.created_at).toLocaleDateString("ar-SA")}`}
+                      {campaign.sent_at ? `أُرسلت: ${new Date(campaign.sent_at).toLocaleDateString("ar-SA-u-ca-gregory")}` : campaign.scheduled_at ? `مجدولة: ${new Date(campaign.scheduled_at).toLocaleDateString("ar-SA-u-ca-gregory")}` : `أُنشئت: ${new Date(campaign.created_at).toLocaleDateString("ar-SA-u-ca-gregory")}`}
                       {campaign.template_name && <span className="mr-2">• قالب: {campaign.template_name}</span>}
                     </p>
                   </div>
@@ -1177,7 +1177,7 @@ const CampaignsPage = () => {
               { label: "معدل التوصيل", v1: `${c1DeliveryRate}%`, v2: `${c2DeliveryRate}%`, better: "high" },
               { label: "معدل القراءة", v1: `${c1ReadRate}%`, v2: `${c2ReadRate}%`, better: "high" },
               { label: "معدل الفشل", v1: `${c1FailRate}%`, v2: `${c2FailRate}%`, better: "low" },
-              { label: "تاريخ الإرسال", v1: c1.sent_at ? new Date(c1.sent_at).toLocaleDateString("ar-SA") : "—", v2: c2.sent_at ? new Date(c2.sent_at).toLocaleDateString("ar-SA") : "—" },
+              { label: "تاريخ الإرسال", v1: c1.sent_at ? new Date(c1.sent_at).toLocaleDateString("ar-SA-u-ca-gregory") : "—", v2: c2.sent_at ? new Date(c2.sent_at).toLocaleDateString("ar-SA-u-ca-gregory") : "—" },
             ];
 
             const getHighlight = (row: typeof rows[0], side: 1 | 2) => {
@@ -1492,8 +1492,8 @@ function CampaignDetailContent({
                         </p>
                       )}
                     </td>
-                    <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.sent_at ? new Date(r.sent_at).toLocaleString("ar-SA") : "-"}</td>
-                    <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.delivered_at ? new Date(r.delivered_at).toLocaleString("ar-SA") : "-"}</td>
+                    <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.sent_at ? new Date(r.sent_at).toLocaleString("ar-SA-u-ca-gregory") : "-"}</td>
+                    <td className="p-2.5 text-[10px] text-muted-foreground hidden md:table-cell">{r.delivered_at ? new Date(r.delivered_at).toLocaleString("ar-SA-u-ca-gregory") : "-"}</td>
                     <td className="p-2.5 text-[10px] text-destructive hidden lg:table-cell">
                       {r.error_code && <span className="font-mono">{r.error_code}: </span>}
                       {r.error_message || "-"}
@@ -1527,11 +1527,11 @@ function CampaignDetailContent({
             </div>
             <div className="bg-secondary rounded-lg p-3">
               <p className="text-muted-foreground text-[10px]">تاريخ الإنشاء</p>
-              <p className="font-semibold mt-0.5">{new Date(campaign.created_at).toLocaleString("ar-SA")}</p>
+              <p className="font-semibold mt-0.5">{new Date(campaign.created_at).toLocaleString("ar-SA-u-ca-gregory")}</p>
             </div>
             <div className="bg-secondary rounded-lg p-3">
               <p className="text-muted-foreground text-[10px]">تاريخ الإرسال</p>
-              <p className="font-semibold mt-0.5">{campaign.sent_at ? new Date(campaign.sent_at).toLocaleString("ar-SA") : "-"}</p>
+              <p className="font-semibold mt-0.5">{campaign.sent_at ? new Date(campaign.sent_at).toLocaleString("ar-SA-u-ca-gregory") : "-"}</p>
             </div>
           </div>
           {campaign.audience_tags?.length > 0 && (

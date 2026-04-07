@@ -111,7 +111,7 @@ const AuditLogSection = () => {
     if (hours < 24) return `منذ ${hours} ساعة`;
     const days = Math.floor(hours / 24);
     if (days < 7) return `منذ ${days} يوم`;
-    return d.toLocaleDateString("ar-SA");
+    return d.toLocaleDateString("ar-SA-u-ca-gregory");
   };
 
   const filtered = logs.filter(log => {
