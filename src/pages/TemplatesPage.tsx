@@ -816,7 +816,9 @@ const TemplatesPage = () => {
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                         <Globe className="w-3 h-3" /> {template.language === "ar" ? (isReviewMode ? "Arabic" : "عربي") : template.language}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">Meta</span>
+                      <span className="text-[10px] text-muted-foreground truncate max-w-[50%]" dir="ltr">
+                        {template.channelName || "Meta"}
+                      </span>
                     </div>
                   </div>
                 );
