@@ -250,7 +250,12 @@ const EmailConfigSection = () => {
         body: { action: "list", org_id: orgId },
       });
       if (error) throw error;
-      setConfigs(res?.data || []);
+      const loadedConfigs = res?.data || [];
+      setConfigs(loadedConfigs);
+      // Initialize signature state from loaded configs
+      const sigs: Record<string, string> = {};
+      loadedConfigs.forEach((c: EmailConfig) => { sigs[c.id] = c.email_signature || ""; });
+      setSignatureText(sigs);
     } catch (e) {
       console.error("Failed to load email configs:", e);
     }
