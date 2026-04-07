@@ -1520,12 +1520,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     const replyData = replyTo ? { id: replyTo.id, waMessageId: replyTo.waMessageId, senderName: replyTo.sender === "agent" ? "أنت" : (replyTo.senderName || conversation.customerName), text: replyTo.text } : undefined;
     // Dispatch email overrides if set
-    if (isEmailChannel && (emailOverrideTo || emailOverrideCc)) {
+    const allTo = [...emailToChips, ...(emailToInput.trim() ? [emailToInput.trim()] : [])];
+    const allCc = [...emailCcChips, ...(emailCcInput.trim() ? [emailCcInput.trim()] : [])];
+    if (isEmailChannel && (allTo.length > 0 || allCc.length > 0)) {
       window.dispatchEvent(new CustomEvent("email-override-recipients", {
         detail: {
           conversationId: conversation.id,
-          to: emailOverrideTo || undefined,
-          cc: emailOverrideCc || undefined,
+          to: allTo.length > 0 ? allTo.join(", ") : undefined,
+          cc: allCc.length > 0 ? allCc.join(", ") : undefined,
         }
       }));
     }
