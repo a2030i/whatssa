@@ -264,6 +264,26 @@ const TasksPage = () => {
     return true;
   });
 
+  // Group tasks by date, sorted by date desc, then by start_time asc within each day
+  const groupedByDate = filteredTasks.reduce<Record<string, Task[]>>((acc, task) => {
+    const dateKey = task.task_date || "بدون تاريخ";
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(task);
+    return acc;
+  }, {});
+
+  // Sort each group by start_time
+  Object.values(groupedByDate).forEach(group => {
+    group.sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+  });
+
+  // Sort date keys: actual dates desc, "بدون تاريخ" last
+  const sortedDateKeys = Object.keys(groupedByDate).sort((a, b) => {
+    if (a === "بدون تاريخ") return 1;
+    if (b === "بدون تاريخ") return -1;
+    return b.localeCompare(a);
+  });
+
   const stats = {
     total: tasks.length,
     pending: tasks.filter(t => t.status === "pending").length,
