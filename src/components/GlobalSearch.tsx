@@ -181,6 +181,20 @@ const GlobalSearch = () => {
               ))}
             </CommandGroup>
           )}
+          {!loading && results.filter(r => r.type === "email").length > 0 && (
+            <CommandGroup heading="إيميلات">
+              {results.filter(r => r.type === "email").map((item) => (
+                <CommandItem key={`email-${item.id}`} onSelect={() => handleSelect(item)} className="gap-3 cursor-pointer">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Mail className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{item.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
           {!loading && results.filter(r => r.type === "customer").length > 0 && (
             <CommandGroup heading="العملاء">
               {results.filter(r => r.type === "customer").map((item) => (
