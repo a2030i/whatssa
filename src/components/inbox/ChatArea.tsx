@@ -2778,7 +2778,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   }
                 }}
                 rows={1}
-                className="border-0 bg-transparent min-h-[40px] max-h-[120px] text-sm px-4 py-2.5 focus-visible:ring-0 focus-visible:ring-offset-0 w-full resize-none outline-none"
+                className="border-0 bg-transparent min-h-[40px] max-h-[120px] text-base px-4 py-2.5 focus-visible:ring-0 focus-visible:ring-offset-0 w-full resize-none outline-none"
                 style={{ height: "auto", overflow: "auto" }}
                 onInput={(e) => {
                   const el = e.target as HTMLTextAreaElement;
