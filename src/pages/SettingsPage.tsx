@@ -162,6 +162,11 @@ const SettingsPage = () => {
       {/* Push Notifications */}
       <PushNotificationSettings />
 
+      {/* Saved / Quick Replies */}
+      <div className="bg-card rounded-lg shadow-card p-5">
+        <SavedRepliesSection />
+      </div>
+
       {/* Blacklist */}
       <div className="bg-card rounded-lg shadow-card p-5">
         <BlacklistSection />
