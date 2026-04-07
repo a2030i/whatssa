@@ -1179,9 +1179,16 @@ const IntegrationsPage = () => {
   };
 
   const renderAllChannelsView = (currentConfigs: WhatsAppConfig[]) => {
-    const connectedOfficialConfigs = currentConfigs.filter(c => (!(c as any).channel_type || (c as any).channel_type !== "evolution") && c.is_connected);
-    const connectedUnofficialConfigs = unofficialConfigs.filter(c => c.is_connected || c.evolution_instance_status === "connected" || c.evolution_instance_status === "connecting" || !!c.display_phone);
+    const allOfficialConfigs = currentConfigs.filter(c => (!(c as any).channel_type || (c as any).channel_type !== "evolution"));
+    const allUnofficialConfigs = unofficialConfigs;
+    const connectedOfficialConfigs = allOfficialConfigs.filter(c => c.is_connected);
+    const connectedUnofficialConfigs = allUnofficialConfigs.filter(c => c.is_connected || c.evolution_instance_status === "connected" || c.evolution_instance_status === "connecting" || !!c.display_phone);
+    // Show ALL channels (connected + disconnected) so users can reconnect
+    const displayOfficialConfigs = allOfficialConfigs;
+    const displayUnofficialConfigs = allUnofficialConfigs;
     const allConnected = [...connectedOfficialConfigs, ...connectedUnofficialConfigs];
+    const allChannels = [...allOfficialConfigs, ...allUnofficialConfigs];
+    const hasAnyChannel = allChannels.length > 0;
     const hasAnyConnected = allConnected.length > 0;
 
     return (
@@ -1201,17 +1208,17 @@ const IntegrationsPage = () => {
                 <p className="text-[10px] text-muted-foreground mt-0.5">رسمي أو عبر واتساب ويب</p>
               </div>
 
-              {/* Summary badge like email */}
-              {allConnected.length > 0 && (
-                <Badge className="text-[10px] gap-1 px-2.5 py-0.5 border-0 bg-success/10 text-success">
+              {/* Summary badge */}
+              {hasAnyChannel && (
+                <Badge className={cn("text-[10px] gap-1 px-2.5 py-0.5 border-0", hasAnyConnected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
                   <MessageSquare className="w-2.5 h-2.5" />
-                  واتساب متصل ({allConnected.length})
+                  {hasAnyConnected ? `واتساب متصل (${allConnected.length})` : `أرقام غير متصلة (${allChannels.length})`}
                 </Badge>
               )}
 
               <div className="flex flex-col items-center gap-1.5 w-full">
-                {/* Individual connected official numbers */}
-                {connectedOfficialConfigs.map((config) => {
+                {/* Individual official numbers (all, not just connected) */}
+                {displayOfficialConfigs.map((config) => {
                   const isExpanded = expandedChannelBadgeId === config.id;
                   const ms = metaStatus[config.id];
                   return (
@@ -1220,9 +1227,10 @@ const IntegrationsPage = () => {
                         onClick={() => setExpandedChannelBadgeId(isExpanded ? null : config.id)}
                         className="w-full flex items-center justify-center gap-1.5"
                       >
-                        <Badge className="text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer bg-success/10 text-success">
-                          <CheckCircle2 className="w-2.5 h-2.5" />
+                        <Badge className={cn("text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer", config.is_connected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
+                          {config.is_connected ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
                           {config.channel_label || config.display_phone || config.business_name || "رسمي"}
+                          {!config.is_connected && " (غير متصل)"}
                         </Badge>
                       </button>
 
@@ -1367,8 +1375,8 @@ const IntegrationsPage = () => {
                   );
                 })}
 
-                {/* Individual connected unofficial numbers */}
-                {connectedUnofficialConfigs.map((config) => {
+                {/* Individual unofficial numbers (all, not just connected) */}
+                {displayUnofficialConfigs.map((config) => {
                   const isExpanded = expandedChannelBadgeId === config.id;
                   const isActuallyConnected = config.is_connected && (config.registration_status === "connected" || config.evolution_instance_status === "connected");
                   return (
