@@ -4022,6 +4022,7 @@ export type Database = {
           registered_at: string | null
           registration_error: string | null
           registration_status: string | null
+          safety_limits_enabled: boolean
           safety_max_per_day: number | null
           safety_max_per_hour: number | null
           safety_max_unique_per_hour: number | null
@@ -4077,6 +4078,7 @@ export type Database = {
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
+          safety_limits_enabled?: boolean
           safety_max_per_day?: number | null
           safety_max_per_hour?: number | null
           safety_max_unique_per_hour?: number | null
@@ -4132,6 +4134,7 @@ export type Database = {
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
+          safety_limits_enabled?: boolean
           safety_max_per_day?: number | null
           safety_max_per_hour?: number | null
           safety_max_unique_per_hour?: number | null
