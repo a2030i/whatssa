@@ -998,6 +998,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     const saved = localStorage.getItem("enterToSend");
     return saved !== null ? saved === "true" : true;
   });
+  const [emailOverrideTo, setEmailOverrideTo] = useState("");
+  const [emailOverrideCc, setEmailOverrideCc] = useState("");
+  const [showEmailFields, setShowEmailFields] = useState(false);
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
