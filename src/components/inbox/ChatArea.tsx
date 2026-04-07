@@ -998,6 +998,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     const saved = localStorage.getItem("enterToSend");
     return saved !== null ? saved === "true" : true;
   });
+  const [emailOverrideTo, setEmailOverrideTo] = useState("");
+  const [emailOverrideCc, setEmailOverrideCc] = useState("");
+  const [showEmailFields, setShowEmailFields] = useState(false);
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
@@ -1514,6 +1517,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       return;
     }
     const replyData = replyTo ? { id: replyTo.id, waMessageId: replyTo.waMessageId, senderName: replyTo.sender === "agent" ? "أنت" : (replyTo.senderName || conversation.customerName), text: replyTo.text } : undefined;
+    // Dispatch email overrides if set
+    if (isEmailChannel && (emailOverrideTo || emailOverrideCc)) {
+      window.dispatchEvent(new CustomEvent("email-override-recipients", {
+        detail: {
+          conversationId: conversation.id,
+          to: emailOverrideTo || undefined,
+          cc: emailOverrideCc || undefined,
+        }
+      }));
+    }
     onSendMessage(conversation.id, inputText.trim(), "text", replyData);
     setInputText("");
     setReplyTo(null);
@@ -2568,6 +2581,53 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
           )}
 
+          {/* Email To/CC Fields */}
+          {isEmailChannel && !isNoteMode && (
+            <div className="mx-3 mt-2 space-y-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowEmailFields(!showEmailFields)}
+                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 shrink-0"
+                >
+                  <Mail className="w-3 h-3" />
+                  {showEmailFields ? "إخفاء" : "To / Cc"}
+                  <ChevronDown className={cn("w-3 h-3 transition-transform", showEmailFields && "rotate-180")} />
+                </button>
+                {!showEmailFields && (emailOverrideTo || emailOverrideCc) && (
+                  <span className="text-[10px] text-primary truncate">
+                    {emailOverrideTo && `إلى: ${emailOverrideTo}`}
+                    {emailOverrideTo && emailOverrideCc && " | "}
+                    {emailOverrideCc && `Cc: ${emailOverrideCc}`}
+                  </span>
+                )}
+              </div>
+              {showEmailFields && (
+                <div className="space-y-1.5 bg-secondary/40 rounded-lg p-2 border border-border/30">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left">To:</span>
+                    <input
+                      type="text"
+                      value={emailOverrideTo}
+                      onChange={(e) => setEmailOverrideTo(e.target.value)}
+                      placeholder={conversation.customerPhone || "البريد الإلكتروني للمستلم"}
+                      className="flex-1 text-[12px] bg-background border border-border/40 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left">Cc:</span>
+                    <input
+                      type="text"
+                      value={emailOverrideCc}
+                      onChange={(e) => setEmailOverrideCc(e.target.value)}
+                      placeholder="نسخة كربونية (فاصلة بين الإيميلات)"
+                      className="flex-1 text-[12px] bg-background border border-border/40 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* AI Suggestions Row */}
           {aiSuggestions.length > 0 && (
             <div className="flex gap-1.5 px-3 pt-2 overflow-x-auto pb-1">
@@ -2625,12 +2685,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    // Email channels: Enter always sends, Shift+Enter for new line
+                    // Email channels: Enter always = new line, send via button only
                     if (isEmailChannel) {
-                      if (!e.shiftKey) {
-                        e.preventDefault();
-                        imagePreview ? handleSendImage() : handleSend();
-                      }
+                      // Do nothing - let Enter create a new line naturally
                     } else if (enterToSend && !e.shiftKey) {
                       e.preventDefault();
                       imagePreview ? handleSendImage() : handleSend();
@@ -2851,7 +2908,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <button onClick={copyConversationLink} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-red-500 shrink-0" title="نسخ رابط المحادثة">
                 <Link2 className="w-4 h-4" />
               </button>
-              {/* Enter mode toggle */}
+              {/* Enter mode toggle - hidden for email */}
+              {!isEmailChannel && (
               <Popover>
                 <PopoverTrigger asChild>
                   <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title={enterToSend ? "Enter = إرسال" : "Enter = سطر جديد"}>
@@ -2877,6 +2935,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </button>
                 </PopoverContent>
               </Popover>
+              )}
             </div>
             {/* Send Button */}
             {(isNoteMode || !windowExpired) && (

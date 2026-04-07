@@ -536,6 +536,18 @@ const InboxPage = () => {
     return () => window.removeEventListener("email-send-attachment", handler);
   }, [conversations, profile]);
 
+  // Listen for email recipient overrides
+  const emailOverridesRef = useRef<{ to?: string; cc?: string } | null>(null);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      emailOverridesRef.current = { to: detail.to, cc: detail.cc };
+      setTimeout(() => { emailOverridesRef.current = null; }, 2000);
+    };
+    window.addEventListener("email-override-recipients", handler);
+    return () => window.removeEventListener("email-override-recipients", handler);
+  }, []);
+
   useEffect(() => {
     if (!selectedId) return;
 
@@ -672,9 +684,13 @@ const InboxPage = () => {
       [convId]: [...(prev[convId] || []), optimisticMsg],
     }));
 
+    const overrides = emailOverridesRef.current;
+    emailOverridesRef.current = null;
+
     const body = isEmail
       ? {
-          to: conversation.customerPhone,
+          to: overrides?.to || conversation.customerPhone,
+          cc: overrides?.cc || undefined,
           subject: text.length > 60 ? text.substring(0, 60) + "..." : text,
           body: replyTo?.text
             ? `${text}\n\n---\n\nفي ${new Date().toLocaleDateString("ar-SA")}، كتب ${replyTo.senderName || "العميل"}:\n> ${replyTo.text.split("\n").join("\n> ")}`
