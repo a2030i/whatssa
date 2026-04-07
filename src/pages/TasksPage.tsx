@@ -547,6 +547,40 @@ const TasksPage = () => {
                 </Select>
               </div>
             </div>
+            {/* Attendance Type */}
+            <div>
+              <Label>نوع الحضور *</Label>
+              <Select value={newAttendanceType} onValueChange={setNewAttendanceType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_person"><Building2 className="w-3 h-3 inline ml-1" /> حضوري</SelectItem>
+                  <SelectItem value="remote"><Monitor className="w-3 h-3 inline ml-1" /> عن بعد</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Date */}
+            <div>
+              <Label>التاريخ *</Label>
+              <Input type="date" value={newTaskDate} onChange={e => setNewTaskDate(e.target.value)} />
+            </div>
+            {/* Time Range */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>من الساعة *</Label>
+                <Input type="time" value={newStartTime} onChange={e => setNewStartTime(e.target.value)} />
+              </div>
+              <div>
+                <Label>إلى الساعة *</Label>
+                <Input type="time" value={newEndTime} onChange={e => setNewEndTime(e.target.value)} />
+              </div>
+            </div>
+            {/* Location - only for in-person */}
+            {newAttendanceType === "in_person" && (
+              <div>
+                <Label>الموقع *</Label>
+                <Input value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="مثال: مكتب الرياض - حي العليا" />
+              </div>
+            )}
             {effectiveRole !== "member" && (
               <div>
                 <Label>إسناد إلى</Label>
