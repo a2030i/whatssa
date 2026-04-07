@@ -241,7 +241,81 @@ const TasksPage = () => {
     fetchTasks();
   };
 
-  const updateTaskStatus = async (taskId: string, status: string) => {
+  const openEditDialog = (task: Task) => {
+    setEditingTask(task);
+    setEditTitle(task.title);
+    setEditDesc(task.description || "");
+    setEditShowDesc(!!task.description);
+    setEditType(task.task_type);
+    setEditPriority(task.priority);
+    setEditAssignee(task.assigned_to || profile?.id || "");
+    setEditAttendanceType(task.attendance_type || "remote");
+    setEditTaskDate(task.task_date || "");
+    setEditStartTime(task.start_time?.slice(0, 5) || "");
+    setEditLocation(task.location || "");
+    // Calculate duration from start/end
+    if (task.start_time && task.end_time) {
+      const [sh, sm] = task.start_time.split(":").map(Number);
+      const [eh, em] = task.end_time.split(":").map(Number);
+      const dur = (eh * 60 + em) - (sh * 60 + sm);
+      const presets = ["5", "10", "15", "30", "60"];
+      if (presets.includes(String(dur))) {
+        setEditDuration(String(dur));
+        setEditCustomDuration("");
+      } else {
+        setEditDuration("custom");
+        setEditCustomDuration(String(dur));
+      }
+    } else {
+      setEditDuration("30");
+      setEditCustomDuration("");
+    }
+  };
+
+  const getEditDuration = (): number => {
+    if (editDuration === "custom") return parseInt(editCustomDuration) || 0;
+    return parseInt(editDuration) || 0;
+  };
+
+  const updateTask = async () => {
+    if (!editingTask) return;
+    if (!editTitle.trim()) return toast.error("أدخل عنوان المهمة");
+    if (!editTaskDate) return toast.error("اختر تاريخ المهمة");
+    if (!editStartTime) return toast.error("حدد وقت البداية");
+    const dur = getEditDuration();
+    if (dur <= 0) return toast.error("حدد مدة صحيحة");
+    if (editAttendanceType === "in_person" && !editLocation.trim()) return toast.error("أدخل الموقع للمهمة الحضورية");
+
+    const endTime = calcEndTime(editStartTime, dur);
+
+    try {
+      await callTasksApi({
+        action: "update",
+        task_id: editingTask.id,
+        title: editTitle.trim(),
+        description: editDesc.trim() || null,
+        task_type: editType,
+        priority: editPriority,
+        assigned_to: editAssignee || profile!.id,
+        attendance_type: editAttendanceType,
+        task_date: editTaskDate,
+        start_time: editStartTime,
+        end_time: endTime,
+        location: editAttendanceType === "in_person" ? editLocation.trim() : null,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "تعذر تعديل المهمة";
+      if (message.includes("TASK_OVERLAP")) {
+        return toast.error("هذا الموظف لديه مهمة متداخلة في نفس الوقت");
+      }
+      return toast.error(`فشل التعديل: ${message}`);
+    }
+
+    toast.success("تم تعديل المهمة");
+    setEditingTask(null);
+    fetchTasks();
+  };
+
     try {
       await callTasksApi({ action: "update_status", task_id: taskId, status });
     } catch (error) {
