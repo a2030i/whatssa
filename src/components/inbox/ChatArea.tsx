@@ -1727,7 +1727,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           media_type: "audio",
         },
       });
-      if (error || data?.error) {
+      if (data?.safety_paused) {
+        toast.warning("⛔ الإرسال متوقف مؤقتاً لحماية الرقم. الرسالة ستُعلّق ⏳ وترسل تلقائياً فور تجدد الحد.", { duration: 10000, icon: "🛡️" });
+        window.dispatchEvent(new CustomEvent("optimistic-message-pending", { detail: { conversationId: conversation.id, messageId: optimisticId } }));
+      } else if (error || data?.error) {
         throw new Error(data?.error || "فشل إرسال الرسالة الصوتية");
       }
     } catch (err: any) {
@@ -1842,7 +1845,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             media_type: mediaType,
           },
         });
-        if (error || data?.error) {
+        if (data?.safety_paused) {
+          toast.warning("⛔ الإرسال متوقف مؤقتاً لحماية الرقم. الرسالة ستُعلّق ⏳ وترسل تلقائياً فور تجدد الحد.", { duration: 10000, icon: "🛡️" });
+        } else if (error || data?.error) {
           throw new Error(data?.error || "فشل إرسال الوسائط");
         }
       } else {
