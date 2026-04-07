@@ -653,6 +653,7 @@ function fireWebhook(orgId: string, event: string, data: Record<string, unknown>
               await logToSystem(supabase, "info", `محادثة جديدة أُنشئت للعميل ${customerPhone}`, {
                 conversation_id: conversation.id,
               }, orgId);
+              fireWebhook(orgId, "conversation.created", { conversation_id: conversation.id, customer_phone: customerPhone, customer_name: contactName });
 
               try {
                 // Internal function call must use Lovable Cloud URL + its own service role key
