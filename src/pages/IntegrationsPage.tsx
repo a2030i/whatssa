@@ -1501,6 +1501,34 @@ const IntegrationsPage = () => {
                                 </div>
                               )}
 
+                              {/* Safety Pause Banner */}
+                              {(config as any).safety_paused && (
+                                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <AlertTriangle className="w-4 h-4 text-destructive" />
+                                    <div className="flex-1 text-right">
+                                      <p className="text-xs font-bold text-destructive">⚠️ الإرسال متوقف مؤقتاً</p>
+                                      <p className="text-[10px] text-muted-foreground">{(config as any).safety_paused_reason || "تجاوز حدود الإرسال الآمنة"}</p>
+                                      {(config as any).safety_paused_at && (
+                                        <p className="text-[9px] text-muted-foreground mt-0.5">منذ: {new Date((config as any).safety_paused_at).toLocaleString("ar-SA")}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <Button size="sm" variant="outline" className="w-full text-[10px] h-7 gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                    onClick={async () => {
+                                      await supabase.from("whatsapp_config").update({
+                                        safety_paused: false, safety_paused_at: null, safety_paused_reason: null,
+                                      }).eq("id", config.id);
+                                      toast.success("تم إعادة تفعيل الإرسال");
+                                      const { data: refreshed } = await supabase.rpc("get_org_whatsapp_channels");
+                                      const updated = ((refreshed || []) as any[]).filter((c: any) => c.org_id === orgId && c.channel_type === "evolution");
+                                      setUnofficialConfigs(updated as any);
+                                    }}>
+                                    <RefreshCw className="w-3 h-3" /> إعادة تفعيل الإرسال
+                                  </Button>
+                                </div>
+                              )}
+
                               {/* Ban Protection */}
                               <UnofficialRateLimitPanel configId={config.id} initialSettings={(config as any).rate_limit_settings} />
 

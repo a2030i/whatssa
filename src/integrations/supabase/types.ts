@@ -3990,6 +3990,7 @@ export type Database = {
           app_scoped_user_id: string | null
           business_account_id: string
           business_name: string | null
+          channel_age_days: number | null
           channel_label: string | null
           channel_type: string
           code_verification_status: string | null
@@ -4021,6 +4022,12 @@ export type Database = {
           registered_at: string | null
           registration_error: string | null
           registration_status: string | null
+          safety_max_per_day: number | null
+          safety_max_per_hour: number | null
+          safety_max_unique_per_hour: number | null
+          safety_paused: boolean | null
+          safety_paused_at: string | null
+          safety_paused_reason: string | null
           settings: Json | null
           throughput_level: string | null
           token_expires_at: string | null
@@ -4038,6 +4045,7 @@ export type Database = {
           app_scoped_user_id?: string | null
           business_account_id: string
           business_name?: string | null
+          channel_age_days?: number | null
           channel_label?: string | null
           channel_type?: string
           code_verification_status?: string | null
@@ -4069,6 +4077,12 @@ export type Database = {
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
+          safety_max_per_day?: number | null
+          safety_max_per_hour?: number | null
+          safety_max_unique_per_hour?: number | null
+          safety_paused?: boolean | null
+          safety_paused_at?: string | null
+          safety_paused_reason?: string | null
           settings?: Json | null
           throughput_level?: string | null
           token_expires_at?: string | null
@@ -4086,6 +4100,7 @@ export type Database = {
           app_scoped_user_id?: string | null
           business_account_id?: string
           business_name?: string | null
+          channel_age_days?: number | null
           channel_label?: string | null
           channel_type?: string
           code_verification_status?: string | null
@@ -4117,6 +4132,12 @@ export type Database = {
           registered_at?: string | null
           registration_error?: string | null
           registration_status?: string | null
+          safety_max_per_day?: number | null
+          safety_max_per_hour?: number | null
+          safety_max_unique_per_hour?: number | null
+          safety_paused?: boolean | null
+          safety_paused_at?: string | null
+          safety_paused_reason?: string | null
           settings?: Json | null
           throughput_level?: string | null
           token_expires_at?: string | null

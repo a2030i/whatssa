@@ -395,6 +395,95 @@ serve(async (req) => {
     const instanceName = config.evolution_instance_name;
     const evoHeaders = { "Content-Type": "application/json", apikey: EVOLUTION_KEY };
 
+    // ── Anti-Ban Safety Check ──
+    if (config.safety_paused) {
+      logToSystem(adminClient, "warn", `تم حظر الإرسال — القناة متوقفة مؤقتاً للحماية`, {
+        channel_id: config.id, reason: config.safety_paused_reason,
+      }, orgId, profile.id);
+      return json({
+        error: `الإرسال متوقف مؤقتاً لحماية الرقم من الحظر. السبب: ${config.safety_paused_reason || "تجاوز حدود الإرسال الآمنة"}`,
+        safety_paused: true,
+      }, 429);
+    }
+
+    // Check rate limits from channel_send_log
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+
+    const maxPerHour = config.safety_max_per_hour ?? 60;
+    const maxPerDay = config.safety_max_per_day ?? 500;
+    const maxUniquePerHour = config.safety_max_unique_per_hour ?? 30;
+    const channelAgeDays = config.channel_age_days ?? 0;
+
+    // Warm-up multiplier: new numbers get stricter limits
+    let warmupMultiplier = 1;
+    if (channelAgeDays < 7) warmupMultiplier = 0.2;       // أول أسبوع: 20%
+    else if (channelAgeDays < 14) warmupMultiplier = 0.4;  // ثاني أسبوع: 40%
+    else if (channelAgeDays < 30) warmupMultiplier = 0.7;  // أول شهر: 70%
+
+    const effectiveMaxHour = Math.max(5, Math.floor(maxPerHour * warmupMultiplier));
+    const effectiveMaxDay = Math.max(20, Math.floor(maxPerDay * warmupMultiplier));
+    const effectiveMaxUnique = Math.max(5, Math.floor(maxUniquePerHour * warmupMultiplier));
+
+    // Parallel count queries
+    const [hourCountRes, dayCountRes, uniqueHourRes] = await Promise.all([
+      adminClient.from("channel_send_log").select("id", { count: "exact", head: true })
+        .eq("channel_id", config.id).eq("org_id", orgId).gte("sent_at", oneHourAgo),
+      adminClient.from("channel_send_log").select("id", { count: "exact", head: true })
+        .eq("channel_id", config.id).eq("org_id", orgId).gte("sent_at", todayStart),
+      adminClient.from("channel_send_log").select("recipient_phone")
+        .eq("channel_id", config.id).eq("org_id", orgId).gte("sent_at", oneHourAgo),
+    ]);
+
+    const hourCount = hourCountRes.count ?? 0;
+    const dayCount = dayCountRes.count ?? 0;
+    const uniquePhones = new Set((uniqueHourRes.data || []).map((r: any) => r.recipient_phone)).size;
+
+    let pauseReason = "";
+    if (hourCount >= effectiveMaxHour) {
+      pauseReason = `تجاوز الحد الساعي (${hourCount}/${effectiveMaxHour} رسالة/ساعة)`;
+    } else if (dayCount >= effectiveMaxDay) {
+      pauseReason = `تجاوز الحد اليومي (${dayCount}/${effectiveMaxDay} رسالة/يوم)`;
+    } else if (uniquePhones >= effectiveMaxUnique) {
+      pauseReason = `تجاوز عدد الأرقام الفريدة بالساعة (${uniquePhones}/${effectiveMaxUnique})`;
+    }
+
+    if (pauseReason) {
+      // Auto-pause the channel
+      await adminClient.from("whatsapp_config").update({
+        safety_paused: true,
+        safety_paused_at: now.toISOString(),
+        safety_paused_reason: pauseReason,
+      }).eq("id", config.id);
+
+      logToSystem(adminClient, "warn", `⚠️ تم إيقاف القناة تلقائياً للحماية: ${pauseReason}`, {
+        channel_id: config.id, hour_count: hourCount, day_count: dayCount, unique_phones: uniquePhones,
+        limits: { hour: effectiveMaxHour, day: effectiveMaxDay, unique: effectiveMaxUnique },
+        warmup: warmupMultiplier, channel_age_days: channelAgeDays,
+      }, orgId, profile.id);
+
+      // Send notification to org owner
+      const { data: orgMembers } = await adminClient.from("profiles")
+        .select("id").eq("org_id", orgId).eq("role", "owner").limit(1).maybeSingle();
+      if (orgMembers) {
+        adminClient.from("notifications").insert({
+          org_id: orgId,
+          user_id: orgMembers.id,
+          title: "⚠️ تم إيقاف الإرسال مؤقتاً",
+          body: `تم إيقاف الإرسال على الرقم ${config.display_phone || instanceName} تلقائياً للحماية من الحظر. ${pauseReason}`,
+          type: "safety",
+          reference_type: "channel",
+          reference_id: config.id,
+        }).then(() => {}).catch(() => {});
+      }
+
+      return json({
+        error: `تم إيقاف الإرسال تلقائياً لحماية الرقم: ${pauseReason}. يمكنك إعادة التفعيل من صفحة التكاملات.`,
+        safety_paused: true,
+      }, 429);
+    }
+
     // Determine the correct remoteJid for groups
     const isGroup = to.includes("@g.us") || (!to.includes("@") && to.replace(/\D/g, "").length > 15);
     const remoteJid = isGroup ? (to.includes("@") ? to : `${to}@g.us`) : to.includes("@") ? to : `${to.replace(/\D/g, "")}@s.whatsapp.net`;
@@ -554,6 +643,14 @@ serve(async (req) => {
 
       waMessageId = result.key?.id || null;
     }
+
+    // Log send for rate limiting
+    adminClient.from("channel_send_log").insert({
+      channel_id: config.id,
+      org_id: orgId,
+      recipient_phone: to.replace(/\D/g, "").replace(/@.*/, ""),
+      message_type: sentMessageType,
+    }).then(() => {}).catch(() => {});
 
     logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
       wa_message_id: waMessageId, type: sentMessageType,
