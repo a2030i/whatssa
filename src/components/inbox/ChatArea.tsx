@@ -70,6 +70,7 @@ const MessageStatus = ({ status, isGroup, readBy, groupSize }: { status?: string
     </span>
   );
   if (status === "failed") return <span className="inline-block mr-1"><AlertTriangle className="w-3 h-3 text-destructive inline-block" /></span>;
+  if (status === "pending") return <span className="inline-flex items-center gap-0.5 mr-1"><Clock className="w-3 h-3 text-warning inline-block animate-pulse" /><span className="text-[8px] text-warning font-medium">معلّقة</span></span>;
   return null;
 };
 
