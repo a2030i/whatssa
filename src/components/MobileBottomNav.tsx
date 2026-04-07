@@ -153,7 +153,7 @@ const MobileBottomNav = () => {
                         : "bg-secondary/50 text-foreground hover:bg-secondary"
                     )}
                   >
-                    <span className="text-lg">{item.emoji}</span>
+                    <item.icon className="w-5 h-5" />
                     <span className="text-[11px] font-medium leading-tight">{item.label}</span>
                   </NavLink>
                 ))}
