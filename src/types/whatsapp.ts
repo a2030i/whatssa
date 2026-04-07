@@ -32,6 +32,9 @@ export interface WhatsAppTemplate {
   headerVariableCount: number;
   bodyVariableCount: number;
   components?: WhatsAppTemplateComponent[];
+  channelId?: string;
+  channelPhone?: string;
+  channelName?: string;
 }
 
 const placeholderRegex = /\{\{\d+\}\}/g;
