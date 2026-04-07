@@ -29,6 +29,8 @@ export interface Conversation {
   isArchived?: boolean;
   dedicatedAgentId?: string | null;
   lastMessageSender?: "agent" | "customer" | null;
+  sentiment?: "positive" | "neutral" | "negative" | null;
+  sentimentScore?: number | null;
 }
 
 export interface MessageTemplate {

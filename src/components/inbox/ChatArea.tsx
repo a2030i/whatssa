@@ -1926,6 +1926,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     <ShieldCheck className="w-2 h-2 ml-0.5" />رسمي
                   </span>
                 )}
+                {conversation.sentiment === "negative" && (
+                  <span className="inline-flex items-center text-[7px] px-1.5 py-px rounded bg-destructive/10 text-destructive font-bold shrink-0 gap-0.5">
+                    😠 غاضب
+                  </span>
+                )}
+                {conversation.sentiment === "positive" && (
+                  <span className="inline-flex items-center text-[7px] px-1.5 py-px rounded bg-emerald-500/10 text-emerald-600 font-bold shrink-0 gap-0.5">
+                    😊 راضٍ
+                  </span>
+                )}
               </div>
               <p className="text-[10px] text-muted-foreground/60 truncate">{isEmailChannel ? `📧 ${conversation.customerPhone}` : isMetaChannel ? "عبر الواتساب" : conversation.channelType === "evolution" ? "عبر الواتساب" : conversation.customerPhone}</p>
             </div>
