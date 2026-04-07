@@ -83,6 +83,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [templateVars, setTemplateVars] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [has24hWindow, setHas24hWindow] = useState(false);
+  const [checking24h, setChecking24h] = useState(false);
+  const [useTemplateFallback, setUseTemplateFallback] = useState(true);
   const [saveCustomer, setSaveCustomer] = useState(false);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [isExistingCustomer, setIsExistingCustomer] = useState(false);
@@ -148,6 +151,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setSaveCustomer(false);
       setIsExistingCustomer(false);
       setShowCountryPicker(false);
+      setHas24hWindow(false);
+      setChecking24h(false);
+      setUseTemplateFallback(true);
       setGroupName("");
       setGroupMembers([]);
       setGroupMemberInput("");
@@ -378,12 +384,53 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     }
   };
 
-  const selectChannel = (ch: Channel) => {
+  const selectChannel = async (ch: Channel) => {
     setSelectedChannel(ch);
     setSelectedTemplate(null);
     setTemplateVars([]);
     setMessageText("");
+    setUseTemplateFallback(true);
+    setHas24hWindow(false);
     setStep("message");
+
+    // Check 24h window for Meta channels
+    if (ch.channel_type === "meta_api" && isValidNumber && orgId) {
+      setChecking24h(true);
+      try {
+        const twentyFourAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: recentConv } = await supabase
+          .from("conversations")
+          .select("id, last_message_at, last_message_sender")
+          .eq("org_id", orgId)
+          .eq("customer_phone", fullPhone)
+          .eq("channel_id", ch.id)
+          .gte("last_message_at", twentyFourAgo)
+          .order("last_message_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recentConv) {
+          // Check if customer sent a message within 24h
+          const { data: incomingMsg } = await supabase
+            .from("messages")
+            .select("id")
+            .eq("conversation_id", recentConv.id)
+            .eq("sender", "customer")
+            .gte("created_at", twentyFourAgo)
+            .limit(1)
+            .maybeSingle();
+
+          if (incomingMsg) {
+            setHas24hWindow(true);
+            setUseTemplateFallback(false);
+          }
+        }
+      } catch {
+        // Fail silently - default to template mode
+      } finally {
+        setChecking24h(false);
+      }
+    }
   };
 
   const handleSelectTemplate = (t: WhatsAppTemplate) => {
@@ -401,7 +448,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     setSending(true);
     try {
       const cleanPhone = fullPhone;
-      const messagePreview = isMeta ? `📋 ${selectedTemplate?.name}` : messageText.trim();
+      const messagePreview = isMeta && useTemplateFallback ? `📋 ${selectedTemplate?.name}` : messageText.trim();
 
       // Save customer if requested
       if (saveCustomer && !isExistingCustomer && orgId) {
@@ -468,7 +515,21 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         }
         // Edge function creates conversation if needed — get its ID
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
-      } else if (isMeta && !selectedTemplate) {
+      } else if (isMeta && !useTemplateFallback && messageText.trim()) {
+        // 24h window - send free-form text via whatsapp-send
+        const { data, error } = await invokeCloud("whatsapp-send", {
+          body: {
+            to: cleanPhone,
+            type: "text",
+            message: messageText.trim(),
+            conversation_id: conversationId,
+            channel_id: selectedChannel.id,
+            customer_name: customerName || cleanPhone,
+          },
+        });
+        if (error || data?.error) throw new Error(data?.error || "فشل إرسال الرسالة");
+        if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
+      } else if (isMeta && useTemplateFallback && !selectedTemplate) {
         toast.error("يجب اختيار قالب للقناة الرسمية");
         setSending(false);
         return;
@@ -514,7 +575,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     }
   };
 
-  const canSend = isValidNumber && (isMeta ? !!selectedTemplate : messageText.trim().length > 0);
+  const canSend = isValidNumber && (isMeta ? (useTemplateFallback ? !!selectedTemplate : messageText.trim().length > 0) : messageText.trim().length > 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1168,15 +1229,62 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 
             {isMeta ? (
               <div className="p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary" />
-                  <Label className="text-xs font-medium">اختر قالب للإرسال</Label>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  القناة الرسمية تتطلب إرسال قالب معتمد كأول رسالة
-                </p>
+                {checking24h ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    جاري التحقق من نافذة الـ 24 ساعة...
+                  </div>
+                ) : has24hWindow ? (
+                  <>
+                    <div className="bg-success/10 border border-success/20 rounded-xl p-3">
+                      <p className="text-xs font-medium text-success flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        نافذة 24 ساعة مفتوحة — يمكنك إرسال رسالة حرة أو قالب
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                      <button
+                        onClick={() => { setUseTemplateFallback(false); setSelectedTemplate(null); }}
+                        className={cn(
+                          "flex-1 text-xs font-semibold py-2 rounded-md transition-colors",
+                          !useTemplateFallback ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 inline ml-1" /> رسالة حرة
+                      </button>
+                      <button
+                        onClick={() => setUseTemplateFallback(true)}
+                        className={cn(
+                          "flex-1 text-xs font-semibold py-2 rounded-md transition-colors",
+                          useTemplateFallback ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <FileText className="w-3.5 h-3.5 inline ml-1" /> قالب
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-primary" />
+                      <Label className="text-xs font-medium">اختر قالب للإرسال</Label>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      القناة الرسمية تتطلب إرسال قالب معتمد كأول رسالة
+                    </p>
+                  </>
+                )}
 
-                {!selectedTemplate ? (
+                {!useTemplateFallback ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="اكتب رسالتك هنا..."
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      className="min-h-[100px] text-sm resize-none bg-background"
+                    />
+                  </div>
+                ) : !selectedTemplate ? (
                   <ScrollArea className="h-[200px]">
                     <div className="grid gap-1.5">
                       {approvedTemplates.length === 0 ? (
