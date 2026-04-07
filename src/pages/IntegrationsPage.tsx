@@ -259,7 +259,7 @@ const IntegrationsPage = () => {
           console.warn("[Embedded Signup] Watchdog: connecting state timed out after 3min");
           setFlowStep("idle");
           setIsLoading(false);
-          loadConfigs(true);
+          if (loadConfigsRef.current) loadConfigsRef.current(true);
           toast.info("انتهت مهلة الربط — تحقق من حالة القناة أو أعد المحاولة");
         }
       }
