@@ -642,6 +642,22 @@ const IntegrationsPage = () => {
   }, [onboardingMode]);
 
   const proceedToMetaLogin = useCallback(() => {
+    // On mobile: use redirect-based OAuth (FB.login popup doesn't return data on mobile browsers)
+    if (isMobileDevice) {
+      // Save state before redirect
+      sessionStorage.setItem("wa_onboarding_mode", onboardingMode);
+      if (previousProvider) sessionStorage.setItem("wa_previous_provider", previousProvider);
+
+      const redirectUri = `${window.location.origin}/integrations`;
+      const scopes = "whatsapp_business_management,whatsapp_business_messaging,business_management";
+      const oauthUrl = `https://www.facebook.com/v22.0/dialog/oauth?client_id=${metaAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&config_id=${metaConfigId}&response_type=code&override_default_response_type=true&scope=${encodeURIComponent(scopes)}`;
+
+      console.log("[Embedded Signup] Mobile: redirecting to OAuth URL");
+      window.location.href = oauthUrl;
+      return;
+    }
+
+    // Desktop: use FB.login popup
     const FB = (window as any).FB;
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
@@ -660,7 +676,7 @@ const IntegrationsPage = () => {
     FB.login(
       (response: any) => {
         fbCallbackFiredRef.current = true;
-        postMessageHandledRef.current = true; // Prevent postMessage handler from double-processing
+        postMessageHandledRef.current = true;
         console.log("[Embedded Signup] FB.login response:", JSON.stringify(response));
         if (response.authResponse) {
           const code = response.authResponse.code;
@@ -675,7 +691,6 @@ const IntegrationsPage = () => {
             handleError("لم يتم الحصول على بيانات المصادقة");
           }
         } else {
-          // Log the full response for debugging
           console.error("[Embedded Signup] No authResponse. Status:", response?.status, "Full:", JSON.stringify(response));
           const fbStatus = response?.status;
           const statusMessages: Record<string, string> = {
@@ -696,7 +711,7 @@ const IntegrationsPage = () => {
         },
       }
     );
-  }, [clearEmbeddedSignupSelection, metaConfigId, metaAppId, onboardingMode]);
+  }, [clearEmbeddedSignupSelection, metaConfigId, metaAppId, onboardingMode, previousProvider, isMobileDevice]);
 
   const handleCodeExchange = async (code: string) => {
     try {
