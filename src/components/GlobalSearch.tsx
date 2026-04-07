@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, MessageSquare, User, Loader2 } from "lucide-react";
+import { Search, MessageSquare, User, Loader2, Mail } from "lucide-react";
 import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
