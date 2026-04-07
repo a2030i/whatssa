@@ -170,11 +170,11 @@ const TasksPage = () => {
       location: newAttendanceType === "in_person" ? newLocation.trim() : null,
     } as any);
     if (error) {
-      console.error("Task creation error:", error);
+      console.error("Task creation error:", error.message, error.details, error.hint, error.code);
       if (error.message?.includes("TASK_OVERLAP")) {
         return toast.error("هذا الموظف لديه مهمة متداخلة في نفس الوقت، غيّر الوقت أو الموظف");
       }
-      return toast.error("فشل إنشاء المهمة");
+      return toast.error(`فشل إنشاء المهمة: ${error.message}`);
     }
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
