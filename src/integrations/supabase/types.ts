@@ -606,6 +606,59 @@ export type Database = {
           },
         ]
       }
+      campaign_ab_variants: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          delivered_count: number | null
+          failed_count: number | null
+          id: string
+          read_count: number | null
+          recipient_percentage: number
+          sent_count: number | null
+          template_language: string | null
+          template_name: string | null
+          template_variables: Json | null
+          variant_name: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          delivered_count?: number | null
+          failed_count?: number | null
+          id?: string
+          read_count?: number | null
+          recipient_percentage?: number
+          sent_count?: number | null
+          template_language?: string | null
+          template_name?: string | null
+          template_variables?: Json | null
+          variant_name?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          delivered_count?: number | null
+          failed_count?: number | null
+          id?: string
+          read_count?: number | null
+          recipient_percentage?: number
+          sent_count?: number | null
+          template_language?: string | null
+          template_name?: string | null
+          template_variables?: Json | null
+          variant_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_ab_variants_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_recipients: {
         Row: {
           campaign_id: string
@@ -667,6 +720,7 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          ab_test_enabled: boolean | null
           audience_tags: string[] | null
           audience_type: string
           completed_at: string | null
@@ -696,8 +750,10 @@ export type Database = {
           template_variables: Json | null
           total_recipients: number | null
           updated_at: string | null
+          winning_variant_id: string | null
         }
         Insert: {
+          ab_test_enabled?: boolean | null
           audience_tags?: string[] | null
           audience_type?: string
           completed_at?: string | null
@@ -727,8 +783,10 @@ export type Database = {
           template_variables?: Json | null
           total_recipients?: number | null
           updated_at?: string | null
+          winning_variant_id?: string | null
         }
         Update: {
+          ab_test_enabled?: boolean | null
           audience_tags?: string[] | null
           audience_type?: string
           completed_at?: string | null
@@ -758,6 +816,7 @@ export type Database = {
           template_variables?: Json | null
           total_recipients?: number | null
           updated_at?: string | null
+          winning_variant_id?: string | null
         }
         Relationships: [
           {
@@ -772,6 +831,13 @@ export type Database = {
             columns: ["parent_campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_winning_variant_id_fkey"
+            columns: ["winning_variant_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_ab_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -2971,6 +3037,116 @@ export type Database = {
           },
         ]
       }
+      short_link_clicks: {
+        Row: {
+          city: string | null
+          clicked_at: string
+          country: string | null
+          device_type: string | null
+          id: string
+          ip_address: string | null
+          link_id: string
+          org_id: string
+          referrer: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          city?: string | null
+          clicked_at?: string
+          country?: string | null
+          device_type?: string | null
+          id?: string
+          ip_address?: string | null
+          link_id: string
+          org_id: string
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          city?: string | null
+          clicked_at?: string
+          country?: string | null
+          device_type?: string | null
+          id?: string
+          ip_address?: string | null
+          link_id?: string
+          org_id?: string
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "short_link_clicks_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "short_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "short_link_clicks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      short_links: {
+        Row: {
+          click_count: number | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          org_id: string
+          prefilled_message: string | null
+          short_code: string
+          target_phone: string
+          title: string | null
+          updated_at: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          click_count?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          org_id: string
+          prefilled_message?: string | null
+          short_code: string
+          target_phone: string
+          title?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          click_count?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          org_id?: string
+          prefilled_message?: string | null
+          short_code?: string
+          target_phone?: string
+          title?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "short_links_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sla_policies: {
         Row: {
           apply_to_channels: string[] | null
@@ -3938,6 +4114,115 @@ export type Database = {
           },
           {
             foreignKeyName: "whatsapp_config_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      widget_configs: {
+        Row: {
+          button_color: string | null
+          button_position: string | null
+          button_size: string | null
+          click_count: number | null
+          created_at: string
+          delay_seconds: number | null
+          id: string
+          is_active: boolean | null
+          org_id: string
+          page_rules: Json | null
+          phone_number: string
+          show_on_mobile: boolean | null
+          updated_at: string
+          welcome_message: string | null
+          widget_type: string
+        }
+        Insert: {
+          button_color?: string | null
+          button_position?: string | null
+          button_size?: string | null
+          click_count?: number | null
+          created_at?: string
+          delay_seconds?: number | null
+          id?: string
+          is_active?: boolean | null
+          org_id: string
+          page_rules?: Json | null
+          phone_number: string
+          show_on_mobile?: boolean | null
+          updated_at?: string
+          welcome_message?: string | null
+          widget_type?: string
+        }
+        Update: {
+          button_color?: string | null
+          button_position?: string | null
+          button_size?: string | null
+          click_count?: number | null
+          created_at?: string
+          delay_seconds?: number | null
+          id?: string
+          is_active?: boolean | null
+          org_id?: string
+          page_rules?: Json | null
+          phone_number?: string
+          show_on_mobile?: boolean | null
+          updated_at?: string
+          welcome_message?: string | null
+          widget_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widget_configs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zapier_webhooks: {
+        Row: {
+          allowed_actions: string[] | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          last_triggered_at: string | null
+          name: string
+          org_id: string
+          trigger_count: number | null
+          updated_at: string
+          webhook_token: string
+        }
+        Insert: {
+          allowed_actions?: string[] | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name?: string
+          org_id: string
+          trigger_count?: number | null
+          updated_at?: string
+          webhook_token?: string
+        }
+        Update: {
+          allowed_actions?: string[] | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name?: string
+          org_id?: string
+          trigger_count?: number | null
+          updated_at?: string
+          webhook_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapier_webhooks_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
