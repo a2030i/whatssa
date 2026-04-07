@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { invokeCloud } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Settings, Save, AlertTriangle, CreditCard, Eye, EyeOff, Globe } from "lucide-react";
+import { Settings, Save, AlertTriangle, CreditCard, Eye, EyeOff, Globe, Bell, Key, Copy, CheckCircle, Loader2, Send } from "lucide-react";
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [showSecretKey, setShowSecretKey] = useState(false);
+  const [generatingVapid, setGeneratingVapid] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -242,6 +246,182 @@ const AdminSettings = () => {
           <div className="bg-primary/5 rounded-lg p-3 text-xs text-primary font-medium flex items-center gap-2">
             <Globe className="w-4 h-4" />
             إعدادات Meta مكتملة — App ID: {getVal("meta_app_id")} | Config ID: {getVal("meta_config_id")}
+          </div>
+        )}
+      </div>
+
+      {/* VAPID / Web Push Settings */}
+      <div className="bg-card rounded-xl shadow-card p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <Bell className="w-4 h-4 text-primary" />
+          <p className="text-sm font-semibold">إعدادات إشعارات Push (VAPID)</p>
+        </div>
+        <p className="text-[10px] text-muted-foreground -mt-2">
+          مفاتيح VAPID مطلوبة لإرسال إشعارات Push حقيقية للمستخدمين حتى لو كان التطبيق مغلق
+        </p>
+
+        {/* Steps */}
+        <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+          <p className="text-xs font-semibold text-foreground">📋 خطوات التفعيل:</p>
+          <ol className="text-[11px] text-muted-foreground space-y-1.5 list-decimal list-inside">
+            <li className="flex items-start gap-1">
+              <span className="font-medium text-foreground min-w-[18px]">1.</span>
+              <span>اضغط <strong>"توليد مفاتيح VAPID"</strong> أدناه — سيتم إنشاء مفتاح عام وخاص تلقائياً</span>
+            </li>
+            <li className="flex items-start gap-1">
+              <span className="font-medium text-foreground min-w-[18px]">2.</span>
+              <span>المفاتيح تُحفظ تلقائياً في قاعدة البيانات — لا حاجة لنسخها يدوياً</span>
+            </li>
+            <li className="flex items-start gap-1">
+              <span className="font-medium text-foreground min-w-[18px]">3.</span>
+              <span>المستخدمون يفعّلون الإشعارات من <strong>صفحة التثبيت (/install)</strong> أو من إعدادات حسابهم</span>
+            </li>
+            <li className="flex items-start gap-1">
+              <span className="font-medium text-foreground min-w-[18px]">4.</span>
+              <span>ستصلهم الإشعارات حتى لو كان المتصفح/التطبيق مغلق تماماً ✅</span>
+            </li>
+          </ol>
+        </div>
+
+        {/* Current Status */}
+        {getVal("vapid_public_key") ? (
+          <div className="space-y-3">
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+              <span className="text-xs text-primary font-medium">مفاتيح VAPID مُفعّلة وجاهزة ✅</span>
+            </div>
+
+            <div>
+              <Label className="text-xs">المفتاح العام (Public Key)</Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  value={getVal("vapid_public_key")}
+                  readOnly
+                  className="h-9 text-[10px] font-mono bg-muted/50"
+                  dir="ltr"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(getVal("vapid_public_key"));
+                    setCopiedKey(true);
+                    setTimeout(() => setCopiedKey(false), 2000);
+                    toast.success("تم نسخ المفتاح العام");
+                  }}
+                >
+                  {copiedKey ? <CheckCircle className="w-3 h-3 text-primary" /> : <Copy className="w-3 h-3" />}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs">المفتاح الخاص (Private Key)</Label>
+              <Input
+                value="••••••••••••••••••••••••••••••••••••"
+                readOnly
+                className="h-9 text-xs font-mono bg-muted/50 mt-1"
+                dir="ltr"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">🔒 محفوظ بأمان — يُستخدم فقط من السيرفر</p>
+            </div>
+
+            {/* VAPID Subject */}
+            <div>
+              <Label className="text-xs">عنوان التواصل (VAPID Subject)</Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  value={getVal("vapid_subject", "mailto:admin@whatssa.lovable.app")}
+                  onChange={(e) => setVal("vapid_subject", e.target.value)}
+                  placeholder="mailto:your@email.com"
+                  className="h-9 text-sm font-mono"
+                  dir="ltr"
+                />
+                <Button size="sm" variant="outline" className="h-9" onClick={() => updateSetting("vapid_subject", getVal("vapid_subject", "mailto:admin@whatssa.lovable.app"))}>
+                  <Save className="w-3 h-3" />
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">بريد إلكتروني أو رابط موقع للتعريف عند خوادم الإشعارات</p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs gap-1"
+                disabled={generatingVapid}
+                onClick={async () => {
+                  setGeneratingVapid(true);
+                  try {
+                    const { data, error } = await invokeCloud("generate-vapid-keys");
+                    if (error) throw error;
+                    toast.success("تم تجديد مفاتيح VAPID بنجاح");
+                    load();
+                  } catch (err: any) {
+                    toast.error("فشل التجديد: " + (err.message || "خطأ"));
+                  }
+                  setGeneratingVapid(false);
+                }}
+              >
+                <Key className="w-3 h-3" /> تجديد المفاتيح
+              </Button>
+
+              <Button
+                size="sm"
+                variant="default"
+                className="text-xs gap-1"
+                disabled={sendingTest}
+                onClick={async () => {
+                  setSendingTest(true);
+                  try {
+                    const { data, error } = await invokeCloud("send-push-notification", {
+                      body: {
+                        title: "🔔 تجربة إشعار",
+                        body: "هذا إشعار تجريبي من لوحة السوبر أدمن — النظام يعمل بنجاح!",
+                        tag: "test-push",
+                      },
+                    });
+                    if (error) throw error;
+                    const result = typeof data === "string" ? JSON.parse(data) : data;
+                    toast.success(`تم إرسال ${result.sent || 0} إشعار من أصل ${result.total || 0} اشتراك`);
+                  } catch (err: any) {
+                    toast.error("فشل الإرسال: " + (err.message || "خطأ"));
+                  }
+                  setSendingTest(false);
+                }}
+              >
+                {sendingTest ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                إرسال إشعار تجريبي
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+              <span className="text-xs text-warning font-medium">مفاتيح VAPID غير مُعدّة — الإشعارات لن تعمل عند إغلاق التطبيق</span>
+            </div>
+
+            <Button
+              className="w-full gap-2 text-sm"
+              disabled={generatingVapid}
+              onClick={async () => {
+                setGeneratingVapid(true);
+                try {
+                  const { data, error } = await invokeCloud("generate-vapid-keys");
+                  if (error) throw error;
+                  toast.success("تم توليد مفاتيح VAPID بنجاح! 🎉");
+                  load();
+                } catch (err: any) {
+                  toast.error("فشل التوليد: " + (err.message || "خطأ"));
+                }
+                setGeneratingVapid(false);
+              }}
+            >
+              {generatingVapid ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+              {generatingVapid ? "جاري التوليد..." : "توليد مفاتيح VAPID"}
+            </Button>
           </div>
         )}
       </div>

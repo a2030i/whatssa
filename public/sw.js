@@ -1,6 +1,12 @@
-// Service Worker for Push Notifications
+// Service Worker for Web Push Notifications
 self.addEventListener("push", (event) => {
-  const data = event.data ? event.data.json() : {};
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { body: event.data?.text() || "إشعار جديد" };
+  }
+
   const title = data.title || "رسالة جديدة";
   const options = {
     body: data.body || "لديك رسالة جديدة في صندوق الوارد",
@@ -10,6 +16,7 @@ self.addEventListener("push", (event) => {
     lang: "ar",
     tag: data.tag || "new-message",
     data: { url: data.url || "/inbox" },
+    vibrate: [200, 100, 200],
     actions: [
       { action: "open", title: "فتح" },
       { action: "dismiss", title: "تجاهل" },
@@ -22,6 +29,8 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data?.url || "/inbox";
+
+  if (event.action === "dismiss") return;
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
