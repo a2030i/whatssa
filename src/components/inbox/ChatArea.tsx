@@ -1517,6 +1517,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       return;
     }
     const replyData = replyTo ? { id: replyTo.id, waMessageId: replyTo.waMessageId, senderName: replyTo.sender === "agent" ? "أنت" : (replyTo.senderName || conversation.customerName), text: replyTo.text } : undefined;
+    // Dispatch email overrides if set
+    if (isEmailChannel && (emailOverrideTo || emailOverrideCc)) {
+      window.dispatchEvent(new CustomEvent("email-override-recipients", {
+        detail: {
+          conversationId: conversation.id,
+          to: emailOverrideTo || undefined,
+          cc: emailOverrideCc || undefined,
+        }
+      }));
+    }
     onSendMessage(conversation.id, inputText.trim(), "text", replyData);
     setInputText("");
     setReplyTo(null);
