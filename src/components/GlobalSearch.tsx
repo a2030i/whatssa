@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 
 interface SearchResult {
-  type: "conversation" | "customer";
+  type: "conversation" | "customer" | "email";
   id: string;
   title: string;
   subtitle: string;
