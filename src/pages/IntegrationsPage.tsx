@@ -85,6 +85,7 @@ const IntegrationsPage = () => {
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
   const [accessToken, setAccessToken] = useState("");
   const fbCallbackFiredRef = useRef(false);
+  const postMessageHandledRef = useRef(false);
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isReviewMode, setIsReviewMode] = useState(() => window.localStorage.getItem("meta-review-mode") === "1");
@@ -398,7 +399,7 @@ const IntegrationsPage = () => {
           if (!data || typeof data !== "object") return;
           if (data.type === 'WA_EMBEDDED_SIGNUP') {
             console.log('[Embedded Signup] session event:', data);
-            // If we get phone_number_id and waba_id from session info, store them
+            // Store phone_number_id and waba_id from session info
             if (data.data?.phone_number_id && data.data?.waba_id) {
               rememberEmbeddedSignupSelection({
                 phoneNumberId: data.data.phone_number_id,
@@ -406,8 +407,77 @@ const IntegrationsPage = () => {
               });
               console.log('[Embedded Signup] Got IDs from session:', data.data.phone_number_id, data.data.waba_id);
             }
+
+            // CANCEL: user exited before completing — immediately leave connecting state
             if (data.event === 'CANCEL') {
               console.log('[Embedded Signup] User cancelled at step:', data.data?.current_step);
+              // Give FB.login callback a brief grace period (it might still fire)
+              setTimeout(() => {
+                if (!fbCallbackFiredRef.current && !postMessageHandledRef.current) {
+                  postMessageHandledRef.current = true;
+                  setFlowStep("idle");
+                  setIsLoading(false);
+                  toast.info("تم إلغاء عملية الربط");
+                }
+              }, 2000);
+            }
+
+            // FINISH: user completed the flow — try to recover token immediately
+            if (data.event === 'FINISH') {
+              console.log('[Embedded Signup] User finished signup flow');
+              // Give FB.login callback a brief grace period
+              setTimeout(() => {
+                if (!fbCallbackFiredRef.current && !postMessageHandledRef.current) {
+                  postMessageHandledRef.current = true;
+                  console.log('[Embedded Signup] FB.login callback not received, recovering via postMessage FINISH');
+                  // Try FB.getAuthResponse
+                  try {
+                    const FB = (window as any).FB;
+                    if (FB) {
+                      const auth = FB.getAuthResponse();
+                      if (auth?.code) {
+                        handleCodeExchange(auth.code);
+                        return;
+                      }
+                      if (auth?.accessToken) {
+                        handleDirectToken(auth.accessToken);
+                        return;
+                      }
+                    }
+                  } catch { /* ignore */ }
+                  // Fallback: if we have embedded selection IDs, check DB after a delay
+                  const selection = embeddedSignupSelectionRef.current;
+                  if (selection?.phoneNumberId && selection?.wabaId) {
+                    console.log('[Embedded Signup] Using postMessage IDs to check DB');
+                    // Check DB for new channel after short delay
+                    setTimeout(async () => {
+                      try {
+                        const { data: freshConfigs } = await supabase.rpc("get_org_whatsapp_channels");
+                        const orgConfigs = ((freshConfigs || []) as WhatsAppConfig[]).filter(
+                          (c: WhatsAppConfig) => c.org_id === orgId && c.channel_type !== "evolution" && c.is_connected
+                        );
+                        if (orgConfigs.length > configs.length) {
+                          setFlowStep("idle");
+                          setIsLoading(false);
+                          await loadConfigs(true);
+                          toast.success("تم ربط الرقم بنجاح!");
+                          return;
+                        }
+                      } catch { /* ignore */ }
+                      // If still nothing, show informational message
+                      setFlowStep("idle");
+                      setIsLoading(false);
+                      loadConfigs(true);
+                      toast.info("اكتملت العملية — تحقق من حالة القناة");
+                    }, 5000);
+                  } else {
+                    setFlowStep("idle");
+                    setIsLoading(false);
+                    loadConfigs(true);
+                    toast.info("اكتملت العملية — تحقق من حالة القناة");
+                  }
+                }
+              }, 3000);
             }
           }
         } catch {
@@ -465,7 +535,8 @@ const IntegrationsPage = () => {
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
     clearEmbeddedSignupSelection();
-    fbCallbackFiredRef.current = false; // Reset flag before starting
+    fbCallbackFiredRef.current = false;
+    postMessageHandledRef.current = false;
     setFlowStep("connecting");
     setIsLoading(true);
     setErrorMessage("");
@@ -474,7 +545,8 @@ const IntegrationsPage = () => {
 
     FB.login(
       (response: any) => {
-        fbCallbackFiredRef.current = true; // Mark that callback fired
+        fbCallbackFiredRef.current = true;
+        postMessageHandledRef.current = true; // Prevent postMessage handler from double-processing
         console.log("[Embedded Signup] FB.login response:", JSON.stringify(response));
         if (response.authResponse) {
           const code = response.authResponse.code;
