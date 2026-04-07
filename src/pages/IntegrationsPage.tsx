@@ -2315,10 +2315,10 @@ const IntegrationsPage = () => {
 
             <div className="bg-muted/50 rounded-lg p-3 space-y-2">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {t("💡 تأكد أن الرقم غير مربوط بتطبيق واتساب على هاتفك. يجب فصله أولاً لربطه بالمنصة.", "💡 Make sure the number is not linked to any WhatsApp app on your phone. Disconnect it first.")}
+                {t("💡 تأكد من إكمال جميع الخطوات داخل نافذة ميتا ومنح الصلاحيات المطلوبة قبل إغلاقها.", "💡 Make sure to complete all steps in the Meta popup and grant the required permissions before closing it.")}
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {t("💡 إذا تكرر الخطأ، جرّب فصل الرقم من واتساب على هاتفك ثم أعد المحاولة بعد دقيقة.", "💡 If the error persists, disconnect the number from WhatsApp on your phone and retry after a minute.")}
+                {t("💡 إذا تكرر الخطأ، جرّب تسجيل الخروج من فيسبوك ثم أعد تسجيل الدخول وحاول مرة أخرى.", "💡 If the error persists, try logging out of Facebook, then log back in and retry.")}
               </p>
             </div>
 
