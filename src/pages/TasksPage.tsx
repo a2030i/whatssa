@@ -605,20 +605,62 @@ const TasksPage = () => {
               </Select>
             </div>
             {/* Date */}
-            <div>
-              <Label>التاريخ *</Label>
-              <Input type="date" value={newTaskDate} onChange={e => setNewTaskDate(e.target.value)} />
-            </div>
-            {/* Time Range */}
+            {/* Date & Start Time */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>من الساعة *</Label>
-                <Input type="time" value={newStartTime} onChange={e => setNewStartTime(e.target.value)} />
+                <Label>التاريخ *</Label>
+                <Input type="date" value={newTaskDate} onChange={e => setNewTaskDate(e.target.value)} className="text-sm" />
               </div>
               <div>
-                <Label>إلى الساعة *</Label>
-                <Input type="time" value={newEndTime} onChange={e => setNewEndTime(e.target.value)} />
+                <Label>وقت البداية *</Label>
+                <Input type="time" value={newStartTime} onChange={e => setNewStartTime(e.target.value)} className="text-sm" />
               </div>
+            </div>
+            {/* Duration */}
+            <div>
+              <Label>لمدة *</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {[
+                  { value: "5", label: "٥ د" },
+                  { value: "10", label: "١٠ د" },
+                  { value: "15", label: "١٥ د" },
+                  { value: "30", label: "٣٠ د" },
+                  { value: "60", label: "ساعة" },
+                  { value: "custom", label: "مخصص" },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setNewDuration(opt.value)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors",
+                      newDuration === opt.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground border-input hover:bg-accent"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {newDuration === "custom" && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={newCustomDuration}
+                    onChange={e => setNewCustomDuration(e.target.value)}
+                    placeholder="عدد الدقائق"
+                    className="w-32 text-sm"
+                  />
+                  <span className="text-xs text-muted-foreground">دقيقة</span>
+                </div>
+              )}
+              {newStartTime && getEffectiveDuration() > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  ⏰ من {newStartTime} إلى {calcEndTime(newStartTime, getEffectiveDuration())}
+                </p>
+              )}
             </div>
             {/* Location - only for in-person */}
             {newAttendanceType === "in_person" && (
@@ -627,53 +669,15 @@ const TasksPage = () => {
                 <Input value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="مثال: مكتب الرياض - حي العليا" />
               </div>
             )}
-            {effectiveRole !== "member" && (
-              <div>
-                <Label>إسناد إلى</Label>
-                <Select value={newAssignee || "none"} onValueChange={(v) => setNewAssignee(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">بدون إسناد</SelectItem>
-                    {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            {/* Assignee - defaults to me */}
             <div>
-              <Label>العميل</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                    {selectedCustomerId
-                      ? (() => { const c = customers.find(c => c.id === selectedCustomerId); return c ? `${c.name || "بدون اسم"} — ${c.phone}` : "اختر عميل"; })()
-                      : "اختر عميل"}
-                    <ChevronsUpDown className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="بحث بالاسم أو الرقم..." />
-                    <CommandList>
-                      <CommandEmpty>لا يوجد عملاء</CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem value="none" onSelect={() => setSelectedCustomerId("")}>
-                          بدون عميل
-                        </CommandItem>
-                        {customers.map(c => (
-                          <CommandItem
-                            key={c.id}
-                            value={`${c.name || ""} ${c.phone}`}
-                            onSelect={() => setSelectedCustomerId(c.id)}
-                          >
-                            <Check className={cn("ml-2 h-4 w-4", selectedCustomerId === c.id ? "opacity-100" : "opacity-0")} />
-                            {c.name || "بدون اسم"} — {c.phone}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Label>إسناد إلى</Label>
+              <Select value={newAssignee || profile?.id || ""} onValueChange={setNewAssignee}>
+                <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
+                <SelectContent>
+                  {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}{a.id === profile?.id ? " (أنا)" : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={createTask} className="w-full">إنشاء المهمة</Button>
           </div>
