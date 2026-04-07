@@ -26,7 +26,7 @@ import { toast } from "sonner";
 
 const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
 const DEFAULT_META_APP_ID = "1239578701681497";
-const DEFAULT_META_CONFIG_ID = "913936624804564";
+const DEFAULT_META_CONFIG_ID = "1249778347352495";
 
 interface PhoneNumber {
   id: string;
