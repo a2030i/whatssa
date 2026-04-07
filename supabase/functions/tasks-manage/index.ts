@@ -49,12 +49,31 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+function getUserIdFromAuthHeader(authHeader: string) {
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+    const decoded = JSON.parse(atob(padded));
+
+    return typeof decoded?.sub === "string" ? decoded.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 async function getCallerContext(authHeader: string) {
+  const userId = getUserIdFromAuthHeader(authHeader);
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+
   const externalUrl = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
   const externalAnonKey = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY")!;
   const externalServiceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY")!;
-  const cloudUrl = Deno.env.get("SUPABASE_URL")!;
-  const cloudServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   const externalUser = createClient(externalUrl, externalAnonKey, {
     global: { headers: { Authorization: authHeader } },
@@ -65,19 +84,13 @@ async function getCallerContext(authHeader: string) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const cloudAdmin = createClient(cloudUrl, cloudServiceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
   const { data: profile, error: profileError } = await externalUser
     .from("profiles")
     .select("id, org_id, team_id, is_supervisor")
+    .eq("id", userId)
     .maybeSingle<CallerProfile>();
 
-  console.log("Profile query result:", { profile, profileError, hasAuth: !!authHeader });
-
   if (profileError || !profile?.id || !profile.org_id) {
-    console.error("Auth failed:", { profileError, profile });
     throw new Error("Unauthorized");
   }
 
@@ -93,7 +106,7 @@ async function getCallerContext(authHeader: string) {
       ? "supervisor"
       : "member";
 
-  return { profile, role, externalAdmin, cloudAdmin };
+  return { profile, role, externalAdmin };
 }
 
 async function getVisibleUserIds(ctx: Awaited<ReturnType<typeof getCallerContext>>) {
