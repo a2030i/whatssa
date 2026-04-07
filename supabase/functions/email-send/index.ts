@@ -68,8 +68,31 @@ Deno.serve(async (req) => {
     const { data: configs, error: configError } = await configQuery.limit(1).single();
     
     if (configError || !configs) {
-      return new Response(JSON.stringify({ error: "No active email config found" }), {
-        status: 404,
+      // Queue for later delivery when email is configured
+      let convId = conversation_id || null;
+      if (convId) {
+        await admin.from("messages").insert({
+          conversation_id: convId,
+          sender: "agent",
+          content: `📧 ${subject}\n\n${emailBody.replace(/<[^>]*>/g, "").trim()}`,
+          message_type: "text",
+          status: "pending",
+          metadata: { queued: true, queued_at: new Date().toISOString(), email_subject: subject, email_to: to, sent_by: profile.id },
+        });
+      }
+
+      await admin.from("message_retry_queue").insert({
+        org_id: profile.org_id,
+        conversation_id: convId,
+        to_phone: to,
+        content: emailBody,
+        message_type: "text",
+        channel_type: "email",
+        last_error: "لا يوجد إعداد بريد إلكتروني نشط",
+        metadata: { subject, cc: cc || null, bcc: bcc || null, config_id: config_id || null, attachments: attachments || [] },
+      });
+
+      return new Response(JSON.stringify({ success: true, queued: true, message: "الرسالة في قائمة الانتظار - سيتم إرسالها عند تفعيل البريد" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
