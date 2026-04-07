@@ -292,10 +292,10 @@ const TasksPage = () => {
   });
 
   const stats = {
-    total: tasks.length,
-    pending: tasks.filter(t => t.status === "pending").length,
-    in_progress: tasks.filter(t => t.status === "in_progress").length,
-    completed: tasks.filter(t => t.status === "completed").length,
+    total: scopedTasks.length,
+    pending: scopedTasks.filter(t => t.status === "pending").length,
+    in_progress: scopedTasks.filter(t => t.status === "in_progress").length,
+    completed: scopedTasks.filter(t => t.status === "completed").length,
   };
 
   return (
