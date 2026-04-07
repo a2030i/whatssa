@@ -83,6 +83,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
       { label: "الفريق والصلاحيات", icon: Users, path: "/team", emoji: "👤", minRole: "supervisor" },
       { label: "الإشعارات", icon: Bell, path: "/settings", emoji: "🔔", minRole: "admin" },
       { label: "الأمان", icon: Shield, path: "/conversation-settings", emoji: "🛡️", minRole: "admin" },
+      { label: "الصلاحيات والنسخ الاحتياطي", icon: Database, path: "/permissions", emoji: "🔐", minRole: "admin" },
       { label: "مفاتيح API", icon: Code2, path: "/api-tokens", emoji: "🔑", minRole: "admin" },
       { label: "الباقة والفواتير", icon: CreditCard, path: "/plans", emoji: "💳", minRole: "admin" },
     ],
