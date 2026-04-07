@@ -445,7 +445,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     setSending(true);
     try {
       const cleanPhone = fullPhone;
-      const messagePreview = isMeta ? `📋 ${selectedTemplate?.name}` : messageText.trim();
+      const messagePreview = isMeta && useTemplateFallback ? `📋 ${selectedTemplate?.name}` : messageText.trim();
 
       // Save customer if requested
       if (saveCustomer && !isExistingCustomer && orgId) {
