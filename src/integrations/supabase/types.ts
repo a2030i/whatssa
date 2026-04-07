@@ -2971,6 +2971,66 @@ export type Database = {
           },
         ]
       }
+      sla_policies: {
+        Row: {
+          apply_to_channels: string[] | null
+          created_at: string | null
+          escalation_enabled: boolean | null
+          escalation_team_id: string | null
+          first_response_minutes: number
+          id: string
+          is_active: boolean | null
+          name: string
+          org_id: string
+          priority: string
+          resolution_minutes: number
+          updated_at: string | null
+        }
+        Insert: {
+          apply_to_channels?: string[] | null
+          created_at?: string | null
+          escalation_enabled?: boolean | null
+          escalation_team_id?: string | null
+          first_response_minutes?: number
+          id?: string
+          is_active?: boolean | null
+          name: string
+          org_id: string
+          priority?: string
+          resolution_minutes?: number
+          updated_at?: string | null
+        }
+        Update: {
+          apply_to_channels?: string[] | null
+          created_at?: string | null
+          escalation_enabled?: boolean | null
+          escalation_team_id?: string | null
+          first_response_minutes?: number
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          org_id?: string
+          priority?: string
+          resolution_minutes?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sla_policies_escalation_team_id_fkey"
+            columns: ["escalation_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_policies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_integrations: {
         Row: {
           created_at: string | null

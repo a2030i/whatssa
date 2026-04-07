@@ -612,6 +612,19 @@ serve(async (req) => {
       }
     }
 
+    // Fire outgoing webhook for message sent (non-blocking)
+    if (orgId) {
+      const baseUrl = Deno.env.get("SUPABASE_URL");
+      const svcKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (baseUrl && svcKey) {
+        fetch(`${baseUrl}/functions/v1/dispatch-webhook`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${svcKey}` },
+          body: JSON.stringify({ org_id: orgId, event: "message.sent", data: { conversation_id: conversation_id, phone: phone, content, message_id: waMessageId } }),
+        }).catch(() => {});
+      }
+    }
+
     return json({ success: true, message_id: waMessageId });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);

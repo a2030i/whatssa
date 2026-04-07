@@ -11,6 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import SlaManagement from "@/components/settings/SlaManagement";
+import CsatDashboard from "@/components/settings/CsatDashboard";
 
 const strategyOptions = [
   { key: "manual", label: "يدوي", icon: Hand, description: "المدير يسند المحادثات يدوياً لكل موظف", color: "text-muted-foreground" },
@@ -387,6 +389,16 @@ const ConversationSettingsPage = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* SLA Policies */}
+      <div className="bg-card rounded-2xl border shadow-card p-5">
+        <SlaManagement />
+      </div>
+
+      {/* CSAT Dashboard */}
+      <div className="bg-card rounded-2xl border shadow-card p-5">
+        <CsatDashboard />
       </div>
 
       {/* Saved Reply Dialog */}

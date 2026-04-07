@@ -383,6 +383,18 @@ async function logToSystem(
   }
 }
 
+// ── Fire outgoing webhook (non-blocking) ──
+function fireWebhook(orgId: string, event: string, data: Record<string, unknown>) {
+  const baseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!baseUrl || !serviceKey) return;
+  fetch(`${baseUrl}/functions/v1/dispatch-webhook`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+    body: JSON.stringify({ org_id: orgId, event, data }),
+  }).catch(e => console.error("dispatch-webhook fire failed:", e));
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -643,6 +655,7 @@ serve(async (req) => {
               await logToSystem(supabase, "info", `محادثة جديدة أُنشئت للعميل ${customerPhone}`, {
                 conversation_id: conversation.id,
               }, orgId);
+              fireWebhook(orgId, "conversation.created", { conversation_id: conversation.id, customer_phone: customerPhone, customer_name: contactName });
 
               try {
                 // Internal function call must use Lovable Cloud URL + its own service role key
@@ -954,6 +967,9 @@ serve(async (req) => {
             await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
               error: msgError.message, wa_message_id: incomingMessage.id, conversation_id: conversation.id,
             }, orgId);
+          } else {
+            // Fire outgoing webhook for message received
+            fireWebhook(orgId!, "message.received", { conversation_id: conversation.id, customer_phone: customerPhone, content, message_type: messageType });
           }
 
           // ── Mark as read (send read receipt to Meta) ──
