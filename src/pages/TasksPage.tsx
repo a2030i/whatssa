@@ -516,7 +516,7 @@ const TasksPage = () => {
 
       {/* New Task Dialog */}
       <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
-        <DialogContent className="max-w-md" dir="rtl">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader><DialogTitle>مهمة جديدة</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
