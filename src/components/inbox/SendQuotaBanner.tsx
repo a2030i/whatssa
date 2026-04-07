@@ -63,7 +63,7 @@ export default function SendQuotaBanner({ channelId, channelType, onQuotaExhaust
       const { data, error } = await invokeCloud("check-send-quota", {
         body: { channel_id: channelId },
       });
-      if (!error && data) {
+      if (!error && data && !data.error) {
         setQuota(data as QuotaData);
         if (data.remaining === 0 || data.paused) {
           onQuotaExhausted?.(data as QuotaData);
@@ -95,17 +95,18 @@ export default function SendQuotaBanner({ channelId, channelType, onQuotaExhaust
 
   // Determine display info
   const isEvolution = quota.channel_type === "evolution";
+  const limits = quota.limits || {};
   const limitLabel = isEvolution
     ? (() => {
-        const h = quota.limits.hourly;
-        const d = quota.limits.daily;
+        const h = limits.hourly;
+        const d = limits.daily;
         if (h && h.remaining === 0) return `الحد الساعي (${h.used}/${h.max})`;
         if (d && d.remaining === 0) return `الحد اليومي (${d.used}/${d.max})`;
         if (h) return `${h.remaining} رسالة/ساعة`;
         return "";
       })()
     : (() => {
-        const m = quota.limits.monthly;
+        const m = limits.monthly;
         if (m) return `${m.remaining} رسالة متبقية من ${m.max.toLocaleString()}`;
         return "";
       })();
