@@ -56,7 +56,13 @@ const AdminAccounts = () => {
   };
 
   const deleteWhatsAppConfig = async (configId: string) => {
-    await supabase.from("whatsapp_config").delete().eq("id", configId);
+    const { data, error } = await invokeCloud("admin-delete-channel", {
+      body: { config_id: configId },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || "فشل حذف الرقم");
+      return;
+    }
     toast.success("تم حذف الرقم");
     load();
   };
