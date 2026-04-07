@@ -325,6 +325,13 @@ const TemplateAnalytics = ({ isReviewMode }: { isReviewMode: boolean }) => {
   );
 };
 
+interface MetaChannel {
+  id: string;
+  display_phone: string;
+  business_name: string | null;
+  channel_label: string | null;
+}
+
 const TemplatesPage = () => {
   const { isSuperAdmin } = useAuth();
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
@@ -334,6 +341,7 @@ const TemplatesPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [channelFilter, setChannelFilter] = useState("all");
   const [previewTemplate, setPreviewTemplate] = useState<WhatsAppTemplate | null>(null);
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WhatsAppTemplate | null>(null);
@@ -347,6 +355,8 @@ const TemplatesPage = () => {
   const [testPhone, setTestPhone] = useState("");
   const [testVariables, setTestVariables] = useState<string[]>([]);
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [metaChannels, setMetaChannels] = useState<MetaChannel[]>([]);
+  const [selectedFormChannel, setSelectedFormChannel] = useState<string>("");
 
   useEffect(() => {
     setIsReviewMode(window.localStorage.getItem("meta-review-mode") === "1");
