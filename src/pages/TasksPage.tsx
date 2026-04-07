@@ -30,6 +30,7 @@ interface Task {
   status: string;
   priority: string;
   assigned_to: string | null;
+  created_by: string | null;
   created_by_type: string;
   source_data: any;
   customer_phone: string | null;
