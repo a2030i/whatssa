@@ -1184,6 +1184,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           onNewConversation={() => setNewConvOpen(true)}
           onTogglePin={handleTogglePin}
           onToggleArchive={handleToggleArchive}
+          inboxMode={inboxMode}
         />
       )}
 
