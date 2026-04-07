@@ -253,7 +253,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       // Zero out unread for the currently viewed conversation
       const activeId = selectedIdRef.current;
       if (activeId) {
-        const activeConv = filtered.find(c => c.id === activeId);
+        const activeConv = modeFiltered.find(c => c.id === activeId);
         if (activeConv && activeConv.unread > 0) {
           activeConv.unread = 0;
           supabase.from("conversations").update({ unread_count: 0 }).eq("id", activeId).then();
@@ -264,18 +264,18 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         }
       }
 
-      setConversations(filtered);
+      setConversations(modeFiltered);
       // On first load, honour deep link; otherwise auto-select first
       if (!deepLinkApplied.current) {
         deepLinkApplied.current = true;
         const urlConvId = searchParams.get("conversation");
-        if (urlConvId && filtered.some(c => c.id === urlConvId)) {
+        if (urlConvId && modeFiltered.some(c => c.id === urlConvId)) {
           setSelectedId(urlConvId);
-        } else if (!isMobile && filtered.length > 0) {
-          setSelectedId(filtered[0].id);
+        } else if (!isMobile && modeFiltered.length > 0) {
+          setSelectedId(modeFiltered[0].id);
         }
-      } else if (!isMobile && mapped.length > 0) {
-        setSelectedId((prev) => (prev && mapped.some((item) => item.id === prev) ? prev : mapped[0].id));
+      } else if (!isMobile && modeFiltered.length > 0) {
+        setSelectedId((prev) => (prev && modeFiltered.some((item) => item.id === prev) ? prev : modeFiltered[0].id));
       }
       setLoading(false);
     };
