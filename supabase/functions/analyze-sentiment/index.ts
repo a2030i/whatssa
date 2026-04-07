@@ -5,6 +5,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const OPENAI_BASE = "https://api.openai.com/v1";
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
+
+const SENTIMENT_SYSTEM_PROMPT = `أنت محلل مشاعر عملاء محترف. حلل النص المعطى وحدد مشاعر العميل.
+قواعد:
+- ركّز على رسائل العميل فقط وليس ردود الموظف
+- إذا كان العميل غاضباً أو محبطاً أو يشتكي = negative
+- إذا كان العميل راضياً أو يشكر أو سعيد = positive
+- إذا كان العميل يسأل بشكل عادي أو محايد = neutral
+
+أجب بصيغة JSON فقط بدون أي نص إضافي:
+{"sentiment":"positive|neutral|negative","score":0.5,"reason":"السبب بالعربي","is_angry":false}
+
+score: درجة من 0 إلى 1 (0 = إيجابي جداً، 1 = سلبي جداً)`;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -17,124 +33,64 @@ Deno.serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
-        status: 500,
+    const serviceClient = createClient(
+      Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // 1. Check org has active AI config
+    const { data: aiConfig } = await serviceClient
+      .from("ai_provider_configs")
+      .select("*")
+      .eq("org_id", org_id)
+      .eq("is_active", true)
+      .limit(1)
+      .single();
+
+    if (!aiConfig?.api_key) {
+      return new Response(JSON.stringify({ skip: true, reason: "no_ai_config" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Call Lovable AI with tool calling for structured output
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          {
-            role: "system",
-            content: `أنت محلل مشاعر عملاء محترف. حلل النص المعطى وحدد مشاعر العميل.
-قواعد:
-- ركّز على رسائل العميل فقط وليس ردود الموظف
-- إذا كان العميل غاضباً أو محبطاً أو يشتكي = negative
-- إذا كان العميل راضياً أو يشكر أو سعيد = positive
-- إذا كان العميل يسأل بشكل عادي أو محايد = neutral
-- أعطِ درجة من 0 إلى 1 تمثل شدة المشاعر السلبية (0 = إيجابي جداً، 1 = سلبي جداً)`
-          },
-          {
-            role: "user",
-            content: `حلل مشاعر العميل في هذه المحادثة:\n\n${messages_text.slice(0, 2000)}`
-          }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "report_sentiment",
-              description: "Report the sentiment analysis result",
-              parameters: {
-                type: "object",
-                properties: {
-                  sentiment: {
-                    type: "string",
-                    enum: ["positive", "neutral", "negative"],
-                    description: "Overall sentiment of the customer"
-                  },
-                  score: {
-                    type: "number",
-                    description: "Negativity score from 0 (very positive) to 1 (very negative)"
-                  },
-                  reason: {
-                    type: "string",
-                    description: "Brief reason in Arabic for the sentiment classification"
-                  },
-                  is_angry: {
-                    type: "boolean",
-                    description: "Whether the customer is angry or very frustrated"
-                  }
-                },
-                required: ["sentiment", "score", "reason", "is_angry"],
-                additionalProperties: false
-              }
-            }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "report_sentiment" } },
-      }),
-    });
+    // 2. Call AI using org's own provider
+    const userMessage = `حلل مشاعر العميل في هذه المحادثة:\n\n${messages_text.slice(0, 2000)}`;
+    const result = await chatCompletion(
+      aiConfig.provider,
+      aiConfig.api_key,
+      aiConfig.model,
+      [{ role: "user", content: userMessage }],
+      SENTIMENT_SYSTEM_PROMPT
+    );
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required" }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errText = await aiResponse.text();
-      console.error("AI error:", aiResponse.status, errText);
+    if (result.error) {
+      console.error("AI sentiment error:", result.error);
       return new Response(JSON.stringify({ error: "فشل تحليل المشاعر" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const aiData = await aiResponse.json();
-    
-    // Extract tool call result
+    // 3. Parse JSON response
     let sentiment = "neutral";
     let score = 0.5;
     let reason = "";
     let isAngry = false;
 
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall?.function?.arguments) {
-      try {
-        const args = JSON.parse(toolCall.function.arguments);
-        sentiment = args.sentiment || "neutral";
-        score = typeof args.score === "number" ? args.score : 0.5;
-        reason = args.reason || "";
-        isAngry = args.is_angry || false;
-      } catch (e) {
-        console.error("Failed to parse tool call:", e);
+    try {
+      const jsonMatch = result.reply.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        sentiment = parsed.sentiment || "neutral";
+        score = typeof parsed.score === "number" ? parsed.score : 0.5;
+        reason = parsed.reason || "";
+        isAngry = parsed.is_angry || false;
       }
+    } catch (e) {
+      console.error("Failed to parse sentiment JSON:", e);
     }
 
-    // Update conversation sentiment in DB
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
+    // 4. Update conversation sentiment
     await serviceClient
       .from("conversations")
       .update({
@@ -144,50 +100,25 @@ Deno.serve(async (req) => {
       })
       .eq("id", conversation_id);
 
-    // If angry, create a notification for the assigned agent/admin
+    // 5. If angry, notify ONLY the assigned agent
     if (isAngry) {
-      // Get conversation details
       const { data: conv } = await serviceClient
         .from("conversations")
         .select("assigned_to_id, customer_name, customer_phone")
         .eq("id", conversation_id)
         .single();
 
-      if (conv) {
-        // Notify assigned agent or all admins
-        const targetUsers: string[] = [];
-        if (conv.assigned_to_id) {
-          targetUsers.push(conv.assigned_to_id);
-        } else {
-          // Notify all admins
-          const { data: admins } = await serviceClient
-            .from("user_roles")
-            .select("user_id")
-            .eq("role", "admin");
-          if (admins) {
-            const orgAdmins = admins.map((a: any) => a.user_id);
-            // Filter by org
-            const { data: profiles } = await serviceClient
-              .from("profiles")
-              .select("id")
-              .eq("org_id", org_id)
-              .in("id", orgAdmins);
-            if (profiles) targetUsers.push(...profiles.map((p: any) => p.id));
-          }
-        }
-
+      if (conv?.assigned_to_id) {
         const customerName = conv.customer_name || conv.customer_phone || "عميل";
-        for (const userId of targetUsers) {
-          await serviceClient.from("notifications").insert({
-            org_id,
-            user_id: userId,
-            type: "warning",
-            title: `⚠️ عميل غاضب: ${customerName}`,
-            body: reason || "تم اكتشاف مشاعر سلبية قوية في المحادثة",
-            reference_type: "conversation",
-            reference_id: conversation_id,
-          });
-        }
+        await serviceClient.from("notifications").insert({
+          org_id,
+          user_id: conv.assigned_to_id,
+          type: "warning",
+          title: `⚠️ عميل غاضب: ${customerName}`,
+          body: reason || "تم اكتشاف مشاعر سلبية قوية في المحادثة",
+          reference_type: "conversation",
+          reference_id: conversation_id,
+        });
       }
     }
 
@@ -202,3 +133,53 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+async function chatCompletion(
+  provider: string, apiKey: string, model: string,
+  messages: Array<{ role: string; content: string }>, systemPrompt: string
+) {
+  const fullMessages = [{ role: "system", content: systemPrompt }, ...messages];
+  try {
+    if (provider === "openai") {
+      const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model, messages: fullMessages, max_tokens: 300, temperature: 0.2 }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data?.error?.message || "فشل" };
+      return { reply: data.choices?.[0]?.message?.content || "" };
+    }
+    if (provider === "gemini") {
+      const contents = fullMessages.filter(m => m.role !== "system").map(m => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+      const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents,
+          generationConfig: { maxOutputTokens: 300, temperature: 0.2 },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data?.error?.message || "فشل" };
+      return { reply: data.candidates?.[0]?.content?.parts?.[0]?.text || "" };
+    }
+    if (provider === "openrouter") {
+      const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": "https://respondly.chat" },
+        body: JSON.stringify({ model, messages: fullMessages, max_tokens: 300, temperature: 0.2 }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data?.error?.message || "فشل" };
+      return { reply: data.choices?.[0]?.message?.content || "" };
+    }
+    return { error: "مزود غير مدعوم" };
+  } catch (err) {
+    return { error: `خطأ: ${err.message}` };
+  }
+}
