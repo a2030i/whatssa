@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
     const ctx = await getCallerContext(authHeader);
 
     if (parsed.data.action === "list") {
-      const { data: tasks, error } = await ctx.cloudAdmin
+      const { data: tasks, error } = await ctx.externalAdmin
         .from("tasks")
         .select("*")
         .eq("org_id", ctx.profile.org_id)
@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
         return json({ error: "يمكن للمشرف إسناد المهام لفريقه فقط" }, 403);
       }
 
-      const { data: createdTask, error } = await ctx.cloudAdmin
+      const { data: createdTask, error } = await ctx.externalAdmin
         .from("tasks")
         .insert({
           org_id: ctx.profile.org_id,
@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
     }
 
     if (parsed.data.action === "update_status") {
-      const { data: existingTask, error: taskError } = await ctx.cloudAdmin
+      const { data: existingTask, error: taskError } = await ctx.externalAdmin
         .from("tasks")
         .select("id, org_id, assigned_to, created_by, status")
         .eq("id", parsed.data.task_id)
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
         completed_at: parsed.data.status === "completed" ? new Date().toISOString() : null,
       };
 
-      const { data: updatedTask, error } = await ctx.cloudAdmin
+      const { data: updatedTask, error } = await ctx.externalAdmin
         .from("tasks")
         .update(updates)
         .eq("id", parsed.data.task_id)
