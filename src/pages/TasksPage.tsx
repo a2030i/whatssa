@@ -67,12 +67,20 @@ const PRIORITIES = [
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
-  pending: { label: "قيد الانتظار", icon: Clock, color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
-  in_progress: { label: "قيد التنفيذ", icon: RefreshCw, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  forwarded: { label: "تم التوجيه", icon: Send, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+  upcoming: { label: "لم يحن موعدها", icon: Clock, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
   completed: { label: "مكتملة", icon: CheckCircle2, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-  cancelled: { label: "ملغية", icon: AlertCircle, color: "bg-muted text-muted-foreground" },
+  incomplete: { label: "غير مكتملة", icon: AlertCircle, color: "bg-destructive/10 text-destructive" },
 };
+
+/** Derive display status from DB status + task timing */
+function getDisplayStatus(task: Task): string {
+  if (task.status === "completed") return "completed";
+  if (task.task_date && task.end_time) {
+    const taskEnd = new Date(`${task.task_date}T${task.end_time}`);
+    if (taskEnd < new Date()) return "incomplete";
+  }
+  return "upcoming";
+}
 
 const TasksPage = () => {
   const { profile, userRole, isSuperAdmin } = useAuth();
