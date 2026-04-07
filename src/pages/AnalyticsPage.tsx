@@ -297,6 +297,9 @@ const AnalyticsPage = () => {
           <TabsTrigger value="team" className="text-xs gap-1 rounded-lg"><Users className="w-3 h-3" /> الفريق</TabsTrigger>
           <TabsTrigger value="campaigns" className="text-xs gap-1 rounded-lg"><Megaphone className="w-3 h-3" /> الحملات</TabsTrigger>
           <TabsTrigger value="channels" className="text-xs gap-1 rounded-lg"><Phone className="w-3 h-3" /> القنوات</TabsTrigger>
+          <TabsTrigger value="heatmap" className="text-xs gap-1 rounded-lg"><Flame className="w-3 h-3" /> خريطة النشاط</TabsTrigger>
+          <TabsTrigger value="comparison" className="text-xs gap-1 rounded-lg"><GitCompareArrows className="w-3 h-3" /> مقارنة الفترات</TabsTrigger>
+          <TabsTrigger value="roi" className="text-xs gap-1 rounded-lg"><DollarSign className="w-3 h-3" /> ROI</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
