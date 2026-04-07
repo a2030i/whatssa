@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import {
   ClipboardCheck, Plus, Clock, CheckCircle2, AlertCircle,
-  User, MoreHorizontal, Send, Loader2,
-  Bot, UserCircle, RefreshCw, Check,
+  User, MoreHorizontal, Loader2,
+  Bot, UserCircle, Check,
   MapPin, Calendar, Monitor, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
