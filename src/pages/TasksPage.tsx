@@ -41,6 +41,11 @@ interface Task {
   forward_status: string | null;
   completed_at: string | null;
   created_at: string;
+  attendance_type: string;
+  task_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  location: string | null;
 }
 
 interface ForwardConfig {
