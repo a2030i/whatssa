@@ -54,6 +54,7 @@ interface ConversationListProps {
   onNewConversation?: () => void;
   onTogglePin?: (id: string) => void;
   onToggleArchive?: (id: string) => void;
+  inboxMode?: "whatsapp" | "email";
 }
 
 const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive }: ConversationListProps) => {
