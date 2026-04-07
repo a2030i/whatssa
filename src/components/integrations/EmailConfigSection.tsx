@@ -599,83 +599,8 @@ const EmailConfigSection = () => {
                       <Button size="sm" variant="ghost" onClick={() => handleDelete(config.id)} className="text-[10px] h-7 px-2 text-destructive gap-1">
                         <Trash2 className="w-3 h-3" /> حذف
                       </Button>
-        </div>
-      </div>
-
-      {/* Email Routing Rules */}
-      <div className="mt-4 border border-border/40 rounded-xl p-3 bg-card">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-xs font-semibold flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-primary" /> قواعد توجيه الإيميلات</h4>
-          <Button size="sm" variant="outline" className="text-[10px] h-7 gap-1" onClick={() => setShowRoutingForm(!showRoutingForm)}>
-            <Plus className="w-3 h-3" /> إضافة قاعدة
-          </Button>
-        </div>
-        <p className="text-[10px] text-muted-foreground mb-2">وجّه الإيميلات الواردة من دومينات أو عناوين محددة لموظف أو فريق تلقائياً</p>
-
-        {showRoutingForm && (
-          <div className="bg-secondary/40 rounded-lg p-2.5 mb-2 space-y-2 border border-border/30">
-            <div className="flex gap-2">
-              <Select value={routingForm.rule_type} onValueChange={(v) => setRoutingForm(p => ({ ...p, rule_type: v }))}>
-                <SelectTrigger className="h-7 text-[11px] w-24"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="domain">دومين</SelectItem>
-                  <SelectItem value="email">إيميل</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                value={routingForm.pattern}
-                onChange={(e) => setRoutingForm(p => ({ ...p, pattern: e.target.value }))}
-                placeholder={routingForm.rule_type === "domain" ? "example.com" : "user@example.com"}
-                className="h-7 text-[11px] flex-1"
-                dir="ltr"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Select value={routingForm.assigned_agent_id || "_none"} onValueChange={(v) => setRoutingForm(p => ({ ...p, assigned_agent_id: v === "_none" ? "" : v }))}>
-                <SelectTrigger className="h-7 text-[11px] flex-1"><SelectValue placeholder="موظف" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">بدون موظف</SelectItem>
-                  {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={routingForm.assigned_team_id || "_none"} onValueChange={(v) => setRoutingForm(p => ({ ...p, assigned_team_id: v === "_none" ? "" : v }))}>
-                <SelectTrigger className="h-7 text-[11px] flex-1"><SelectValue placeholder="فريق" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">بدون فريق</SelectItem>
-                  {teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button size="sm" className="text-[10px] h-7 gap-1" onClick={saveRoutingRule}><Save className="w-3 h-3" /> حفظ</Button>
-              <Button size="sm" variant="ghost" className="text-[10px] h-7" onClick={() => setShowRoutingForm(false)}>إلغاء</Button>
-            </div>
-          </div>
-        )}
-
-        {routingRules.length === 0 && !showRoutingForm && (
-          <p className="text-[10px] text-muted-foreground text-center py-2">لا توجد قواعد توجيه بعد</p>
-        )}
-
-        {routingRules.map((rule) => {
-          const agentName = agents.find(a => a.id === rule.assigned_agent_id)?.full_name;
-          const teamName = teams.find(t => t.id === rule.assigned_team_id)?.name;
-          return (
-            <div key={rule.id} className="flex items-center justify-between py-1.5 border-b border-border/20 last:border-0">
-              <div className="flex items-center gap-2 text-[11px]">
-                <Badge variant="outline" className="text-[9px] px-1.5">{rule.rule_type === "domain" ? "دومين" : "إيميل"}</Badge>
-                <span className="font-mono text-foreground" dir="ltr">{rule.pattern}</span>
-                <span className="text-muted-foreground">→</span>
-                {agentName && <span className="flex items-center gap-0.5"><User className="w-2.5 h-2.5" />{agentName}</span>}
-                {teamName && <span className="flex items-center gap-0.5"><Users className="w-2.5 h-2.5" />{teamName}</span>}
-              </div>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive" onClick={() => deleteRoutingRule(rule.id)}>
-                <Trash2 className="w-3 h-3" />
-              </Button>
-            </div>
-          );
-        })}
-      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             );
