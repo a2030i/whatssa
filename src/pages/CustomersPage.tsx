@@ -262,6 +262,27 @@ const CustomersPage = () => {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1100px] mx-auto" dir="rtl">
+      <Tabs defaultValue="list" className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/15">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-foreground tracking-tight">العملاء</h1>
+              <p className="text-sm text-muted-foreground">{visibleCustomers.length} عميل مسجّل</p>
+            </div>
+          </div>
+          <TabsList className="bg-card/70 backdrop-blur-sm border border-border/40 rounded-xl">
+            <TabsTrigger value="list" className="text-xs gap-1 rounded-lg"><Users className="w-3 h-3" /> القائمة</TabsTrigger>
+            <TabsTrigger value="scoring" className="text-xs gap-1 rounded-lg"><TrendingUp className="w-3 h-3" /> نقاط العملاء</TabsTrigger>
+            <TabsTrigger value="merge" className="text-xs gap-1 rounded-lg"><Merge className="w-3 h-3" /> دمج المكررات</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="list" className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/15">
