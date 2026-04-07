@@ -258,7 +258,13 @@ const TasksPage = () => {
     fetchConfigs();
   };
 
-  const filteredTasks = tasks.filter(t => {
+  const scopedTasks = tasks.filter(t => {
+    if (taskScope === "mine") return t.assigned_to === profile?.id || t.created_by === profile?.id;
+    // "team" scope: admin sees all, supervisor sees team
+    return true;
+  });
+
+  const filteredTasks = scopedTasks.filter(t => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (typeFilter !== "all" && t.task_type !== typeFilter) return false;
     return true;
