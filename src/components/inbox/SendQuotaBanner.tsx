@@ -88,12 +88,10 @@ export default function SendQuotaBanner({ channelId, channelType, onQuotaExhaust
 
   if (!quota || dismissed || channelType === "email") return null;
 
-  // Show nothing if plenty of quota remaining and not paused
-  const isLow = quota.remaining <= 10 && quota.remaining > 0;
   const isExhausted = quota.remaining === 0;
   const isPaused = quota.paused;
-
-  if (!isLow && !isExhausted && !isPaused) return null;
+  const isLow = quota.remaining <= 10 && quota.remaining > 0;
+  const hasQuota = quota.remaining > 10;
 
   // Determine display info
   const isEvolution = quota.channel_type === "evolution";
