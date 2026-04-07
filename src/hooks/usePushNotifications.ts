@@ -48,7 +48,23 @@ const usePushNotifications = () => {
     toast.success("تم إيقاف إشعارات المتصفح");
   }, []);
 
-  // Listen for new messages and show notifications
+  // Show a browser notification helper
+  const showNotif = useCallback((title: string, body: string, tag: string) => {
+    if (Notification.permission !== "granted") return;
+    const notification = new Notification(title, {
+      body,
+      icon: "/placeholder.svg",
+      dir: "rtl",
+      lang: "ar",
+      tag,
+    });
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  }, []);
+
+  // Listen for new messages
   useEffect(() => {
     if (!isSubscribed || !orgId || !user) return;
 
@@ -56,20 +72,12 @@ const usePushNotifications = () => {
       .channel("push-notifications")
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-        },
+        { event: "INSERT", schema: "public", table: "messages" },
         async (payload) => {
           const msg = payload.new as any;
-          // Only notify for incoming customer messages
           if (msg.sender !== "customer") return;
-
-          // Don't notify if tab is visible
           if (document.visibilityState === "visible") return;
 
-          // Get conversation info
           const { data: conv } = await supabase
             .from("conversations")
             .select("customer_name, customer_phone, org_id")
@@ -78,32 +86,42 @@ const usePushNotifications = () => {
 
           if (!conv || conv.org_id !== orgId) return;
 
-          const title = conv.customer_name || conv.customer_phone || "رسالة جديدة";
-          const body = msg.content?.substring(0, 100) || "رسالة جديدة";
-
-          // Show browser notification
-          if (Notification.permission === "granted") {
-            const notification = new Notification(title, {
-              body,
-              icon: "/placeholder.svg",
-              dir: "rtl",
-              lang: "ar",
-              tag: `msg-${msg.id}`,
-            });
-
-            notification.onclick = () => {
-              window.focus();
-              notification.close();
-            };
-          }
+          showNotif(
+            conv.customer_name || conv.customer_phone || "رسالة جديدة",
+            msg.content?.substring(0, 100) || "رسالة جديدة",
+            `msg-${msg.id}`
+          );
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isSubscribed, orgId, user]);
+    return () => { supabase.removeChannel(channel); };
+  }, [isSubscribed, orgId, user, showNotif]);
+
+  // Listen for in-app notifications (assignments, mentions, SLA, follow-ups)
+  useEffect(() => {
+    if (!isSubscribed || !user) return;
+
+    const channel = supabase
+      .channel("push-notif-bell")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const n = payload.new as any;
+          if (document.visibilityState === "visible") return;
+          showNotif(n.title || "إشعار جديد", n.body || "", `notif-${n.id}`);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [isSubscribed, user, showNotif]);
 
   return { isSupported, isSubscribed, permission, subscribe, unsubscribe };
 };
