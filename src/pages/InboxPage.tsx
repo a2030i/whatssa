@@ -14,6 +14,36 @@ import { toast } from "sonner";
 import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
 
 const TYPING_TIMEOUT = 3000;
+const SENTIMENT_ANALYSIS_INTERVAL = 5; // Analyze every N customer messages
+const sentimentCounters = new Map<string, number>();
+
+const triggerSentimentAnalysis = async (conversationId: string, orgId: string) => {
+  const count = (sentimentCounters.get(conversationId) || 0) + 1;
+  sentimentCounters.set(conversationId, count);
+  if (count % SENTIMENT_ANALYSIS_INTERVAL !== 0) return;
+
+  try {
+    // Fetch last 10 messages for context
+    const { data: msgs } = await supabase
+      .from("messages")
+      .select("content, sender")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (!msgs || msgs.length < 3) return;
+
+    const messagesText = msgs.reverse().map((m: any) =>
+      `${m.sender === "customer" ? "العميل" : "الموظف"}: ${m.content}`
+    ).join("\n");
+
+    invokeCloud("analyze-sentiment", {
+      body: { conversation_id: conversationId, messages_text: messagesText, org_id: orgId },
+    }).catch(e => console.error("Sentiment analysis failed:", e));
+  } catch (e) {
+    console.error("Sentiment trigger error:", e);
+  }
+};
 
 const getSendFunction = (channelType?: string, conversationType?: string): string => {
   if (channelType === "email" || conversationType === "email") return "email-send";
