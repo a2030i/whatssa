@@ -3349,6 +3349,7 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
+          attendance_type: string
           completed_at: string | null
           conversation_id: string | null
           created_at: string
@@ -3357,19 +3358,24 @@ export type Database = {
           customer_name: string | null
           customer_phone: string | null
           description: string | null
+          end_time: string | null
           forward_status: string | null
           forward_target: string | null
           id: string
+          location: string | null
           org_id: string
           priority: string
           source_data: Json | null
+          start_time: string | null
           status: string
+          task_date: string | null
           task_type: string
           title: string
           updated_at: string
         }
         Insert: {
           assigned_to?: string | null
+          attendance_type?: string
           completed_at?: string | null
           conversation_id?: string | null
           created_at?: string
@@ -3378,19 +3384,24 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           description?: string | null
+          end_time?: string | null
           forward_status?: string | null
           forward_target?: string | null
           id?: string
+          location?: string | null
           org_id: string
           priority?: string
           source_data?: Json | null
+          start_time?: string | null
           status?: string
+          task_date?: string | null
           task_type?: string
           title: string
           updated_at?: string
         }
         Update: {
           assigned_to?: string | null
+          attendance_type?: string
           completed_at?: string | null
           conversation_id?: string | null
           created_at?: string
@@ -3399,13 +3410,17 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           description?: string | null
+          end_time?: string | null
           forward_status?: string | null
           forward_target?: string | null
           id?: string
+          location?: string | null
           org_id?: string
           priority?: string
           source_data?: Json | null
+          start_time?: string | null
           status?: string
+          task_date?: string | null
           task_type?: string
           title?: string
           updated_at?: string
