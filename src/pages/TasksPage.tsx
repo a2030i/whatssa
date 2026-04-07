@@ -266,8 +266,9 @@ const TasksPage = () => {
   };
 
   // Busy slots for selected assignee + date in create dialog
-  const assigneeBusySlots = (newAssignee && newTaskDate)
-    ? tasks.filter(t => t.assigned_to === (newAssignee || profile?.id) && t.task_date === newTaskDate && t.status !== "completed")
+  const effectiveAssignee = newAssignee || profile?.id || "";
+  const assigneeBusySlots = (effectiveAssignee && newTaskDate)
+    ? tasks.filter(t => t.assigned_to === effectiveAssignee && t.task_date === newTaskDate && t.status !== "completed")
         .sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""))
     : [];
 
