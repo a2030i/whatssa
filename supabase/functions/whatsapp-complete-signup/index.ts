@@ -74,6 +74,24 @@ async function fetchPhoneNumbersForWaba(wabaId: string, accessToken: string) {
   return { ok: res.ok, data, phones };
 }
 
+function normalizeSelectedPhone(phoneData: any, wabaId: string, fallbackPhoneId?: string) {
+  return {
+    id: phoneData?.id || fallbackPhoneId || "",
+    waba_id: wabaId,
+    display_phone_number: phoneData?.display_phone_number || "",
+    verified_name: phoneData?.verified_name || "",
+    quality_rating: phoneData?.quality_rating || "",
+    code_verification_status: phoneData?.code_verification_status || null,
+    status: phoneData?.status || null,
+    account_mode: phoneData?.account_mode || null,
+    platform_type: phoneData?.platform_type || null,
+    name_status: phoneData?.name_status || null,
+    messaging_limit_tier: phoneData?.messaging_limit_tier || null,
+    throughput: phoneData?.throughput || null,
+    health_status: phoneData?.health_status || null,
+  };
+}
+
 /** Determine onboarding type based on phone status and platform_type */
 function detectOnboardingType(phoneData: any): {
   onboarding_type: "new" | "existing" | "migrated";
