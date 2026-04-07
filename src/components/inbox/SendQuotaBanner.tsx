@@ -151,19 +151,33 @@ export default function SendQuotaBanner({ channelId, channelType, onQuotaExhaust
     );
   }
 
-  // Low quota warning
+  if (isLow) {
+    return (
+      <div className="mx-3 mb-1 px-3 py-1.5 rounded-lg bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 flex items-center gap-2 text-xs" dir="rtl">
+        <Clock className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400 shrink-0" />
+        <span className="text-yellow-800 dark:text-yellow-300">
+          متبقي <strong>{quota.remaining}</strong> رسالة — {limitLabel}
+        </span>
+        {quota.warmup_pct && quota.warmup_pct < 100 && (
+          <span className="text-[10px] text-muted-foreground">(تسخين {quota.warmup_pct}%)</span>
+        )}
+        <button onClick={() => setDismissed(true)} className="p-0.5 rounded hover:bg-yellow-200 dark:hover:bg-yellow-800 mr-auto">
+          <X className="w-3 h-3 text-muted-foreground" />
+        </button>
+      </div>
+    );
+  }
+
+  // Normal quota — always show remaining count
   return (
-    <div className="mx-3 mb-1 px-3 py-1.5 rounded-lg bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 flex items-center gap-2 text-xs" dir="rtl">
-      <Clock className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-400 shrink-0" />
-      <span className="text-yellow-800 dark:text-yellow-300">
-        متبقي <strong>{quota.remaining}</strong> رسالة — {limitLabel}
+    <div className="mx-3 mb-1 px-3 py-1.5 rounded-lg bg-muted/50 border border-border flex items-center gap-2 text-xs" dir="rtl">
+      <Send className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+      <span className="text-muted-foreground">
+        متبقي <strong className="text-foreground">{quota.remaining}</strong> رسالة — {limitLabel}
       </span>
       {quota.warmup_pct && quota.warmup_pct < 100 && (
         <span className="text-[10px] text-muted-foreground">(تسخين {quota.warmup_pct}%)</span>
       )}
-      <button onClick={() => setDismissed(true)} className="p-0.5 rounded hover:bg-yellow-200 dark:hover:bg-yellow-800 mr-auto">
-        <X className="w-3 h-3 text-muted-foreground" />
-      </button>
     </div>
   );
 }
