@@ -187,6 +187,7 @@ const SettingsPage = () => {
         {[
           { id: "integrations", icon: CreditCard, title: "الربط والتكامل", description: "إدارة قنوات التواصل وأرقام واتساب", onClick: () => navigate("/integrations") },
           { id: "billing", icon: CreditCard, title: "الاشتراك والفواتير", description: "إدارة الاشتراك والدفع", onClick: () => navigate("/wallet") },
+          { id: "permissions", icon: Shield, title: "الصلاحيات والنسخ الاحتياطي", description: "تحكم بصلاحيات الأدوار وتصدير البيانات", onClick: () => navigate("/permissions") },
           { id: "security", icon: Shield, title: "الأمان", description: "كلمة المرور والمصادقة", onClick: () => {} },
         ].map((section, i, arr) => (
           <button key={section.id} onClick={section.onClick} className={cn("w-full flex items-center justify-between p-5 hover:bg-secondary/30 transition-colors", i < arr.length - 1 && "border-b border-border")}>

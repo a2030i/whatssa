@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Clock, CheckCircle2, AlertTriangle, Users, Download, Calendar, BarChart3, PieChart as PieChartIcon, Loader2, TrendingUp, Send, Megaphone, Phone, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { MessageSquare, Clock, CheckCircle2, AlertTriangle, Users, Download, Calendar, BarChart3, PieChart as PieChartIcon, Loader2, TrendingUp, Send, Megaphone, Phone, ArrowUpRight, ArrowDownRight, Flame, GitCompareArrows, DollarSign } from "lucide-react";
 import KpiCard from "@/components/KpiCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import ActivityHeatmap from "@/components/analytics/ActivityHeatmap";
+import PeriodComparison from "@/components/analytics/PeriodComparison";
+import CampaignROIReport from "@/components/analytics/CampaignROIReport";
 
 const COLORS = [
   "hsl(142 64% 42%)", "hsl(217 91% 60%)", "hsl(280 67% 55%)",
@@ -294,6 +297,9 @@ const AnalyticsPage = () => {
           <TabsTrigger value="team" className="text-xs gap-1 rounded-lg"><Users className="w-3 h-3" /> الفريق</TabsTrigger>
           <TabsTrigger value="campaigns" className="text-xs gap-1 rounded-lg"><Megaphone className="w-3 h-3" /> الحملات</TabsTrigger>
           <TabsTrigger value="channels" className="text-xs gap-1 rounded-lg"><Phone className="w-3 h-3" /> القنوات</TabsTrigger>
+          <TabsTrigger value="heatmap" className="text-xs gap-1 rounded-lg"><Flame className="w-3 h-3" /> خريطة النشاط</TabsTrigger>
+          <TabsTrigger value="comparison" className="text-xs gap-1 rounded-lg"><GitCompareArrows className="w-3 h-3" /> مقارنة الفترات</TabsTrigger>
+          <TabsTrigger value="roi" className="text-xs gap-1 rounded-lg"><DollarSign className="w-3 h-3" /> ROI</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -543,6 +549,20 @@ const AnalyticsPage = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+        {/* Heatmap Tab */}
+        <TabsContent value="heatmap">
+          <ActivityHeatmap />
+        </TabsContent>
+
+        {/* Period Comparison Tab */}
+        <TabsContent value="comparison">
+          <PeriodComparison />
+        </TabsContent>
+
+        {/* ROI Tab */}
+        <TabsContent value="roi">
+          <CampaignROIReport />
         </TabsContent>
       </Tabs>
     </div>
