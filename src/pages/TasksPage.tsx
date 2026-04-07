@@ -264,6 +264,26 @@ const TasksPage = () => {
     return true;
   });
 
+  // Group tasks by date, sorted by date desc, then by start_time asc within each day
+  const groupedByDate = filteredTasks.reduce<Record<string, Task[]>>((acc, task) => {
+    const dateKey = task.task_date || "بدون تاريخ";
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(task);
+    return acc;
+  }, {});
+
+  // Sort each group by start_time
+  Object.values(groupedByDate).forEach(group => {
+    group.sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""));
+  });
+
+  // Sort date keys: actual dates desc, "بدون تاريخ" last
+  const sortedDateKeys = Object.keys(groupedByDate).sort((a, b) => {
+    if (a === "بدون تاريخ") return 1;
+    if (b === "بدون تاريخ") return -1;
+    return b.localeCompare(a);
+  });
+
   const stats = {
     total: tasks.length,
     pending: tasks.filter(t => t.status === "pending").length,
@@ -340,115 +360,141 @@ const TasksPage = () => {
               <p>لا توجد مهام</p>
             </CardContent></Card>
           ) : (
-            <div className="space-y-3">
-              {filteredTasks.map(task => {
-                const statusCfg = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
-                const StatusIcon = statusCfg.icon;
-                const typeInfo = TASK_TYPES.find(t => t.value === task.task_type);
-                const priorityInfo = PRIORITIES.find(p => p.value === task.priority);
-                const agent = agents.find(a => a.id === task.assigned_to);
+            <div className="space-y-6">
+              {sortedDateKeys.map(dateKey => {
+                const dayTasks = groupedByDate[dateKey];
+                const isToday = dateKey === format(new Date(), "yyyy-MM-dd");
+                const dateLabel = dateKey === "بدون تاريخ" 
+                  ? "بدون تاريخ" 
+                  : isToday 
+                    ? `اليوم — ${format(new Date(dateKey), "EEEE d MMMM yyyy", { locale: ar })}`
+                    : format(new Date(dateKey), "EEEE d MMMM yyyy", { locale: ar });
 
                 return (
-                  <Card key={task.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="text-base">{typeInfo?.icon}</span>
-                            <h3 className="font-semibold text-foreground truncate">{task.title}</h3>
-                            {task.created_by_type === "bot" && (
-                              <Badge variant="outline" className="text-xs gap-1">
-                                <Bot className="w-3 h-3" /> شات بوت
-                              </Badge>
-                            )}
-                          </div>
-                          {task.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{task.description}</p>
-                          )}
-                          <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-                            {task.attendance_type === "in_person" ? (
-                              <span className="flex items-center gap-1 text-primary">
-                                <Building2 className="w-3 h-3" /> حضوري
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1">
-                                <Monitor className="w-3 h-3" /> عن بعد
-                              </span>
-                            )}
-                            {task.task_date && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" /> {task.task_date}
-                              </span>
-                            )}
-                            {task.start_time && task.end_time && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> {task.start_time.slice(0,5)} - {task.end_time.slice(0,5)}
-                              </span>
-                            )}
-                            {task.location && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" /> {task.location}
-                              </span>
-                            )}
-                            {task.customer_name && (
-                              <span className="flex items-center gap-1">
-                                <UserCircle className="w-3 h-3" /> {task.customer_name}
-                              </span>
-                            )}
-                            {agent && (
-                              <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" /> {agent.full_name}
-                              </span>
-                            )}
-                            <span>{format(new Date(task.created_at), "d MMM HH:mm", { locale: ar })}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Badge className={priorityInfo?.color || ""}>{priorityInfo?.label}</Badge>
-                          <Badge className={statusCfg.color}>
-                            <StatusIcon className="w-3 h-3 ml-1" /> {statusCfg.label}
-                          </Badge>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {task.status !== "in_progress" && (
-                                <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "in_progress")}>
-                                  <RefreshCw className="w-4 h-4 ml-2" /> بدء التنفيذ
-                                </DropdownMenuItem>
+                  <div key={dateKey}>
+                    <div className={`flex items-center gap-2 mb-3 px-1 ${isToday ? "text-primary" : "text-muted-foreground"}`}>
+                      <Calendar className="w-4 h-4" />
+                      <h2 className="font-semibold text-sm">{dateLabel}</h2>
+                      <Badge variant="secondary" className="text-xs">{dayTasks.length}</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {dayTasks.map(task => {
+                        const statusCfg = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
+                        const StatusIcon = statusCfg.icon;
+                        const typeInfo = TASK_TYPES.find(t => t.value === task.task_type);
+                        const priorityInfo = PRIORITIES.find(p => p.value === task.priority);
+                        const agent = agents.find(a => a.id === task.assigned_to);
+                        const isCompleted = task.status === "completed";
+
+                        return (
+                          <Card key={task.id} className={`hover:shadow-md transition-shadow ${isCompleted ? "opacity-60" : ""}`}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-3">
+                                {/* Completion checkbox */}
+                                <button
+                                  onClick={() => !isCompleted && updateTaskStatus(task.id, "completed")}
+                                  className={`mt-1 shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                    isCompleted 
+                                      ? "bg-primary border-primary text-primary-foreground" 
+                                      : "border-muted-foreground/40 hover:border-primary"
+                                  }`}
+                                >
+                                  {isCompleted && <Check className="w-3 h-3" />}
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    <span className="text-base">{typeInfo?.icon}</span>
+                                    <h3 className={`font-semibold text-foreground truncate ${isCompleted ? "line-through" : ""}`}>{task.title}</h3>
+                                    {task.created_by_type === "bot" && (
+                                      <Badge variant="outline" className="text-xs gap-1">
+                                        <Bot className="w-3 h-3" /> شات بوت
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {task.description && (
+                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{task.description}</p>
+                                  )}
+                                  <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                                    {task.attendance_type === "in_person" ? (
+                                      <span className="flex items-center gap-1 text-primary">
+                                        <Building2 className="w-3 h-3" /> حضوري
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1">
+                                        <Monitor className="w-3 h-3" /> عن بعد
+                                      </span>
+                                    )}
+                                    {task.start_time && task.end_time && (
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="w-3 h-3" /> {task.start_time.slice(0,5)} - {task.end_time.slice(0,5)}
+                                      </span>
+                                    )}
+                                    {task.location && (
+                                      <span className="flex items-center gap-1">
+                                        <MapPin className="w-3 h-3" /> {task.location}
+                                      </span>
+                                    )}
+                                    {task.customer_name && (
+                                      <span className="flex items-center gap-1">
+                                        <UserCircle className="w-3 h-3" /> {task.customer_name}
+                                      </span>
+                                    )}
+                                    {agent && (
+                                      <span className="flex items-center gap-1">
+                                        <User className="w-3 h-3" /> {agent.full_name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Badge className={priorityInfo?.color || ""}>{priorityInfo?.label}</Badge>
+                                  <Badge className={statusCfg.color}>
+                                    <StatusIcon className="w-3 h-3 ml-1" /> {statusCfg.label}
+                                  </Badge>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreHorizontal className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      {task.status !== "in_progress" && (
+                                        <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "in_progress")}>
+                                          <RefreshCw className="w-4 h-4 ml-2" /> بدء التنفيذ
+                                        </DropdownMenuItem>
+                                      )}
+                                      {task.status !== "completed" && (
+                                        <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "completed")}>
+                                          <CheckCircle2 className="w-4 h-4 ml-2" /> إكمال
+                                        </DropdownMenuItem>
+                                      )}
+                                      {task.status !== "forwarded" && (
+                                        <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "forwarded")}>
+                                          <Send className="w-4 h-4 ml-2" /> تم التوجيه
+                                        </DropdownMenuItem>
+                                      )}
+                                      {task.status !== "cancelled" && (
+                                        <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "cancelled")}>
+                                          <AlertCircle className="w-4 h-4 ml-2" /> إلغاء
+                                        </DropdownMenuItem>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </div>
+                              {task.source_data && Object.keys(task.source_data).length > 0 && (
+                                <div className="mt-3 mr-8 p-2 bg-muted/50 rounded text-xs space-y-1">
+                                  {task.source_data.order_number && <div>📦 رقم الطلب: <strong>{task.source_data.order_number}</strong></div>}
+                                  {task.source_data.modification_type && <div>✏️ نوع التعديل: {task.source_data.modification_type}</div>}
+                                  {task.source_data.new_value && <div>📝 القيمة الجديدة: {task.source_data.new_value}</div>}
+                                </div>
                               )}
-                              {task.status !== "completed" && (
-                                <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "completed")}>
-                                  <CheckCircle2 className="w-4 h-4 ml-2" /> إكمال
-                                </DropdownMenuItem>
-                              )}
-                              {task.status !== "forwarded" && (
-                                <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "forwarded")}>
-                                  <Send className="w-4 h-4 ml-2" /> تم التوجيه
-                                </DropdownMenuItem>
-                              )}
-                              {task.status !== "cancelled" && (
-                                <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "cancelled")}>
-                                  <AlertCircle className="w-4 h-4 ml-2" /> إلغاء
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                      {/* Source data preview */}
-                      {task.source_data && Object.keys(task.source_data).length > 0 && (
-                        <div className="mt-3 p-2 bg-muted/50 rounded text-xs space-y-1">
-                          {task.source_data.order_number && <div>📦 رقم الطلب: <strong>{task.source_data.order_number}</strong></div>}
-                          {task.source_data.modification_type && <div>✏️ نوع التعديل: {task.source_data.modification_type}</div>}
-                          {task.source_data.new_value && <div>📝 القيمة الجديدة: {task.source_data.new_value}</div>}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
