@@ -433,6 +433,11 @@ const InboxPage = () => {
                 return [...withoutOptimistic, newMessage];
               })(),
         }));
+
+        // Trigger sentiment analysis for customer messages
+        if (message.sender === "customer" && orgId) {
+          triggerSentimentAnalysis(selectedId, orgId);
+        }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${selectedId}` }, (payload) => {
         const updated = payload.new as any;
