@@ -1551,42 +1551,60 @@ export type Database = {
       }
       email_routing_rules: {
         Row: {
+          action_type: string
           assigned_agent_id: string | null
           assigned_team_id: string | null
           created_at: string
           email_config_id: string | null
           id: string
+          include_attachments: boolean | null
           is_active: boolean
+          keywords: string[] | null
           org_id: string
           pattern: string
           priority: number
           rule_type: string
+          ticket_category: string | null
+          ticket_priority: string | null
+          ticket_title_template: string | null
           updated_at: string
         }
         Insert: {
+          action_type?: string
           assigned_agent_id?: string | null
           assigned_team_id?: string | null
           created_at?: string
           email_config_id?: string | null
           id?: string
+          include_attachments?: boolean | null
           is_active?: boolean
+          keywords?: string[] | null
           org_id: string
           pattern: string
           priority?: number
           rule_type?: string
+          ticket_category?: string | null
+          ticket_priority?: string | null
+          ticket_title_template?: string | null
           updated_at?: string
         }
         Update: {
+          action_type?: string
           assigned_agent_id?: string | null
           assigned_team_id?: string | null
           created_at?: string
           email_config_id?: string | null
           id?: string
+          include_attachments?: boolean | null
           is_active?: boolean
+          keywords?: string[] | null
           org_id?: string
           pattern?: string
           priority?: number
           rule_type?: string
+          ticket_category?: string | null
+          ticket_priority?: string | null
+          ticket_title_template?: string | null
           updated_at?: string
         }
         Relationships: [
