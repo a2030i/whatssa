@@ -66,9 +66,9 @@ const GlobalSearch = () => {
       ]);
 
       const items: SearchResult[] = [];
-      (convRes.data || []).forEach((c) => {
+      (convRes.data || []).forEach((c: any) => {
         items.push({
-          type: "conversation",
+          type: c.conversation_type === "email" ? "email" : "conversation",
           id: c.id,
           title: c.customer_name || c.customer_phone,
           subtitle: c.last_message?.slice(0, 60) || "محادثة",
