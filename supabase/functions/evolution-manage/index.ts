@@ -698,11 +698,23 @@ serve(async (req) => {
         return json({ error: codeData?.message || "فشل الحصول على كود الربط — تأكد أن السيرفر يدعم هذه الميزة" }, 400);
       }
 
-      // pairingCode is 8 alphanumeric chars; codeData.code is the QR string — never use it as pairing code
-      const rawCode = codeData?.pairingCode || null;
-      const pairingCode = rawCode && /^[A-Z0-9]{4,8}$/i.test(rawCode) ? rawCode : null;
+      // pairingCode may be "ABCD1234" or "ABCD-EFGH" (with hyphen)
+      const rawCode = codeData?.pairingCode || codeData?.data?.pairingCode || codeData?.response?.pairingCode || null;
+      // Accept 4-8 alphanumeric chars optionally separated by a hyphen
+      const pairingCode = rawCode && /^[A-Z0-9]{4}-?[A-Z0-9]{4}$/i.test(rawCode) ? rawCode : null;
 
       if (!pairingCode) {
+        // If server returned a QR code instead, that's fine — tell caller to use QR
+        const hasQr = !!(codeData?.base64 || codeData?.qrcode?.base64 || codeData?.code);
+        if (hasQr) {
+          return json({
+            success: true,
+            pairing_code: null,
+            qr_code: codeData?.base64 || codeData?.qrcode?.base64 || null,
+            status: "qr_ready",
+            message: "السيرفر لا يدعم الربط بالكود — استخدم رمز QR بدلاً",
+          });
+        }
         await logToSystem(adminClient, "warn", "لم يتم إرجاع كود الربط من السيرفر", {
           response: JSON.stringify(codeData).slice(0, 500),
         }, orgId, userId);
