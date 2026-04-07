@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   CheckCircle2, Copy, Loader2, Phone, RefreshCw,
   MessageSquare, KeyRound, Plus, Trash2, Send,
@@ -86,6 +86,7 @@ const IntegrationsPage = () => {
   const [maxPhones, setMaxPhones] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [sdkLoaded, setSdkLoaded] = useState(false);
+  const isMobileDevice = useMemo(() => /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent), []);
   const [flowStep, setFlowStep] = useState<FlowStep>("idle");
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
   const [accessToken, setAccessToken] = useState("");
@@ -240,6 +241,56 @@ const IntegrationsPage = () => {
       setMetaSettingsLoaded(true);
     });
   }, []);
+
+  // Handle OAuth redirect return (mobile flow)
+  useEffect(() => {
+    if (!metaSettingsLoaded || !metaAppId || !orgId) return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (!code) return;
+
+    // Clean URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete("code");
+    url.searchParams.delete("state");
+    window.history.replaceState({}, "", url.pathname + url.search);
+
+    // Restore state from sessionStorage
+    const savedMode = sessionStorage.getItem("wa_onboarding_mode") as OnboardingMode | null;
+    if (savedMode) {
+      setOnboardingMode(savedMode);
+      sessionStorage.removeItem("wa_onboarding_mode");
+    }
+    const savedProvider = sessionStorage.getItem("wa_previous_provider");
+    if (savedProvider) {
+      setPreviousProvider(savedProvider);
+      sessionStorage.removeItem("wa_previous_provider");
+    }
+
+    console.log("[Embedded Signup] OAuth redirect received with code, processing...");
+    setFlowStep("connecting");
+    setIsLoading(true);
+
+    // Exchange code for token
+    (async () => {
+      try {
+        const redirectUri = `${window.location.origin}/integrations`;
+        const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { code, redirect_uri: redirectUri } });
+        if (error || data?.error) {
+          handleError(data?.error || "فشل في تبادل الرمز");
+          return;
+        }
+        if (data?.access_token) {
+          await handleDirectToken(data.access_token);
+        } else {
+          handleError("لم يتم الحصول على التوكن");
+        }
+      } catch (e) {
+        console.error("[OAuth Redirect] Error:", e);
+        handleError("حدث خطأ أثناء الربط");
+      }
+    })();
+  }, [metaSettingsLoaded, metaAppId, orgId]);
 
   // Load Facebook SDK only after we have the correct appId
   useEffect(() => {
@@ -592,6 +643,22 @@ const IntegrationsPage = () => {
   }, [onboardingMode]);
 
   const proceedToMetaLogin = useCallback(() => {
+    // On mobile: use redirect-based OAuth (FB.login popup doesn't return data on mobile browsers)
+    if (isMobileDevice) {
+      // Save state before redirect
+      sessionStorage.setItem("wa_onboarding_mode", onboardingMode);
+      if (previousProvider) sessionStorage.setItem("wa_previous_provider", previousProvider);
+
+      const redirectUri = `${window.location.origin}/integrations`;
+      const scopes = "whatsapp_business_management,whatsapp_business_messaging,business_management";
+      const oauthUrl = `https://www.facebook.com/v22.0/dialog/oauth?client_id=${metaAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&config_id=${metaConfigId}&response_type=code&override_default_response_type=true&scope=${encodeURIComponent(scopes)}`;
+
+      console.log("[Embedded Signup] Mobile: redirecting to OAuth URL");
+      window.location.href = oauthUrl;
+      return;
+    }
+
+    // Desktop: use FB.login popup
     const FB = (window as any).FB;
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
@@ -610,7 +677,7 @@ const IntegrationsPage = () => {
     FB.login(
       (response: any) => {
         fbCallbackFiredRef.current = true;
-        postMessageHandledRef.current = true; // Prevent postMessage handler from double-processing
+        postMessageHandledRef.current = true;
         console.log("[Embedded Signup] FB.login response:", JSON.stringify(response));
         if (response.authResponse) {
           const code = response.authResponse.code;
@@ -625,7 +692,6 @@ const IntegrationsPage = () => {
             handleError("لم يتم الحصول على بيانات المصادقة");
           }
         } else {
-          // Log the full response for debugging
           console.error("[Embedded Signup] No authResponse. Status:", response?.status, "Full:", JSON.stringify(response));
           const fbStatus = response?.status;
           const statusMessages: Record<string, string> = {
@@ -646,7 +712,7 @@ const IntegrationsPage = () => {
         },
       }
     );
-  }, [clearEmbeddedSignupSelection, metaConfigId, metaAppId, onboardingMode]);
+  }, [clearEmbeddedSignupSelection, metaConfigId, metaAppId, onboardingMode, previousProvider, isMobileDevice]);
 
   const handleCodeExchange = async (code: string) => {
     try {
