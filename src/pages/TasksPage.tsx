@@ -99,6 +99,7 @@ const TasksPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [showNewTask, setShowNewTask] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // New task form
   const [newTitle, setNewTitle] = useState("");
