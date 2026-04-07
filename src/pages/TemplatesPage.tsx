@@ -801,7 +801,7 @@ const TemplatesPage = () => {
           }
         }}
       >
-        <DialogContent className="max-w-lg" dir={isReviewMode ? "ltr" : "rtl"}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" dir={isReviewMode ? "ltr" : "rtl"}>
           <DialogHeader>
             <DialogTitle>{isEditing ? (isReviewMode ? "Edit template" : "تعديل القالب") : isReviewMode ? "Create new template" : "إنشاء قالب جديد"}</DialogTitle>
             <DialogDescription>
