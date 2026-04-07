@@ -586,6 +586,31 @@ const EmailConfigSection = () => {
                       </div>
                     )}
 
+                    {/* Email Signature */}
+                    <div className="rounded-lg border border-border p-2.5 space-y-2">
+                      <p className="text-[11px] font-semibold flex items-center gap-1.5">
+                        <FileSignature className="w-3 h-3 text-primary" />
+                        التوقيع الموحد
+                      </p>
+                      <textarea
+                        value={signatureText[config.id] || ""}
+                        onChange={(e) => setSignatureText(prev => ({ ...prev, [config.id]: e.target.value }))}
+                        placeholder={"مثال:\n--\nاسم الشركة\nهاتف: +966...\nwww.example.com"}
+                        className="w-full text-[11px] bg-background border border-border rounded-md p-2 min-h-[70px] resize-y placeholder:text-muted-foreground"
+                        dir="rtl"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => saveSignature(config.id)}
+                        disabled={savingSignature === config.id}
+                        className="text-[10px] h-7 px-3 gap-1 w-full"
+                      >
+                        {savingSignature === config.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                        حفظ التوقيع
+                      </Button>
+                    </div>
+
                     {/* Action buttons */}
                     <div className="flex gap-2 justify-end flex-wrap">
                       <Button
