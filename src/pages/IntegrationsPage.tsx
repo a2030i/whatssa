@@ -1520,7 +1520,9 @@ const IntegrationsPage = () => {
                                         safety_paused: false, safety_paused_at: null, safety_paused_reason: null,
                                       }).eq("id", config.id);
                                       toast.success("تم إعادة تفعيل الإرسال");
-                                      fetchUnofficialConfigs();
+                                      const { data: refreshed } = await supabase.rpc("get_org_whatsapp_channels");
+                                      const updated = ((refreshed || []) as any[]).filter((c: any) => c.org_id === orgId && c.channel_type === "evolution");
+                                      setUnofficialConfigs(updated as any);
                                     }}>
                                     <RefreshCw className="w-3 h-3" /> إعادة تفعيل الإرسال
                                   </Button>
