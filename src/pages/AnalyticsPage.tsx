@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ActivityHeatmap from "@/components/analytics/ActivityHeatmap";
 import PeriodComparison from "@/components/analytics/PeriodComparison";
 import CampaignROIReport from "@/components/analytics/CampaignROIReport";
+import TagsReport from "@/components/analytics/TagsReport";
 
 const COLORS = [
   "hsl(142 64% 42%)", "hsl(217 91% 60%)", "hsl(280 67% 55%)",
