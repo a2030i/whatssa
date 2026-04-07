@@ -186,16 +186,17 @@ const IntegrationsPage = () => {
     if (orgId) loadConfigs();
   }, [orgId]);
 
-  // Watchdog: auto-recover from stuck "connecting" state after 45s
+  // Watchdog: auto-recover from stuck "connecting" state after 3 minutes
+  // Uses a longer timeout because the Meta popup itself can take a while
   useEffect(() => {
     if (flowStep !== "connecting") return;
     const timer = setTimeout(() => {
-      console.warn("[Embedded Signup] Watchdog: connecting state timed out after 45s");
+      console.warn("[Embedded Signup] Watchdog: connecting state timed out after 3min");
       setFlowStep("idle");
       setIsLoading(false);
       loadConfigs(true);
       toast.info("انتهت مهلة الربط — تحقق من حالة القناة أو أعد المحاولة");
-    }, 45000);
+    }, 180000);
     return () => clearTimeout(timer);
   }, [flowStep]);
 
