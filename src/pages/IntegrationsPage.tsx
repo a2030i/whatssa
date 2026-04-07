@@ -138,6 +138,8 @@ const IntegrationsPage = () => {
   const [officialEnabled, setOfficialEnabled] = useState(false);
   const [metaSettingsLoaded, setMetaSettingsLoaded] = useState(false);
   const embeddedSignupSelectionRef = useRef<EmbeddedSignupSelection | null>(null);
+  const [embeddedSignupFinishedAt, setEmbeddedSignupFinishedAt] = useState<number | null>(null);
+  const embeddedSignupRecoveryInFlightRef = useRef(false);
 
   const rememberEmbeddedSignupSelection = useCallback((selection: EmbeddedSignupSelection) => {
     embeddedSignupSelectionRef.current = selection;
@@ -145,6 +147,7 @@ const IntegrationsPage = () => {
 
   const clearEmbeddedSignupSelection = useCallback(() => {
     embeddedSignupSelectionRef.current = null;
+    setEmbeddedSignupFinishedAt(null);
   }, []);
 
   // Load Meta settings first, then load SDK with correct appId
@@ -330,8 +333,13 @@ const IntegrationsPage = () => {
               });
               console.log('[Embedded Signup] Got IDs from session:', data.data.phone_number_id, data.data.waba_id);
             }
+            if (data.event === 'FINISH') {
+              console.log('[Embedded Signup] Popup finished, scheduling auth recovery');
+              setEmbeddedSignupFinishedAt(Date.now());
+            }
             if (data.event === 'CANCEL') {
               console.log('[Embedded Signup] User cancelled at step:', data.data?.current_step);
+              handleError('تم إلغاء عملية الربط من نافذة Meta');
             }
           }
         } catch {
@@ -419,6 +427,8 @@ const IntegrationsPage = () => {
         response_type: "code",
         override_default_response_type: true,
         extras: {
+          feature: "whatsapp_embedded_signup",
+          sessionInfoVersion: "3",
           setup: {},
         },
       }
@@ -512,6 +522,83 @@ const IntegrationsPage = () => {
       handleError("حدث خطأ");
     }
   };
+
+  const recoverEmbeddedSignupAuth = useCallback(async () => {
+    if (embeddedSignupRecoveryInFlightRef.current) return;
+
+    const FB = (window as any).FB;
+    if (!FB) {
+      handleError("تعذر الوصول إلى Meta SDK. أعد المحاولة.");
+      return;
+    }
+
+    embeddedSignupRecoveryInFlightRef.current = true;
+
+    const continueWithAuth = async (authResponse: any) => {
+      const code = authResponse?.code;
+      const token = authResponse?.accessToken;
+
+      console.log("[Embedded Signup] Recovery auth response:", JSON.stringify({
+        hasCode: !!code,
+        hasAccessToken: !!token,
+      }));
+
+      if (code) {
+        await handleCodeExchange(code);
+        return true;
+      }
+
+      if (token) {
+        await handleDirectToken(token);
+        return true;
+      }
+
+      return false;
+    };
+
+    try {
+      if (await continueWithAuth(FB.getAuthResponse?.())) return;
+
+      const loginStatusResponse = await new Promise<any>((resolve) => {
+        if (!FB.getLoginStatus) {
+          resolve(null);
+          return;
+        }
+
+        FB.getLoginStatus((response: any) => resolve(response), true);
+      });
+
+      if (await continueWithAuth(loginStatusResponse?.authResponse)) return;
+
+      handleError("اكتملت نافذة Meta لكن لم يرجع رمز التفويض للتطبيق. أعد المحاولة مرة أخرى.");
+    } catch (e) {
+      console.error("[Embedded Signup] Recovery failed:", e);
+      handleError("تعذر استكمال الربط بعد إغلاق نافذة Meta.");
+    } finally {
+      embeddedSignupRecoveryInFlightRef.current = false;
+    }
+  }, [handleCodeExchange, handleDirectToken]);
+
+  useEffect(() => {
+    if (flowStep !== "connecting" || !embeddedSignupFinishedAt) return;
+
+    const timeoutId = window.setTimeout(() => {
+      void recoverEmbeddedSignupAuth();
+    }, 700);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [embeddedSignupFinishedAt, flowStep, recoverEmbeddedSignupAuth]);
+
+  useEffect(() => {
+    if (flowStep !== "connecting") return;
+
+    const timeoutId = window.setTimeout(() => {
+      console.warn("[Embedded Signup] Connecting state timed out, attempting recovery");
+      void recoverEmbeddedSignupAuth();
+    }, 15000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [flowStep, recoverEmbeddedSignupAuth]);
 
   const selectPhone = async (phone: PhoneNumber, token?: string, wabaId?: string) => {
     setIsLoading(true);
