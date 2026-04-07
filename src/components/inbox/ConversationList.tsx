@@ -145,29 +145,48 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
 
   const myId = profile?.id;
-  const counts = useMemo(() => ({
-    all: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType !== "group" && c.conversationType !== "email").length,
-    mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.conversationType !== "group" && c.conversationType !== "email").length,
-    waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent" && c.conversationType !== "group" && c.conversationType !== "email").length,
-    unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن") && c.conversationType !== "group" && c.conversationType !== "email").length,
-    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId && c.conversationType !== "group" && c.conversationType !== "email").length,
-    mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
-    groups: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
-    emails: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "email").length,
-    emailsSent: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "email" && c.lastMessageSender === "agent").length,
-    closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
-    archived: conversations.filter(c => c.isArchived).length,
-  }), [conversations, myId]);
+  const counts = useMemo(() => {
+    if (inboxMode === "email") {
+      return {
+        all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
+        mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId).length,
+        unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
+        unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
+        sent: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.lastMessageSender === "agent").length,
+        waitingReply: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.lastMessageSender === "customer").length,
+        closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
+        archived: conversations.filter(c => c.isArchived).length,
+      };
+    }
+    return {
+      all: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType !== "group").length,
+      mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.conversationType !== "group").length,
+      waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent" && c.conversationType !== "group").length,
+      unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن") && c.conversationType !== "group").length,
+      unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId && c.conversationType !== "group").length,
+      mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
+      groups: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
+      closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
+      archived: conversations.filter(c => c.isArchived).length,
+    };
+  }, [conversations, myId, inboxMode]);
 
-  const allQuickFilters: (QuickFilter & { minRole?: string })[] = [
+  const allQuickFilters: (QuickFilter & { minRole?: string })[] = inboxMode === "email" ? [
+    { id: "all", label: "الكل", icon: Mail, count: counts.all },
+    { id: "mine", label: "بريدي", icon: User, count: counts.mine },
+    { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
+    { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
+    { id: "sent", label: "مرسلة", icon: Send, count: (counts as any).sent },
+    { id: "waitingReply", label: "بانتظار الرد", icon: Clock, count: (counts as any).waitingReply },
+    { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed, minRole: "supervisor" },
+    { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived, minRole: "supervisor" },
+  ] : [
     { id: "mine", label: "محادثاتي", icon: User, count: counts.mine },
     { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
-    { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: counts.waitingCustomer },
+    { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: (counts as any).waitingCustomer },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
-    { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions, minRole: "supervisor" },
-    { id: "groups", label: "المجموعات", icon: Users, count: counts.groups },
-    { id: "emails", label: "إيميل 📥", icon: Mail, count: counts.emails },
-    { id: "emailsSent", label: "مرسلة 📤", icon: Mail, count: counts.emailsSent },
+    { id: "mentions", label: "إشارات", icon: AtSign, count: (counts as any).mentions, minRole: "supervisor" },
+    { id: "groups", label: "المجموعات", icon: Users, count: (counts as any).groups },
     { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed, minRole: "supervisor" },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived, minRole: "supervisor" },
