@@ -703,6 +703,21 @@ const TemplatesPage = () => {
                 <SelectItem value="rejected">{activeStatusLabels.rejected}</SelectItem>
               </SelectContent>
             </Select>
+            {metaChannels.length > 1 && (
+              <Select value={channelFilter} onValueChange={setChannelFilter}>
+                <SelectTrigger className="w-[200px] text-xs bg-secondary border-0">
+                  <SelectValue placeholder={isReviewMode ? "Channel" : "الرقم"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{isReviewMode ? "All numbers" : "كل الأرقام"}</SelectItem>
+                  {metaChannels.map((ch) => (
+                    <SelectItem key={ch.id} value={ch.id}>
+                      {ch.channel_label || ch.business_name || ch.display_phone}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
