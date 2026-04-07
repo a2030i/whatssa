@@ -186,6 +186,19 @@ const IntegrationsPage = () => {
     if (orgId) loadConfigs();
   }, [orgId]);
 
+  // Watchdog: auto-recover from stuck "connecting" state after 45s
+  useEffect(() => {
+    if (flowStep !== "connecting") return;
+    const timer = setTimeout(() => {
+      console.warn("[Embedded Signup] Watchdog: connecting state timed out after 45s");
+      setFlowStep("idle");
+      setIsLoading(false);
+      loadConfigs(true);
+      toast.info("انتهت مهلة الربط — تحقق من حالة القناة أو أعد المحاولة");
+    }, 45000);
+    return () => clearTimeout(timer);
+  }, [flowStep]);
+
   const loadConfigs = async (skipAutoSync = false) => {
     if (!orgId) return;
     const [allConfigsRes, orgRes] = await Promise.all([
