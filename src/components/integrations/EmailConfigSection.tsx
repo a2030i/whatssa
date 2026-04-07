@@ -180,6 +180,21 @@ const EmailConfigSection = () => {
   const [fetchingId, setFetchingId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, { ok: boolean; message: string; latency_ms?: number } | null>>({});
 
+  // Routing rules state
+  interface RoutingRule {
+    id: string;
+    rule_type: string;
+    pattern: string;
+    assigned_agent_id: string | null;
+    assigned_team_id: string | null;
+    is_active: boolean;
+    email_config_id: string | null;
+    priority: number;
+  }
+  const [routingRules, setRoutingRules] = useState<RoutingRule[]>([]);
+  const [showRoutingForm, setShowRoutingForm] = useState(false);
+  const [routingForm, setRoutingForm] = useState({ rule_type: "domain", pattern: "", assigned_agent_id: "", assigned_team_id: "", email_config_id: "" });
+
   useEffect(() => {
     if (orgId) {
       loadConfigs();
