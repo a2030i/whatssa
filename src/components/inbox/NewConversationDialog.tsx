@@ -252,7 +252,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   }, [orgId, open, searchQuery, localNumber]);
 
   const isMeta = selectedChannel?.channel_type === "meta_api";
-  const approvedTemplates = useMemo(() => templates.filter(t => t.status === "APPROVED"), [templates]);
+  const approvedTemplates = useMemo(() => templates.filter(t => t.status?.toUpperCase() === "APPROVED"), [templates]);
   const evolutionChannels = useMemo(() => channels.filter(c => c.channel_type === "evolution"), [channels]);
   const hasEvolution = evolutionChannels.length > 0;
   const hasEmailConfigs = emailConfigs.length > 0;
