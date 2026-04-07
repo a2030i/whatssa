@@ -965,6 +965,9 @@ function fireWebhook(orgId: string, event: string, data: Record<string, unknown>
             await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
               error: msgError.message, wa_message_id: incomingMessage.id, conversation_id: conversation.id,
             }, orgId);
+          } else {
+            // Fire outgoing webhook for message received
+            fireWebhook(orgId!, "message.received", { conversation_id: conversation.id, customer_phone: customerPhone, content, message_type: messageType });
           }
 
           // ── Mark as read (send read receipt to Meta) ──
