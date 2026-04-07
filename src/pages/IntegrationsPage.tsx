@@ -411,7 +411,14 @@ const IntegrationsPage = () => {
         } else {
           // Log the full response for debugging
           console.error("[Embedded Signup] No authResponse. Status:", response?.status, "Full:", JSON.stringify(response));
-          handleError("تم إلغاء عملية الربط أو حدث خطأ في نافذة ميتا");
+          const fbStatus = response?.status;
+          const statusMessages: Record<string, string> = {
+            "not_authorized": "لم يتم منح الصلاحيات المطلوبة — أعد المحاولة واقبل جميع الأذونات",
+            "unknown": "انتهت الجلسة أو تم إلغاء العملية من نافذة ميتا",
+            "connected": "تم الاتصال لكن لم يتم الحصول على بيانات المصادقة",
+          };
+          const detail = statusMessages[fbStatus] || `تم إلغاء العملية أو حدث خطأ (الحالة: ${fbStatus || "غير معروفة"})`;
+          handleError(detail);
         }
       },
       {
@@ -2281,10 +2288,15 @@ const IntegrationsPage = () => {
               <AlertTriangle className="w-8 h-8 text-destructive" />
             </div>
             <h2 className="text-lg font-bold text-foreground">{t("لم يتم إكمال الربط", "Connection Not Completed")}</h2>
-            <p className="text-sm text-muted-foreground mt-2 max-w-[320px] mx-auto">{errorMessage}</p>
           </div>
 
           <div className="p-6 space-y-3">
+            {/* السبب الفعلي */}
+            <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-4">
+              <p className="text-xs font-semibold text-destructive mb-1">{t("سبب الفشل:", "Failure reason:")}</p>
+              <p className="text-sm text-foreground leading-relaxed">{errorMessage}</p>
+            </div>
+
             <div className="bg-muted/50 rounded-lg p-3 space-y-2">
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {t("💡 تأكد أن الرقم غير مربوط بتطبيق واتساب على هاتفك. يجب فصله أولاً لربطه بالمنصة.", "💡 Make sure the number is not linked to any WhatsApp app on your phone. Disconnect it first.")}
