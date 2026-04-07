@@ -123,7 +123,8 @@ const AppRoutes = () => {
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       <Route path="/" element={user ? (shouldRedirectToAdmin ? <Navigate to="/admin" replace /> : <Navigate to={defaultPath} replace />) : <LandingPage />} />
       <Route path="/dashboard" element={<ProtectedRoute minRole="admin"><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/inbox" element={<ProtectedRoute><AppLayout><InboxPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/inbox" element={<ProtectedRoute><AppLayout><InboxPage inboxMode="whatsapp" /></AppLayout></ProtectedRoute>} />
+      <Route path="/email-inbox" element={<ProtectedRoute><AppLayout><InboxPage inboxMode="email" /></AppLayout></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute minRole="admin"><AppLayout><CustomersPage /></AppLayout></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute minRole="supervisor"><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/campaigns" element={<ProtectedRoute minRole="admin"><AppLayout><CampaignsPage /></AppLayout></ProtectedRoute>} />

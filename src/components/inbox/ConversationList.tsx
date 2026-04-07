@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff, CheckSquare, Square, Mail } from "lucide-react";
+import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff, CheckSquare, Square, Mail, Send } from "lucide-react";
 import BulkActionsBar from "./BulkActionsBar";
 import { cn } from "@/lib/utils";
 import { Conversation } from "@/data/mockData";
@@ -54,13 +54,14 @@ interface ConversationListProps {
   onNewConversation?: () => void;
   onTogglePin?: (id: string) => void;
   onToggleArchive?: (id: string) => void;
+  inboxMode?: "whatsapp" | "email";
 }
 
-const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive }: ConversationListProps) => {
+const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive, inboxMode = "whatsapp" }: ConversationListProps) => {
   const { orgId, profile, userRole, isSuperAdmin } = useAuth();
   const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeQuickFilter, setActiveQuickFilter] = useState("mine");
+  const [activeQuickFilter, setActiveQuickFilter] = useState(inboxMode === "email" ? "all" : "mine");
   const [agentFilter, setAgentFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -144,29 +145,48 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const allTags = useMemo(() => [...new Set(conversations.flatMap((c) => c.tags))], [conversations]);
 
   const myId = profile?.id;
-  const counts = useMemo(() => ({
-    all: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType !== "group" && c.conversationType !== "email").length,
-    mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.conversationType !== "group" && c.conversationType !== "email").length,
-    waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent" && c.conversationType !== "group" && c.conversationType !== "email").length,
-    unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن") && c.conversationType !== "group" && c.conversationType !== "email").length,
-    unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId && c.conversationType !== "group" && c.conversationType !== "email").length,
-    mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
-    groups: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
-    emails: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "email").length,
-    emailsSent: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "email" && c.lastMessageSender === "agent").length,
-    closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
-    archived: conversations.filter(c => c.isArchived).length,
-  }), [conversations, myId]);
+  const counts = useMemo(() => {
+    if (inboxMode === "email") {
+      return {
+        all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
+        mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId).length,
+        unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
+        unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
+        sent: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.lastMessageSender === "agent").length,
+        waitingReply: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.lastMessageSender === "customer").length,
+        closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
+        archived: conversations.filter(c => c.isArchived).length,
+      };
+    }
+    return {
+      all: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType !== "group").length,
+      mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.conversationType !== "group").length,
+      waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent" && c.conversationType !== "group").length,
+      unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن") && c.conversationType !== "group").length,
+      unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId && c.conversationType !== "group").length,
+      mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
+      groups: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
+      closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
+      archived: conversations.filter(c => c.isArchived).length,
+    };
+  }, [conversations, myId, inboxMode]);
 
-  const allQuickFilters: (QuickFilter & { minRole?: string })[] = [
+  const allQuickFilters: (QuickFilter & { minRole?: string })[] = inboxMode === "email" ? [
+    { id: "all", label: "الكل", icon: Mail, count: counts.all },
+    { id: "mine", label: "بريدي", icon: User, count: counts.mine },
+    { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
+    { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
+    { id: "sent", label: "مرسلة", icon: Send, count: (counts as any).sent },
+    { id: "waitingReply", label: "بانتظار الرد", icon: Clock, count: (counts as any).waitingReply },
+    { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed, minRole: "supervisor" },
+    { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived, minRole: "supervisor" },
+  ] : [
     { id: "mine", label: "محادثاتي", icon: User, count: counts.mine },
     { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
-    { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: counts.waitingCustomer },
+    { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: (counts as any).waitingCustomer },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
-    { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions, minRole: "supervisor" },
-    { id: "groups", label: "المجموعات", icon: Users, count: counts.groups },
-    { id: "emails", label: "إيميل 📥", icon: Mail, count: counts.emails },
-    { id: "emailsSent", label: "مرسلة 📤", icon: Mail, count: counts.emailsSent },
+    { id: "mentions", label: "إشارات", icon: AtSign, count: (counts as any).mentions, minRole: "supervisor" },
+    { id: "groups", label: "المجموعات", icon: Users, count: (counts as any).groups },
     { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed, minRole: "supervisor" },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived, minRole: "supervisor" },
@@ -185,20 +205,31 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       // Hide archived unless specifically filtering for them
       if (activeQuickFilter !== "archived" && conv.isArchived) return false;
       if (activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.status === "closed") return false;
-      // Exclude groups and emails from private-focused filters
-      if (activeQuickFilter !== "groups" && activeQuickFilter !== "emails" && activeQuickFilter !== "emailsSent" && activeQuickFilter !== "mentions" && activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.conversationType === "group") return false;
-      if (activeQuickFilter !== "emails" && activeQuickFilter !== "emailsSent" && activeQuickFilter !== "mentions" && activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.conversationType === "email") return false;
-      switch (activeQuickFilter) {
-        case "mine": if (conv.assignedToId !== myId) return false; break;
-        case "waitingCustomer": if (conv.assignedToId !== myId || conv.lastMessageSender !== "agent") return false; break;
-        case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
-        case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
-        case "unread": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
-        case "groups": if (conv.conversationType !== "group") return false; break;
-        case "emails": if (conv.conversationType !== "email") return false; break;
-        case "emailsSent": if (conv.conversationType !== "email" || conv.lastMessageSender !== "agent") return false; break;
-        case "closed": if (conv.status !== "closed") return false; break;
-        case "archived": if (!conv.isArchived) return false; break;
+
+      if (inboxMode === "email") {
+        // Email inbox filters
+        switch (activeQuickFilter) {
+          case "mine": if (conv.assignedToId !== myId) return false; break;
+          case "unread": if (conv.unread <= 0) return false; break;
+          case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
+          case "sent": if (conv.lastMessageSender !== "agent") return false; break;
+          case "waitingReply": if (conv.lastMessageSender !== "customer") return false; break;
+          case "closed": if (conv.status !== "closed") return false; break;
+          case "archived": if (!conv.isArchived) return false; break;
+        }
+      } else {
+        // WhatsApp inbox filters - exclude groups from non-group filters
+        if (activeQuickFilter !== "groups" && activeQuickFilter !== "mentions" && activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.conversationType === "group") return false;
+        switch (activeQuickFilter) {
+          case "mine": if (conv.assignedToId !== myId) return false; break;
+          case "waitingCustomer": if (conv.assignedToId !== myId || conv.lastMessageSender !== "agent") return false; break;
+          case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
+          case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
+          case "unread": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
+          case "groups": if (conv.conversationType !== "group") return false; break;
+          case "closed": if (conv.status !== "closed") return false; break;
+          case "archived": if (!conv.isArchived) return false; break;
+        }
       }
       if (agentFilter !== "all" && conv.assignedTo !== agentFilter) return false;
       if (channelFilter !== "all") {
@@ -236,7 +267,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       <div className="px-4 pt-5 pb-3 space-y-3 shrink-0 border-b border-border/30">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-foreground tracking-tight">
-            {activeInbox ? activeInbox.name : "المحادثات"}
+            {activeInbox ? activeInbox.name : inboxMode === "email" ? "صندوق الإيميل" : "صندوق الواتساب"}
           </h1>
           <div className="flex items-center gap-0.5">
             {onNewConversation && (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, LayoutDashboard, Settings, UserCircle, LogOut, Menu, Megaphone, Bot, BarChart3, Plug, ShoppingCart, ClipboardCheck, Workflow, Clock, FileText, Users as UsersIcon, Wallet, CreditCard, Code2, Warehouse, Send, Shield, Lock } from "lucide-react";
+import { MessageSquare, LayoutDashboard, Settings, UserCircle, LogOut, Menu, Megaphone, Bot, BarChart3, Plug, ShoppingCart, ClipboardCheck, Workflow, Clock, FileText, Users as UsersIcon, Wallet, CreditCard, Code2, Warehouse, Send, Shield, Lock, Mail } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -70,7 +70,18 @@ const MobileBottomNav = () => {
           )}
         >
           <MessageSquare className="w-5 h-5" />
-          <span className="text-[10px] font-medium">المحادثات</span>
+          <span className="text-[10px] font-medium">واتساب</span>
+        </NavLink>
+
+        <NavLink
+          to="/email-inbox"
+          className={cn(
+            "flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-colors",
+            isActive("/email-inbox") ? "text-primary" : "text-muted-foreground"
+          )}
+        >
+          <Mail className="w-5 h-5" />
+          <span className="text-[10px] font-medium">إيميل</span>
         </NavLink>
 
         {effectiveRole === "admin" && (

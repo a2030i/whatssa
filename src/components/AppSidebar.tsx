@@ -3,7 +3,7 @@ import {
   MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X,
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
-  Database,
+  Database, Mail,
   Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock, ClipboardList,
   Workflow, Send, Warehouse, DollarSign, Package, ClipboardCheck, Ticket
 } from "lucide-react";
@@ -38,7 +38,8 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     emoji: "🏠",
     items: [
       { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
-      { label: "صندوق الوارد", icon: MessageSquare, path: "/inbox", emoji: "💬" },
+      { label: "صندوق الواتساب", icon: MessageSquare, path: "/inbox", emoji: "💬" },
+      { label: "صندوق الإيميل", icon: Mail, path: "/email-inbox", emoji: "📧" },
       { label: "التذاكر", icon: Ticket, path: "/tickets", emoji: "🎫" },
       { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
     ],
