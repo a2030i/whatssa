@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!channel) {
-      return json({ error: "Channel not found" }, 404);
+      return json({ channel_type: "unknown", paused: false, remaining: 999999, limits: {}, reset_at: null });
     }
 
     // === EVOLUTION (unofficial) — safety limits ===
