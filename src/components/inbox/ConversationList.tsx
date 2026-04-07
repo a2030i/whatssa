@@ -267,7 +267,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       <div className="px-4 pt-5 pb-3 space-y-3 shrink-0 border-b border-border/30">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-foreground tracking-tight">
-            {activeInbox ? activeInbox.name : "المحادثات"}
+            {activeInbox ? activeInbox.name : inboxMode === "email" ? "صندوق الإيميل" : "صندوق الواتساب"}
           </h1>
           <div className="flex items-center gap-0.5">
             {onNewConversation && (
