@@ -28,6 +28,7 @@ import ForwardMessageDialog from "./ForwardMessageDialog";
 import PollCreatorDialog from "./PollCreatorDialog";
 import ContactCardDialog from "./ContactCardDialog";
 import CreateTicketDialog from "@/components/tickets/CreateTicketDialog";
+import SendQuotaBanner from "./SendQuotaBanner";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
@@ -2700,6 +2701,12 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               )}
             </div>
           )}
+
+          {/* Send Quota Banner */}
+          <SendQuotaBanner
+            channelId={conversation.channelId}
+            channelType={conversation.channelType}
+          />
 
           {/* AI Suggestions Row */}
           {aiSuggestions.length > 0 && (
