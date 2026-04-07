@@ -1074,6 +1074,9 @@ export type Database = {
           notes: string | null
           org_id: string | null
           satisfaction_status: string | null
+          sentiment: string | null
+          sentiment_score: number | null
+          sentiment_updated_at: string | null
           status: string | null
           tags: string[] | null
           unread_count: number | null
@@ -1111,6 +1114,9 @@ export type Database = {
           notes?: string | null
           org_id?: string | null
           satisfaction_status?: string | null
+          sentiment?: string | null
+          sentiment_score?: number | null
+          sentiment_updated_at?: string | null
           status?: string | null
           tags?: string[] | null
           unread_count?: number | null
@@ -1148,6 +1154,9 @@ export type Database = {
           notes?: string | null
           org_id?: string | null
           satisfaction_status?: string | null
+          sentiment?: string | null
+          sentiment_score?: number | null
+          sentiment_updated_at?: string | null
           status?: string | null
           tags?: string[] | null
           unread_count?: number | null
