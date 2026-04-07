@@ -196,6 +196,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
         case "unread": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
         case "groups": if (conv.conversationType !== "group") return false; break;
         case "emails": if (conv.conversationType !== "email") return false; break;
+        case "emailsSent": if (conv.conversationType !== "email" || conv.lastMessageSender !== "agent") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
         case "archived": if (!conv.isArchived) return false; break;
       }
