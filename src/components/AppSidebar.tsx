@@ -3,7 +3,7 @@ import {
   MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X,
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
-  Database,
+  Database, Mail,
   Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock, ClipboardList,
   Workflow, Send, Warehouse, DollarSign, Package, ClipboardCheck, Ticket
 } from "lucide-react";
