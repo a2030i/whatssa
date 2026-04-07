@@ -2571,6 +2571,53 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
           )}
 
+          {/* Email To/CC Fields */}
+          {isEmailChannel && !isNoteMode && (
+            <div className="mx-3 mt-2 space-y-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowEmailFields(!showEmailFields)}
+                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 shrink-0"
+                >
+                  <Mail className="w-3 h-3" />
+                  {showEmailFields ? "إخفاء" : "To / Cc"}
+                  <ChevronDown className={cn("w-3 h-3 transition-transform", showEmailFields && "rotate-180")} />
+                </button>
+                {!showEmailFields && (emailOverrideTo || emailOverrideCc) && (
+                  <span className="text-[10px] text-primary truncate">
+                    {emailOverrideTo && `إلى: ${emailOverrideTo}`}
+                    {emailOverrideTo && emailOverrideCc && " | "}
+                    {emailOverrideCc && `Cc: ${emailOverrideCc}`}
+                  </span>
+                )}
+              </div>
+              {showEmailFields && (
+                <div className="space-y-1.5 bg-secondary/40 rounded-lg p-2 border border-border/30">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left">To:</span>
+                    <input
+                      type="text"
+                      value={emailOverrideTo}
+                      onChange={(e) => setEmailOverrideTo(e.target.value)}
+                      placeholder={conversation.customerPhone || "البريد الإلكتروني للمستلم"}
+                      className="flex-1 text-[12px] bg-background border border-border/40 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left">Cc:</span>
+                    <input
+                      type="text"
+                      value={emailOverrideCc}
+                      onChange={(e) => setEmailOverrideCc(e.target.value)}
+                      placeholder="نسخة كربونية (فاصلة بين الإيميلات)"
+                      className="flex-1 text-[12px] bg-background border border-border/40 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* AI Suggestions Row */}
           {aiSuggestions.length > 0 && (
             <div className="flex gap-1.5 px-3 pt-2 overflow-x-auto pb-1">
