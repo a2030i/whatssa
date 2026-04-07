@@ -38,23 +38,24 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     items: [
       { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
       { label: "صندوق الوارد", icon: MessageSquare, path: "/inbox", emoji: "💬" },
-      { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
       { label: "التذاكر", icon: Ticket, path: "/tickets", emoji: "🎫" },
+      { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
     ],
   },
   {
-    section: "التسويق",
-    emoji: "📣",
+    section: "التسويق والأتمتة",
+    emoji: "🚀",
     items: [
-      { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "🚀", minRole: "admin" },
+      { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "📣", minRole: "admin" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰", minRole: "admin" },
       { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب", minRole: "admin" },
       { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡", minRole: "admin" },
+      { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖", minRole: "admin" },
     ],
   },
   {
-    section: "المبيعات",
-    emoji: "🛍️",
+    section: "العملاء والمبيعات",
+    emoji: "👥",
     items: [
       { label: "العملاء", icon: UserCircle, path: "/customers", emoji: "👥", minRole: "admin" },
       { label: "الطلبات", icon: ShoppingCart, path: "/orders", emoji: "🛒", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً", minRole: "admin" },
@@ -63,13 +64,12 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     ],
   },
   {
-    section: "الذكاء",
-    emoji: "🤖",
+    section: "التحليلات",
+    emoji: "📈",
     items: [
-      { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖", minRole: "admin" },
-      { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows", emoji: "📋", minRole: "admin" },
-      { label: "التحليلات", icon: BarChart3, path: "/analytics", emoji: "📈", minRole: "supervisor" },
+      { label: "التقارير", icon: BarChart3, path: "/analytics", emoji: "📈", minRole: "supervisor" },
       { label: "تكاليف المحادثات", icon: DollarSign, path: "/conversation-analytics", emoji: "💰", metaApiOnly: true, minRole: "admin" },
+      { label: "نماذج واتساب", icon: ClipboardList, path: "/wa-flows", emoji: "📋", minRole: "admin" },
       { label: "تقارير المتجر", icon: TrendingUp, path: "/store-analytics", emoji: "📊", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً", minRole: "admin" },
     ],
   },

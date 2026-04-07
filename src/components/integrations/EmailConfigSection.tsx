@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Mail, Save, Loader2, Trash2, Eye, EyeOff, CheckCircle2, Plus, Send, Settings, ExternalLink, Info, Users, User, Zap, XCircle, Clock, Download, FileSignature } from "lucide-react";
-import EmailAutomationRules from "./EmailAutomationRules";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -662,10 +662,8 @@ const EmailConfigSection = () => {
         </div>
       </div>
 
-      {/* Email Automation Rules */}
-      {configs.length > 0 && orgId && (
-        <EmailAutomationRules orgId={orgId} agents={agents} teams={teams} />
-      )}
+
+
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeForm(); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
