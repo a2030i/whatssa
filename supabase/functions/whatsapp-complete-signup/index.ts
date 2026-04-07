@@ -74,6 +74,24 @@ async function fetchPhoneNumbersForWaba(wabaId: string, accessToken: string) {
   return { ok: res.ok, data, phones };
 }
 
+function normalizeSelectedPhone(phoneData: any, wabaId: string, fallbackPhoneId?: string) {
+  return {
+    id: phoneData?.id || fallbackPhoneId || "",
+    waba_id: wabaId,
+    display_phone_number: phoneData?.display_phone_number || "",
+    verified_name: phoneData?.verified_name || "",
+    quality_rating: phoneData?.quality_rating || "",
+    code_verification_status: phoneData?.code_verification_status || null,
+    status: phoneData?.status || null,
+    account_mode: phoneData?.account_mode || null,
+    platform_type: phoneData?.platform_type || null,
+    name_status: phoneData?.name_status || null,
+    messaging_limit_tier: phoneData?.messaging_limit_tier || null,
+    throughput: phoneData?.throughput || null,
+    health_status: phoneData?.health_status || null,
+  };
+}
+
 /** Determine onboarding type based on phone status and platform_type */
 function detectOnboardingType(phoneData: any): {
   onboarding_type: "new" | "existing" | "migrated";
@@ -307,6 +325,32 @@ serve(async (req) => {
     let selectedPhone = sessionPhoneId
       ? resolvedPhones.find((p: any) => p.id === sessionPhoneId)
       : null;
+
+    if (sessionPhoneId && !selectedPhone) {
+      const directPhoneDetails = await fetchPhoneDetails(sessionPhoneId, accessToken);
+      if (directPhoneDetails.ok && !directPhoneDetails.data?.error) {
+        const normalizedPhone = normalizeSelectedPhone(
+          directPhoneDetails.data,
+          sessionWabaId || directPhoneDetails.data?.waba_id || wabaIds[0] || "",
+          sessionPhoneId,
+        );
+        selectedPhone = normalizedPhone;
+
+        if (normalizedPhone.waba_id && !wabaIds.includes(normalizedPhone.waba_id)) {
+          wabaIds.push(normalizedPhone.waba_id);
+          results.push({ waba_id: normalizedPhone.waba_id, phone_numbers: [normalizedPhone] });
+        }
+
+        resolvedPhones.push(normalizedPhone);
+        log("step2_selected_phone_direct_lookup", {
+          sessionPhoneId,
+          found: true,
+          resolvedWabaId: normalizedPhone.waba_id,
+          status: normalizedPhone.status,
+          platformType: normalizedPhone.platform_type,
+        });
+      }
+    }
 
     if (sessionPhoneId && !selectedPhone) {
       const debugRes = await fetch(
