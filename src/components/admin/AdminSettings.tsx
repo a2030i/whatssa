@@ -12,6 +12,9 @@ const AdminSettings = () => {
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [showSecretKey, setShowSecretKey] = useState(false);
+  const [generatingVapid, setGeneratingVapid] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
 
   useEffect(() => { load(); }, []);
 
