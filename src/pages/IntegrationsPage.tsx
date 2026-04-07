@@ -1208,11 +1208,11 @@ const IntegrationsPage = () => {
                 <p className="text-[10px] text-muted-foreground mt-0.5">رسمي أو عبر واتساب ويب</p>
               </div>
 
-              {/* Summary badge like email */}
-              {allConnected.length > 0 && (
-                <Badge className="text-[10px] gap-1 px-2.5 py-0.5 border-0 bg-success/10 text-success">
+              {/* Summary badge */}
+              {hasAnyChannel && (
+                <Badge className={cn("text-[10px] gap-1 px-2.5 py-0.5 border-0", hasAnyConnected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
                   <MessageSquare className="w-2.5 h-2.5" />
-                  واتساب متصل ({allConnected.length})
+                  {hasAnyConnected ? `واتساب متصل (${allConnected.length})` : `أرقام غير متصلة (${allChannels.length})`}
                 </Badge>
               )}
 
