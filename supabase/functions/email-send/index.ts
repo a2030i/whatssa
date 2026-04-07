@@ -189,12 +189,16 @@ Deno.serve(async (req) => {
 
     // Append org signature if configured
     const signature = config.email_signature;
+    // Convert plain-text newlines to <br> so email clients render line breaks
+    const isPlainText = !emailBody.includes("<") || !emailBody.includes(">");
+    const bodyHtml = isPlainText ? emailBody.replace(/\n/g, "<br>") : emailBody;
+
     let finalBody = emailBody;
-    let finalHtml = emailBody;
+    let finalHtml = bodyHtml;
     if (signature) {
       const sigHtml = `<br><br><div style="border-top:1px solid #ccc;padding-top:8px;margin-top:16px;color:#666;font-size:13px;white-space:pre-line">${signature.replace(/\n/g, "<br>")}</div>`;
       finalBody = emailBody + "\n\n--\n" + signature;
-      finalHtml = emailBody + sigHtml;
+      finalHtml = bodyHtml + sigHtml;
     }
 
     const sendOptions: any = {
