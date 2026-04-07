@@ -195,6 +195,7 @@ const GlobalSearch = () => {
                 </CommandItem>
               ))}
             </CommandGroup>
+          )}
           {!loading && results.filter(r => r.type === "customer").length > 0 && (
             <CommandGroup heading="العملاء">
               {results.filter(r => r.type === "customer").map((item) => (
