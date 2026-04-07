@@ -734,6 +734,105 @@ async function fetchEmailsForConfig(
           updated_at: new Date().toISOString(),
         }).eq("id", convId);
 
+        // ── Email Automation Rules: domain + keyword → assign / ticket ──
+        try {
+          const emailDomain = senderEmail.split("@")[1]?.toLowerCase() || "";
+          const { data: autoRules } = await admin
+            .from("email_routing_rules")
+            .select("*")
+            .eq("org_id", orgId)
+            .eq("is_active", true)
+            .order("priority", { ascending: false });
+
+          if (autoRules && autoRules.length > 0) {
+            const subjectLower = (subject || "").toLowerCase();
+            const bodyLower = (cleanBody || "").toLowerCase();
+
+            for (const rule of autoRules) {
+              // Check domain match
+              const pattern = (rule.pattern || "").toLowerCase().trim();
+              const domainMatch = rule.rule_type === "domain"
+                ? emailDomain === pattern || emailDomain.endsWith(`.${pattern}`)
+                : senderEmail.toLowerCase() === pattern;
+              if (!domainMatch) continue;
+
+              // Check keyword match (if keywords specified, ALL must match in subject or body)
+              const ruleKeywords: string[] = rule.keywords || [];
+              if (ruleKeywords.length > 0) {
+                const allMatch = ruleKeywords.every((kw: string) => {
+                  const kwLower = kw.toLowerCase().trim();
+                  return subjectLower.includes(kwLower) || bodyLower.includes(kwLower);
+                });
+                if (!allMatch) continue;
+              }
+
+              const actionType = rule.action_type || "assign";
+
+              // Action: assign agent/team
+              if (actionType === "assign" || actionType === "assign_and_ticket") {
+                const updateData: Record<string, any> = {};
+                if (rule.assigned_agent_id) {
+                  updateData.assigned_to_id = rule.assigned_agent_id;
+                  const { data: ap } = await admin.from("profiles").select("full_name").eq("id", rule.assigned_agent_id).single();
+                  if (ap) { updateData.assigned_to = ap.full_name; updateData.assigned_at = new Date().toISOString(); }
+                }
+                if (rule.assigned_team_id) {
+                  updateData.assigned_team_id = rule.assigned_team_id;
+                  const { data: tm } = await admin.from("teams").select("name").eq("id", rule.assigned_team_id).single();
+                  if (tm) updateData.assigned_team = tm.name;
+                }
+                if (Object.keys(updateData).length > 0) {
+                  await admin.from("conversations").update(updateData).eq("id", convId);
+                }
+              }
+
+              // Action: create ticket
+              if (actionType === "ticket" || actionType === "assign_and_ticket") {
+                const ticketTitle = rule.ticket_title_template
+                  ? rule.ticket_title_template.replace(/\{\{subject\}\}/gi, subject).replace(/\{\{sender\}\}/gi, senderName)
+                  : subject;
+
+                const ticketData: Record<string, any> = {
+                  org_id: orgId,
+                  conversation_id: convId,
+                  customer_phone: senderEmail,
+                  customer_name: senderName,
+                  title: ticketTitle,
+                  description: cleanBody.substring(0, 2000),
+                  status: "open",
+                  priority: rule.ticket_priority || "medium",
+                  category: rule.ticket_category || "general",
+                  assigned_to: rule.assigned_agent_id || null,
+                  metadata: {
+                    source: "email_automation",
+                    rule_id: rule.id,
+                    email_subject: subject,
+                    email_from: senderEmail,
+                  },
+                };
+
+                // Include attachments info if enabled
+                if (rule.include_attachments !== false) {
+                  const attachments = msg.attachments || [];
+                  if (attachments.length > 0) {
+                    ticketData.metadata.attachments = attachments.map((a: any) => ({
+                      filename: a.filename || "attachment",
+                      content_type: a.contentType || "application/octet-stream",
+                    }));
+                  }
+                }
+
+                await admin.from("tickets").insert(ticketData);
+                console.log(`[email-automation] Created ticket for rule ${rule.id}: "${ticketTitle}"`);
+              }
+
+              break; // First matching rule wins
+            }
+          }
+        } catch (autoErr: any) {
+          console.warn("[email-automation] Rule processing error:", autoErr.message);
+        }
+
         fetched++;
       } catch (msgErr: any) {
         errors.push(`Msg error: ${msgErr.message}`);
