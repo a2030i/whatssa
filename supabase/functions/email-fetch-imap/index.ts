@@ -77,13 +77,50 @@ function normalizeSubject(subject: string): string {
 }
 
 function cleanQuotedContent(body: string): string {
-  return body
-    .replace(/^>.*$/gm, "")
-    .replace(/^On .* wrote:$/gm, "")
-    .replace(/^-{3,}\s*Original Message\s*-{3,}[\s\S]*$/m, "")
-    .replace(/^_{3,}[\s\S]*$/m, "")
+  const lines = body.split("\n");
+  let cutIndex = lines.length;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    const nextLine = (i + 1 < lines.length) ? lines[i + 1]?.trim() : "";
+
+    // Pattern 1: "On <date> <person> wrote:" (Gmail, Apple Mail)
+    if (/^On .+ wrote:\s*$/i.test(line)) { cutIndex = i; break; }
+
+    // Pattern 2: "في <date> كتب <person>:" (Arabic Gmail)
+    if (/^في .+ كتب .+:\s*$/i.test(line)) { cutIndex = i; break; }
+
+    // Pattern 3: "---- Original Message ----" or "--- Forwarded message ---"
+    if (/^-{2,}\s*(Original Message|Forwarded message|رسالة أصلية)\s*-{2,}/i.test(line)) { cutIndex = i; break; }
+
+    // Pattern 4: "___" separator (Outlook)
+    if (/^_{3,}\s*$/.test(line)) { cutIndex = i; break; }
+
+    // Pattern 5: "From: xxx" followed by "Sent:" or "Date:" (Outlook header block)
+    if (/^From:\s*.+/i.test(line) && /^(Sent|Date|To|Subject|من|إلى|التاريخ):\s*/i.test(nextLine)) { cutIndex = i; break; }
+
+    // Pattern 6: "> " quoted lines block (3+ consecutive lines starting with >)
+    if (/^>/.test(line)) {
+      let consecutive = 0;
+      for (let j = i; j < lines.length && /^>/.test(lines[j].trim()); j++) consecutive++;
+      if (consecutive >= 2) { cutIndex = i; break; }
+    }
+
+    // Pattern 7: "Le <date>, <person> a écrit :" (French)
+    if (/^Le .+ a écrit\s*:\s*$/i.test(line)) { cutIndex = i; break; }
+
+    // Pattern 8: "<date>، <person> <email> كتب:" (Arabic pattern 2)
+    if (/كتب[:\s]*$/.test(line) && /</.test(line)) { cutIndex = i; break; }
+
+    // Pattern 9: Outlook "From:" standalone with email
+    if (/^From:\s*.*@.+\..+/i.test(line)) { cutIndex = i; break; }
+  }
+
+  const cleaned = lines.slice(0, cutIndex).join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  return cleaned || body.replace(/\n{3,}/g, "\n\n").trim();
 }
 
 /* ─── Raw IMAP client over TLS ─── */
