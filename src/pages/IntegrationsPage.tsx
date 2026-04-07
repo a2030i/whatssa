@@ -419,7 +419,9 @@ const IntegrationsPage = () => {
         } else {
           // Log the full response for debugging
           console.error("[Embedded Signup] No authResponse. Status:", response?.status, "Full:", JSON.stringify(response));
-          handleError("تم إلغاء عملية الربط أو حدث خطأ في نافذة ميتا");
+          window.setTimeout(() => {
+            void recoverEmbeddedSignupAuth();
+          }, 1200);
         }
       },
       {
