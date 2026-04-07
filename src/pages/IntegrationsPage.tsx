@@ -186,6 +186,19 @@ const IntegrationsPage = () => {
     if (orgId) loadConfigs();
   }, [orgId]);
 
+  // Watchdog: auto-recover from stuck "connecting" state after 45s
+  useEffect(() => {
+    if (flowStep !== "connecting") return;
+    const timer = setTimeout(() => {
+      console.warn("[Embedded Signup] Watchdog: connecting state timed out after 45s");
+      setFlowStep("idle");
+      setIsLoading(false);
+      loadConfigs(true);
+      toast.info("انتهت مهلة الربط — تحقق من حالة القناة أو أعد المحاولة");
+    }, 45000);
+    return () => clearTimeout(timer);
+  }, [flowStep]);
+
   const loadConfigs = async (skipAutoSync = false) => {
     if (!orgId) return;
     const [allConfigsRes, orgRes] = await Promise.all([
@@ -2057,10 +2070,13 @@ const IntegrationsPage = () => {
   if (flowStep === "connecting") {
     return (
       <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
-        <div className="bg-card rounded-2xl shadow-card border border-border p-12 text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+        <div className="bg-card rounded-2xl shadow-card border border-border p-12 text-center space-y-4">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
           <h2 className="text-lg font-bold text-foreground">{t("جاري الربط...", "Connecting...")}</h2>
-          <p className="text-sm text-muted-foreground mt-2">{t("أكمل الخطوات في نافذة Meta المنبثقة", "Complete the steps in the Meta popup window")}</p>
+          <p className="text-sm text-muted-foreground">{t("أكمل الخطوات في نافذة Meta المنبثقة", "Complete the steps in the Meta popup window")}</p>
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground mt-4" onClick={() => { setFlowStep("idle"); setIsLoading(false); loadConfigs(true); }}>
+            {t("إلغاء والعودة", "Cancel & go back")}
+          </Button>
         </div>
       </div>
     );
