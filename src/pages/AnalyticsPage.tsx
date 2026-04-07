@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Clock, CheckCircle2, AlertTriangle, Users, Download, Calendar, BarChart3, PieChart as PieChartIcon, Loader2, TrendingUp, Send, Megaphone, Phone, ArrowUpRight, ArrowDownRight, Flame, GitCompareArrows, DollarSign } from "lucide-react";
+import { MessageSquare, Clock, CheckCircle2, AlertTriangle, Users, Download, Calendar, BarChart3, PieChart as PieChartIcon, Loader2, TrendingUp, Send, Megaphone, Phone, ArrowUpRight, ArrowDownRight, Flame, GitCompareArrows, DollarSign, Tag } from "lucide-react";
 import KpiCard from "@/components/KpiCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ActivityHeatmap from "@/components/analytics/ActivityHeatmap";
 import PeriodComparison from "@/components/analytics/PeriodComparison";
 import CampaignROIReport from "@/components/analytics/CampaignROIReport";
+import TagsReport from "@/components/analytics/TagsReport";
 
 const COLORS = [
   "hsl(142 64% 42%)", "hsl(217 91% 60%)", "hsl(280 67% 55%)",
@@ -300,6 +301,7 @@ const AnalyticsPage = () => {
           <TabsTrigger value="heatmap" className="text-xs gap-1 rounded-lg"><Flame className="w-3 h-3" /> خريطة النشاط</TabsTrigger>
           <TabsTrigger value="comparison" className="text-xs gap-1 rounded-lg"><GitCompareArrows className="w-3 h-3" /> مقارنة الفترات</TabsTrigger>
           <TabsTrigger value="roi" className="text-xs gap-1 rounded-lg"><DollarSign className="w-3 h-3" /> ROI</TabsTrigger>
+          <TabsTrigger value="tags" className="text-xs gap-1 rounded-lg"><Tag className="w-3 h-3" /> الوسوم</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -563,6 +565,11 @@ const AnalyticsPage = () => {
         {/* ROI Tab */}
         <TabsContent value="roi">
           <CampaignROIReport />
+        </TabsContent>
+
+        {/* Tags Report Tab */}
+        <TabsContent value="tags">
+          <TagsReport />
         </TabsContent>
       </Tabs>
     </div>

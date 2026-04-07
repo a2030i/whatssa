@@ -4,7 +4,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Search, Plus, Upload, Download, UserPlus, X, Tag, Edit2, Trash2, Filter, Users } from "lucide-react";
+import { Search, Plus, Upload, Download, UserPlus, X, Tag, Edit2, Trash2, Filter, Users, TrendingUp, Merge } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import LeadScoring from "@/components/customers/LeadScoring";
+import MergeDuplicates from "@/components/customers/MergeDuplicates";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -259,35 +262,43 @@ const CustomersPage = () => {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1100px] mx-auto" dir="rtl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/15">
-            <Users className="w-5 h-5 text-primary" />
+      <Tabs defaultValue="list" className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/15">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-foreground tracking-tight">العملاء</h1>
+              <p className="text-sm text-muted-foreground">{visibleCustomers.length} عميل مسجّل</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-black text-foreground tracking-tight">العملاء</h1>
-             <p className="text-sm text-muted-foreground">{visibleCustomers.length} عميل مسجّل</p>
-          </div>
+          <TabsList className="bg-card/70 backdrop-blur-sm border border-border/40 rounded-xl">
+            <TabsTrigger value="list" className="text-xs gap-1 rounded-lg"><Users className="w-3 h-3" /> القائمة</TabsTrigger>
+            <TabsTrigger value="scoring" className="text-xs gap-1 rounded-lg"><TrendingUp className="w-3 h-3" /> نقاط العملاء</TabsTrigger>
+            <TabsTrigger value="merge" className="text-xs gap-1 rounded-lg"><Merge className="w-3 h-3" /> دمج المكررات</TabsTrigger>
+          </TabsList>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+
+        <TabsContent value="list" className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
           <Button size="sm" variant="outline" className="text-xs gap-1.5 rounded-xl border-border/50 hover:bg-secondary/60" onClick={handleExport}>
-            <Download className="w-3.5 h-3.5" /> تصدير
-          </Button>
-          <Button size="sm" variant="outline" className="text-xs gap-1.5 rounded-xl border-border/50 hover:bg-secondary/60" onClick={() => fileRef.current?.click()}>
-            <Upload className="w-3.5 h-3.5" /> استيراد
-          </Button>
-          <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
-          <Button size="sm" className="text-xs gap-1.5 rounded-xl gradient-primary text-primary-foreground shadow-glow" onClick={() => { setEditCustomer(null); resetForm(); setShowAdd(true); }}>
-            <UserPlus className="w-3.5 h-3.5" /> إضافة عميل
-          </Button>
+              <Download className="w-3.5 h-3.5" /> تصدير
+            </Button>
+            <Button size="sm" variant="outline" className="text-xs gap-1.5 rounded-xl border-border/50 hover:bg-secondary/60" onClick={() => fileRef.current?.click()}>
+              <Upload className="w-3.5 h-3.5" /> استيراد
+            </Button>
+            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
+            <Button size="sm" className="text-xs gap-1.5 rounded-xl gradient-primary text-primary-foreground shadow-glow" onClick={() => { setEditCustomer(null); resetForm(); setShowAdd(true); }}>
+              <UserPlus className="w-3.5 h-3.5" /> إضافة عميل
+            </Button>
+          </div>
+          <div className="relative max-w-sm">
+            <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="بحث بالاسم أو الرقم..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm bg-card/70 backdrop-blur-sm border-border/40 rounded-xl" />
+          </div>
         </div>
-      </div>
-
-
-      <div className="relative max-w-sm">
-        <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="بحث بالاسم أو الرقم..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm bg-card/70 backdrop-blur-sm border-border/40 rounded-xl" />
-      </div>
 
       <div className="bg-card/70 backdrop-blur-sm rounded-2xl shadow-card border border-border/40 overflow-x-auto">
         <table className="w-full text-sm min-w-[600px]">
@@ -439,6 +450,16 @@ const CustomersPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        <TabsContent value="scoring">
+          <LeadScoring />
+        </TabsContent>
+
+        <TabsContent value="merge">
+          <MergeDuplicates onMerged={load} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
