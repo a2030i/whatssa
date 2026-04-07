@@ -762,8 +762,17 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       
       // Safety paused: show persistent warning instead of generic error
       if (data?.safety_paused) {
-        toast.warning("⛔ الإرسال متوقف مؤقتاً لحماية الرقم من الحظر. الرسالة ستُعلّق ⏳ وترسل تلقائياً فور تجدد الحد.", {
-          duration: 10000,
+        // Calculate remaining time
+        let timeInfo = "";
+        if (data?.reset_at) {
+          const diff = new Date(data.reset_at).getTime() - Date.now();
+          if (diff > 0) {
+            const mins = Math.floor(diff / 60000);
+            timeInfo = mins >= 60 ? ` (يتجدد خلال ${Math.floor(mins / 60)}س ${mins % 60}د)` : ` (يتجدد خلال ${mins}د)`;
+          }
+        }
+        toast.warning(`⛔ الإرسال متوقف مؤقتاً لحماية الرقم${timeInfo}. الرسالة ستُعلّق ⏳ وترسل تلقائياً فور تجدد الحد.`, {
+          duration: 12000,
           icon: "🛡️",
         });
         // Keep optimistic message but mark as pending
