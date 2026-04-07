@@ -381,12 +381,53 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     }
   };
 
-  const selectChannel = (ch: Channel) => {
+  const selectChannel = async (ch: Channel) => {
     setSelectedChannel(ch);
     setSelectedTemplate(null);
     setTemplateVars([]);
     setMessageText("");
+    setUseTemplateFallback(true);
+    setHas24hWindow(false);
     setStep("message");
+
+    // Check 24h window for Meta channels
+    if (ch.channel_type === "meta_api" && isValidNumber && orgId) {
+      setChecking24h(true);
+      try {
+        const twentyFourAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: recentConv } = await supabase
+          .from("conversations")
+          .select("id, last_message_at, last_message_sender")
+          .eq("org_id", orgId)
+          .eq("customer_phone", fullPhone)
+          .eq("channel_id", ch.id)
+          .gte("last_message_at", twentyFourAgo)
+          .order("last_message_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recentConv) {
+          // Check if customer sent a message within 24h (incoming message)
+          const { data: incomingMsg } = await supabase
+            .from("messages")
+            .select("id")
+            .eq("conversation_id", recentConv.id)
+            .eq("direction", "incoming")
+            .gte("created_at", twentyFourAgo)
+            .limit(1)
+            .maybeSingle();
+
+          if (incomingMsg) {
+            setHas24hWindow(true);
+            setUseTemplateFallback(false);
+          }
+        }
+      } catch {
+        // Fail silently - default to template mode
+      } finally {
+        setChecking24h(false);
+      }
+    }
   };
 
   const handleSelectTemplate = (t: WhatsAppTemplate) => {
