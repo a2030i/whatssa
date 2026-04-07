@@ -512,7 +512,21 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         }
         // Edge function creates conversation if needed — get its ID
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
-      } else if (isMeta && !selectedTemplate) {
+      } else if (isMeta && !useTemplateFallback && messageText.trim()) {
+        // 24h window - send free-form text via whatsapp-send
+        const { data, error } = await invokeCloud("whatsapp-send", {
+          body: {
+            to: cleanPhone,
+            type: "text",
+            message: messageText.trim(),
+            conversation_id: conversationId,
+            channel_id: selectedChannel.id,
+            customer_name: customerName || cleanPhone,
+          },
+        });
+        if (error || data?.error) throw new Error(data?.error || "فشل إرسال الرسالة");
+        if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
+      } else if (isMeta && useTemplateFallback && !selectedTemplate) {
         toast.error("يجب اختيار قالب للقناة الرسمية");
         setSending(false);
         return;
