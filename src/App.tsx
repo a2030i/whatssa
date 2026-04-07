@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { WhiteLabelProvider } from "@/contexts/WhiteLabelContext";
 import AppLayout from "./components/AppLayout";
 import AuthPage from "./pages/AuthPage";
 import InboxPage from "./pages/InboxPage";
@@ -178,7 +179,9 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AuthProvider>
-          <AppRoutes />
+          <WhiteLabelProvider>
+            <AppRoutes />
+          </WhiteLabelProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
