@@ -86,6 +86,13 @@ const IntegrationsPage = () => {
   const [accessToken, setAccessToken] = useState("");
   const fbCallbackFiredRef = useRef(false);
   const postMessageHandledRef = useRef(false);
+  // Refs to hold latest function references for the postMessage listener (avoids stale closures)
+  const handleCodeExchangeRef = useRef<((code: string) => void) | null>(null);
+  const handleDirectTokenRef = useRef<((token: string) => void) | null>(null);
+  const handleErrorRef = useRef<((msg: string) => void) | null>(null);
+  const loadConfigsRef = useRef<((skip?: boolean) => Promise<void>) | null>(null);
+  const configsRef = useRef<WhatsAppConfig[]>([]);
+  const orgIdRef = useRef<string | null>(null);
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isReviewMode, setIsReviewMode] = useState(() => window.localStorage.getItem("meta-review-mode") === "1");
