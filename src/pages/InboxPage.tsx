@@ -536,6 +536,18 @@ const InboxPage = () => {
     return () => window.removeEventListener("email-send-attachment", handler);
   }, [conversations, profile]);
 
+  // Listen for email recipient overrides
+  const emailOverridesRef = useRef<{ to?: string; cc?: string } | null>(null);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      emailOverridesRef.current = { to: detail.to, cc: detail.cc };
+      setTimeout(() => { emailOverridesRef.current = null; }, 2000);
+    };
+    window.addEventListener("email-override-recipients", handler);
+    return () => window.removeEventListener("email-override-recipients", handler);
+  }, []);
+
   useEffect(() => {
     if (!selectedId) return;
 
