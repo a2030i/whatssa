@@ -49,6 +49,7 @@ import SystemStatusPage from "./pages/SystemStatusPage";
 import EmergencyAdminPage from "./pages/EmergencyAdminPage";
 import SafetyGuidePage from "./pages/SafetyGuidePage";
 import GrowthToolsPage from "./pages/GrowthToolsPage";
+import PermissionsPage from "./pages/PermissionsPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
