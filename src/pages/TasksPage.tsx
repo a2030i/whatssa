@@ -80,7 +80,6 @@ const TasksPage = () => {
   const { profile, userRole, isSuperAdmin } = useAuth();
   const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [configs, setConfigs] = useState<ForwardConfig[]>([]);
   const [agents, setAgents] = useState<{ id: string; full_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("tasks");
