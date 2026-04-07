@@ -84,7 +84,7 @@ export interface Message {
   text: string;
   sender: "customer" | "agent" | "system";
   timestamp: string;
-  status?: "sent" | "delivered" | "read";
+  status?: "sent" | "delivered" | "read" | "pending" | "failed";
   type?: "text" | "image" | "document" | "note" | "template" | "audio" | "video" | "location" | "contacts" | "sticker" | "reaction" | "poll";
   mediaUrl?: string;
   senderName?: string;
