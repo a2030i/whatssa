@@ -327,6 +327,32 @@ serve(async (req) => {
       : null;
 
     if (sessionPhoneId && !selectedPhone) {
+      const directPhoneDetails = await fetchPhoneDetails(sessionPhoneId, accessToken);
+      if (directPhoneDetails.ok && !directPhoneDetails.data?.error) {
+        const normalizedPhone = normalizeSelectedPhone(
+          directPhoneDetails.data,
+          sessionWabaId || directPhoneDetails.data?.waba_id || wabaIds[0] || "",
+          sessionPhoneId,
+        );
+        selectedPhone = normalizedPhone;
+
+        if (normalizedPhone.waba_id && !wabaIds.includes(normalizedPhone.waba_id)) {
+          wabaIds.push(normalizedPhone.waba_id);
+          results.push({ waba_id: normalizedPhone.waba_id, phone_numbers: [normalizedPhone] });
+        }
+
+        resolvedPhones.push(normalizedPhone);
+        log("step2_selected_phone_direct_lookup", {
+          sessionPhoneId,
+          found: true,
+          resolvedWabaId: normalizedPhone.waba_id,
+          status: normalizedPhone.status,
+          platformType: normalizedPhone.platform_type,
+        });
+      }
+    }
+
+    if (sessionPhoneId && !selectedPhone) {
       const debugRes = await fetch(
         `https://graph.facebook.com/v22.0/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
       );
