@@ -274,7 +274,8 @@ const IntegrationsPage = () => {
     // Exchange code for token
     (async () => {
       try {
-        const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { code } });
+        const redirectUri = `${window.location.origin}/integrations`;
+        const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { code, redirect_uri: redirectUri } });
         if (error || data?.error) {
           handleError(data?.error || "فشل في تبادل الرمز");
           return;
