@@ -369,7 +369,7 @@ const ReportsPage = () => {
         </Card>
       )}
 
-      <Tabs defaultValue="agents" className="space-y-4">
+      <Tabs defaultValue="performance" className="space-y-4">
         <TabsList className="flex-wrap">
           <TabsTrigger value="performance" className="gap-1"><Target className="w-3 h-3" /> أداء متقدم</TabsTrigger>
           <TabsTrigger value="agents">أداء الموظفين</TabsTrigger>
