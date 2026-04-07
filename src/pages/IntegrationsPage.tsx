@@ -84,6 +84,7 @@ const IntegrationsPage = () => {
   const [flowStep, setFlowStep] = useState<FlowStep>("idle");
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
   const [accessToken, setAccessToken] = useState("");
+  const fbCallbackFiredRef = useRef(false);
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isReviewMode, setIsReviewMode] = useState(() => window.localStorage.getItem("meta-review-mode") === "1");
