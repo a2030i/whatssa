@@ -455,7 +455,17 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             customer_name: customerName || cleanPhone,
           },
         });
-        if (error || data?.error) throw new Error(data?.error || "فشل إرسال الرسالة");
+        if (data?.safety_paused) {
+          toast.warning("⛔ الإرسال متوقف مؤقتاً لحماية الرقم. الرسالة ستُعلّق ⏳ وترسل تلقائياً فور تجدد الحد.", {
+            duration: 10000,
+            icon: "🛡️",
+          });
+          if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
+        } else if (error || data?.error) {
+          throw new Error(data?.error || "فشل إرسال الرسالة");
+        } else {
+          if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
+        }
         // Edge function creates conversation if needed — get its ID
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (isMeta && !selectedTemplate) {
