@@ -424,6 +424,7 @@ const TemplatesPage = () => {
 
   const openEditDialog = (template: WhatsAppTemplate) => {
     setEditingTemplate(template);
+    setSelectedFormChannel(template.channelId || metaChannels[0]?.id || "");
     setFormData({
       name: template.name,
       category: template.category,
