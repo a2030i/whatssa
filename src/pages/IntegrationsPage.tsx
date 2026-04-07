@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   CheckCircle2, Copy, Loader2, Phone, RefreshCw,
   MessageSquare, KeyRound, Plus, Trash2, Send,
@@ -40,6 +40,11 @@ interface PhoneNumber {
 interface WabaResult {
   waba_id: string;
   phone_numbers: PhoneNumber[];
+}
+
+interface EmbeddedSignupSelection {
+  phoneNumberId: string;
+  wabaId: string;
 }
 
 interface WhatsAppConfig {
@@ -132,6 +137,15 @@ const IntegrationsPage = () => {
   const [metaConfigId, setMetaConfigId] = useState("");
   const [officialEnabled, setOfficialEnabled] = useState(false);
   const [metaSettingsLoaded, setMetaSettingsLoaded] = useState(false);
+  const embeddedSignupSelectionRef = useRef<EmbeddedSignupSelection | null>(null);
+
+  const rememberEmbeddedSignupSelection = useCallback((selection: EmbeddedSignupSelection) => {
+    embeddedSignupSelectionRef.current = selection;
+  }, []);
+
+  const clearEmbeddedSignupSelection = useCallback(() => {
+    embeddedSignupSelectionRef.current = null;
+  }, []);
 
   // Load Meta settings first, then load SDK with correct appId
   useEffect(() => {
@@ -304,11 +318,16 @@ const IntegrationsPage = () => {
       window.addEventListener('message', (event) => {
         if (event.origin && !event.origin.endsWith('facebook.com')) return;
         try {
-          const data = JSON.parse(event.data);
+          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          if (!data || typeof data !== "object") return;
           if (data.type === 'WA_EMBEDDED_SIGNUP') {
             console.log('[Embedded Signup] session event:', data);
             // If we get phone_number_id and waba_id from session info, store them
             if (data.data?.phone_number_id && data.data?.waba_id) {
+              rememberEmbeddedSignupSelection({
+                phoneNumberId: data.data.phone_number_id,
+                wabaId: data.data.waba_id,
+              });
               console.log('[Embedded Signup] Got IDs from session:', data.data.phone_number_id, data.data.waba_id);
             }
             if (data.event === 'CANCEL') {
@@ -348,13 +367,14 @@ const IntegrationsPage = () => {
       toast.error(`وصلت للحد الأقصى (${maxPhones} رقم). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
       return;
     }
+    clearEmbeddedSignupSelection();
     // Always show type chooser first
     setFlowStep("choose_type");
     setOnboardingMode("new");
     setPreviousProvider("");
     setMigrationPrereqs(null);
     setWabaInfo(null);
-  }, [configs, maxPhones, isSuperAdmin]);
+  }, [clearEmbeddedSignupSelection, configs, maxPhones, isSuperAdmin]);
 
   const proceedFromTypeChoice = useCallback(() => {
     if (onboardingMode === "new") {
@@ -368,6 +388,7 @@ const IntegrationsPage = () => {
     const FB = (window as any).FB;
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
+    clearEmbeddedSignupSelection();
     setFlowStep("connecting");
     setIsLoading(true);
     setErrorMessage("");
@@ -402,7 +423,7 @@ const IntegrationsPage = () => {
         },
       }
     );
-  }, [metaConfigId, metaAppId, onboardingMode]);
+  }, [clearEmbeddedSignupSelection, metaConfigId, metaAppId, onboardingMode]);
 
   const handleCodeExchange = async (code: string) => {
     try {
@@ -427,6 +448,7 @@ const IntegrationsPage = () => {
   const handleDirectToken = async (token: string) => {
     try {
       setAccessToken(token);
+      const embeddedSelection = embeddedSignupSelectionRef.current;
       console.log("[Embedded Signup] Calling exchange-token with access_token...");
       const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { access_token: token } });
       console.log("[Embedded Signup] Exchange response:", JSON.stringify({ 
@@ -451,6 +473,17 @@ const IntegrationsPage = () => {
 
       console.log("[Embedded Signup] Total phones found:", allPhones.length);
 
+      if (embeddedSelection?.phoneNumberId && embeddedSelection?.wabaId) {
+        const selectedPhone = allPhones.find((phone) => phone.id === embeddedSelection.phoneNumberId);
+
+        if (selectedPhone) {
+          console.log("[Embedded Signup] Using exact phone selected in popup:", embeddedSelection.phoneNumberId);
+          setBusinessAccountId(embeddedSelection.wabaId);
+          await selectPhone(selectedPhone, token, embeddedSelection.wabaId);
+          return;
+        }
+      }
+
       if (allPhones.length === 1) {
         const selectedPhone = allPhones[0];
         setBusinessAccountId(selectedPhone.waba_id || "");
@@ -460,6 +493,16 @@ const IntegrationsPage = () => {
         setPhoneNumbers(allPhones);
         setFlowStep("pick_phone");
         setIsLoading(false);
+      } else if (embeddedSelection?.phoneNumberId && embeddedSelection?.wabaId) {
+        console.warn("[Embedded Signup] No phones returned from token lookup, using popup-selected IDs fallback");
+        setBusinessAccountId(embeddedSelection.wabaId);
+        await selectPhone({
+          id: embeddedSelection.phoneNumberId,
+          display_phone_number: "",
+          verified_name: "",
+          quality_rating: "",
+          waba_id: embeddedSelection.wabaId,
+        }, token, embeddedSelection.wabaId);
       } else {
         console.error("[Embedded Signup] No phones found. WABA IDs:", data.waba_ids, "Message:", data.message);
         handleError("لا توجد أرقام واتساب مربوطة بحسابك");
@@ -479,18 +522,20 @@ const IntegrationsPage = () => {
         wabaId: wabaId || phone.waba_id || businessAccountId,
       });
       if (result) {
+        const resolvedDisplayPhone = phone.display_phone_number || result?.selected_phone?.display_phone_number || result?.saved_config?.display_phone || "";
         // If migration, check prereqs before showing success
         if (result.migration_prereqs && !result.migration_prereqs.ready) {
           setMigrationPrereqs(result.migration_prereqs);
           setWabaInfo(result.waba_details);
-          setConnectedPhone(phone.display_phone_number);
+          setConnectedPhone(resolvedDisplayPhone);
           setFlowStep("migration_prereqs");
         } else {
-          setConnectedPhone(phone.display_phone_number);
+          setConnectedPhone(resolvedDisplayPhone);
           setWabaInfo(result.waba_details);
           setWebhookStatus(result.webhook_status || null);
           setFlowStep("success");
         }
+        clearEmbeddedSignupSelection();
       }
     } catch {
       handleError("فشل في إكمال الربط");
