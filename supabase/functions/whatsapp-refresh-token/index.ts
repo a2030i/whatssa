@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 async function resolveMetaCredentials(adminClient: ReturnType<typeof createClient>) {
-  const fallbackAppId = Deno.env.get("META_APP_ID") || "1306128431426603";
+  const fallbackAppId = Deno.env.get("META_APP_ID") || "1239578701681497";
   const fallbackSecret = Deno.env.get("META_APP_SECRET") || "";
 
   try {
