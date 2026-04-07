@@ -157,6 +157,7 @@ const AppRoutes = () => {
       <Route path="/tickets" element={<ProtectedRoute><AppLayout><TicketsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/safety-guide" element={<ProtectedRoute><AppLayout><SafetyGuidePage /></AppLayout></ProtectedRoute>} />
       <Route path="/growth-tools" element={<ProtectedRoute minRole="admin"><AppLayout><GrowthToolsPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/permissions" element={<ProtectedRoute minRole="admin"><AppLayout><PermissionsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/tracking" element={<TrackingPage />} />
       <Route path="/system-status" element={<SystemStatusPage />} />
       <Route path="/emergency-admin" element={<EmergencyAdminPage />} />
