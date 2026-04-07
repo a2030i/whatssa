@@ -644,6 +644,14 @@ serve(async (req) => {
       waMessageId = result.key?.id || null;
     }
 
+    // Log send for rate limiting
+    adminClient.from("channel_send_log").insert({
+      channel_id: config.id,
+      org_id: orgId,
+      recipient_phone: to.replace(/\D/g, "").replace(/@.*/, ""),
+      message_type: sentMessageType,
+    }).then(() => {}).catch(() => {});
+
     logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
       wa_message_id: waMessageId, type: sentMessageType,
     }, orgId, profile.id);
