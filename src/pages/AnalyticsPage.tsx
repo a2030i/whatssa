@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Clock, CheckCircle2, AlertTriangle, Users, Download, Calendar, BarChart3, PieChart as PieChartIcon, Loader2, TrendingUp, Send, Megaphone, Phone, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { MessageSquare, Clock, CheckCircle2, AlertTriangle, Users, Download, Calendar, BarChart3, PieChart as PieChartIcon, Loader2, TrendingUp, Send, Megaphone, Phone, ArrowUpRight, ArrowDownRight, Flame, GitCompareArrows, DollarSign } from "lucide-react";
 import KpiCard from "@/components/KpiCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 import { cn } from "@/lib/utils";
