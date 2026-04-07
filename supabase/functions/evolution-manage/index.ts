@@ -676,12 +676,19 @@ serve(async (req) => {
       const cleanPhone = phoneNumber.replace(/\D/g, "");
       const connectUrl = `${EVOLUTION_URL}/instance/connect/${instanceName}`;
 
+      // v2.3.7: GET /instance/connect/{instance} returns QR by default
+      // Adding ?number= requests a pairing code instead
+      console.log(`[pairing_code] Requesting: GET ${connectUrl}?number=${cleanPhone}`);
       let codeRes = await fetch(`${connectUrl}?number=${encodeURIComponent(cleanPhone)}`, {
+        method: "GET",
         headers: evoHeaders,
       });
       let codeData = await codeRes.json().catch(() => ({}));
+      console.log(`[pairing_code] GET response status=${codeRes.status} body=${JSON.stringify(codeData).slice(0, 500)}`);
 
-      if (!codeRes.ok || !(codeData?.pairingCode || codeData?.code)) {
+      // Fallback: POST with number in body
+      if (!codeRes.ok || !(codeData?.pairingCode || codeData?.data?.pairingCode || codeData?.code)) {
+        console.log(`[pairing_code] Fallback: POST ${connectUrl} with number=${cleanPhone}`);
         const fallbackRes = await fetch(connectUrl, {
           method: "POST",
           headers: evoHeaders,
@@ -689,6 +696,7 @@ serve(async (req) => {
         });
         codeRes = fallbackRes;
         codeData = await fallbackRes.json().catch(() => ({}));
+        console.log(`[pairing_code] POST response status=${codeRes.status} body=${JSON.stringify(codeData).slice(0, 500)}`);
       }
 
       if (!codeRes.ok) {
@@ -698,10 +706,10 @@ serve(async (req) => {
         return json({ error: codeData?.message || "فشل الحصول على كود الربط — تأكد أن السيرفر يدعم هذه الميزة" }, 400);
       }
 
-      // pairingCode may be "ABCD1234" or "ABCD-EFGH" (with hyphen)
+      // pairingCode may be "ABCD1234", "ABCD-EFGH", or other formats
       const rawCode = codeData?.pairingCode || codeData?.data?.pairingCode || codeData?.response?.pairingCode || null;
-      // Accept 4-8 alphanumeric chars optionally separated by a hyphen
-      const pairingCode = rawCode && /^[A-Z0-9]{4}-?[A-Z0-9]{4}$/i.test(rawCode) ? rawCode : null;
+      // Accept any alphanumeric string 4-12 chars, optionally with hyphens
+      const pairingCode = rawCode && /^[A-Z0-9][A-Z0-9-]{2,10}[A-Z0-9]$/i.test(rawCode) ? rawCode : null;
 
       if (!pairingCode) {
         // If server returned a QR code instead, that's fine — tell caller to use QR
