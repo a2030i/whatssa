@@ -5,9 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SUPABASE_URL = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_ANON_KEY")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const EXT_URL = Deno.env.get("EXTERNAL_SUPABASE_URL");
+const EXT_KEY = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY");
+const CLOUD_URL = Deno.env.get("SUPABASE_URL")!;
+const CLOUD_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -22,6 +23,16 @@ function getWarmupMultiplier(ageDays: number): number {
   return 1.0;
 }
 
+function getUserIdFromJwt(authorization: string): string | null {
+  try {
+    const token = authorization.replace("Bearer ", "");
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -29,21 +40,22 @@ Deno.serve(async (req) => {
 
   try {
     const authorization = req.headers.get("Authorization") || "";
-    if (!authorization.startsWith("Bearer ")) {
+    const userId = getUserIdFromJwt(authorization);
+    if (!userId) {
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authorization } },
-    });
-    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    // Use external DB if configured, otherwise Cloud
+    const adminClient = createClient(
+      EXT_URL || CLOUD_URL,
+      EXT_KEY || CLOUD_KEY,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    );
 
-    const { data: profile } = await authClient
+    const { data: profile } = await adminClient
       .from("profiles")
       .select("id, org_id")
-      .limit(1)
+      .eq("id", userId)
       .maybeSingle();
 
     if (!profile?.org_id) {
