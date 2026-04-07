@@ -998,8 +998,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     const saved = localStorage.getItem("enterToSend");
     return saved !== null ? saved === "true" : true;
   });
-  const [emailOverrideTo, setEmailOverrideTo] = useState("");
-  const [emailOverrideCc, setEmailOverrideCc] = useState("");
+  const [emailToChips, setEmailToChips] = useState<string[]>([]);
+  const [emailCcChips, setEmailCcChips] = useState<string[]>([]);
+  const [emailToInput, setEmailToInput] = useState("");
+  const [emailCcInput, setEmailCcInput] = useState("");
   const [showEmailFields, setShowEmailFields] = useState(false);
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1518,12 +1520,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
     const replyData = replyTo ? { id: replyTo.id, waMessageId: replyTo.waMessageId, senderName: replyTo.sender === "agent" ? "أنت" : (replyTo.senderName || conversation.customerName), text: replyTo.text } : undefined;
     // Dispatch email overrides if set
-    if (isEmailChannel && (emailOverrideTo || emailOverrideCc)) {
+    const allTo = [...emailToChips, ...(emailToInput.trim() ? [emailToInput.trim()] : [])];
+    const allCc = [...emailCcChips, ...(emailCcInput.trim() ? [emailCcInput.trim()] : [])];
+    if (isEmailChannel && (allTo.length > 0 || allCc.length > 0)) {
       window.dispatchEvent(new CustomEvent("email-override-recipients", {
         detail: {
           conversationId: conversation.id,
-          to: emailOverrideTo || undefined,
-          cc: emailOverrideCc || undefined,
+          to: allTo.length > 0 ? allTo.join(", ") : undefined,
+          cc: allCc.length > 0 ? allCc.join(", ") : undefined,
         }
       }));
     }
@@ -2581,7 +2585,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
           )}
 
-          {/* Email To/CC Fields */}
+          {/* Email To/CC Fields with Chips */}
           {isEmailChannel && !isNoteMode && (
             <div className="mx-3 mt-2 space-y-1">
               <div className="flex items-center gap-2">
@@ -2593,35 +2597,93 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   {showEmailFields ? "إخفاء" : "To / Cc"}
                   <ChevronDown className={cn("w-3 h-3 transition-transform", showEmailFields && "rotate-180")} />
                 </button>
-                {!showEmailFields && (emailOverrideTo || emailOverrideCc) && (
+                {!showEmailFields && (emailToChips.length > 0 || emailCcChips.length > 0) && (
                   <span className="text-[10px] text-primary truncate">
-                    {emailOverrideTo && `إلى: ${emailOverrideTo}`}
-                    {emailOverrideTo && emailOverrideCc && " | "}
-                    {emailOverrideCc && `Cc: ${emailOverrideCc}`}
+                    {emailToChips.length > 0 && `إلى: ${emailToChips.join(", ")}`}
+                    {emailToChips.length > 0 && emailCcChips.length > 0 && " | "}
+                    {emailCcChips.length > 0 && `Cc: ${emailCcChips.join(", ")}`}
                   </span>
                 )}
               </div>
               {showEmailFields && (
                 <div className="space-y-1.5 bg-secondary/40 rounded-lg p-2 border border-border/30">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left">To:</span>
-                    <input
-                      type="text"
-                      value={emailOverrideTo}
-                      onChange={(e) => setEmailOverrideTo(e.target.value)}
-                      placeholder={conversation.customerPhone || "البريد الإلكتروني للمستلم"}
-                      className="flex-1 text-[12px] bg-background border border-border/40 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    />
+                  {/* To field */}
+                  <div className="flex items-start gap-2">
+                    <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left mt-1.5">To:</span>
+                    <div className="flex-1 flex flex-wrap items-center gap-1 bg-background border border-border/40 rounded-md px-1.5 py-1 min-h-[28px] focus-within:ring-1 focus-within:ring-primary/30">
+                      {/* Default recipient chip */}
+                      {conversation.customerPhone && !emailToChips.includes(conversation.customerPhone) && (
+                        <span className="inline-flex items-center gap-0.5 bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[11px]">
+                          {conversation.customerPhone}
+                        </span>
+                      )}
+                      {emailToChips.map((chip, i) => (
+                        <span key={i} className="inline-flex items-center gap-0.5 bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[11px]">
+                          {chip}
+                          <button onClick={() => setEmailToChips(prev => prev.filter((_, idx) => idx !== i))} className="hover:text-destructive ml-0.5">
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        type="text"
+                        value={emailToInput}
+                        onChange={(e) => setEmailToInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if ((e.key === "Enter" || e.key === ",") && emailToInput.trim()) {
+                            e.preventDefault();
+                            const val = emailToInput.trim().replace(/,+$/, "");
+                            if (val && !emailToChips.includes(val)) setEmailToChips(prev => [...prev, val]);
+                            setEmailToInput("");
+                          } else if (e.key === "Backspace" && !emailToInput && emailToChips.length > 0) {
+                            setEmailToChips(prev => prev.slice(0, -1));
+                          }
+                        }}
+                        onBlur={() => {
+                          const val = emailToInput.trim().replace(/,+$/, "");
+                          if (val && !emailToChips.includes(val)) setEmailToChips(prev => [...prev, val]);
+                          setEmailToInput("");
+                        }}
+                        placeholder={emailToChips.length === 0 && !conversation.customerPhone ? "أضف إيميل..." : "أضف آخر..."}
+                        className="flex-1 min-w-[80px] text-[12px] bg-transparent border-0 outline-none px-1 py-0.5"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left">Cc:</span>
-                    <input
-                      type="text"
-                      value={emailOverrideCc}
-                      onChange={(e) => setEmailOverrideCc(e.target.value)}
-                      placeholder="نسخة كربونية (فاصلة بين الإيميلات)"
-                      className="flex-1 text-[12px] bg-background border border-border/40 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    />
+                  {/* Cc field */}
+                  <div className="flex items-start gap-2">
+                    <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left mt-1.5">Cc:</span>
+                    <div className="flex-1 flex flex-wrap items-center gap-1 bg-background border border-border/40 rounded-md px-1.5 py-1 min-h-[28px] focus-within:ring-1 focus-within:ring-primary/30">
+                      {emailCcChips.map((chip, i) => (
+                        <span key={i} className="inline-flex items-center gap-0.5 bg-accent text-accent-foreground rounded-full px-2 py-0.5 text-[11px]">
+                          {chip}
+                          <button onClick={() => setEmailCcChips(prev => prev.filter((_, idx) => idx !== i))} className="hover:text-destructive ml-0.5">
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        type="text"
+                        value={emailCcInput}
+                        onChange={(e) => setEmailCcInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if ((e.key === "Enter" || e.key === ",") && emailCcInput.trim()) {
+                            e.preventDefault();
+                            const val = emailCcInput.trim().replace(/,+$/, "");
+                            if (val && !emailCcChips.includes(val)) setEmailCcChips(prev => [...prev, val]);
+                            setEmailCcInput("");
+                          } else if (e.key === "Backspace" && !emailCcInput && emailCcChips.length > 0) {
+                            setEmailCcChips(prev => prev.slice(0, -1));
+                          }
+                        }}
+                        onBlur={() => {
+                          const val = emailCcInput.trim().replace(/,+$/, "");
+                          if (val && !emailCcChips.includes(val)) setEmailCcChips(prev => [...prev, val]);
+                          setEmailCcInput("");
+                        }}
+                        placeholder="أضف Cc..."
+                        className="flex-1 min-w-[80px] text-[12px] bg-transparent border-0 outline-none px-1 py-0.5"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
