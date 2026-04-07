@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import {
   ClipboardCheck, Plus, Filter, Clock, CheckCircle2, AlertCircle,
   User, MessageSquare, ArrowUpDown, MoreHorizontal, Send, Loader2,
-  Bot, UserCircle, Truck, Phone, Mail, RefreshCw, ChevronsUpDown, Check
+  Bot, UserCircle, Truck, Phone, Mail, RefreshCw, ChevronsUpDown, Check,
+  MapPin, Calendar, Monitor, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,11 @@ interface Task {
   forward_status: string | null;
   completed_at: string | null;
   created_at: string;
+  attendance_type: string;
+  task_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  location: string | null;
 }
 
 interface ForwardConfig {
@@ -103,6 +109,11 @@ const TasksPage = () => {
   const [newAssignee, setNewAssignee] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customers, setCustomers] = useState<{ id: string; name: string | null; phone: string }[]>([]);
+  const [newAttendanceType, setNewAttendanceType] = useState("remote");
+  const [newTaskDate, setNewTaskDate] = useState("");
+  const [newStartTime, setNewStartTime] = useState("");
+  const [newEndTime, setNewEndTime] = useState("");
+  const [newLocation, setNewLocation] = useState("");
 
   // New config form
   const [cfgName, setCfgName] = useState("");
@@ -169,6 +180,11 @@ const TasksPage = () => {
 
   const createTask = async () => {
     if (!newTitle.trim()) return toast.error("أدخل عنوان المهمة");
+    if (!newTaskDate) return toast.error("اختر تاريخ المهمة");
+    if (!newStartTime || !newEndTime) return toast.error("حدد وقت البداية والنهاية");
+    if (newStartTime >= newEndTime) return toast.error("وقت النهاية يجب أن يكون بعد وقت البداية");
+    if (newAttendanceType === "in_person" && !newLocation.trim()) return toast.error("أدخل الموقع للمهمة الحضورية");
+    
     const assignee = effectiveRole === "member" ? profile!.id : (newAssignee || null);
     const selectedCust = customers.find(c => c.id === selectedCustomerId);
     const { error } = await supabase.from("tasks").insert({
@@ -182,14 +198,24 @@ const TasksPage = () => {
       customer_name: selectedCust?.name || null,
       created_by_type: "agent",
       created_by: profile!.id,
+      attendance_type: newAttendanceType,
+      task_date: newTaskDate,
+      start_time: newStartTime,
+      end_time: newEndTime,
+      location: newAttendanceType === "in_person" ? newLocation.trim() : null,
     } as any);
     if (error) {
       console.error("Task creation error:", error);
+      if (error.message?.includes("TASK_OVERLAP")) {
+        return toast.error("هذا الموظف لديه مهمة متداخلة في نفس الوقت، غيّر الوقت أو الموظف");
+      }
       return toast.error("فشل إنشاء المهمة");
     }
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
-    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setSelectedCustomerId("");
+    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); 
+    setNewAssignee(""); setSelectedCustomerId("");
+    setNewAttendanceType("remote"); setNewTaskDate(""); setNewStartTime(""); setNewEndTime(""); setNewLocation("");
     fetchTasks();
   };
 
@@ -340,14 +366,33 @@ const TasksPage = () => {
                             <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{task.description}</p>
                           )}
                           <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                            {task.attendance_type === "in_person" ? (
+                              <span className="flex items-center gap-1 text-primary">
+                                <Building2 className="w-3 h-3" /> حضوري
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Monitor className="w-3 h-3" /> عن بعد
+                              </span>
+                            )}
+                            {task.task_date && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" /> {task.task_date}
+                              </span>
+                            )}
+                            {task.start_time && task.end_time && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {task.start_time.slice(0,5)} - {task.end_time.slice(0,5)}
+                              </span>
+                            )}
+                            {task.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" /> {task.location}
+                              </span>
+                            )}
                             {task.customer_name && (
                               <span className="flex items-center gap-1">
                                 <UserCircle className="w-3 h-3" /> {task.customer_name}
-                              </span>
-                            )}
-                            {task.customer_phone && (
-                              <span className="flex items-center gap-1">
-                                <Phone className="w-3 h-3" /> {task.customer_phone}
                               </span>
                             )}
                             {agent && (
@@ -471,7 +516,7 @@ const TasksPage = () => {
 
       {/* New Task Dialog */}
       <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
-        <DialogContent className="max-w-md" dir="rtl">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader><DialogTitle>مهمة جديدة</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
@@ -502,6 +547,40 @@ const TasksPage = () => {
                 </Select>
               </div>
             </div>
+            {/* Attendance Type */}
+            <div>
+              <Label>نوع الحضور *</Label>
+              <Select value={newAttendanceType} onValueChange={setNewAttendanceType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_person"><Building2 className="w-3 h-3 inline ml-1" /> حضوري</SelectItem>
+                  <SelectItem value="remote"><Monitor className="w-3 h-3 inline ml-1" /> عن بعد</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Date */}
+            <div>
+              <Label>التاريخ *</Label>
+              <Input type="date" value={newTaskDate} onChange={e => setNewTaskDate(e.target.value)} />
+            </div>
+            {/* Time Range */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>من الساعة *</Label>
+                <Input type="time" value={newStartTime} onChange={e => setNewStartTime(e.target.value)} />
+              </div>
+              <div>
+                <Label>إلى الساعة *</Label>
+                <Input type="time" value={newEndTime} onChange={e => setNewEndTime(e.target.value)} />
+              </div>
+            </div>
+            {/* Location - only for in-person */}
+            {newAttendanceType === "in_person" && (
+              <div>
+                <Label>الموقع *</Label>
+                <Input value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="مثال: مكتب الرياض - حي العليا" />
+              </div>
+            )}
             {effectiveRole !== "member" && (
               <div>
                 <Label>إسناد إلى</Label>
