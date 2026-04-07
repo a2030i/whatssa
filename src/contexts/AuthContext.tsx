@@ -207,7 +207,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => fetchUserData(session.user.id), 0);
+          try {
+            await fetchUserData(session.user.id);
+          } catch (e) {
+            console.error("Failed to fetch user data:", e);
+          }
         } else {
           setProfile(null);
           setUserRole(null);
@@ -219,12 +223,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       clearTimeout(safetyTimeout);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserData(session.user.id);
+        try {
+          await fetchUserData(session.user.id);
+        } catch (e) {
+          console.error("Failed to fetch user data:", e);
+        }
       }
       setIsLoading(false);
     }).catch(() => {
