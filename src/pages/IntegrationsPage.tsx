@@ -1217,8 +1217,8 @@ const IntegrationsPage = () => {
               )}
 
               <div className="flex flex-col items-center gap-1.5 w-full">
-                {/* Individual connected official numbers */}
-                {connectedOfficialConfigs.map((config) => {
+                {/* Individual official numbers (all, not just connected) */}
+                {displayOfficialConfigs.map((config) => {
                   const isExpanded = expandedChannelBadgeId === config.id;
                   const ms = metaStatus[config.id];
                   return (
