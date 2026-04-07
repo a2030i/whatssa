@@ -160,7 +160,6 @@ const AppSidebar = () => {
             "text-sidebar-foreground/40"
           )}
         >
-          {!collapsed && <span className="text-sm w-6 text-center opacity-50">{item.emoji}</span>}
           <item.icon className="shrink-0 w-[16px] h-[16px]" />
           {!collapsed && (
             <>
@@ -194,7 +193,6 @@ const AppSidebar = () => {
             : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
         )}
       >
-        {!collapsed && <span className="text-sm w-6 text-center">{item.emoji}</span>}
         <item.icon className={cn("shrink-0 w-[16px] h-[16px]", collapsed && "mx-auto")} />
         {!collapsed && (
           <>
@@ -216,7 +214,7 @@ const AppSidebar = () => {
       return (
         <Tooltip key={item.path}>
           <TooltipTrigger asChild>{content}</TooltipTrigger>
-          <TooltipContent side="left" className="text-xs">{item.emoji} {item.label}</TooltipContent>
+          <TooltipContent side="left" className="text-xs">{item.label}</TooltipContent>
         </Tooltip>
       );
     }
