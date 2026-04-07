@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   ClipboardCheck, Plus, Clock, CheckCircle2, AlertCircle,
   User, MoreHorizontal, Loader2,
-  Bot, UserCircle, Check,
+  Bot, UserCircle, Check, Pencil,
   MapPin, Calendar, Monitor, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,7 @@ const PRIORITIES = [
 
 const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   upcoming: { label: "لم يحن موعدها", icon: Clock, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+  in_progress: { label: "بدأت", icon: Clock, color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
   completed: { label: "مكتملة", icon: CheckCircle2, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
   incomplete: { label: "غير مكتملة", icon: AlertCircle, color: "bg-destructive/10 text-destructive" },
 };
@@ -75,9 +76,14 @@ const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }>
 /** Derive display status from DB status + task timing */
 function getDisplayStatus(task: Task): string {
   if (task.status === "completed") return "completed";
+  const now = new Date();
   if (task.task_date && task.end_time) {
     const taskEnd = new Date(`${task.task_date}T${task.end_time}`);
-    if (taskEnd < new Date()) return "incomplete";
+    if (taskEnd < now) return "incomplete";
+  }
+  if (task.task_date && task.start_time) {
+    const taskStart = new Date(`${task.task_date}T${task.start_time}`);
+    if (taskStart <= now) return "in_progress";
   }
   return "upcoming";
 }
@@ -93,6 +99,7 @@ const TasksPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [showNewTask, setShowNewTask] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // New task form
   const [newTitle, setNewTitle] = useState("");
@@ -107,6 +114,20 @@ const TasksPage = () => {
   const [newDuration, setNewDuration] = useState("30");
   const [newCustomDuration, setNewCustomDuration] = useState("");
   const [newLocation, setNewLocation] = useState("");
+
+  // Edit task form
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editShowDesc, setEditShowDesc] = useState(false);
+  const [editType, setEditType] = useState("general");
+  const [editPriority, setEditPriority] = useState("medium");
+  const [editAssignee, setEditAssignee] = useState("");
+  const [editAttendanceType, setEditAttendanceType] = useState("remote");
+  const [editTaskDate, setEditTaskDate] = useState("");
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editDuration, setEditDuration] = useState("30");
+  const [editCustomDuration, setEditCustomDuration] = useState("");
+  const [editLocation, setEditLocation] = useState("");
 
   useEffect(() => {
     if (profile?.org_id) {
@@ -220,6 +241,81 @@ const TasksPage = () => {
     fetchTasks();
   };
 
+  const openEditDialog = (task: Task) => {
+    setEditingTask(task);
+    setEditTitle(task.title);
+    setEditDesc(task.description || "");
+    setEditShowDesc(!!task.description);
+    setEditType(task.task_type);
+    setEditPriority(task.priority);
+    setEditAssignee(task.assigned_to || profile?.id || "");
+    setEditAttendanceType(task.attendance_type || "remote");
+    setEditTaskDate(task.task_date || "");
+    setEditStartTime(task.start_time?.slice(0, 5) || "");
+    setEditLocation(task.location || "");
+    // Calculate duration from start/end
+    if (task.start_time && task.end_time) {
+      const [sh, sm] = task.start_time.split(":").map(Number);
+      const [eh, em] = task.end_time.split(":").map(Number);
+      const dur = (eh * 60 + em) - (sh * 60 + sm);
+      const presets = ["5", "10", "15", "30", "60"];
+      if (presets.includes(String(dur))) {
+        setEditDuration(String(dur));
+        setEditCustomDuration("");
+      } else {
+        setEditDuration("custom");
+        setEditCustomDuration(String(dur));
+      }
+    } else {
+      setEditDuration("30");
+      setEditCustomDuration("");
+    }
+  };
+
+  const getEditDuration = (): number => {
+    if (editDuration === "custom") return parseInt(editCustomDuration) || 0;
+    return parseInt(editDuration) || 0;
+  };
+
+  const updateTask = async () => {
+    if (!editingTask) return;
+    if (!editTitle.trim()) return toast.error("أدخل عنوان المهمة");
+    if (!editTaskDate) return toast.error("اختر تاريخ المهمة");
+    if (!editStartTime) return toast.error("حدد وقت البداية");
+    const dur = getEditDuration();
+    if (dur <= 0) return toast.error("حدد مدة صحيحة");
+    if (editAttendanceType === "in_person" && !editLocation.trim()) return toast.error("أدخل الموقع للمهمة الحضورية");
+
+    const endTime = calcEndTime(editStartTime, dur);
+
+    try {
+      await callTasksApi({
+        action: "update",
+        task_id: editingTask.id,
+        title: editTitle.trim(),
+        description: editDesc.trim() || null,
+        task_type: editType,
+        priority: editPriority,
+        assigned_to: editAssignee || profile!.id,
+        attendance_type: editAttendanceType,
+        task_date: editTaskDate,
+        start_time: editStartTime,
+        end_time: endTime,
+        location: editAttendanceType === "in_person" ? editLocation.trim() : null,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "تعذر تعديل المهمة";
+      if (message.includes("TASK_OVERLAP")) {
+        return toast.error("هذا الموظف لديه مهمة متداخلة في نفس الوقت");
+      }
+      return toast.error(`فشل التعديل: ${message}`);
+    }
+
+    toast.success("تم تعديل المهمة");
+    setEditingTask(null);
+    fetchTasks();
+  };
+
   const updateTaskStatus = async (taskId: string, status: string) => {
     try {
       await callTasksApi({ action: "update_status", task_id: taskId, status });
@@ -262,6 +358,7 @@ const TasksPage = () => {
   const stats = {
     total: scopedTasks.length,
     upcoming: scopedTasks.filter(t => getDisplayStatus(t) === "upcoming").length,
+    in_progress: scopedTasks.filter(t => getDisplayStatus(t) === "in_progress").length,
     incomplete: scopedTasks.filter(t => getDisplayStatus(t) === "incomplete").length,
     completed: scopedTasks.filter(t => getDisplayStatus(t) === "completed").length,
   };
@@ -314,7 +411,7 @@ const TasksPage = () => {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card><CardContent className="p-4 text-center">
           <div className="text-2xl font-bold text-foreground">{stats.total}</div>
           <div className="text-xs text-muted-foreground">إجمالي المهام</div>
@@ -322,6 +419,10 @@ const TasksPage = () => {
         <Card><CardContent className="p-4 text-center">
           <div className="text-2xl font-bold text-blue-600">{stats.upcoming}</div>
           <div className="text-xs text-muted-foreground">لم يحن موعدها</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <div className="text-2xl font-bold text-orange-600">{stats.in_progress}</div>
+          <div className="text-xs text-muted-foreground">بدأت</div>
         </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
           <div className="text-2xl font-bold text-destructive">{stats.incomplete}</div>
@@ -463,6 +564,9 @@ const TasksPage = () => {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => openEditDialog(task)}>
+                                      <Pencil className="w-4 h-4 ml-2" /> تعديل
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "completed")}>
                                       <CheckCircle2 className="w-4 h-4 ml-2" /> إكمال
                                     </DropdownMenuItem>
@@ -648,6 +752,146 @@ const TasksPage = () => {
           </div>
           <div className="px-4 pb-4 pt-2 border-t border-border shrink-0">
             <Button onClick={createTask} className="w-full h-10">إنشاء المهمة</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Task Dialog */}
+      <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md p-0 gap-0 max-h-[calc(100dvh-2rem)] flex flex-col" dir="rtl">
+          <DialogHeader className="px-4 pt-4 pb-2 border-b border-border shrink-0">
+            <DialogTitle className="text-base">تعديل المهمة</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            <div>
+              <Label className="text-xs">العنوان *</Label>
+              <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="h-9 text-sm" />
+            </div>
+            {!editShowDesc ? (
+              <button type="button" onClick={() => setEditShowDesc(true)} className="text-xs text-primary hover:underline">+ إضافة ملاحظات</button>
+            ) : (
+              <div>
+                <Label className="text-xs">ملاحظات</Label>
+                <Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={2} className="text-sm min-h-[60px]" />
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">النوع</Label>
+                <Select value={editType} onValueChange={setEditType}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TASK_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.icon} {t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">الأولوية</Label>
+                <Select value={editPriority} onValueChange={setEditPriority}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PRIORITIES.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">نوع الحضور *</Label>
+              <div className="flex gap-2 mt-1">
+                {[
+                  { value: "remote", label: "عن بعد", icon: Monitor },
+                  { value: "in_person", label: "حضوري", icon: Building2 },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setEditAttendanceType(opt.value)}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors",
+                      editAttendanceType === opt.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground border-input hover:bg-accent"
+                    )}
+                  >
+                    <opt.icon className="w-3.5 h-3.5" />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {editAttendanceType === "in_person" && (
+                <div className="mt-2">
+                  <Label className="text-xs">الموقع *</Label>
+                  <Input value={editLocation} onChange={e => setEditLocation(e.target.value)} className="h-9 text-sm" />
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">التاريخ *</Label>
+                <Input type="date" value={editTaskDate} onChange={e => setEditTaskDate(e.target.value)} className="h-9 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs">وقت البداية *</Label>
+                <Input type="time" value={editStartTime} onChange={e => setEditStartTime(e.target.value)} className="h-9 text-sm" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">لمدة *</Label>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {[
+                  { value: "5", label: "٥ د" },
+                  { value: "10", label: "١٠ د" },
+                  { value: "15", label: "١٥ د" },
+                  { value: "30", label: "٣٠ د" },
+                  { value: "60", label: "ساعة" },
+                  { value: "custom", label: "مخصص" },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setEditDuration(opt.value)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+                      editDuration === opt.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground border-input hover:bg-accent"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {editDuration === "custom" && (
+                <div className="mt-1.5 flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={editCustomDuration}
+                    onChange={e => setEditCustomDuration(e.target.value)}
+                    placeholder="عدد الدقائق"
+                    className="w-28 h-9 text-sm"
+                  />
+                  <span className="text-xs text-muted-foreground">دقيقة</span>
+                </div>
+              )}
+              {editStartTime && getEditDuration() > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  ⏰ من {editStartTime} إلى {calcEndTime(editStartTime, getEditDuration())}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs">إسناد إلى</Label>
+              <Select value={editAssignee || profile?.id || ""} onValueChange={setEditAssignee}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر موظف" /></SelectTrigger>
+                <SelectContent>
+                  {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}{a.id === profile?.id ? " (أنا)" : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="px-4 pb-4 pt-2 border-t border-border shrink-0">
+            <Button onClick={updateTask} className="w-full h-10">حفظ التعديلات</Button>
           </div>
         </DialogContent>
       </Dialog>

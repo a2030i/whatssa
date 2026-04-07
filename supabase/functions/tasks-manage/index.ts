@@ -22,6 +22,20 @@ const RequestSchema = z.discriminatedUnion("action", [
     location: z.string().max(500).nullable().optional(),
   }),
   z.object({
+    action: z.literal("update"),
+    task_id: z.string().uuid(),
+    title: z.string().min(1).max(500).optional(),
+    description: z.string().max(5000).nullable().optional(),
+    task_type: z.string().min(1).max(100).optional(),
+    priority: z.string().min(1).max(50).optional(),
+    assigned_to: z.string().uuid().nullable().optional(),
+    attendance_type: z.enum(["in_person", "remote"]).optional(),
+    task_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    start_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    end_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    location: z.string().max(500).nullable().optional(),
+  }),
+  z.object({
     action: z.literal("update_status"),
     task_id: z.string().uuid(),
     status: z.enum(["pending", "in_progress", "forwarded", "completed", "cancelled"]),
@@ -237,6 +251,65 @@ Deno.serve(async (req) => {
       }
 
       return json({ success: true, task: createdTask }, 200);
+    }
+
+    if (parsed.data.action === "update") {
+      const { data: existingTask, error: taskError } = await ctx.externalAdmin
+        .from("tasks")
+        .select("id, org_id, assigned_to, created_by, status")
+        .eq("id", parsed.data.task_id)
+        .maybeSingle<TaskRow>();
+
+      if (taskError) return json({ error: taskError.message }, 500);
+      if (!existingTask) return json({ error: "المهمة غير موجودة" }, 404);
+
+      const visibleUserIds = await getVisibleUserIds(ctx);
+      if (!canAccessTask(existingTask, ctx, visibleUserIds)) {
+        return json({ error: "غير مصرح لك بتعديل هذه المهمة" }, 403);
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.data.title !== undefined) updates.title = parsed.data.title.trim();
+      if (parsed.data.description !== undefined) updates.description = parsed.data.description?.trim() || null;
+      if (parsed.data.task_type !== undefined) updates.task_type = parsed.data.task_type;
+      if (parsed.data.priority !== undefined) updates.priority = parsed.data.priority;
+      if (parsed.data.attendance_type !== undefined) updates.attendance_type = parsed.data.attendance_type;
+      if (parsed.data.task_date !== undefined) updates.task_date = parsed.data.task_date;
+      if (parsed.data.start_time !== undefined) updates.start_time = parsed.data.start_time;
+      if (parsed.data.end_time !== undefined) updates.end_time = parsed.data.end_time;
+      if (parsed.data.location !== undefined) {
+        updates.location = (parsed.data.attendance_type === "in_person" || (!parsed.data.attendance_type && existingTask.status))
+          ? parsed.data.location?.trim() || null
+          : null;
+      }
+      if (parsed.data.assigned_to !== undefined) {
+        const newAssignee = parsed.data.assigned_to || ctx.profile.id;
+        if (ctx.role === "member" && newAssignee !== ctx.profile.id) {
+          return json({ error: "يمكنك إسناد المهمة لنفسك فقط" }, 403);
+        }
+        if (ctx.role === "supervisor" && !visibleUserIds.includes(newAssignee)) {
+          return json({ error: "يمكن للمشرف إسناد المهام لفريقه فقط" }, 403);
+        }
+        updates.assigned_to = newAssignee;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return json({ error: "لا توجد بيانات للتعديل" }, 400);
+      }
+
+      const { data: updatedTask, error } = await ctx.externalAdmin
+        .from("tasks")
+        .update(updates)
+        .eq("id", parsed.data.task_id)
+        .select("*")
+        .single();
+
+      if (error) {
+        const status = error.message?.includes("TASK_OVERLAP") ? 409 : 400;
+        return json({ error: error.message, code: error.code }, status);
+      }
+
+      return json({ success: true, task: updatedTask });
     }
 
     if (parsed.data.action === "update_status") {
