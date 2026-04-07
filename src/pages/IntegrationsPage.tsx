@@ -242,6 +242,55 @@ const IntegrationsPage = () => {
     });
   }, []);
 
+  // Handle OAuth redirect return (mobile flow)
+  useEffect(() => {
+    if (!metaSettingsLoaded || !metaAppId || !orgId) return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (!code) return;
+
+    // Clean URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete("code");
+    url.searchParams.delete("state");
+    window.history.replaceState({}, "", url.pathname + url.search);
+
+    // Restore state from sessionStorage
+    const savedMode = sessionStorage.getItem("wa_onboarding_mode") as OnboardingMode | null;
+    if (savedMode) {
+      setOnboardingMode(savedMode);
+      sessionStorage.removeItem("wa_onboarding_mode");
+    }
+    const savedProvider = sessionStorage.getItem("wa_previous_provider");
+    if (savedProvider) {
+      setPreviousProvider(savedProvider);
+      sessionStorage.removeItem("wa_previous_provider");
+    }
+
+    console.log("[Embedded Signup] OAuth redirect received with code, processing...");
+    setFlowStep("connecting");
+    setIsLoading(true);
+
+    // Exchange code for token
+    (async () => {
+      try {
+        const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { code } });
+        if (error || data?.error) {
+          handleError(data?.error || "فشل في تبادل الرمز");
+          return;
+        }
+        if (data?.access_token) {
+          await handleDirectToken(data.access_token);
+        } else {
+          handleError("لم يتم الحصول على التوكن");
+        }
+      } catch (e) {
+        console.error("[OAuth Redirect] Error:", e);
+        handleError("حدث خطأ أثناء الربط");
+      }
+    })();
+  }, [metaSettingsLoaded, metaAppId, orgId]);
+
   // Load Facebook SDK only after we have the correct appId
   useEffect(() => {
     if (!metaSettingsLoaded || !metaAppId) return;
