@@ -97,6 +97,7 @@ const TasksPage = () => {
   // New task form
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [showDesc, setShowDesc] = useState(false);
   const [newType, setNewType] = useState("general");
   const [newPriority, setNewPriority] = useState("medium");
   const [newAssignee, setNewAssignee] = useState(profile?.id || "");
@@ -213,7 +214,7 @@ const TasksPage = () => {
 
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
-    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium");
+    setNewTitle(""); setNewDesc(""); setShowDesc(false); setNewType("general"); setNewPriority("medium");
     setNewAssignee(profile?.id || "");
     setNewAttendanceType("remote"); setNewTaskDate(""); setNewStartTime(""); setNewDuration("30"); setNewCustomDuration(""); setNewLocation("");
     fetchTasks();
@@ -279,7 +280,13 @@ const TasksPage = () => {
           <h1 className="text-2xl font-bold text-foreground">المهام</h1>
           <p className="text-sm text-muted-foreground">إدارة المهام وتتبع الإنجاز</p>
         </div>
-        <Button onClick={() => setShowNewTask(true)}>
+        <Button onClick={() => {
+          const now = new Date();
+          now.setMinutes(now.getMinutes() + 15);
+          setNewTaskDate(format(now, "yyyy-MM-dd"));
+          setNewStartTime(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`);
+          setShowNewTask(true);
+        }}>
           <Plus className="w-4 h-4 ml-2" /> مهمة جديدة
         </Button>
       </div>
@@ -493,10 +500,14 @@ const TasksPage = () => {
               <Label className="text-xs">العنوان *</Label>
               <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="مثال: تغيير عنوان الشحن" className="h-9 text-sm" />
             </div>
-            <div>
-              <Label className="text-xs">الوصف</Label>
-              <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="تفاصيل المهمة..." rows={2} className="text-sm min-h-[60px]" />
-            </div>
+            {!showDesc ? (
+              <button type="button" onClick={() => setShowDesc(true)} className="text-xs text-primary hover:underline">+ إضافة ملاحظات</button>
+            ) : (
+              <div>
+                <Label className="text-xs">ملاحظات</Label>
+                <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="تفاصيل المهمة..." rows={2} className="text-sm min-h-[60px]" />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">النوع</Label>
@@ -519,13 +530,27 @@ const TasksPage = () => {
             </div>
             <div>
               <Label className="text-xs">نوع الحضور *</Label>
-              <Select value={newAttendanceType} onValueChange={setNewAttendanceType}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="in_person"><Building2 className="w-3 h-3 inline ml-1" /> حضوري</SelectItem>
-                  <SelectItem value="remote"><Monitor className="w-3 h-3 inline ml-1" /> عن بعد</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2 mt-1">
+                {[
+                  { value: "remote", label: "عن بعد", icon: Monitor },
+                  { value: "in_person", label: "حضوري", icon: Building2 },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setNewAttendanceType(opt.value)}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors",
+                      newAttendanceType === opt.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground border-input hover:bg-accent"
+                    )}
+                  >
+                    <opt.icon className="w-3.5 h-3.5" />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
