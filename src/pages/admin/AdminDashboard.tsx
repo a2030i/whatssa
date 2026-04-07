@@ -35,7 +35,7 @@ const tabs = [
 const AdminDashboard = () => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("whitelabel");
 
   const renderTab = () => {
     switch (activeTab) {
