@@ -545,7 +545,8 @@ const IntegrationsPage = () => {
 
     FB.login(
       (response: any) => {
-        fbCallbackFiredRef.current = true; // Mark that callback fired
+        fbCallbackFiredRef.current = true;
+        postMessageHandledRef.current = true; // Prevent postMessage handler from double-processing
         console.log("[Embedded Signup] FB.login response:", JSON.stringify(response));
         if (response.authResponse) {
           const code = response.authResponse.code;
