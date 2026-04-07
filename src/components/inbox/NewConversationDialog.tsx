@@ -1226,15 +1226,62 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 
             {isMeta ? (
               <div className="p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary" />
-                  <Label className="text-xs font-medium">اختر قالب للإرسال</Label>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  القناة الرسمية تتطلب إرسال قالب معتمد كأول رسالة
-                </p>
+                {checking24h ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    جاري التحقق من نافذة الـ 24 ساعة...
+                  </div>
+                ) : has24hWindow ? (
+                  <>
+                    <div className="bg-success/10 border border-success/20 rounded-xl p-3">
+                      <p className="text-xs font-medium text-success flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        نافذة 24 ساعة مفتوحة — يمكنك إرسال رسالة حرة أو قالب
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                      <button
+                        onClick={() => { setUseTemplateFallback(false); setSelectedTemplate(null); }}
+                        className={cn(
+                          "flex-1 text-xs font-semibold py-2 rounded-md transition-colors",
+                          !useTemplateFallback ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 inline ml-1" /> رسالة حرة
+                      </button>
+                      <button
+                        onClick={() => setUseTemplateFallback(true)}
+                        className={cn(
+                          "flex-1 text-xs font-semibold py-2 rounded-md transition-colors",
+                          useTemplateFallback ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <FileText className="w-3.5 h-3.5 inline ml-1" /> قالب
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-primary" />
+                      <Label className="text-xs font-medium">اختر قالب للإرسال</Label>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      القناة الرسمية تتطلب إرسال قالب معتمد كأول رسالة
+                    </p>
+                  </>
+                )}
 
-                {!selectedTemplate ? (
+                {!useTemplateFallback ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="اكتب رسالتك هنا..."
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      className="min-h-[100px] text-sm resize-none bg-background"
+                    />
+                  </div>
+                ) : !selectedTemplate ? (
                   <ScrollArea className="h-[200px]">
                     <div className="grid gap-1.5">
                       {approvedTemplates.length === 0 ? (
