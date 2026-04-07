@@ -662,10 +662,8 @@ const EmailConfigSection = () => {
         </div>
       </div>
 
-      {/* Email Automation Rules */}
-      {configs.length > 0 && orgId && (
-        <EmailAutomationRules orgId={orgId} agents={agents} teams={teams} />
-      )}
+
+
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) closeForm(); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
