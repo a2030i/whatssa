@@ -106,16 +106,41 @@ const TasksPage = () => {
     }
   }, [profile?.org_id]);
 
+  const callTasksApi = async (payload: Record<string, unknown>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error("انتهت الجلسة، أعد تسجيل الدخول");
+    }
+
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tasks-manage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result?.success === false) {
+      throw new Error(result?.error || "تعذر تنفيذ العملية");
+    }
+
+    return result;
+  };
+
   const fetchTasks = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("org_id", profile!.org_id!)
-      .order("created_at", { ascending: false })
-      .limit(200);
-    setTasks((data as unknown as Task[]) || []);
-    setLoading(false);
+    try {
+      const result = await callTasksApi({ action: "list" });
+      setTasks((result.tasks as Task[]) || []);
+    } catch (error) {
+      console.error("Fetch tasks error:", error);
+      setTasks([]);
+      toast.error(error instanceof Error ? error.message : "تعذر تحميل المهام");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchAgents = async () => {
@@ -151,44 +176,47 @@ const TasksPage = () => {
     const dur = getEffectiveDuration();
     if (dur <= 0) return toast.error("حدد مدة صحيحة");
     if (newAttendanceType === "in_person" && !newLocation.trim()) return toast.error("أدخل الموقع للمهمة الحضورية");
-    
+
     const endTime = calcEndTime(newStartTime, dur);
     const assignee = newAssignee || profile!.id;
-    const { error } = await supabase.from("tasks").insert({
-      org_id: profile!.org_id!,
-      title: newTitle.trim(),
-      description: newDesc.trim() || null,
-      task_type: newType,
-      priority: newPriority,
-      assigned_to: assignee,
-      created_by_type: "agent",
-      created_by: profile!.id,
-      attendance_type: newAttendanceType,
-      task_date: newTaskDate,
-      start_time: newStartTime,
-      end_time: endTime,
-      location: newAttendanceType === "in_person" ? newLocation.trim() : null,
-    } as any);
-    if (error) {
-      console.error("Task creation error:", error.message, error.details, error.hint, error.code);
-      if (error.message?.includes("TASK_OVERLAP")) {
+
+    try {
+      await callTasksApi({
+        action: "create",
+        title: newTitle.trim(),
+        description: newDesc.trim() || null,
+        task_type: newType,
+        priority: newPriority,
+        assigned_to: assignee,
+        attendance_type: newAttendanceType,
+        task_date: newTaskDate,
+        start_time: newStartTime,
+        end_time: endTime,
+        location: newAttendanceType === "in_person" ? newLocation.trim() : null,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "تعذر إنشاء المهمة";
+      console.error("Task creation error:", message);
+      if (message.includes("TASK_OVERLAP")) {
         return toast.error("هذا الموظف لديه مهمة متداخلة في نفس الوقت، غيّر الوقت أو الموظف");
       }
-      return toast.error(`فشل إنشاء المهمة: ${error.message}`);
+      return toast.error(`فشل إنشاء المهمة: ${message}`);
     }
+
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
-    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); 
+    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium");
     setNewAssignee(profile?.id || "");
     setNewAttendanceType("remote"); setNewTaskDate(""); setNewStartTime(""); setNewDuration("30"); setNewCustomDuration(""); setNewLocation("");
     fetchTasks();
   };
 
   const updateTaskStatus = async (taskId: string, status: string) => {
-    const updates: any = { status };
-    if (status === "completed") updates.completed_at = new Date().toISOString();
-    const { error } = await supabase.from("tasks").update(updates).eq("id", taskId);
-    if (error) return toast.error("فشل التحديث");
+    try {
+      await callTasksApi({ action: "update_status", task_id: taskId, status });
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "فشل التحديث");
+    }
     toast.success("تم تحديث الحالة");
     fetchTasks();
   };
