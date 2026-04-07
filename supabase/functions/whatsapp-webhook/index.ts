@@ -383,7 +383,17 @@ async function logToSystem(
   }
 }
 
-serve(async (req) => {
+// ── Fire outgoing webhook (non-blocking) ──
+function fireWebhook(orgId: string, event: string, data: Record<string, unknown>) {
+  const baseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!baseUrl || !serviceKey) return;
+  fetch(`${baseUrl}/functions/v1/dispatch-webhook`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+    body: JSON.stringify({ org_id: orgId, event, data }),
+  }).catch(e => console.error("dispatch-webhook fire failed:", e));
+}
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
