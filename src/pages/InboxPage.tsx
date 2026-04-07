@@ -176,6 +176,8 @@ const InboxPage = () => {
           isArchived: conversation.is_archived || false,
           dedicatedAgentId: conversation.dedicated_agent_id || null,
           lastMessageSender: (conversation as any).last_message_sender || null,
+          sentiment: conversation.sentiment || null,
+          sentimentScore: conversation.sentiment_score || null,
         };
       });
 

@@ -554,6 +554,12 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       {conv.timestamp}
                     </span>
                     <div className="flex items-center gap-1">
+                      {conv.sentiment === "negative" && (
+                        <span className="w-[20px] h-[20px] rounded-full bg-destructive/15 text-destructive text-[10px] flex items-center justify-center" title="عميل غير راضٍ">😠</span>
+                      )}
+                      {conv.sentiment === "positive" && (
+                        <span className="w-[20px] h-[20px] rounded-full bg-emerald-500/15 text-[10px] flex items-center justify-center" title="عميل راضٍ">😊</span>
+                      )}
                       {hasUnread && (
                         <span className="min-w-[20px] h-[20px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1.5 shadow-[0_1px_4px_hsl(var(--primary)/0.3)]">
                           {conv.unread}
