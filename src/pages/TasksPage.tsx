@@ -366,14 +366,33 @@ const TasksPage = () => {
                             <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{task.description}</p>
                           )}
                           <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+                            {task.attendance_type === "in_person" ? (
+                              <span className="flex items-center gap-1 text-primary">
+                                <Building2 className="w-3 h-3" /> حضوري
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Monitor className="w-3 h-3" /> عن بعد
+                              </span>
+                            )}
+                            {task.task_date && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" /> {task.task_date}
+                              </span>
+                            )}
+                            {task.start_time && task.end_time && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {task.start_time.slice(0,5)} - {task.end_time.slice(0,5)}
+                              </span>
+                            )}
+                            {task.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" /> {task.location}
+                              </span>
+                            )}
                             {task.customer_name && (
                               <span className="flex items-center gap-1">
                                 <UserCircle className="w-3 h-3" /> {task.customer_name}
-                              </span>
-                            )}
-                            {task.customer_phone && (
-                              <span className="flex items-center gap-1">
-                                <Phone className="w-3 h-3" /> {task.customer_phone}
                               </span>
                             )}
                             {agent && (
