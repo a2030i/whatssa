@@ -88,7 +88,6 @@ const AdminWhiteLabel = () => {
     const { data: partnersData } = await supabase
       .from("white_label_partners")
       .select("*")
-      .order("is_default", { ascending: false })
       .order("created_at", { ascending: true });
 
     if (partnersData) {
@@ -196,15 +195,7 @@ const AdminWhiteLabel = () => {
   };
 
   const handleDelete = async (partner: Partner) => {
-    if (partner.is_default) {
-      toast.error("لا يمكن حذف الشريك الافتراضي");
-      return;
-    }
-    if (!confirm(`هل أنت متأكد من حذف "${partner.name}"؟ سيتم نقل منظماته إلى Respondly.`)) return;
-    const defaultPartner = partners.find((p) => p.is_default);
-    if (defaultPartner) {
-      await supabase.from("organizations").update({ partner_id: defaultPartner.id }).eq("partner_id", partner.id);
-    }
+    if (!confirm(`هل أنت متأكد من حذف "${partner.name}"؟`)) return;
     const { error } = await supabase.from("white_label_partners").delete().eq("id", partner.id);
     if (error) toast.error(error.message);
     else { toast.success("تم حذف الشريك"); fetchPartners(); }
@@ -301,11 +292,6 @@ const AdminWhiteLabel = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-semibold text-sm">{partner.name}</span>
-                      {partner.is_default && (
-                        <Badge variant="secondary" className="text-[10px] gap-0.5">
-                          <Crown className="w-2.5 h-2.5" /> افتراضي
-                        </Badge>
-                      )}
                       {!partner.is_active && <Badge variant="destructive" className="text-[10px]">معطل</Badge>}
                       {partner.custom_domain && <DomainStatusBadge status={partner.domain_status} />}
                     </div>
@@ -342,11 +328,9 @@ const AdminWhiteLabel = () => {
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(partner)}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
-                    {!partner.is_default && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(partner)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(partner)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>
