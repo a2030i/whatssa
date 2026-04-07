@@ -63,11 +63,13 @@ export default function SendQuotaBanner({ channelId, channelType, onQuotaExhaust
       const { data, error } = await invokeCloud("check-send-quota", {
         body: { channel_id: channelId },
       });
-      if (!error && data && !data.error) {
-        setQuota(data as QuotaData);
-        if (data.remaining === 0 || data.paused) {
-          onQuotaExhausted?.(data as QuotaData);
-        }
+      if (error || !data || data.error) {
+        setQuota(null);
+        return;
+      }
+      setQuota(data as QuotaData);
+      if (data.remaining === 0 || data.paused) {
+        onQuotaExhausted?.(data as QuotaData);
       }
     } catch {
       // silent
