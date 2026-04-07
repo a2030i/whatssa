@@ -57,16 +57,20 @@ Deno.serve(async (req) => {
       return json({ error: "channel_id is required" }, 400);
     }
 
-    // Get channel config
+    // Get channel config — use admin to bypass RLS, verify org ownership after
     const { data: channel } = await adminClient
       .from("whatsapp_config")
       .select("id, channel_type, safety_max_per_hour, safety_max_per_day, safety_max_unique_per_hour, safety_paused, safety_paused_at, safety_paused_reason, channel_age_days, org_id")
       .eq("id", channel_id)
-      .eq("org_id", profile.org_id)
       .maybeSingle();
 
     if (!channel) {
-      return json({ channel_type: "unknown", paused: false, remaining: 999999, limits: {}, reset_at: null });
+      return json({ error: "Channel not found" }, 404);
+    }
+
+    // Verify org ownership
+    if (channel.org_id !== profile.org_id) {
+      return json({ error: "Channel not found" }, 404);
     }
 
     // === EVOLUTION (unofficial) — safety limits ===
