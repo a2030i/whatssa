@@ -293,7 +293,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [orgId, isMobile, userRole, teamId, isSupervisor, isSuperAdmin, profile?.id]);
+  }, [orgId, isMobile, userRole, teamId, isSupervisor, isSuperAdmin, profile?.id, inboxMode]);
 
   useEffect(() => {
     if (!selectedId) return;
