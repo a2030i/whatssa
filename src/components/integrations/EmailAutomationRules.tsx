@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Zap, Plus, Trash2, Edit, Loader2, Mail, Ticket, UserCheck, Globe, Tag } from "lucide-react";
+import { Zap, Plus, Trash2, Edit, Loader2, Mail, Ticket, UserCheck, Globe, Tag, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -26,6 +27,9 @@ interface EmailAutomationRule {
   is_active: boolean;
   priority: number;
   email_config_id: string | null;
+  attachment_types: string[] | null;
+  ticket_assigned_agent_id: string | null;
+  ticket_assigned_team_id: string | null;
 }
 
 interface Agent { id: string; full_name: string; }
@@ -60,6 +64,19 @@ const ACTION_LABELS: Record<string, { label: string; icon: typeof UserCheck; col
   assign_and_ticket: { label: "إسناد + تذكرة", icon: Zap, color: "bg-warning/10 text-warning" },
 };
 
+const COMMON_ATTACHMENT_TYPES = [
+  { value: "xlsx", label: "Excel (.xlsx)" },
+  { value: "xls", label: "Excel (.xls)" },
+  { value: "csv", label: "CSV (.csv)" },
+  { value: "pdf", label: "PDF (.pdf)" },
+  { value: "docx", label: "Word (.docx)" },
+  { value: "doc", label: "Word (.doc)" },
+  { value: "pptx", label: "PowerPoint (.pptx)" },
+  { value: "png", label: "صورة PNG" },
+  { value: "jpg", label: "صورة JPG" },
+  { value: "zip", label: "أرشيف ZIP" },
+];
+
 const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProps) => {
   const [rules, setRules] = useState<EmailAutomationRule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +96,9 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
     ticket_priority: "medium",
     ticket_title_template: "",
     include_attachments: true,
+    attachment_types: [] as string[],
+    ticket_assigned_agent_id: "",
+    ticket_assigned_team_id: "",
   };
   const [form, setForm] = useState(defaultForm);
 
@@ -115,6 +135,9 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
       ticket_priority: rule.ticket_priority || "medium",
       ticket_title_template: rule.ticket_title_template || "",
       include_attachments: rule.include_attachments ?? true,
+      attachment_types: rule.attachment_types || [],
+      ticket_assigned_agent_id: rule.ticket_assigned_agent_id || "",
+      ticket_assigned_team_id: rule.ticket_assigned_team_id || "",
     });
     setKeywordInput("");
     setDialogOpen(true);
@@ -131,6 +154,15 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
     setForm(prev => ({ ...prev, keywords: prev.keywords.filter(k => k !== kw) }));
   };
 
+  const toggleAttachmentType = (ext: string) => {
+    setForm(prev => ({
+      ...prev,
+      attachment_types: prev.attachment_types.includes(ext)
+        ? prev.attachment_types.filter(t => t !== ext)
+        : [...prev.attachment_types, ext],
+    }));
+  };
+
   const handleSave = async () => {
     if (!form.pattern.trim()) { toast.error("أدخل الدومين أو الإيميل"); return; }
     const showAssign = form.action_type === "assign" || form.action_type === "assign_and_ticket";
@@ -139,7 +171,7 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
     }
 
     setSaving(true);
-    const payload = {
+    const payload: Record<string, any> = {
       org_id: orgId,
       rule_type: form.rule_type,
       pattern: form.pattern.trim().toLowerCase(),
@@ -151,11 +183,14 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
       ticket_priority: form.ticket_priority,
       ticket_title_template: form.ticket_title_template || null,
       include_attachments: form.include_attachments,
+      attachment_types: form.attachment_types.length > 0 ? form.attachment_types : null,
+      ticket_assigned_agent_id: form.ticket_assigned_agent_id || null,
+      ticket_assigned_team_id: form.ticket_assigned_team_id || null,
     };
 
     const response = editingRule
-      ? await supabase.from("email_routing_rules").update(payload).eq("id", editingRule.id)
-      : await supabase.from("email_routing_rules").insert(payload);
+      ? await (supabase.from("email_routing_rules") as any).update(payload).eq("id", editingRule.id)
+      : await (supabase.from("email_routing_rules") as any).insert(payload);
 
     if (response.error) {
       toast.error("فشل الحفظ");
@@ -242,6 +277,7 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
             const actionInfo = getActionInfo(rule);
             const ActionIcon = actionInfo.icon;
             const keywords: string[] = rule.keywords || [];
+            const attachTypes: string[] = rule.attachment_types || [];
             return (
               <div key={rule.id} className={cn("bg-card rounded-lg p-4 md:p-5 shadow-card hover:shadow-card-hover transition-shadow", !rule.is_active && "opacity-60")}>
                 <div className="flex items-start justify-between gap-3">
@@ -263,11 +299,17 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
                           {keywords.join("، ")}
                         </p>
                       )}
+                      {attachTypes.length > 0 && (
+                        <p className="text-xs text-muted-foreground mb-1">
+                          <span className="font-medium">أنواع المرفقات:</span>{" "}
+                          {attachTypes.map(t => `.${t}`).join("، ")}
+                        </p>
+                      )}
                       {(rule.action_type === "assign" || rule.action_type === "assign_and_ticket") && (
                         <>
                           {getAgentName(rule.assigned_agent_id) && (
                             <p className="text-xs text-muted-foreground mb-1">
-                              <span className="font-medium">الموظف:</span> {getAgentName(rule.assigned_agent_id)}
+                              <span className="font-medium">إسناد المحادثة:</span> {getAgentName(rule.assigned_agent_id)}
                             </p>
                           )}
                           {getTeamName(rule.assigned_team_id) && (
@@ -278,11 +320,19 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
                         </>
                       )}
                       {(rule.action_type === "ticket" || rule.action_type === "assign_and_ticket") && (
-                        <p className="text-xs text-muted-foreground mb-1">
-                          <span className="font-medium">التذكرة:</span>{" "}
-                          {getCategoryLabel(rule.ticket_category)}
-                          {rule.ticket_title_template && ` — ${rule.ticket_title_template}`}
-                        </p>
+                        <>
+                          <p className="text-xs text-muted-foreground mb-1">
+                            <span className="font-medium">التذكرة:</span>{" "}
+                            {getCategoryLabel(rule.ticket_category)}
+                            {rule.ticket_title_template && ` — ${rule.ticket_title_template}`}
+                          </p>
+                          {(getAgentName(rule.ticket_assigned_agent_id) || getTeamName(rule.ticket_assigned_team_id)) && (
+                            <p className="text-xs text-muted-foreground mb-1">
+                              <span className="font-medium">مسؤول التذكرة:</span>{" "}
+                              {getAgentName(rule.ticket_assigned_agent_id) || getTeamName(rule.ticket_assigned_team_id)}
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -357,6 +407,35 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
               )}
             </div>
 
+            {/* Attachment Type Filter */}
+            <div className="space-y-2">
+              <Label className="text-xs flex items-center gap-1.5">
+                <Paperclip className="w-3.5 h-3.5" />
+                تصفية حسب نوع المرفقات (اختياري)
+              </Label>
+              <p className="text-[10px] text-muted-foreground">إذا حددت أنواعاً، القاعدة تعمل فقط إذا كان الإيميل يحتوي على مرفق من هذه الأنواع</p>
+              <div className="grid grid-cols-2 gap-2">
+                {COMMON_ATTACHMENT_TYPES.map(type => (
+                  <label key={type.value} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <Checkbox
+                      checked={form.attachment_types.includes(type.value)}
+                      onCheckedChange={() => toggleAttachmentType(type.value)}
+                    />
+                    <span>{type.label}</span>
+                  </label>
+                ))}
+              </div>
+              {form.attachment_types.length > 0 && (
+                <div className="flex gap-1 flex-wrap">
+                  {form.attachment_types.map(t => (
+                    <Badge key={t} variant="secondary" className="text-[10px] gap-1 cursor-pointer" onClick={() => toggleAttachmentType(t)}>
+                      .{t} ✕
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Action Type */}
             <div className="space-y-2">
               <Label className="text-xs">نوع الإجراء</Label>
@@ -376,11 +455,11 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
               </Select>
             </div>
 
-            {/* Assign fields */}
+            {/* Assign conversation fields */}
             {showAssignFields && (
               <>
                 <div className="space-y-2">
-                  <Label className="text-xs">الموظف</Label>
+                  <Label className="text-xs">إسناد المحادثة — الموظف</Label>
                   <Select value={form.assigned_agent_id} onValueChange={v => setForm(prev => ({ ...prev, assigned_agent_id: v === "_none" ? "" : v }))}>
                     <SelectTrigger className="bg-secondary border-0"><SelectValue placeholder="اختياري" /></SelectTrigger>
                     <SelectContent>
@@ -390,7 +469,7 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">الفريق</Label>
+                  <Label className="text-xs">إسناد المحادثة — الفريق</Label>
                   <Select value={form.assigned_team_id} onValueChange={v => setForm(prev => ({ ...prev, assigned_team_id: v === "_none" ? "" : v }))}>
                     <SelectTrigger className="bg-secondary border-0"><SelectValue placeholder="اختياري" /></SelectTrigger>
                     <SelectContent>
@@ -433,6 +512,29 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
                   />
                   <p className="text-[10px] text-muted-foreground">استخدم {"{{subject}}"} أو {"{{sender}}"} كمتغيرات</p>
                 </div>
+                
+                {/* Ticket assignment */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">مسؤول التذكرة — الموظف</Label>
+                  <Select value={form.ticket_assigned_agent_id} onValueChange={v => setForm(prev => ({ ...prev, ticket_assigned_agent_id: v === "_none" ? "" : v }))}>
+                    <SelectTrigger className="bg-secondary border-0"><SelectValue placeholder="اختياري" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">بدون</SelectItem>
+                      {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">مسؤول التذكرة — الفريق</Label>
+                  <Select value={form.ticket_assigned_team_id} onValueChange={v => setForm(prev => ({ ...prev, ticket_assigned_team_id: v === "_none" ? "" : v }))}>
+                    <SelectTrigger className="bg-secondary border-0"><SelectValue placeholder="اختياري" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">بدون</SelectItem>
+                      {teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <Label className="text-xs">إضافة المرفقات للتذكرة</Label>
                   <Switch checked={form.include_attachments} onCheckedChange={v => setForm(prev => ({ ...prev, include_attachments: v }))} />

@@ -1554,6 +1554,7 @@ export type Database = {
           action_type: string
           assigned_agent_id: string | null
           assigned_team_id: string | null
+          attachment_types: string[] | null
           created_at: string
           email_config_id: string | null
           id: string
@@ -1564,6 +1565,8 @@ export type Database = {
           pattern: string
           priority: number
           rule_type: string
+          ticket_assigned_agent_id: string | null
+          ticket_assigned_team_id: string | null
           ticket_category: string | null
           ticket_priority: string | null
           ticket_title_template: string | null
@@ -1573,6 +1576,7 @@ export type Database = {
           action_type?: string
           assigned_agent_id?: string | null
           assigned_team_id?: string | null
+          attachment_types?: string[] | null
           created_at?: string
           email_config_id?: string | null
           id?: string
@@ -1583,6 +1587,8 @@ export type Database = {
           pattern: string
           priority?: number
           rule_type?: string
+          ticket_assigned_agent_id?: string | null
+          ticket_assigned_team_id?: string | null
           ticket_category?: string | null
           ticket_priority?: string | null
           ticket_title_template?: string | null
@@ -1592,6 +1598,7 @@ export type Database = {
           action_type?: string
           assigned_agent_id?: string | null
           assigned_team_id?: string | null
+          attachment_types?: string[] | null
           created_at?: string
           email_config_id?: string | null
           id?: string
@@ -1602,6 +1609,8 @@ export type Database = {
           pattern?: string
           priority?: number
           rule_type?: string
+          ticket_assigned_agent_id?: string | null
+          ticket_assigned_team_id?: string | null
           ticket_category?: string | null
           ticket_priority?: string | null
           ticket_title_template?: string | null
@@ -1634,6 +1643,20 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_routing_rules_ticket_assigned_agent_id_fkey"
+            columns: ["ticket_assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_routing_rules_ticket_assigned_team_id_fkey"
+            columns: ["ticket_assigned_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]

@@ -766,6 +766,17 @@ async function fetchEmailsForConfig(
                 if (!allMatch) continue;
               }
 
+              // Check attachment type filter
+              const ruleAttachTypes: string[] = rule.attachment_types || [];
+              if (ruleAttachTypes.length > 0) {
+                const emailAttachments: any[] = msg.attachments || [];
+                const hasMatchingAttachment = emailAttachments.some((a: any) => {
+                  const filename = (a.filename || "").toLowerCase();
+                  return ruleAttachTypes.some((ext: string) => filename.endsWith(`.${ext.toLowerCase()}`));
+                });
+                if (!hasMatchingAttachment) continue;
+              }
+
               const actionType = rule.action_type || "assign";
 
               // Action: assign agent/team
@@ -792,6 +803,10 @@ async function fetchEmailsForConfig(
                   ? rule.ticket_title_template.replace(/\{\{subject\}\}/gi, subject).replace(/\{\{sender\}\}/gi, senderName)
                   : subject;
 
+                // Use ticket-specific assignment, fall back to conversation assignment
+                const ticketAgentId = rule.ticket_assigned_agent_id || rule.assigned_agent_id || null;
+                const ticketTeamId = rule.ticket_assigned_team_id || rule.assigned_team_id || null;
+
                 const ticketData: Record<string, any> = {
                   org_id: orgId,
                   conversation_id: convId,
@@ -802,7 +817,7 @@ async function fetchEmailsForConfig(
                   status: "open",
                   priority: rule.ticket_priority || "medium",
                   category: rule.ticket_category || "general",
-                  assigned_to: rule.assigned_agent_id || null,
+                  assigned_to: ticketAgentId,
                   metadata: {
                     source: "email_automation",
                     rule_id: rule.id,
@@ -811,9 +826,19 @@ async function fetchEmailsForConfig(
                   },
                 };
 
-                // Include attachments info if enabled
+                if (ticketTeamId) {
+                  ticketData.team_id = ticketTeamId;
+                }
+
+                // Include attachments info if enabled — filter by type if specified
                 if (rule.include_attachments !== false) {
-                  const attachments = msg.attachments || [];
+                  let attachments: any[] = msg.attachments || [];
+                  if (ruleAttachTypes.length > 0) {
+                    attachments = attachments.filter((a: any) => {
+                      const filename = (a.filename || "").toLowerCase();
+                      return ruleAttachTypes.some((ext: string) => filename.endsWith(`.${ext.toLowerCase()}`));
+                    });
+                  }
                   if (attachments.length > 0) {
                     ticketData.metadata.attachments = attachments.map((a: any) => ({
                       filename: a.filename || "attachment",
