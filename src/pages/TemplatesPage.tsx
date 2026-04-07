@@ -418,6 +418,7 @@ const TemplatesPage = () => {
     setEditingTemplate(null);
     setFormData(emptyForm);
     setShowSuggestions(false);
+    setSelectedFormChannel(metaChannels.length === 1 ? metaChannels[0].id : "");
     setShowFormDialog(true);
   };
 
