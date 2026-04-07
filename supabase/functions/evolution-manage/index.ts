@@ -679,40 +679,44 @@ serve(async (req) => {
 
       // If instance already has an active QR session, we need to restart it
       // to get a pairing code instead. Restart clears the QR and allows code-based pairing.
-      if (currentState === "connecting" || currentState === "close") {
-        console.log(`[pairing_code] Restarting instance to clear QR session`);
+      if (currentState === "connecting") {
+        console.log(`[pairing_code] Restarting instance to clear QR session (state=${currentState})`);
         try {
           await fetch(`${EVOLUTION_URL}/instance/restart/${instanceName}`, {
             method: "PUT",
             headers: evoHeaders,
           });
-          // Wait briefly for restart
-          await new Promise(r => setTimeout(r, 2000));
+          // Wait for restart to complete and state to become 'close'
+          await new Promise(r => setTimeout(r, 3000));
         } catch (e) {
           console.log(`[pairing_code] Restart failed: ${e}`);
         }
       }
 
-      // v2.3.7: GET /instance/connect/{instance}?number= requests a pairing code
-      console.log(`[pairing_code] Requesting: GET ${connectUrl}?number=${cleanPhone}`);
-      let codeRes = await fetch(`${connectUrl}?number=${encodeURIComponent(cleanPhone)}`, {
-        method: "GET",
+      // Evolution API requires POST with number in body to get pairing code
+      // GET with ?number= query param does NOT work (returns QR with pairingCode:null)
+      console.log(`[pairing_code] POST ${connectUrl} with number=${cleanPhone}`);
+      let codeRes = await fetch(connectUrl, {
+        method: "POST",
         headers: evoHeaders,
+        body: JSON.stringify({ number: cleanPhone }),
       });
       let codeData = await codeRes.json().catch(() => ({}));
-      console.log(`[pairing_code] GET response status=${codeRes.status} body=${JSON.stringify(codeData).slice(0, 500)}`);
+      console.log(`[pairing_code] POST response status=${codeRes.status} body=${JSON.stringify(codeData).slice(0, 500)}`);
 
-      // Fallback: POST with number in body
-      if (!codeRes.ok || !(codeData?.pairingCode || codeData?.data?.pairingCode || codeData?.code)) {
-        console.log(`[pairing_code] Fallback: POST ${connectUrl} with number=${cleanPhone}`);
-        const fallbackRes = await fetch(connectUrl, {
-          method: "POST",
+      // If POST didn't return pairingCode, try GET as fallback
+      if (codeRes.ok && !codeData?.pairingCode && !codeData?.data?.pairingCode) {
+        console.log(`[pairing_code] POST returned no pairingCode, trying GET with ?number=`);
+        const getRes = await fetch(`${connectUrl}?number=${encodeURIComponent(cleanPhone)}`, {
+          method: "GET",
           headers: evoHeaders,
-          body: JSON.stringify({ number: cleanPhone }),
         });
-        codeRes = fallbackRes;
-        codeData = await fallbackRes.json().catch(() => ({}));
-        console.log(`[pairing_code] POST response status=${codeRes.status} body=${JSON.stringify(codeData).slice(0, 500)}`);
+        const getData = await getRes.json().catch(() => ({}));
+        console.log(`[pairing_code] GET response status=${getRes.status} body=${JSON.stringify(getData).slice(0, 500)}`);
+        if (getData?.pairingCode || getData?.data?.pairingCode) {
+          codeRes = getRes;
+          codeData = getData;
+        }
       }
 
       if (!codeRes.ok) {
