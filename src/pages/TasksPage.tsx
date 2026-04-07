@@ -316,6 +316,7 @@ const TasksPage = () => {
     fetchTasks();
   };
 
+  const updateTaskStatus = async (taskId: string, status: string) => {
     try {
       await callTasksApi({ action: "update_status", task_id: taskId, status });
     } catch (error) {
