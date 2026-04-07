@@ -2851,7 +2851,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <button onClick={copyConversationLink} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-red-500 shrink-0" title="نسخ رابط المحادثة">
                 <Link2 className="w-4 h-4" />
               </button>
-              {/* Enter mode toggle */}
+              {/* Enter mode toggle - hidden for email */}
+              {!isEmailChannel && (
               <Popover>
                 <PopoverTrigger asChild>
                   <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title={enterToSend ? "Enter = إرسال" : "Enter = سطر جديد"}>
@@ -2877,6 +2878,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </button>
                 </PopoverContent>
               </Popover>
+              )}
             </div>
             {/* Send Button */}
             {(isNoteMode || !windowExpired) && (
