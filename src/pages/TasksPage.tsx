@@ -375,12 +375,13 @@ const TasksPage = () => {
                 </div>
                 <div className="space-y-2">
                   {dayTasks.map(task => {
-                    const statusCfg = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
+                    const displayStatus = getDisplayStatus(task);
+                    const statusCfg = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.upcoming;
                     const StatusIcon = statusCfg.icon;
                     const typeInfo = TASK_TYPES.find(t => t.value === task.task_type);
                     const priorityInfo = PRIORITIES.find(p => p.value === task.priority);
                     const agent = agents.find(a => a.id === task.assigned_to);
-                    const isCompleted = task.status === "completed";
+                    const isCompleted = displayStatus === "completed";
 
                     return (
                       <Card key={task.id} className={`hover:shadow-md transition-shadow ${isCompleted ? "opacity-60" : ""}`}>
@@ -446,35 +447,20 @@ const TasksPage = () => {
                               <Badge className={statusCfg.color}>
                                 <StatusIcon className="w-3 h-3 ml-1" /> {statusCfg.label}
                               </Badge>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  {task.status !== "in_progress" && (
-                                    <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "in_progress")}>
-                                      <RefreshCw className="w-4 h-4 ml-2" /> بدء التنفيذ
-                                    </DropdownMenuItem>
-                                  )}
-                                  {task.status !== "completed" && (
+                              {!isCompleted && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <MoreHorizontal className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
                                     <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "completed")}>
                                       <CheckCircle2 className="w-4 h-4 ml-2" /> إكمال
                                     </DropdownMenuItem>
-                                  )}
-                                  {task.status !== "forwarded" && (
-                                    <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "forwarded")}>
-                                      <Send className="w-4 h-4 ml-2" /> تم التوجيه
-                                    </DropdownMenuItem>
-                                  )}
-                                  {task.status !== "cancelled" && (
-                                    <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "cancelled")}>
-                                      <AlertCircle className="w-4 h-4 ml-2" /> إلغاء
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
                             </div>
                           </div>
                           {task.source_data && Object.keys(task.source_data).length > 0 && (
@@ -610,6 +596,29 @@ const TasksPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            {/* Busy slots for selected employee on selected date */}
+            {newTaskDate && assigneeBusySlots.length > 0 && (
+              <div className="rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-yellow-800 dark:text-yellow-300">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>مواعيد مشغولة في هذا اليوم ({assigneeBusySlots.length})</span>
+                </div>
+                <div className="space-y-1">
+                  {assigneeBusySlots.map(slot => (
+                    <div key={slot.id} className="flex items-center gap-2 text-xs text-yellow-700 dark:text-yellow-400">
+                      <Clock className="w-3 h-3 shrink-0" />
+                      <span className="font-mono">{slot.start_time?.slice(0,5)} - {slot.end_time?.slice(0,5)}</span>
+                      <span className="truncate text-muted-foreground">— {slot.title}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {newTaskDate && assigneeBusySlots.length === 0 && (
+              <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> لا توجد مهام في هذا اليوم — الموظف متاح
+              </p>
+            )}
           </div>
           <div className="px-4 pb-4 pt-2 border-t border-border shrink-0">
             <Button onClick={createTask} className="w-full h-10">إنشاء المهمة</Button>
