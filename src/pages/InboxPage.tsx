@@ -791,10 +791,10 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const handleStatusChange = useCallback(async (convId: string, status: "active" | "waiting" | "closed") => {
     const conv = conversations.find(c => c.id === convId);
     const prevStatus = conv?.status;
-    const updateData: Record<string, unknown> = { 
+    const updateData: { status: string; updated_at: string; closed_at: string | null } = { 
       status, 
       updated_at: new Date().toISOString(),
-      ...(status === "closed" ? { closed_at: new Date().toISOString() } : { closed_at: null }),
+      closed_at: status === "closed" ? new Date().toISOString() : null,
     };
     
     const { error: updateError } = await supabase

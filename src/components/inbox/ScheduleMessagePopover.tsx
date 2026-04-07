@@ -179,7 +179,7 @@ const ScheduleMessagePopover = ({
   };
 
   const handleEdit = async (id: string) => {
-    const updates: Record<string, unknown> = {};
+    const updates: { content?: string; scheduled_at?: string } = {};
     if (editContent.trim()) updates.content = editContent.trim();
     if (editDate) {
       try {
