@@ -391,6 +391,16 @@ const ConversationSettingsPage = () => {
         </div>
       </div>
 
+      {/* SLA Policies */}
+      <div className="bg-card rounded-2xl border shadow-card p-5">
+        <SlaManagement />
+      </div>
+
+      {/* CSAT Dashboard */}
+      <div className="bg-card rounded-2xl border shadow-card p-5">
+        <CsatDashboard />
+      </div>
+
       {/* Saved Reply Dialog */}
       <Dialog open={showReplyDialog} onOpenChange={setShowReplyDialog}>
         <DialogContent className="max-w-md" dir="rtl">
