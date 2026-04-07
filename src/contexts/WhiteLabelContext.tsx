@@ -34,8 +34,8 @@ const defaultBrand: WhiteLabelBrand = {
   slug: "respondly",
   logo_url: null,
   favicon_url: null,
-  primary_color: "#7c3aed",
-  secondary_color: "#a78bfa",
+  primary_color: "#25D366",
+  secondary_color: "#128C7E",
   accent_color: "#f59e0b",
   background_color: "#ffffff",
   foreground_color: "#1a1a2e",
@@ -44,7 +44,7 @@ const defaultBrand: WhiteLabelBrand = {
   support_phone: null,
   privacy_policy_url: null,
   terms_url: null,
-  is_default: true,
+  is_default: false,
 };
 
 const WhiteLabelContext = createContext<WhiteLabelContextType>({
@@ -144,16 +144,16 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
           setBrand(domainPartner as WhiteLabelBrand);
           applyBrandCssVars(domainPartner as WhiteLabelBrand);
         } else {
-          // Use default Respondly
-          const { data: defaultP } = await supabase
+          // Use Respondly as fallback
+          const { data: respondlyP } = await supabase
             .from("white_label_partners")
             .select("*")
-            .eq("is_default", true)
+            .eq("slug", "respondly")
             .maybeSingle();
 
-          if (defaultP) {
-            setBrand(defaultP as WhiteLabelBrand);
-            applyBrandCssVars(defaultP as WhiteLabelBrand);
+          if (respondlyP) {
+            setBrand(respondlyP as WhiteLabelBrand);
+            applyBrandCssVars(respondlyP as WhiteLabelBrand);
           }
         }
       } catch {
