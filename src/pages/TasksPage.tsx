@@ -30,6 +30,7 @@ interface Task {
   status: string;
   priority: string;
   assigned_to: string | null;
+  created_by: string | null;
   created_by_type: string;
   source_data: any;
   customer_phone: string | null;
@@ -94,6 +95,8 @@ const TasksPage = () => {
   const [agents, setAgents] = useState<{ id: string; full_name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("tasks");
+  const [taskScope, setTaskScope] = useState<"mine" | "team">("mine");
+  const canSeeTeam = effectiveRole === "admin" || effectiveRole === "supervisor";
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [showNewTask, setShowNewTask] = useState(false);
@@ -256,7 +259,13 @@ const TasksPage = () => {
     fetchConfigs();
   };
 
-  const filteredTasks = tasks.filter(t => {
+  const scopedTasks = tasks.filter(t => {
+    if (taskScope === "mine") return t.assigned_to === profile?.id || t.created_by === profile?.id;
+    // "team" scope: admin sees all, supervisor sees team
+    return true;
+  });
+
+  const filteredTasks = scopedTasks.filter(t => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (typeFilter !== "all" && t.task_type !== typeFilter) return false;
     return true;
@@ -283,10 +292,10 @@ const TasksPage = () => {
   });
 
   const stats = {
-    total: tasks.length,
-    pending: tasks.filter(t => t.status === "pending").length,
-    in_progress: tasks.filter(t => t.status === "in_progress").length,
-    completed: tasks.filter(t => t.status === "completed").length,
+    total: scopedTasks.length,
+    pending: scopedTasks.filter(t => t.status === "pending").length,
+    in_progress: scopedTasks.filter(t => t.status === "in_progress").length,
+    completed: scopedTasks.filter(t => t.status === "completed").length,
   };
 
   return (
@@ -328,6 +337,27 @@ const TasksPage = () => {
         </TabsList>
 
         <TabsContent value="tasks" className="space-y-4">
+          {/* Scope tabs */}
+          {canSeeTeam && (
+            <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+              <button
+                onClick={() => setTaskScope("mine")}
+                className={cn("px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                  taskScope === "mine" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                مهامي
+              </button>
+              <button
+                onClick={() => setTaskScope("team")}
+                className={cn("px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                  taskScope === "team" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {effectiveRole === "admin" ? "مهام الموظفين" : "مهام الفريق"}
+              </button>
+            </div>
+          )}
           {/* Filters */}
           <div className="flex flex-wrap gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
