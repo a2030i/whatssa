@@ -199,8 +199,37 @@ const EmailConfigSection = () => {
     if (orgId) {
       loadConfigs();
       loadTeamsAndAgents();
+      loadRoutingRules();
     }
   }, [orgId]);
+
+  const loadRoutingRules = async () => {
+    const { data } = await supabase.from("email_routing_rules").select("*").eq("org_id", orgId!).order("priority", { ascending: false });
+    setRoutingRules((data as any[]) || []);
+  };
+
+  const saveRoutingRule = async () => {
+    if (!routingForm.pattern.trim()) { toast.error("أدخل النمط (دومين أو إيميل)"); return; }
+    const { error } = await supabase.from("email_routing_rules").insert({
+      org_id: orgId!,
+      rule_type: routingForm.rule_type,
+      pattern: routingForm.pattern.trim().toLowerCase(),
+      assigned_agent_id: routingForm.assigned_agent_id || null,
+      assigned_team_id: routingForm.assigned_team_id || null,
+      email_config_id: routingForm.email_config_id || null,
+    });
+    if (error) { toast.error("فشل الحفظ"); return; }
+    toast.success("تم إضافة قاعدة التوجيه");
+    setShowRoutingForm(false);
+    setRoutingForm({ rule_type: "domain", pattern: "", assigned_agent_id: "", assigned_team_id: "", email_config_id: "" });
+    loadRoutingRules();
+  };
+
+  const deleteRoutingRule = async (id: string) => {
+    await supabase.from("email_routing_rules").delete().eq("id", id);
+    toast.success("تم حذف القاعدة");
+    loadRoutingRules();
+  };
 
   const loadTeamsAndAgents = async () => {
     const [{ data: t }, { data: a }] = await Promise.all([
