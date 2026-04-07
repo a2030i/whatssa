@@ -338,11 +338,11 @@ const AdminAccounts = () => {
                     </div>
                     <div>
                       <label className="text-[10px] text-muted-foreground">تاريخ الإنشاء</label>
-                      <p className="text-xs mt-1 bg-secondary rounded-lg px-3 py-2">{org.created_at ? new Date(org.created_at).toLocaleDateString("ar-SA") : "-"}</p>
+                      <p className="text-xs mt-1 bg-secondary rounded-lg px-3 py-2">{org.created_at ? new Date(org.created_at).toLocaleDateString("ar-SA-u-ca-gregory") : "-"}</p>
                     </div>
                     <div>
                       <label className="text-[10px] text-muted-foreground">نهاية التجربة</label>
-                      <p className="text-xs mt-1 bg-secondary rounded-lg px-3 py-2">{org.trial_ends_at ? new Date(org.trial_ends_at).toLocaleDateString("ar-SA") : "-"}</p>
+                      <p className="text-xs mt-1 bg-secondary rounded-lg px-3 py-2">{org.trial_ends_at ? new Date(org.trial_ends_at).toLocaleDateString("ar-SA-u-ca-gregory") : "-"}</p>
                     </div>
                   </div>
 

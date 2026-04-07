@@ -147,7 +147,7 @@ const InternalNotes = ({ conversationId }: InternalNotesProps) => {
 
   const formatTime = (iso: string) => {
     const d = new Date(iso);
-    return d.toLocaleString("ar-SA", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" });
+    return d.toLocaleString("ar-SA-u-ca-gregory", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" });
   };
 
   return (

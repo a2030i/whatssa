@@ -192,13 +192,13 @@ const AdminMeta = () => {
                     <div>
                       <span className="text-muted-foreground">انتهاء التوكن:</span>
                       <span className="mr-1 font-medium">
-                        {config.token_expires_at ? new Date(config.token_expires_at).toLocaleDateString("ar-SA") : "غير محدد"}
+                        {config.token_expires_at ? new Date(config.token_expires_at).toLocaleDateString("ar-SA-u-ca-gregory") : "غير محدد"}
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">آخر تجديد:</span>
                       <span className="mr-1 font-medium">
-                        {config.token_last_refreshed_at ? new Date(config.token_last_refreshed_at).toLocaleDateString("ar-SA") : "لم يتم"}
+                        {config.token_last_refreshed_at ? new Date(config.token_last_refreshed_at).toLocaleDateString("ar-SA-u-ca-gregory") : "لم يتم"}
                       </span>
                     </div>
                   </div>

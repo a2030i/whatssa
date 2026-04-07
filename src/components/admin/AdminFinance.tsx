@@ -159,7 +159,7 @@ const AdminFinance = () => {
                 {t.type === "credit" ? <ArrowUpCircle className="w-4 h-4 text-primary" /> : <ArrowDownCircle className="w-4 h-4 text-destructive" />}
                 <div>
                   <p className="text-xs font-medium">{t.description || t.type}</p>
-                  <p className="text-[10px] text-muted-foreground">{getOrgName(t.org_id)} · {new Date(t.created_at).toLocaleDateString("ar-SA")}</p>
+                  <p className="text-[10px] text-muted-foreground">{getOrgName(t.org_id)} · {new Date(t.created_at).toLocaleDateString("ar-SA-u-ca-gregory")}</p>
                 </div>
               </div>
               <div className="text-left">

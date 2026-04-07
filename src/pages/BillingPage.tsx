@@ -109,7 +109,7 @@ const BillingPage = () => {
           <p className="text-xs text-muted-foreground">آخر دفعة</p>
           <p className="text-sm font-semibold mt-1">
             {payments.length > 0
-              ? new Date(payments[0].created_at).toLocaleDateString("ar-SA", {
+              ? new Date(payments[0].created_at).toLocaleDateString("ar-SA-u-ca-gregory", {
                   year: "numeric",
                   month: "short",
                   day: "numeric",
@@ -184,7 +184,7 @@ const BillingPage = () => {
                       )}
                       <span className="flex items-center gap-1">
                         <CalendarDays className="w-3 h-3" />
-                        {new Date(payment.created_at).toLocaleDateString("ar-SA", {
+                        {new Date(payment.created_at).toLocaleDateString("ar-SA-u-ca-gregory", {
                           year: "numeric",
                           month: "short",
                           day: "numeric",

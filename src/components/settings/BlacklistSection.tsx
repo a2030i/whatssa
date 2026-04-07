@@ -137,7 +137,7 @@ const BlacklistSection = () => {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-muted-foreground">
-                  {new Date(num.created_at).toLocaleDateString("ar-SA")}
+                  {new Date(num.created_at).toLocaleDateString("ar-SA-u-ca-gregory")}
                 </span>
                 <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeNumber(num.id)}>
                   <Trash2 className="w-3.5 h-3.5" />

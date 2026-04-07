@@ -87,7 +87,7 @@ const NotificationBell = () => {
     if (diffMin < 60) return `منذ ${diffMin} د`;
     const diffH = Math.floor(diffMin / 60);
     if (diffH < 24) return `منذ ${diffH} س`;
-    return d.toLocaleDateString("ar-SA");
+    return d.toLocaleDateString("ar-SA-u-ca-gregory");
   };
 
   return (

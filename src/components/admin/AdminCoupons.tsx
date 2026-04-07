@@ -111,7 +111,7 @@ const AdminCoupons = () => {
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     {c.discount_type === "percentage" ? `${c.discount_value}%` : `${c.discount_value} ر.س`} خصم
                     · {c.used_count}/{c.max_uses || "∞"} استخدام
-                    {c.valid_until && ` · حتى ${new Date(c.valid_until).toLocaleDateString("ar-SA")}`}
+                    {c.valid_until && ` · حتى ${new Date(c.valid_until).toLocaleDateString("ar-SA-u-ca-gregory")}`}
                   </p>
                 </div>
               </div>

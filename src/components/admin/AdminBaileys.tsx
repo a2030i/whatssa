@@ -417,7 +417,7 @@ const AdminBaileys = () => {
               {/* Last checked */}
               {inst.last_checked_at && (
                 <p className="text-[9px] text-muted-foreground">
-                  آخر فحص: {new Date(inst.last_checked_at).toLocaleString("ar-SA")}
+                  آخر فحص: {new Date(inst.last_checked_at).toLocaleString("ar-SA-u-ca-gregory")}
                 </p>
               )}
             </div>

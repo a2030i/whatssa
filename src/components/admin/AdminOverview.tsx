@@ -631,7 +631,7 @@ const AdminOverview = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{p.full_name || "بدون اسم"}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      آخر نشاط: {p.last_seen_at ? new Date(p.last_seen_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }) : "غير محدد"}
+                      آخر نشاط: {p.last_seen_at ? new Date(p.last_seen_at).toLocaleTimeString("ar-SA-u-ca-gregory", { hour: "2-digit", minute: "2-digit" }) : "غير محدد"}
                     </p>
                   </div>
                 </div>
@@ -702,7 +702,7 @@ const AdminOverview = () => {
                 </div>
                 <div>
                   <p className="text-xs font-medium">{org.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{new Date(org.created_at).toLocaleDateString("ar-SA")}</p>
+                  <p className="text-[10px] text-muted-foreground">{new Date(org.created_at).toLocaleDateString("ar-SA-u-ca-gregory")}</p>
                 </div>
               </div>
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${

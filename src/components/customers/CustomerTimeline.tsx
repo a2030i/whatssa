@@ -74,7 +74,7 @@ const CustomerTimeline = ({ customerId, customerPhone }: CustomerTimelineProps) 
         id: `order-${o.id}`,
         type: "order",
         title: `طلب #${o.order_number || o.id.slice(0, 8)}`,
-        description: `${Number(o.total || 0).toLocaleString("ar-SA")} ${o.currency || "SAR"} — ${statusMap[o.status] || o.status}`,
+        description: `${Number(o.total || 0).toLocaleString("ar-SA-u-ca-gregory")} ${o.currency || "SAR"} — ${statusMap[o.status] || o.status}`,
         date: o.created_at,
         status: o.status,
         metadata: { payment_status: o.payment_status },
@@ -113,10 +113,10 @@ const CustomerTimeline = ({ customerId, customerPhone }: CustomerTimelineProps) 
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return `اليوم ${date.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}`;
+    if (diffDays === 0) return `اليوم ${date.toLocaleTimeString("ar-SA-u-ca-gregory", { hour: "2-digit", minute: "2-digit" })}`;
     if (diffDays === 1) return "أمس";
     if (diffDays < 7) return `قبل ${diffDays} أيام`;
-    return date.toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" });
+    return date.toLocaleDateString("ar-SA-u-ca-gregory", { year: "numeric", month: "short", day: "numeric" });
   };
 
   if (loading) {

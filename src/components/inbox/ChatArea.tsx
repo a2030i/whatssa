@@ -1690,7 +1690,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           conversationId: conversation.id,
           text: "[audio]",
           sender: "agent",
-          timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }),
+          timestamp: new Date().toLocaleTimeString("ar-SA-u-ca-gregory", { hour: "2-digit", minute: "2-digit" }),
           status: "sent",
           type: "audio",
           mediaUrl: localUrl,

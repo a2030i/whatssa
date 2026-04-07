@@ -424,8 +424,8 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     toast.success(`تم نسخ ${label}`);
   };
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  const formatCurrency = (v: number, cur: string = "SAR") => `${Number(v || 0).toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
+  const formatDate = (d: string) => new Date(d).toLocaleDateString("ar-SA-u-ca-gregory", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const formatCurrency = (v: number, cur: string = "SAR") => `${Number(v || 0).toLocaleString("ar-SA-u-ca-gregory", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
 
   const totalSpent = orders
     .filter(o => !["cancelled", "refunded"].includes(o.status))
@@ -495,7 +495,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                 <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed max-w-full">{groupInfo.description}</p>
               )}
               <p className="text-[10px] text-muted-foreground mt-1">
-                {groupInfo?.creation ? `أُنشئ ${new Date(groupInfo.creation * 1000).toLocaleDateString("ar-SA")}` : ""}
+                {groupInfo?.creation ? `أُنشئ ${new Date(groupInfo.creation * 1000).toLocaleDateString("ar-SA-u-ca-gregory")}` : ""}
                 {groupParticipants.length > 0 && ` · ${groupParticipants.length} عضو`}
               </p>
             </div>

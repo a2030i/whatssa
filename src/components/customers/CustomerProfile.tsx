@@ -137,8 +137,8 @@ const CustomerProfile = ({ customerId, onBack }: CustomerProfileProps) => {
 
   if (!customer) return null;
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" });
-  const formatCurrency = (v: number, cur: string = "SAR") => `${v.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
+  const formatDate = (d: string) => new Date(d).toLocaleDateString("ar-SA-u-ca-gregory", { year: "numeric", month: "short", day: "numeric" });
+  const formatCurrency = (v: number, cur: string = "SAR") => `${v.toLocaleString("ar-SA-u-ca-gregory", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
 
   return (
     <div className="space-y-4" dir="rtl">
