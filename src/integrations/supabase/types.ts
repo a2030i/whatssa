@@ -1461,6 +1461,91 @@ export type Database = {
           },
         ]
       }
+      email_message_details: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          direction: string
+          email_attachments: Json | null
+          email_bcc: string | null
+          email_cc: string | null
+          email_from: string | null
+          email_from_name: string | null
+          email_in_reply_to: string | null
+          email_message_id: string | null
+          email_references: string | null
+          email_subject: string | null
+          email_to: string | null
+          id: string
+          message_id: string
+          org_id: string
+          sent_by: string | null
+          sent_by_name: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          direction?: string
+          email_attachments?: Json | null
+          email_bcc?: string | null
+          email_cc?: string | null
+          email_from?: string | null
+          email_from_name?: string | null
+          email_in_reply_to?: string | null
+          email_message_id?: string | null
+          email_references?: string | null
+          email_subject?: string | null
+          email_to?: string | null
+          id?: string
+          message_id: string
+          org_id: string
+          sent_by?: string | null
+          sent_by_name?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          email_attachments?: Json | null
+          email_bcc?: string | null
+          email_cc?: string | null
+          email_from?: string | null
+          email_from_name?: string | null
+          email_in_reply_to?: string | null
+          email_message_id?: string | null
+          email_references?: string | null
+          email_subject?: string | null
+          email_to?: string | null
+          id?: string
+          message_id?: string
+          org_id?: string
+          sent_by?: string | null
+          sent_by_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_message_details_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_message_details_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_message_details_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flow_submissions: {
         Row: {
           conversation_id: string | null
