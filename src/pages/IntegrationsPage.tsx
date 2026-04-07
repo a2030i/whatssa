@@ -84,6 +84,7 @@ const IntegrationsPage = () => {
   const [flowStep, setFlowStep] = useState<FlowStep>("idle");
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
   const [accessToken, setAccessToken] = useState("");
+  const fbCallbackFiredRef = useRef(false);
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isReviewMode, setIsReviewMode] = useState(() => window.localStorage.getItem("meta-review-mode") === "1");
@@ -186,18 +187,79 @@ const IntegrationsPage = () => {
     if (orgId) loadConfigs();
   }, [orgId]);
 
-  // Watchdog: auto-recover from stuck "connecting" state after 3 minutes
-  // Uses a longer timeout because the Meta popup itself can take a while
+  // Smart recovery: when in "connecting" state, poll to detect popup closure
+  // If FB.login callback never fired, try recovering the token or check DB
   useEffect(() => {
     if (flowStep !== "connecting") return;
-    const timer = setTimeout(() => {
-      console.warn("[Embedded Signup] Watchdog: connecting state timed out after 3min");
-      setFlowStep("idle");
-      setIsLoading(false);
-      loadConfigs(true);
-      toast.info("انتهت مهلة الربط — تحقق من حالة القناة أو أعد المحاولة");
-    }, 180000);
-    return () => clearTimeout(timer);
+    let cancelled = false;
+    let elapsed = 0;
+    const POLL_MS = 2000;
+    const MAX_MS = 180000; // 3 min absolute max
+
+    const interval = setInterval(async () => {
+      elapsed += POLL_MS;
+
+      // If callback already fired, the flow will transition on its own — stop polling
+      if (fbCallbackFiredRef.current || cancelled) {
+        clearInterval(interval);
+        return;
+      }
+
+      // After 10s start checking if popup was closed (user returned to page)
+      if (elapsed >= 10000) {
+        // Try FB.getAuthResponse as a last-ditch effort
+        try {
+          const FB = (window as any).FB;
+          if (FB) {
+            const auth = FB.getAuthResponse();
+            if (auth?.accessToken) {
+              console.log("[Embedded Signup] Recovered token via FB.getAuthResponse after popup close");
+              clearInterval(interval);
+              if (!cancelled) handleDirectToken(auth.accessToken);
+              return;
+            }
+          }
+        } catch { /* ignore */ }
+
+        // Check if a new channel appeared in the DB (connection completed server-side)
+        try {
+          const { data: freshConfigs } = await supabase.rpc("get_org_whatsapp_channels");
+          const orgConfigs = ((freshConfigs || []) as WhatsAppConfig[]).filter(
+            (c) => c.org_id === orgId && c.channel_type !== "evolution" && c.is_connected && c.phone_number_id
+          );
+          const existingIds = configs.map(c => c.id);
+          const newChannel = orgConfigs.find(c => !existingIds.includes(c.id));
+          if (newChannel) {
+            console.log("[Embedded Signup] Found new connected channel in DB, recovering");
+            clearInterval(interval);
+            if (!cancelled) {
+              setFlowStep("idle");
+              setIsLoading(false);
+              await loadConfigs(true);
+              toast.success("تم ربط الرقم بنجاح!");
+            }
+            return;
+          }
+        } catch { /* ignore */ }
+      }
+
+      // Absolute timeout
+      if (elapsed >= MAX_MS) {
+        clearInterval(interval);
+        if (!cancelled) {
+          console.warn("[Embedded Signup] Watchdog: connecting state timed out after 3min");
+          setFlowStep("idle");
+          setIsLoading(false);
+          loadConfigs(true);
+          toast.info("انتهت مهلة الربط — تحقق من حالة القناة أو أعد المحاولة");
+        }
+      }
+    }, POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [flowStep]);
 
   const loadConfigs = async (skipAutoSync = false) => {
@@ -403,6 +465,7 @@ const IntegrationsPage = () => {
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
     clearEmbeddedSignupSelection();
+    fbCallbackFiredRef.current = false; // Reset flag before starting
     setFlowStep("connecting");
     setIsLoading(true);
     setErrorMessage("");
@@ -411,6 +474,7 @@ const IntegrationsPage = () => {
 
     FB.login(
       (response: any) => {
+        fbCallbackFiredRef.current = true; // Mark that callback fired
         console.log("[Embedded Signup] FB.login response:", JSON.stringify(response));
         if (response.authResponse) {
           const code = response.authResponse.code;
