@@ -759,12 +759,35 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
     if (error || (data?.error && !data?.queued)) {
       const errMsg = data?.error || (error instanceof Error ? error.message : typeof error === "string" ? error : "فشل إرسال الرسالة");
       console.error("[send] function:", sendFunction, "error:", error, "data:", data);
-      toast.error(errMsg);
-      // Remove optimistic message on failure
-      setAllMessages((prev) => ({
-        ...prev,
-        [convId]: (prev[convId] || []).filter((m) => m.id !== optimisticId),
-      }));
+      
+      // Safety paused: show persistent warning instead of generic error
+      if (data?.safety_paused) {
+        // Calculate remaining time
+        let timeInfo = "";
+        if (data?.reset_at) {
+          const diff = new Date(data.reset_at).getTime() - Date.now();
+          if (diff > 0) {
+            const mins = Math.floor(diff / 60000);
+            timeInfo = mins >= 60 ? ` (يتجدد خلال ${Math.floor(mins / 60)}س ${mins % 60}د)` : ` (يتجدد خلال ${mins}د)`;
+          }
+        }
+        toast.warning(`⛔ الإرسال متوقف مؤقتاً لحماية الرقم${timeInfo}. الرسالة ستُعلّق ⏳ وترسل تلقائياً فور تجدد الحد.`, {
+          duration: 12000,
+          icon: "🛡️",
+        });
+        // Keep optimistic message but mark as pending
+        setAllMessages((prev) => ({
+          ...prev,
+          [convId]: (prev[convId] || []).map((m) => m.id === optimisticId ? { ...m, status: "pending" } : m),
+        }));
+      } else {
+        toast.error(errMsg);
+        // Remove optimistic message on failure
+        setAllMessages((prev) => ({
+          ...prev,
+          [convId]: (prev[convId] || []).filter((m) => m.id !== optimisticId),
+        }));
+      }
     } else if (data?.queued) {
       // Message was queued for later delivery
       toast.info("⏳ الرسالة معلّقة - سيتم إرسالها تلقائياً عند اتصال القناة", { duration: 5000 });
