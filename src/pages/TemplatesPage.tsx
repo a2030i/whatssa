@@ -370,12 +370,20 @@ const TemplatesPage = () => {
     if (showRefreshState) setIsRefreshing(true);
     else setIsLoading(true);
 
-    const { data, error } = await invokeCloud("whatsapp-templates", {
-      body: { action: "list" },
-    });
+    // Load channels and templates in parallel
+    const [channelsRes, templatesRes] = await Promise.all([
+      invokeCloud("whatsapp-templates", { body: { action: "channels" } }),
+      invokeCloud("whatsapp-templates", { body: { action: "list_all" } }),
+    ]);
 
-    if (error || data?.error) {
-      const errMsg = data?.error || "";
+    // Process channels
+    if (!channelsRes.error && channelsRes.data?.channels) {
+      setMetaChannels(channelsRes.data.channels);
+    }
+
+    // Process templates
+    if (templatesRes.error || templatesRes.data?.error) {
+      const errMsg = templatesRes.data?.error || "";
       if (errMsg.toLowerCase().includes("whatsapp") || errMsg.includes("واتساب")) {
         setNoWhatsApp(true);
       } else {
@@ -384,7 +392,7 @@ const TemplatesPage = () => {
       setTemplates([]);
     } else {
       setNoWhatsApp(false);
-      setTemplates((data?.templates || []).map(mapMetaTemplate));
+      setTemplates((templatesRes.data?.templates || []).map(mapMetaTemplate));
     }
 
     setIsLoading(false);
@@ -401,9 +409,10 @@ const TemplatesPage = () => {
       if (query && !template.name.toLowerCase().includes(query) && !template.body.toLowerCase().includes(query)) return false;
       if (categoryFilter !== "all" && template.category !== categoryFilter) return false;
       if (statusFilter !== "all" && template.status !== statusFilter) return false;
+      if (channelFilter !== "all" && template.channelId !== channelFilter) return false;
       return true;
     });
-  }, [templates, searchQuery, categoryFilter, statusFilter]);
+  }, [templates, searchQuery, categoryFilter, statusFilter, channelFilter]);
 
   const openCreateDialog = () => {
     setEditingTemplate(null);
