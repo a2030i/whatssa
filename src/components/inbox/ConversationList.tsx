@@ -61,7 +61,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const { orgId, profile, userRole, isSuperAdmin } = useAuth();
   const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeQuickFilter, setActiveQuickFilter] = useState("mine");
+  const [activeQuickFilter, setActiveQuickFilter] = useState(inboxMode === "email" ? "all" : "mine");
   const [agentFilter, setAgentFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
