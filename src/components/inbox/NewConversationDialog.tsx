@@ -407,12 +407,12 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           .maybeSingle();
 
         if (recentConv) {
-          // Check if customer sent a message within 24h (incoming message)
+          // Check if customer sent a message within 24h
           const { data: incomingMsg } = await supabase
             .from("messages")
             .select("id")
             .eq("conversation_id", recentConv.id)
-            .eq("direction", "incoming")
+            .eq("sender", "customer")
             .gte("created_at", twentyFourAgo)
             .limit(1)
             .maybeSingle();
