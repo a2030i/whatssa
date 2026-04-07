@@ -189,8 +189,8 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
     };
 
     const response = editingRule
-      ? await supabase.from("email_routing_rules").update(payload).eq("id", editingRule.id)
-      : await supabase.from("email_routing_rules").insert(payload);
+      ? await (supabase.from("email_routing_rules") as any).update(payload).eq("id", editingRule.id)
+      : await (supabase.from("email_routing_rules") as any).insert(payload);
 
     if (response.error) {
       toast.error("فشل الحفظ");
