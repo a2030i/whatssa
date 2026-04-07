@@ -7,6 +7,7 @@ import SmartInsight from "@/components/dashboard/SmartInsight";
 import VerificationCard from "@/components/dashboard/VerificationCard";
 import TokenAlert from "@/components/dashboard/TokenAlert";
 import WhatsAppSafetyBanner from "@/components/dashboard/WhatsAppSafetyBanner";
+import LiveMonitorWidget from "@/components/dashboard/LiveMonitorWidget";
 import { Loader2, LayoutDashboard } from "lucide-react";
 
 const DashboardPage = () => {
