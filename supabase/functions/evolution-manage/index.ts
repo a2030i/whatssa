@@ -659,12 +659,13 @@ serve(async (req) => {
       }
 
       // Ensure instance exists and is in connecting state
+      let currentState = "unknown";
       try {
         const stateRes = await fetch(`${EVOLUTION_URL}/instance/connectionState/${instanceName}`, {
           headers: evoHeaders,
         });
         const stateData = await stateRes.json();
-        const currentState = stateData.instance?.state || stateData.state || "unknown";
+        currentState = stateData.instance?.state || stateData.state || "unknown";
 
         if (currentState === "open") {
           return json({ success: true, status: "open", pairing_code: null });
@@ -676,8 +677,23 @@ serve(async (req) => {
       const cleanPhone = phoneNumber.replace(/\D/g, "");
       const connectUrl = `${EVOLUTION_URL}/instance/connect/${instanceName}`;
 
-      // v2.3.7: GET /instance/connect/{instance} returns QR by default
-      // Adding ?number= requests a pairing code instead
+      // If instance already has an active QR session, we need to restart it
+      // to get a pairing code instead. Restart clears the QR and allows code-based pairing.
+      if (currentState === "connecting" || currentState === "close") {
+        console.log(`[pairing_code] Restarting instance to clear QR session`);
+        try {
+          await fetch(`${EVOLUTION_URL}/instance/restart/${instanceName}`, {
+            method: "PUT",
+            headers: evoHeaders,
+          });
+          // Wait briefly for restart
+          await new Promise(r => setTimeout(r, 2000));
+        } catch (e) {
+          console.log(`[pairing_code] Restart failed: ${e}`);
+        }
+      }
+
+      // v2.3.7: GET /instance/connect/{instance}?number= requests a pairing code
       console.log(`[pairing_code] Requesting: GET ${connectUrl}?number=${cleanPhone}`);
       let codeRes = await fetch(`${connectUrl}?number=${encodeURIComponent(cleanPhone)}`, {
         method: "GET",
