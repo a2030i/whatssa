@@ -4434,44 +4434,67 @@ export type Database = {
       get_org_whatsapp_channels: {
         Args: never
         Returns: {
-          account_mode: string
+          access_token: string
+          account_mode: string | null
+          app_scoped_user_id: string | null
           business_account_id: string
-          business_name: string
-          channel_label: string
+          business_name: string | null
+          channel_age_days: number | null
+          channel_label: string | null
           channel_type: string
-          code_verification_status: string
-          created_at: string
-          data_localization_region: string
-          default_agent_id: string
-          default_team_id: string
-          display_phone: string
-          evolution_instance_name: string
-          evolution_instance_status: string
-          exclude_supervisors: boolean
-          health_status: string
+          code_verification_status: string | null
+          created_at: string | null
+          data_localization_region: string | null
+          default_agent_id: string | null
+          default_team_id: string | null
+          display_phone: string | null
+          evolution_instance_name: string | null
+          evolution_instance_status: string | null
+          exclude_supervisors: boolean | null
+          health_status: Json | null
           id: string
-          is_connected: boolean
-          messaging_limit_tier: string
-          meta_business_id: string
-          migrated_at: string
-          migration_error: string
-          migration_source: string
-          migration_status: string
-          name_status: string
-          onboarding_type: string
-          org_id: string
+          is_connected: boolean | null
+          last_register_attempt_at: string | null
+          messaging_limit_tier: string | null
+          meta_business_id: string | null
+          migrated_at: string | null
+          migration_error: string | null
+          migration_source: string | null
+          migration_status: string | null
+          name_status: string | null
+          onboarding_type: string | null
+          org_id: string | null
           phone_number_id: string
-          previous_provider: string
-          quality_rating: string
-          rate_limit_settings: Json
-          registered_at: string
-          registration_error: string
-          registration_status: string
-          settings: Json
-          throughput_level: string
-          token_expires_at: string
-          updated_at: string
+          previous_provider: string | null
+          quality_rating: string | null
+          rate_limit_settings: Json | null
+          registered_at: string | null
+          registration_error: string | null
+          registration_status: string | null
+          safety_limits_enabled: boolean
+          safety_max_per_day: number | null
+          safety_max_per_hour: number | null
+          safety_max_unique_per_hour: number | null
+          safety_paused: boolean | null
+          safety_paused_at: string | null
+          safety_paused_reason: string | null
+          settings: Json | null
+          throughput_level: string | null
+          token_expires_at: string | null
+          token_last_refreshed_at: string | null
+          token_refresh_error: string | null
+          updated_at: string | null
+          webhook_verify_token: string
+          welcome_message_enabled: boolean | null
+          welcome_message_new_only: boolean | null
+          welcome_message_text: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "whatsapp_config"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
