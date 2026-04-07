@@ -90,6 +90,19 @@ const GlobalSearch = () => {
         }
       });
 
+      // Email details results
+      (emailDetailRes.data || []).forEach((ed: any) => {
+        if (!msgConvIds.has(ed.conversation_id)) {
+          msgConvIds.add(ed.conversation_id);
+          items.push({
+            type: "email",
+            id: ed.conversation_id,
+            title: ed.email_from_name || ed.email_from || "إيميل",
+            subtitle: ed.email_subject?.slice(0, 60) || "",
+          });
+        }
+      });
+
       (custRes.data || []).forEach((c) => {
         items.push({
           type: "customer",
