@@ -39,10 +39,10 @@ const GlobalSearch = () => {
     setLoading(true);
     try {
       const searchTerm = `%${q}%`;
-      const [convRes, custRes, msgRes] = await Promise.all([
+      const [convRes, custRes, msgRes, emailDetailRes] = await Promise.all([
         supabase
           .from("conversations")
-          .select("id, customer_name, customer_phone, last_message, status")
+          .select("id, customer_name, customer_phone, last_message, status, conversation_type")
           .eq("org_id", orgId)
           .or(`customer_name.ilike.${searchTerm},customer_phone.ilike.${searchTerm},last_message.ilike.${searchTerm}`)
           .limit(8),
@@ -56,6 +56,12 @@ const GlobalSearch = () => {
           .from("messages")
           .select("id, content, conversation_id, sender, created_at")
           .ilike("content", searchTerm)
+          .limit(8),
+        // Search email details (subject, from, to)
+        supabase
+          .from("email_message_details")
+          .select("id, message_id, conversation_id, email_subject, email_from, email_from_name, email_to")
+          .or(`email_subject.ilike.${searchTerm},email_from.ilike.${searchTerm},email_from_name.ilike.${searchTerm},email_to.ilike.${searchTerm}`)
           .limit(8),
       ]);
 
