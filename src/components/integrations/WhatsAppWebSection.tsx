@@ -185,25 +185,22 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
   const [editingLabel, setEditingLabel] = useState(false);
   const [labelText, setLabelText] = useState("");
   const pollRef = useRef<NodeJS.Timeout | null>(null);
-  // Pairing code state
-  const [linkMethod, setLinkMethod] = useState<"qr" | "code">("qr");
-  const [pairingCode, setPairingCode] = useState<string | null>(null);
-  const [pairingPhone, setPairingPhone] = useState("");
-  const [isRequestingCode, setIsRequestingCode] = useState(false);
 
   useEffect(() => {
     if (!orgId) return;
     if (forNewNumber) {
-      // Skip loading existing config — start fresh
       setIsLoadingConfig(false);
       setExistingConfig(null);
       setInstanceName("");
       setInstanceStatus("idle");
+      setQrCode(null);
       return;
     }
     loadExistingConfig();
     loadUnofficialLimits();
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, [orgId, forNewNumber]);
 
   useEffect(() => {
@@ -212,10 +209,11 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
 
   useEffect(() => {
     if (!autoOpen || forNewNumber) return;
+
     if (existingConfig?.is_connected && (existingConfig?.evolution_instance_status === "connected" || existingConfig?.evolution_instance_status === "connecting")) {
       setInstanceStatus("connected");
       setQrCode(null);
-      setPairingCode(null);
+      if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
 
@@ -223,19 +221,21 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
       setInstanceName(existingConfig.evolution_instance_name);
       setInstanceStatus("disconnected");
       setQrCode(null);
-      setPairingCode(null);
       if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
 
     setInstanceStatus("idle");
     setQrCode(null);
-    setPairingCode(null);
   }, [autoOpen, forNewNumber, existingConfig?.evolution_instance_name, existingConfig?.evolution_instance_status, existingConfig?.is_connected]);
 
   const loadExistingConfig = async () => {
     setIsLoadingConfig(true);
-    if (!orgId) { setIsLoadingConfig(false); return; }
+    if (!orgId) {
+      setIsLoadingConfig(false);
+      return;
+    }
+
     const fetchConfig = async () => {
       const { data } = await supabase.rpc("get_org_whatsapp_channels");
       return {
@@ -269,6 +269,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
       setInstanceName("");
       setInstanceStatus("idle");
     }
+
     setIsLoadingConfig(false);
   };
 
@@ -289,9 +290,9 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
       toast.error(`وصلت للحد الأقصى (${maxUnofficialPhones} رقم غير رسمي). ترقّ لباقة أعلى لإضافة أرقام جديدة.`);
       return;
     }
+
     setIsCreating(true);
     try {
-      // Don't pass instance_name — let the backend generate a unique one
       const { data, error } = await invokeCloud("evolution-manage", {
         body: { action: "create" },
       });
@@ -300,7 +301,6 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
         const errorMessage = data?.error || error?.message || "فشل إنشاء الجلسة";
         const guessedName = data?.instance_name || `org_${(orgId || "").replace(/-/g, "").slice(0, 12)}`;
 
-        // If instance already exists on server, show reconnect options
         if (errorMessage.toLowerCase().includes("already")) {
           toast.info("جلسة موجودة مسبقاً — يمكنك إعادة الاتصال أو حذفها");
           setInstanceStatus("disconnected");
@@ -341,34 +341,32 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
     setIsCreating(false);
   };
 
-   const fetchQR = async (name?: string, options?: { allowRecreate?: boolean; silent?: boolean }) => {
+  const fetchQR = async (name?: string, options?: { allowRecreate?: boolean; silent?: boolean }) => {
     const iName = name || instanceName;
-     if (!iName) return false;
+    if (!iName) return false;
 
-     const allowRecreate = options?.allowRecreate ?? true;
-     const silent = options?.silent ?? false;
+    const allowRecreate = options?.allowRecreate ?? true;
+    const silent = options?.silent ?? false;
 
     setInstanceStatus("connecting");
-    
+
     try {
       const { data, error } = await invokeCloud("evolution-manage", {
         body: { action: "connect", instance_name: iName },
       });
 
-        if (error || data?.error) {
-          if (!silent) {
-            toast.error(data?.error || error?.message || "تعذر جلب رمز QR");
-          }
-          return false;
+      if (error || data?.error) {
+        if (!silent) {
+          toast.error(data?.error || error?.message || "تعذر جلب رمز QR");
         }
+        return false;
+      }
 
-       // If instance doesn't exist on server (deleted/expired), recreate it
-       if (!data?.qr_code && !data?.status) {
-         if (!allowRecreate) return false;
-        console.log("Instance not found, recreating...");
+      if (!data?.qr_code && !data?.status) {
+        if (!allowRecreate) return false;
         toast.info("جاري إعادة إنشاء الجلسة...");
         await createInstance();
-         return false;
+        return false;
       }
 
       if (data?.qr_code) {
@@ -376,100 +374,50 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
         setQrCode(qrSrc);
         setInstanceStatus("qr_pending");
         startPolling(iName);
-         return true;
-      } else if (data?.status === "open") {
+        return true;
+      }
+
+      if (data?.status === "open") {
         setInstanceStatus("connected");
         setQrCode(null);
         toast.success("✅ الرقم متصل بالفعل");
         loadExistingConfig();
         onConfigChange?.();
         return true;
-       } else if (data?.status) {
-         setInstanceStatus("connecting");
-         startPolling(iName);
-         return true;
+      }
+
+      if (data?.status) {
+        setInstanceStatus("connecting");
+        startPolling(iName);
+        return true;
       }
     } catch {
-       if (!silent) {
-         toast.error("خطأ في الاتصال بالسيرفر");
-       }
-       return false;
+      if (!silent) {
+        toast.error("خطأ في الاتصال بالسيرفر");
+      }
+      return false;
     }
 
-     // If we get here, try creating fresh
-     if (allowRecreate) {
-       toast.info("جاري إعادة إنشاء الجلسة...");
-       await createInstance();
-     }
-     return false;
+    if (allowRecreate) {
+      toast.info("جاري إعادة إنشاء الجلسة...");
+      await createInstance();
+    }
+    return false;
   };
 
-  const requestPairingCode = async () => {
-    if (!pairingPhone.trim()) {
-      toast.error("أدخل رقم الهاتف أولاً");
-      return;
-    }
-    setIsRequestingCode(true);
-    setPairingCode(null);
-
-    try {
-      // Ensure instance exists first
-      let iName = instanceName;
-      if (!iName) {
-        const { data, error } = await invokeCloud("evolution-manage", {
-          body: { action: "create" },
-        });
-        if (error || !data?.success) {
-          // If already exists, use the default name
-          iName = `org_${(orgId || "").replace(/-/g, "").slice(0, 12)}`;
-        } else {
-          iName = data.instance_name;
-        }
-        setInstanceName(iName);
-      }
-
-      const { data, error } = await invokeCloud("evolution-manage", {
-        body: { action: "pairing_code", instance_name: iName, phone_number: pairingPhone.trim() },
-      });
-
-      if (error || !data?.success) {
-        toast.error(data?.error || "فشل الحصول على كود الربط");
-        setIsRequestingCode(false);
-        return;
-      }
-
-      if (data.status === "open") {
-        setInstanceStatus("connected");
-        toast.success("✅ الرقم متصل بالفعل");
-        loadExistingConfig();
-        onConfigChange?.();
-        setIsRequestingCode(false);
-        return;
-      }
-
-      setPairingCode(data.pairing_code);
-      setInstanceStatus("qr_pending"); // reuse this state for polling
-      startPolling(iName);
-    } catch {
-      toast.error("خطأ في الاتصال بالسيرفر");
-    }
-    setIsRequestingCode(false);
-  };
   const startPolling = (name: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     let attempts = 0;
+
     pollRef.current = setInterval(async () => {
       attempts++;
-      if (attempts > 40) { // Stop after ~3.5 minutes
+      if (attempts > 40) {
         if (pollRef.current) clearInterval(pollRef.current);
         toast.error("⚠️ انتهت مهلة المسح — اضغط تحديث QR للمحاولة مجدداً");
         return;
       }
 
-      // Every other attempt: fetch fresh QR (Evolution regenerates QR every ~20s)
-      // Alternate attempts: check connection status
       if (attempts % 2 === 0) {
-        // Refresh QR to keep it valid
         try {
           const { data } = await invokeCloud("evolution-manage", {
             body: { action: "connect", instance_name: name },
@@ -487,9 +435,10 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
             const qrSrc = data.qr_code.startsWith("data:") ? data.qr_code : `data:image/png;base64,${data.qr_code}`;
             setQrCode(qrSrc);
           }
-        } catch { /* ignore */ }
+        } catch {
+          return;
+        }
       } else {
-        // Check status
         const { data } = await invokeCloud("evolution-manage", {
           body: { action: "status", instance_name: name },
         });
@@ -502,7 +451,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
           onConfigChange?.();
         }
       }
-    }, 5000); // every 5 seconds (alternating = QR refresh every 10s)
+    }, 5000);
   };
 
   const checkStatus = async () => {
@@ -514,6 +463,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
 
     if (data?.status === "open") {
       setInstanceStatus("connected");
+      setQrCode(null);
       toast.success("✅ متصل");
     } else {
       setInstanceStatus("disconnected");
@@ -530,6 +480,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
       body: { action: "logout", instance_name: instanceName },
     });
     if (data?.success) {
+      if (pollRef.current) clearInterval(pollRef.current);
       setInstanceStatus("disconnected");
       setQrCode(null);
       toast.success("تم فصل الرقم");
@@ -545,6 +496,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
       body: { action: "delete", instance_name: instanceName },
     });
     if (data?.success) {
+      if (pollRef.current) clearInterval(pollRef.current);
       setInstanceStatus("idle");
       setQrCode(null);
       setInstanceName("");
@@ -556,7 +508,10 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
   };
 
   const sendTestMessage = async () => {
-    if (!testPhone.trim()) { toast.error("أدخل رقم الهاتف"); return; }
+    if (!testPhone.trim()) {
+      toast.error("أدخل رقم الهاتف");
+      return;
+    }
     setTestSending(true);
     try {
       const { data, error } = await invokeCloud("evolution-send", {
@@ -567,7 +522,9 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
       } else {
         toast.success("✅ تم إرسال الرسالة!");
       }
-    } catch { toast.error("خطأ"); }
+    } catch {
+      toast.error("خطأ");
+    }
     setTestSending(false);
   };
 
@@ -580,7 +537,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
           <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
             <QrCode className="w-4 h-4 text-warning" />
           </div>
-           <div>
+          <div>
             <div className="flex items-center gap-2">
               {editingLabel ? (
                 <div className="flex items-center gap-1">
@@ -589,7 +546,12 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
                     onChange={(e) => setLabelText(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        supabase.from("whatsapp_config").update({ channel_label: labelText.trim() || null }).eq("id", existingConfig?.id).then(() => { setEditingLabel(false); toast.success("تم تحديث الاسم"); loadExistingConfig(); onConfigChange?.(); });
+                        supabase.from("whatsapp_config").update({ channel_label: labelText.trim() || null }).eq("id", existingConfig?.id).then(() => {
+                          setEditingLabel(false);
+                          toast.success("تم تحديث الاسم");
+                          loadExistingConfig();
+                          onConfigChange?.();
+                        });
                       }
                       if (e.key === "Escape") setEditingLabel(false);
                     }}
@@ -597,7 +559,14 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
                     placeholder="اسم القناة..."
                     autoFocus
                   />
-                  <button onClick={() => { supabase.from("whatsapp_config").update({ channel_label: labelText.trim() || null }).eq("id", existingConfig?.id).then(() => { setEditingLabel(false); toast.success("تم تحديث الاسم"); loadExistingConfig(); onConfigChange?.(); }); }} className="text-success"><Check className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => {
+                    supabase.from("whatsapp_config").update({ channel_label: labelText.trim() || null }).eq("id", existingConfig?.id).then(() => {
+                      setEditingLabel(false);
+                      toast.success("تم تحديث الاسم");
+                      loadExistingConfig();
+                      onConfigChange?.();
+                    });
+                  }} className="text-success"><Check className="w-3.5 h-3.5" /></button>
                   <button onClick={() => setEditingLabel(false)} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
                 </div>
               ) : (
@@ -617,25 +586,17 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
                 </Badge>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              ربط عبر مسح QR — Evolution API
-            </p>
+            <p className="text-[11px] text-muted-foreground">ربط عبر مسح QR — Evolution API</p>
           </div>
         </div>
         {!autoOpen && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5 text-xs"
-            onClick={() => setShowSetup(!showSetup)}
-          >
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setShowSetup(!showSetup)}>
             <Smartphone className="w-3.5 h-3.5" />
             {showSetup ? "إخفاء" : instanceStatus === "connected" ? "إدارة" : "ربط رقم"}
           </Button>
         )}
       </div>
 
-      {/* Compact Risk Warning - only visible when setup is open */}
       {showSetup && (
         <div className="flex items-center gap-2 bg-warning/5 border border-warning/20 rounded-lg px-3 py-2">
           <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
@@ -647,8 +608,6 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
 
       {showSetup && (
         <div className="bg-card rounded-xl shadow-card border border-border p-4 space-y-4 animate-fade-in">
-
-          {/* ═══ CONNECTED STATE ═══ */}
           {instanceStatus === "connected" && (
             <div className="space-y-3">
               <div className="flex items-center justify-between bg-success/5 border border-success/20 rounded-lg p-3">
@@ -672,19 +631,12 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
                 </div>
               </div>
 
-              {/* Test Message */}
               <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                 <p className="text-xs font-semibold flex items-center gap-1.5">
                   <Send className="w-3.5 h-3.5 text-primary" /> إرسال رسالة اختبار
                 </p>
                 <div className="flex gap-2">
-                  <Input
-                    value={testPhone}
-                    onChange={(e) => setTestPhone(e.target.value)}
-                    placeholder="966535195202"
-                    className="bg-card border border-border text-xs flex-1"
-                    dir="ltr"
-                  />
+                  <Input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="966535195202" className="bg-card border border-border text-xs flex-1" dir="ltr" />
                   <Button size="sm" className="gap-1 text-xs" onClick={sendTestMessage} disabled={testSending || !testPhone}>
                     {testSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                     إرسال
@@ -692,14 +644,12 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
                 </div>
               </div>
 
-              {/* Profile Editor */}
               {existingConfig?.id && (
                 <div className="flex justify-center">
                   <WhatsAppProfileEditor configId={existingConfig.id} channelType="evolution" />
                 </div>
               )}
 
-              {/* Channel Routing */}
               {orgId && existingConfig?.id && (
                 <ChannelRoutingConfig
                   configId={existingConfig.id}
@@ -710,12 +660,10 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
                 />
               )}
 
-              {/* Rate Limit Settings */}
               {existingConfig?.id && (
                 <RateLimitPanel configId={existingConfig.id} initialSettings={existingConfig.rate_limit_settings} />
               )}
 
-              {/* Delete Instance */}
               {isSuperAdmin && (
                 <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={deleteInstance} disabled={isDeleting}>
                   {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
@@ -725,8 +673,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
             </div>
           )}
 
-          {/* ═══ QR PENDING STATE ═══ */}
-          {instanceStatus === "qr_pending" && qrCode && !pairingCode && (
+          {instanceStatus === "qr_pending" && qrCode && (
             <div className="space-y-3">
               <div className="bg-white rounded-xl p-6 text-center space-y-3 border border-border">
                 <p className="text-sm font-bold text-foreground">امسح رمز QR بهاتفك</p>
@@ -750,35 +697,6 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
             </div>
           )}
 
-          {/* ═══ PAIRING CODE PENDING STATE ═══ */}
-          {instanceStatus === "qr_pending" && pairingCode && (
-            <div className="space-y-3">
-              <div className="bg-white rounded-xl p-6 text-center space-y-4 border border-border">
-                <p className="text-sm font-bold text-foreground">أدخل الكود في هاتفك</p>
-                <p className="text-[11px] text-muted-foreground">واتساب → الأجهزة المرتبطة → ربط جهاز → الربط برقم الهاتف</p>
-                <div className="flex justify-center">
-                  <div className="bg-muted rounded-xl px-6 py-4 font-mono text-2xl font-bold tracking-[0.4em] text-foreground" dir="ltr">
-                    {pairingCode.slice(0, 4)}-{pairingCode.slice(4)}
-                  </div>
-                </div>
-                <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  جاري انتظار الربط...
-                </div>
-                <p className="text-[10px] text-muted-foreground">الكود صالح لمدة دقيقة واحدة فقط</p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={() => requestPairingCode()}>
-                  <RefreshCw className="w-3 h-3" /> كود جديد
-                </Button>
-                <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={() => { setPairingCode(null); setInstanceStatus("disconnected"); if (pollRef.current) clearInterval(pollRef.current); }}>
-                  إلغاء
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* ═══ CONNECTING STATE ═══ */}
           {instanceStatus === "connecting" && (
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 text-center space-y-3">
               <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
@@ -787,70 +705,22 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
             </div>
           )}
 
-          {/* ═══ IDLE / DISCONNECTED STATE ═══ */}
-          {(instanceStatus === "idle" || instanceStatus === "disconnected") && !qrCode && !pairingCode && (
+          {(instanceStatus === "idle" || instanceStatus === "disconnected") && !qrCode && (
             <div className="space-y-3">
-              {/* Method Toggle */}
-              <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-                <button
-                  onClick={() => setLinkMethod("qr")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors ${linkMethod === "qr" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  <QrCode className="w-3.5 h-3.5" /> مسح QR
-                </button>
-                <button
-                  onClick={() => setLinkMethod("code")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-md transition-colors ${linkMethod === "code" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  <Smartphone className="w-3.5 h-3.5" /> ربط بالكود
-                </button>
-              </div>
-
               {instanceStatus === "disconnected" && instanceName && (
                 <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-warning">الجلسة غير متصلة</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {linkMethod === "qr" ? 'اضغط "إعادة الربط" لعرض QR جديد' : "أدخل رقم الهاتف للحصول على كود الربط"}
-                    </p>
+                    <p className="text-[10px] text-muted-foreground">اضغط "إعادة الربط" لعرض QR جديد</p>
                   </div>
                 </div>
               )}
 
-              {linkMethod === "qr" ? (
-                <Button
-                  className="w-full gap-1.5 text-xs py-5 font-bold"
-                  onClick={instanceName ? () => fetchQR() : createInstance}
-                  disabled={isCreating}
-                >
-                  {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-                  {instanceName ? "توليد QR للربط" : "إنشاء جلسة وتوليد QR"}
-                </Button>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <Input
-                      value={pairingPhone}
-                      onChange={(e) => setPairingPhone(e.target.value)}
-                      placeholder="966535195202"
-                      className="bg-card border border-border text-xs flex-1"
-                      dir="ltr"
-                    />
-                    <Button
-                      className="gap-1.5 text-xs font-bold"
-                      onClick={requestPairingCode}
-                      disabled={isRequestingCode || !pairingPhone.trim()}
-                    >
-                      {isRequestingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
-                      طلب الكود
-                    </Button>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    أدخل رقم الواتساب الذي تريد ربطه (مع رمز الدولة بدون +)
-                  </p>
-                </div>
-              )}
+              <Button className="w-full gap-1.5 text-xs py-5 font-bold" onClick={instanceName ? () => fetchQR() : createInstance} disabled={isCreating}>
+                {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                {instanceName ? "توليد QR للربط" : "إنشاء جلسة وتوليد QR"}
+              </Button>
 
               {instanceName && isSuperAdmin && (
                 <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={deleteInstance} disabled={isDeleting}>
