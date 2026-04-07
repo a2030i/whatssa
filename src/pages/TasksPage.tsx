@@ -115,6 +115,20 @@ const TasksPage = () => {
   const [newCustomDuration, setNewCustomDuration] = useState("");
   const [newLocation, setNewLocation] = useState("");
 
+  // Edit task form
+  const [editTitle, setEditTitle] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editShowDesc, setEditShowDesc] = useState(false);
+  const [editType, setEditType] = useState("general");
+  const [editPriority, setEditPriority] = useState("medium");
+  const [editAssignee, setEditAssignee] = useState("");
+  const [editAttendanceType, setEditAttendanceType] = useState("remote");
+  const [editTaskDate, setEditTaskDate] = useState("");
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editDuration, setEditDuration] = useState("30");
+  const [editCustomDuration, setEditCustomDuration] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+
   useEffect(() => {
     if (profile?.org_id) {
       fetchTasks();
