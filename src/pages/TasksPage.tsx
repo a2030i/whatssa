@@ -235,7 +235,8 @@ const TasksPage = () => {
   });
 
   const filteredTasks = scopedTasks.filter(t => {
-    if (statusFilter !== "all" && t.status !== statusFilter) return false;
+    const ds = getDisplayStatus(t);
+    if (statusFilter !== "all" && ds !== statusFilter) return false;
     if (typeFilter !== "all" && t.task_type !== typeFilter) return false;
     return true;
   });
@@ -259,10 +260,16 @@ const TasksPage = () => {
 
   const stats = {
     total: scopedTasks.length,
-    pending: scopedTasks.filter(t => t.status === "pending").length,
-    in_progress: scopedTasks.filter(t => t.status === "in_progress").length,
-    completed: scopedTasks.filter(t => t.status === "completed").length,
+    upcoming: scopedTasks.filter(t => getDisplayStatus(t) === "upcoming").length,
+    incomplete: scopedTasks.filter(t => getDisplayStatus(t) === "incomplete").length,
+    completed: scopedTasks.filter(t => getDisplayStatus(t) === "completed").length,
   };
+
+  // Busy slots for selected assignee + date in create dialog
+  const assigneeBusySlots = (newAssignee && newTaskDate)
+    ? tasks.filter(t => t.assigned_to === (newAssignee || profile?.id) && t.task_date === newTaskDate && t.status !== "completed")
+        .sort((a, b) => (a.start_time || "").localeCompare(b.start_time || ""))
+    : [];
 
   return (
     <div className="p-4 md:p-6 space-y-6" dir="rtl">
@@ -305,12 +312,12 @@ const TasksPage = () => {
           <div className="text-xs text-muted-foreground">إجمالي المهام</div>
         </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
-          <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-          <div className="text-xs text-muted-foreground">قيد الانتظار</div>
+          <div className="text-2xl font-bold text-blue-600">{stats.upcoming}</div>
+          <div className="text-xs text-muted-foreground">لم يحن موعدها</div>
         </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
-          <div className="text-2xl font-bold text-blue-600">{stats.in_progress}</div>
-          <div className="text-xs text-muted-foreground">قيد التنفيذ</div>
+          <div className="text-2xl font-bold text-destructive">{stats.incomplete}</div>
+          <div className="text-xs text-muted-foreground">غير مكتملة</div>
         </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
           <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
