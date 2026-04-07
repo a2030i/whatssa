@@ -1103,6 +1103,20 @@ const CampaignsPage = () => {
               <Input type="datetime-local" value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} className="text-sm bg-secondary border-0" dir="ltr" />
             </div>
 
+            {/* A/B Testing */}
+            {!isEvolutionChannel && (
+              <div className="border rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <GitCompareArrows className="w-4 h-4 text-primary" />
+                    <Label className="text-xs font-medium">اختبار A/B</Label>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">قريباً</Badge>
+                </div>
+                <p className="text-[10px] text-muted-foreground">أرسل نسختين من الرسالة لمجموعتين مختلفة واكتشف أيهما أفضل أداءً</p>
+              </div>
+            )}
+
             {/* Notes */}
             <div className="space-y-1.5">
               <Label className="text-xs">ملاحظات</Label>
