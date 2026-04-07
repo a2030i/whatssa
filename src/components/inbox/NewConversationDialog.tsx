@@ -151,6 +151,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setSaveCustomer(false);
       setIsExistingCustomer(false);
       setShowCountryPicker(false);
+      setHas24hWindow(false);
+      setChecking24h(false);
+      setUseTemplateFallback(true);
       setGroupName("");
       setGroupMembers([]);
       setGroupMemberInput("");
