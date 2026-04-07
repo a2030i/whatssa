@@ -693,37 +693,35 @@ serve(async (req) => {
         }
       }
 
-      // Evolution API requires POST with number in body to get pairing code
-      // GET with ?number= query param does NOT work (returns QR with pairingCode:null)
-      console.log(`[pairing_code] POST ${connectUrl} with number=${cleanPhone}`);
-      let codeRes = await fetch(connectUrl, {
-        method: "POST",
+      // This Evolution server supports GET /instance/connect/{instance}?number=...
+      // POST /instance/connect/{instance} returns 404 on this server build, so do not use it here.
+      console.log(`[pairing_code] GET ${connectUrl}?number=${cleanPhone}`);
+      let codeRes = await fetch(`${connectUrl}?number=${encodeURIComponent(cleanPhone)}`, {
+        method: "GET",
         headers: evoHeaders,
-        body: JSON.stringify({ number: cleanPhone }),
       });
       let codeData = await codeRes.json().catch(() => ({}));
-      console.log(`[pairing_code] POST response status=${codeRes.status} body=${JSON.stringify(codeData).slice(0, 500)}`);
+      console.log(`[pairing_code] GET response status=${codeRes.status} body=${JSON.stringify(codeData).slice(0, 500)}`);
 
-      // If POST didn't return pairingCode, try GET as fallback
-      if (codeRes.ok && !codeData?.pairingCode && !codeData?.data?.pairingCode) {
-        console.log(`[pairing_code] POST returned no pairingCode, trying GET with ?number=`);
-        const getRes = await fetch(`${connectUrl}?number=${encodeURIComponent(cleanPhone)}`, {
+      const hasPairingCode = !!(codeData?.pairingCode || codeData?.data?.pairingCode || codeData?.response?.pairingCode);
+      const hasQr = !!(codeData?.base64 || codeData?.qrcode?.base64 || codeData?.code);
+
+      // Retry once after a short wait if server is still spinning up the connection session
+      if ((!codeRes.ok || (!hasPairingCode && !hasQr)) && currentState === "connecting") {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        codeRes = await fetch(`${connectUrl}?number=${encodeURIComponent(cleanPhone)}`, {
           method: "GET",
           headers: evoHeaders,
         });
-        const getData = await getRes.json().catch(() => ({}));
-        console.log(`[pairing_code] GET response status=${getRes.status} body=${JSON.stringify(getData).slice(0, 500)}`);
-        if (getData?.pairingCode || getData?.data?.pairingCode) {
-          codeRes = getRes;
-          codeData = getData;
-        }
+        codeData = await codeRes.json().catch(() => ({}));
+        console.log(`[pairing_code] Retry GET response status=${codeRes.status} body=${JSON.stringify(codeData).slice(0, 500)}`);
       }
 
       if (!codeRes.ok) {
         await logToSystem(adminClient, "error", "فشل الحصول على كود الربط", {
           http_status: codeRes.status, error: JSON.stringify(codeData).slice(0, 300),
         }, orgId, userId);
-        return json({ error: codeData?.message || "فشل الحصول على كود الربط — تأكد أن السيرفر يدعم هذه الميزة" }, 400);
+        return json({ error: codeData?.response?.message?.[0] || codeData?.message || "فشل الحصول على كود الربط — تأكد أن السيرفر يدعم هذه الميزة" }, 400);
       }
 
       // pairingCode may be "ABCD1234", "ABCD-EFGH", or other formats
