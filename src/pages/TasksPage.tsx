@@ -68,6 +68,7 @@ const PRIORITIES = [
 
 const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   upcoming: { label: "لم يحن موعدها", icon: Clock, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+  in_progress: { label: "بدأت", icon: Clock, color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
   completed: { label: "مكتملة", icon: CheckCircle2, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
   incomplete: { label: "غير مكتملة", icon: AlertCircle, color: "bg-destructive/10 text-destructive" },
 };
@@ -75,9 +76,14 @@ const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }>
 /** Derive display status from DB status + task timing */
 function getDisplayStatus(task: Task): string {
   if (task.status === "completed") return "completed";
+  const now = new Date();
   if (task.task_date && task.end_time) {
     const taskEnd = new Date(`${task.task_date}T${task.end_time}`);
-    if (taskEnd < new Date()) return "incomplete";
+    if (taskEnd < now) return "incomplete";
+  }
+  if (task.task_date && task.start_time) {
+    const taskStart = new Date(`${task.task_date}T${task.start_time}`);
+    if (taskStart <= now) return "in_progress";
   }
   return "upcoming";
 }
