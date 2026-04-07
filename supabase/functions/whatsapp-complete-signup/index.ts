@@ -286,7 +286,7 @@ serve(async (req) => {
       }
 
       const shortLived = tokenData.access_token;
-      const longUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLived}`;
+      const longUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${encodeURIComponent(shortLived)}`;
       const longRes = await fetch(longUrl);
       const longData = await longRes.json();
       accessToken = longData.access_token || shortLived;
@@ -427,6 +427,7 @@ serve(async (req) => {
         .from("whatsapp_config")
         .select("id, webhook_verify_token")
         .eq("org_id", org_id)
+        .eq("channel_type", "meta_api")
         .maybeSingle();
 
       const alreadyRegistered = phoneData.status === "CONNECTED";

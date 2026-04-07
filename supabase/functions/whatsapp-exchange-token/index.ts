@@ -70,7 +70,7 @@ serve(async (req) => {
       const shortLivedToken = tokenData.access_token;
 
       // Exchange for long-lived token
-      const longTokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedToken}`;
+      const longTokenUrl = `https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${encodeURIComponent(shortLivedToken)}`;
       const longTokenRes = await fetch(longTokenUrl);
       const longTokenData = await longTokenRes.json();
 
