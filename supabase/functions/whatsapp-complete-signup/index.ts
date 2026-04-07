@@ -427,6 +427,7 @@ serve(async (req) => {
         .from("whatsapp_config")
         .select("id, webhook_verify_token")
         .eq("org_id", org_id)
+        .eq("channel_type", "meta_api")
         .maybeSingle();
 
       const alreadyRegistered = phoneData.status === "CONNECTED";

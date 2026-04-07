@@ -5,19 +5,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function resolveMetaAppId(adminClient: ReturnType<typeof createClient>) {
+async function resolveMetaCredentials(adminClient: ReturnType<typeof createClient>) {
   const fallbackAppId = Deno.env.get("META_APP_ID") || "1306128431426603";
+  const fallbackSecret = Deno.env.get("META_APP_SECRET") || "";
 
   try {
     const { data } = await adminClient
       .from("system_settings")
-      .select("value")
-      .eq("key", "meta_app_id")
-      .maybeSingle();
+      .select("key, value")
+      .in("key", ["meta_app_id", "meta_app_secret"]);
 
-    return data?.value ? String(data.value) : fallbackAppId;
+    let appId = fallbackAppId;
+    let appSecret = fallbackSecret;
+    (data || []).forEach((row: any) => {
+      if (row.key === "meta_app_id" && row.value) appId = String(row.value);
+      if (row.key === "meta_app_secret" && row.value) appSecret = String(row.value);
+    });
+    return { appId, appSecret };
   } catch {
-    return fallbackAppId;
+    return { appId: fallbackAppId, appSecret: fallbackSecret };
   }
 }
 
@@ -29,8 +35,14 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const adminClient = createClient(supabaseUrl, serviceKey);
-    const { appId: metaAppId, appSecret: resolvedSecret } = await resolveMetaCredentials(adminClient);
-    const metaAppSecret = resolvedSecret || Deno.env.get("META_APP_SECRET")!;
+    const { appId: metaAppId, appSecret: metaAppSecret } = await resolveMetaCredentials(adminClient);
+
+    if (!metaAppSecret) {
+      return new Response(JSON.stringify({ error: "META_APP_SECRET not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Get all configs with tokens expiring in the next 7 days or already expired
     const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -38,6 +50,7 @@ Deno.serve(async (req) => {
       .from("whatsapp_config")
       .select("id, org_id, access_token, token_expires_at, display_phone")
       .eq("is_connected", true)
+      .eq("channel_type", "meta_api")
       .or(`token_expires_at.is.null,token_expires_at.lte.${sevenDaysFromNow}`);
 
     if (fetchErr) throw fetchErr;
@@ -47,7 +60,7 @@ Deno.serve(async (req) => {
     for (const config of (configs || [])) {
       try {
         // Exchange token for a new long-lived token via Meta API
-        const url = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${metaAppId}&client_secret=${metaAppSecret}&fb_exchange_token=${config.access_token}`;
+        const url = `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${metaAppId}&client_secret=${encodeURIComponent(metaAppSecret)}&fb_exchange_token=${encodeURIComponent(config.access_token)}`;
         const resp = await fetch(url);
         const data = await resp.json();
 
