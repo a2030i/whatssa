@@ -571,8 +571,11 @@ serve(async (req) => {
           });
 
           if (!msgRes.ok) continue;
-          const messages = await msgRes.json();
-          const msgArray = Array.isArray(messages) ? messages : messages?.messages || [];
+          const messages = await msgRes.json().catch(() => null);
+          const rawArray = Array.isArray(messages) ? messages 
+            : Array.isArray(messages?.messages) ? messages.messages 
+            : [];
+          const msgArray = rawArray.filter((m: any) => m && typeof m === "object");
 
           let syncedCount = 0;
           for (const msg of msgArray) {
