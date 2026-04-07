@@ -566,6 +566,11 @@ const AnalyticsPage = () => {
         <TabsContent value="roi">
           <CampaignROIReport />
         </TabsContent>
+
+        {/* Tags Report Tab */}
+        <TabsContent value="tags">
+          <TagsReport />
+        </TabsContent>
       </Tabs>
     </div>
   );
