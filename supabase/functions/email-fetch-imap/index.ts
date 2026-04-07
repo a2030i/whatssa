@@ -381,20 +381,61 @@ async function findOrCreateConversation(
     notes: `📧 ${subject.replace(/^(re|fwd|fw)\s*:\s*/gi, "").replace(/^\[.*?\]\s*/g, "").trim()}`,
   };
 
-  if (config.dedicated_agent_id) {
-    insertData.assigned_to_id = config.dedicated_agent_id;
-    const { data: agentProfile } = await admin
-      .from("profiles").select("full_name").eq("id", config.dedicated_agent_id).single();
-    if (agentProfile) {
-      insertData.assigned_to = agentProfile.full_name;
-      insertData.assigned_at = new Date().toISOString();
+  // Check email routing rules (domain/email pattern matching)
+  const senderDomain = senderEmail.split("@")[1]?.toLowerCase() || "";
+  const { data: routingRules } = await admin
+    .from("email_routing_rules")
+    .select("*")
+    .eq("org_id", orgId)
+    .eq("is_active", true)
+    .order("priority", { ascending: false });
+
+  let routeMatched = false;
+  if (routingRules && routingRules.length > 0) {
+    for (const rule of routingRules) {
+      const pattern = (rule.pattern || "").toLowerCase().trim();
+      const matched = rule.rule_type === "domain"
+        ? senderDomain === pattern || senderDomain.endsWith(`.${pattern}`)
+        : senderEmail.toLowerCase() === pattern;
+      if (matched) {
+        if (rule.assigned_agent_id) {
+          insertData.assigned_to_id = rule.assigned_agent_id;
+          const { data: agentProfile } = await admin
+            .from("profiles").select("full_name").eq("id", rule.assigned_agent_id).single();
+          if (agentProfile) {
+            insertData.assigned_to = agentProfile.full_name;
+            insertData.assigned_at = new Date().toISOString();
+          }
+        }
+        if (rule.assigned_team_id) {
+          insertData.assigned_team_id = rule.assigned_team_id;
+          const { data: team } = await admin
+            .from("teams").select("name").eq("id", rule.assigned_team_id).single();
+          if (team) insertData.assigned_team = team.name;
+        }
+        routeMatched = true;
+        break;
+      }
     }
   }
-  if (config.dedicated_team_id) {
-    insertData.assigned_team_id = config.dedicated_team_id;
-    const { data: team } = await admin
-      .from("teams").select("name").eq("id", config.dedicated_team_id).single();
-    if (team) insertData.assigned_team = team.name;
+
+  // Fallback to config-level dedicated agent/team
+  if (!routeMatched) {
+    if (config.dedicated_agent_id) {
+      insertData.assigned_to_id = config.dedicated_agent_id;
+      const { data: agentProfile } = await admin
+        .from("profiles").select("full_name").eq("id", config.dedicated_agent_id).single();
+      if (agentProfile) {
+        insertData.assigned_to = agentProfile.full_name;
+        insertData.assigned_at = new Date().toISOString();
+      }
+    }
+    if (config.dedicated_team_id) {
+      insertData.assigned_team_id = config.dedicated_team_id;
+      const { data: team } = await admin
+        .from("teams").select("name").eq("id", config.dedicated_team_id).single();
+      if (team) insertData.assigned_team = team.name;
+    }
   }
 
   const { data: newConv, error: convError } = await admin

@@ -153,6 +153,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
     groups: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
     emails: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "email").length,
+    emailsSent: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "email" && c.lastMessageSender === "agent").length,
     closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
     archived: conversations.filter(c => c.isArchived).length,
   }), [conversations, myId]);
@@ -164,7 +165,8 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
     { id: "mentions", label: "إشارات", icon: AtSign, count: counts.mentions, minRole: "supervisor" },
     { id: "groups", label: "المجموعات", icon: Users, count: counts.groups },
-    { id: "emails", label: "إيميل", icon: Mail, count: counts.emails },
+    { id: "emails", label: "إيميل 📥", icon: Mail, count: counts.emails },
+    { id: "emailsSent", label: "مرسلة 📤", icon: Mail, count: counts.emailsSent },
     { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed, minRole: "supervisor" },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived, minRole: "supervisor" },
@@ -184,8 +186,8 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       if (activeQuickFilter !== "archived" && conv.isArchived) return false;
       if (activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.status === "closed") return false;
       // Exclude groups and emails from private-focused filters
-      if (activeQuickFilter !== "groups" && activeQuickFilter !== "emails" && activeQuickFilter !== "mentions" && activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.conversationType === "group") return false;
-      if (activeQuickFilter !== "emails" && activeQuickFilter !== "mentions" && activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.conversationType === "email") return false;
+      if (activeQuickFilter !== "groups" && activeQuickFilter !== "emails" && activeQuickFilter !== "emailsSent" && activeQuickFilter !== "mentions" && activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.conversationType === "group") return false;
+      if (activeQuickFilter !== "emails" && activeQuickFilter !== "emailsSent" && activeQuickFilter !== "mentions" && activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.conversationType === "email") return false;
       switch (activeQuickFilter) {
         case "mine": if (conv.assignedToId !== myId) return false; break;
         case "waitingCustomer": if (conv.assignedToId !== myId || conv.lastMessageSender !== "agent") return false; break;
@@ -194,6 +196,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
         case "unread": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
         case "groups": if (conv.conversationType !== "group") return false; break;
         case "emails": if (conv.conversationType !== "email") return false; break;
+        case "emailsSent": if (conv.conversationType !== "email" || conv.lastMessageSender !== "agent") return false; break;
         case "closed": if (conv.status !== "closed") return false; break;
         case "archived": if (!conv.isArchived) return false; break;
       }

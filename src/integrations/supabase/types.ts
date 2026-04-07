@@ -1546,6 +1546,77 @@ export type Database = {
           },
         ]
       }
+      email_routing_rules: {
+        Row: {
+          assigned_agent_id: string | null
+          assigned_team_id: string | null
+          created_at: string
+          email_config_id: string | null
+          id: string
+          is_active: boolean
+          org_id: string
+          pattern: string
+          priority: number
+          rule_type: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          assigned_team_id?: string | null
+          created_at?: string
+          email_config_id?: string | null
+          id?: string
+          is_active?: boolean
+          org_id: string
+          pattern: string
+          priority?: number
+          rule_type?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          assigned_team_id?: string | null
+          created_at?: string
+          email_config_id?: string | null
+          id?: string
+          is_active?: boolean
+          org_id?: string
+          pattern?: string
+          priority?: number
+          rule_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_routing_rules_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_routing_rules_assigned_team_id_fkey"
+            columns: ["assigned_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_routing_rules_email_config_id_fkey"
+            columns: ["email_config_id"]
+            isOneToOne: false
+            referencedRelation: "email_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_routing_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flow_submissions: {
         Row: {
           conversation_id: string | null

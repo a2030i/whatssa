@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, MessageSquare, User, Loader2 } from "lucide-react";
+import { Search, MessageSquare, User, Loader2, Mail } from "lucide-react";
 import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 
 interface SearchResult {
-  type: "conversation" | "customer";
+  type: "conversation" | "customer" | "email";
   id: string;
   title: string;
   subtitle: string;
@@ -39,10 +39,10 @@ const GlobalSearch = () => {
     setLoading(true);
     try {
       const searchTerm = `%${q}%`;
-      const [convRes, custRes, msgRes] = await Promise.all([
+      const [convRes, custRes, msgRes, emailDetailRes] = await Promise.all([
         supabase
           .from("conversations")
-          .select("id, customer_name, customer_phone, last_message, status")
+          .select("id, customer_name, customer_phone, last_message, status, conversation_type")
           .eq("org_id", orgId)
           .or(`customer_name.ilike.${searchTerm},customer_phone.ilike.${searchTerm},last_message.ilike.${searchTerm}`)
           .limit(8),
@@ -57,12 +57,18 @@ const GlobalSearch = () => {
           .select("id, content, conversation_id, sender, created_at")
           .ilike("content", searchTerm)
           .limit(8),
+        // Search email details (subject, from, to)
+        supabase
+          .from("email_message_details")
+          .select("id, message_id, conversation_id, email_subject, email_from, email_from_name, email_to")
+          .or(`email_subject.ilike.${searchTerm},email_from.ilike.${searchTerm},email_from_name.ilike.${searchTerm},email_to.ilike.${searchTerm}`)
+          .limit(8),
       ]);
 
       const items: SearchResult[] = [];
-      (convRes.data || []).forEach((c) => {
+      (convRes.data || []).forEach((c: any) => {
         items.push({
-          type: "conversation",
+          type: c.conversation_type === "email" ? "email" : "conversation",
           id: c.id,
           title: c.customer_name || c.customer_phone,
           subtitle: c.last_message?.slice(0, 60) || "محادثة",
@@ -80,6 +86,19 @@ const GlobalSearch = () => {
             id: m.conversation_id,
             title: m.sender === "agent" ? "أنت" : "العميل",
             subtitle: m.content?.slice(0, 60) || "",
+          });
+        }
+      });
+
+      // Email details results
+      (emailDetailRes.data || []).forEach((ed: any) => {
+        if (!msgConvIds.has(ed.conversation_id)) {
+          msgConvIds.add(ed.conversation_id);
+          items.push({
+            type: "email",
+            id: ed.conversation_id,
+            title: ed.email_from_name || ed.email_from || "إيميل",
+            subtitle: ed.email_subject?.slice(0, 60) || "",
           });
         }
       });
@@ -110,7 +129,7 @@ const GlobalSearch = () => {
   const handleSelect = (item: SearchResult) => {
     setOpen(false);
     setQuery("");
-    if (item.type === "conversation") {
+    if (item.type === "conversation" || item.type === "email") {
       navigate(`/inbox?conv=${item.id}`);
     } else {
       navigate(`/customers?q=${encodeURIComponent(item.phone || item.title)}`);
@@ -158,6 +177,21 @@ const GlobalSearch = () => {
                     <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
                   </div>
                   {item.phone && <Badge variant="outline" className="text-[10px] shrink-0">{item.phone}</Badge>}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {!loading && results.filter(r => r.type === "email").length > 0 && (
+            <CommandGroup heading="إيميلات">
+              {results.filter(r => r.type === "email").map((item) => (
+                <CommandItem key={`email-${item.id}`} onSelect={() => handleSelect(item)} className="gap-3 cursor-pointer">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Mail className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{item.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
+                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>
