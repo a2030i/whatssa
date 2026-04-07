@@ -180,6 +180,11 @@ const TasksPage = () => {
 
   const createTask = async () => {
     if (!newTitle.trim()) return toast.error("أدخل عنوان المهمة");
+    if (!newTaskDate) return toast.error("اختر تاريخ المهمة");
+    if (!newStartTime || !newEndTime) return toast.error("حدد وقت البداية والنهاية");
+    if (newStartTime >= newEndTime) return toast.error("وقت النهاية يجب أن يكون بعد وقت البداية");
+    if (newAttendanceType === "in_person" && !newLocation.trim()) return toast.error("أدخل الموقع للمهمة الحضورية");
+    
     const assignee = effectiveRole === "member" ? profile!.id : (newAssignee || null);
     const selectedCust = customers.find(c => c.id === selectedCustomerId);
     const { error } = await supabase.from("tasks").insert({
@@ -193,14 +198,24 @@ const TasksPage = () => {
       customer_name: selectedCust?.name || null,
       created_by_type: "agent",
       created_by: profile!.id,
+      attendance_type: newAttendanceType,
+      task_date: newTaskDate,
+      start_time: newStartTime,
+      end_time: newEndTime,
+      location: newAttendanceType === "in_person" ? newLocation.trim() : null,
     } as any);
     if (error) {
       console.error("Task creation error:", error);
+      if (error.message?.includes("TASK_OVERLAP")) {
+        return toast.error("هذا الموظف لديه مهمة متداخلة في نفس الوقت، غيّر الوقت أو الموظف");
+      }
       return toast.error("فشل إنشاء المهمة");
     }
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
-    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); setNewAssignee(""); setSelectedCustomerId("");
+    setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); 
+    setNewAssignee(""); setSelectedCustomerId("");
+    setNewAttendanceType("remote"); setNewTaskDate(""); setNewStartTime(""); setNewEndTime(""); setNewLocation("");
     fetchTasks();
   };
 
