@@ -112,7 +112,7 @@ const OnboardingWizard = () => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) setOpen(false); }}>
       <DialogContent className="max-w-md p-0 overflow-hidden" dir="rtl">
         {/* Header */}
         <div className="p-6 pb-4 bg-gradient-to-bl from-primary/10 via-background to-background">
@@ -134,7 +134,7 @@ const OnboardingWizard = () => {
 
         {/* Steps */}
         <div className="px-6 pb-2 space-y-3">
-          {steps.map((step, i) => (
+          {steps.map((step) => (
             <div
               key={step.id}
               className={cn(
@@ -171,18 +171,26 @@ const OnboardingWizard = () => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-5 pt-2">
+        <div className="px-6 pb-5 pt-2 space-y-2">
           {allDone ? (
             <Button className="w-full gap-2" onClick={handleDismiss}>
               <Sparkles className="w-4 h-4" /> ابدأ استخدام المنصة
             </Button>
           ) : (
-            <button
-              onClick={handleDismiss}
-              className="w-full text-center text-xs text-muted-foreground hover:text-foreground py-2 transition-colors"
-            >
-              تخطي — سأكمل لاحقاً
-            </button>
+            <>
+              <button
+                onClick={() => setOpen(false)}
+                className="w-full text-center text-xs text-muted-foreground hover:text-foreground py-2 transition-colors"
+              >
+                تخطي — سأكمل لاحقاً
+              </button>
+              <button
+                onClick={handleDismiss}
+                className="w-full text-center text-[11px] text-destructive/60 hover:text-destructive py-1 transition-colors"
+              >
+                لا تظهر مرة أخرى
+              </button>
+            </>
           )}
         </div>
       </DialogContent>
