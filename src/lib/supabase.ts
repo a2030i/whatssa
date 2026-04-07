@@ -31,7 +31,7 @@ export async function invokeCloud(
   options?: { body?: unknown; headers?: Record<string, string> },
 ) {
   const { data: { session } } = await supabase.auth.getSession();
-  return cloudSupabase.functions.invoke(functionName, {
+  const result = await cloudSupabase.functions.invoke(functionName, {
     ...options,
     headers: {
       ...options?.headers,
@@ -40,4 +40,22 @@ export async function invokeCloud(
         : {}),
     },
   });
+
+  // When edge function returns non-2xx, supabase-js puts FunctionsHttpError in error
+  // and data is null. Extract the actual response body from the error context.
+  if (result.error && !result.data) {
+    try {
+      const ctx = (result.error as any).context;
+      if (ctx instanceof Response) {
+        const body = await ctx.json().catch(() => null);
+        if (body) {
+          return { data: body, error: null };
+        }
+      }
+    } catch {
+      // fallback to original error
+    }
+  }
+
+  return result;
 }
