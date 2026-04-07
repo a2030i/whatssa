@@ -57,7 +57,7 @@ import { Loader2 } from "lucide-react";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children, minRole }: { children: React.ReactNode; minRole?: "admin" | "supervisor" | "member" }) => {
-  const { user, isLoading, mustChangePassword, userRole, profile, isSuperAdmin } = useAuth();
+  const { user, isLoading, mustChangePassword, userRole, profile, isSuperAdmin, isImpersonating } = useAuth();
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -65,6 +65,9 @@ const ProtectedRoute = ({ children, minRole }: { children: React.ReactNode; minR
   );
   if (!user) return <Navigate to="/auth" replace />;
   if (mustChangePassword) return <Navigate to="/change-password" replace />;
+
+  // Super admin without impersonation goes to admin panel only
+  if (isSuperAdmin && !isImpersonating) return <Navigate to="/admin" replace />;
 
   // Role-based access check
   if (minRole && !isSuperAdmin) {

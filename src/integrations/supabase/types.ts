@@ -4195,6 +4195,10 @@ export type Database = {
           background_color: string | null
           created_at: string | null
           custom_domain: string | null
+          domain_last_check_at: string | null
+          domain_status: string
+          domain_verified_at: string | null
+          domain_verify_token: string | null
           favicon_url: string | null
           foreground_color: string | null
           id: string
@@ -4217,6 +4221,10 @@ export type Database = {
           background_color?: string | null
           created_at?: string | null
           custom_domain?: string | null
+          domain_last_check_at?: string | null
+          domain_status?: string
+          domain_verified_at?: string | null
+          domain_verify_token?: string | null
           favicon_url?: string | null
           foreground_color?: string | null
           id?: string
@@ -4239,6 +4247,10 @@ export type Database = {
           background_color?: string | null
           created_at?: string | null
           custom_domain?: string | null
+          domain_last_check_at?: string | null
+          domain_status?: string
+          domain_verified_at?: string | null
+          domain_verify_token?: string | null
           favicon_url?: string | null
           foreground_color?: string | null
           id?: string
