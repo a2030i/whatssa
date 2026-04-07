@@ -195,6 +195,8 @@ const EmailConfigSection = () => {
   const [routingRules, setRoutingRules] = useState<RoutingRule[]>([]);
   const [showRoutingForm, setShowRoutingForm] = useState(false);
   const [routingForm, setRoutingForm] = useState({ rule_type: "domain", pattern: "", assigned_agent_id: "", assigned_team_id: "", email_config_id: "" });
+  const [signatureText, setSignatureText] = useState<Record<string, string>>({});
+  const [savingSignature, setSavingSignature] = useState<string | null>(null);
 
   useEffect(() => {
     if (orgId) {
