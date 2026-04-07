@@ -370,12 +370,18 @@ const ReportsPage = () => {
       )}
 
       <Tabs defaultValue="agents" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="performance" className="gap-1"><Target className="w-3 h-3" /> أداء متقدم</TabsTrigger>
           <TabsTrigger value="agents">أداء الموظفين</TabsTrigger>
           <TabsTrigger value="campaigns">الحملات</TabsTrigger>
           <TabsTrigger value="ratings">التقييمات</TabsTrigger>
           <TabsTrigger value="conversations">المحادثات</TabsTrigger>
         </TabsList>
+
+        {/* Advanced Agent Performance */}
+        <TabsContent value="performance">
+          <AgentPerformanceReport period={period} />
+        </TabsContent>
 
         {/* Agent Performance */}
         <TabsContent value="agents">
