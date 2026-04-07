@@ -81,9 +81,7 @@ const TasksPage = () => {
   const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const [tasks, setTasks] = useState<Task[]>([]);
   const [agents, setAgents] = useState<{ id: string; full_name: string }[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("tasks");
-  const [taskScope, setTaskScope] = useState<"mine" | "team">("mine");
   const canSeeTeam = effectiveRole === "admin" || effectiveRole === "supervisor";
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
