@@ -550,6 +550,20 @@ const AnalyticsPage = () => {
             </Card>
           </div>
         </TabsContent>
+        {/* Heatmap Tab */}
+        <TabsContent value="heatmap">
+          <ActivityHeatmap />
+        </TabsContent>
+
+        {/* Period Comparison Tab */}
+        <TabsContent value="comparison">
+          <PeriodComparison />
+        </TabsContent>
+
+        {/* ROI Tab */}
+        <TabsContent value="roi">
+          <CampaignROIReport />
+        </TabsContent>
       </Tabs>
     </div>
   );
