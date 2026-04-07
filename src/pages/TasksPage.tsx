@@ -551,6 +551,12 @@ const TasksPage = () => {
                   </button>
                 ))}
               </div>
+              {newAttendanceType === "in_person" && (
+                <div className="mt-2">
+                  <Label className="text-xs">الموقع *</Label>
+                  <Input value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="مثال: مكتب الرياض - حي العليا" className="h-9 text-sm" />
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -607,12 +613,6 @@ const TasksPage = () => {
                 </p>
               )}
             </div>
-            {newAttendanceType === "in_person" && (
-              <div>
-                <Label className="text-xs">الموقع *</Label>
-                <Input value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="مثال: مكتب الرياض - حي العليا" className="h-9 text-sm" />
-              </div>
-            )}
             <div>
               <Label className="text-xs">إسناد إلى</Label>
               <Select value={newAssignee || profile?.id || ""} onValueChange={setNewAssignee}>
