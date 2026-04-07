@@ -115,15 +115,29 @@ export default function SendQuotaBanner({ channelId, channelType, onQuotaExhaust
 
   if (isPaused) {
     return (
-      <div className="mx-3 mb-1 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-2 text-xs" dir="rtl">
-        <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-        <div className="flex-1">
-          <span className="font-semibold text-destructive">الإرسال متوقف مؤقتاً</span>
-          {quota.paused_reason && <span className="text-muted-foreground mr-1">— {quota.paused_reason}</span>}
+      <div className="mx-3 mb-1 px-4 py-3 rounded-xl bg-destructive/10 border-2 border-destructive/40 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300" dir="rtl">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-destructive/20 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-destructive">⛔ الإرسال متوقف مؤقتاً</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {quota.paused_reason || "تم تجاوز حد الإرسال لحماية الرقم من الحظر"}
+            </p>
+          </div>
         </div>
-        <button onClick={() => setDismissed(true)} className="p-0.5 rounded hover:bg-destructive/10">
-          <X className="w-3 h-3 text-muted-foreground" />
-        </button>
+        {countdown && (
+          <div className="flex items-center gap-2 bg-background/80 rounded-lg px-3 py-2 border border-border">
+            <Timer className="w-4 h-4 text-warning shrink-0" />
+            <span className="text-xs text-foreground">
+              يتجدد الحد خلال: <strong className="font-mono text-sm text-warning">{countdown}</strong>
+            </span>
+          </div>
+        )}
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          💡 الرسائل المرسلة الآن ستبقى <strong>معلّقة ⏳</strong> وترسل تلقائياً فور تجدد الحد — لا حاجة لإعادة الإرسال يدوياً.
+        </p>
       </div>
     );
   }
