@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   ClipboardCheck, Plus, Clock, CheckCircle2, AlertCircle,
   User, MoreHorizontal, Loader2,
-  Bot, UserCircle, Check,
+  Bot, UserCircle, Check, Pencil,
   MapPin, Calendar, Monitor, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -357,6 +357,7 @@ const TasksPage = () => {
   const stats = {
     total: scopedTasks.length,
     upcoming: scopedTasks.filter(t => getDisplayStatus(t) === "upcoming").length,
+    in_progress: scopedTasks.filter(t => getDisplayStatus(t) === "in_progress").length,
     incomplete: scopedTasks.filter(t => getDisplayStatus(t) === "incomplete").length,
     completed: scopedTasks.filter(t => getDisplayStatus(t) === "completed").length,
   };
@@ -409,7 +410,7 @@ const TasksPage = () => {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card><CardContent className="p-4 text-center">
           <div className="text-2xl font-bold text-foreground">{stats.total}</div>
           <div className="text-xs text-muted-foreground">إجمالي المهام</div>
@@ -417,6 +418,10 @@ const TasksPage = () => {
         <Card><CardContent className="p-4 text-center">
           <div className="text-2xl font-bold text-blue-600">{stats.upcoming}</div>
           <div className="text-xs text-muted-foreground">لم يحن موعدها</div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <div className="text-2xl font-bold text-orange-600">{stats.in_progress}</div>
+          <div className="text-xs text-muted-foreground">بدأت</div>
         </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
           <div className="text-2xl font-bold text-destructive">{stats.incomplete}</div>
@@ -558,6 +563,9 @@ const TasksPage = () => {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => openEditDialog(task)}>
+                                      <Pencil className="w-4 h-4 ml-2" /> تعديل
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "completed")}>
                                       <CheckCircle2 className="w-4 h-4 ml-2" /> إكمال
                                     </DropdownMenuItem>
