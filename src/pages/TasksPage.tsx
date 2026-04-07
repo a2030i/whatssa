@@ -558,33 +558,35 @@ const TasksPage = () => {
         </TabsContent>
       </Tabs>
 
-      {/* New Task Dialog */}
+      {/* New Task Dialog - Mobile optimized */}
       <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto" dir="rtl">
-          <DialogHeader><DialogTitle>مهمة جديدة</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md p-0 gap-0 max-h-[calc(100dvh-2rem)] flex flex-col" dir="rtl">
+          <DialogHeader className="px-4 pt-4 pb-2 border-b border-border shrink-0">
+            <DialogTitle className="text-base">مهمة جديدة</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
             <div>
-              <Label>العنوان *</Label>
-              <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="مثال: تغيير عنوان الشحن" />
+              <Label className="text-xs">العنوان *</Label>
+              <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="مثال: تغيير عنوان الشحن" className="h-9 text-sm" />
             </div>
             <div>
-              <Label>الوصف</Label>
-              <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="تفاصيل المهمة..." rows={3} />
+              <Label className="text-xs">الوصف</Label>
+              <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="تفاصيل المهمة..." rows={2} className="text-sm min-h-[60px]" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>النوع</Label>
+                <Label className="text-xs">النوع</Label>
                 <Select value={newType} onValueChange={setNewType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {TASK_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.icon} {t.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>الأولوية</Label>
+                <Label className="text-xs">الأولوية</Label>
                 <Select value={newPriority} onValueChange={setNewPriority}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PRIORITIES.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                   </SelectContent>
@@ -593,31 +595,30 @@ const TasksPage = () => {
             </div>
             {/* Attendance Type */}
             <div>
-              <Label>نوع الحضور *</Label>
+              <Label className="text-xs">نوع الحضور *</Label>
               <Select value={newAttendanceType} onValueChange={setNewAttendanceType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="in_person"><Building2 className="w-3 h-3 inline ml-1" /> حضوري</SelectItem>
                   <SelectItem value="remote"><Monitor className="w-3 h-3 inline ml-1" /> عن بعد</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {/* Date */}
             {/* Date & Start Time */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>التاريخ *</Label>
-                <Input type="date" value={newTaskDate} onChange={e => setNewTaskDate(e.target.value)} className="text-sm" />
+                <Label className="text-xs">التاريخ *</Label>
+                <Input type="date" value={newTaskDate} onChange={e => setNewTaskDate(e.target.value)} className="h-9 text-sm" />
               </div>
               <div>
-                <Label>وقت البداية *</Label>
-                <Input type="time" value={newStartTime} onChange={e => setNewStartTime(e.target.value)} className="text-sm" />
+                <Label className="text-xs">وقت البداية *</Label>
+                <Input type="time" value={newStartTime} onChange={e => setNewStartTime(e.target.value)} className="h-9 text-sm" />
               </div>
             </div>
             {/* Duration */}
             <div>
-              <Label>لمدة *</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
+              <Label className="text-xs">لمدة *</Label>
+              <div className="flex flex-wrap gap-1.5 mt-1">
                 {[
                   { value: "5", label: "٥ د" },
                   { value: "10", label: "١٠ د" },
@@ -631,7 +632,7 @@ const TasksPage = () => {
                     type="button"
                     onClick={() => setNewDuration(opt.value)}
                     className={cn(
-                      "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors",
+                      "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
                       newDuration === opt.value
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background text-foreground border-input hover:bg-accent"
@@ -642,14 +643,14 @@ const TasksPage = () => {
                 ))}
               </div>
               {newDuration === "custom" && (
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-1.5 flex items-center gap-2">
                   <Input
                     type="number"
                     min="1"
                     value={newCustomDuration}
                     onChange={e => setNewCustomDuration(e.target.value)}
                     placeholder="عدد الدقائق"
-                    className="w-32 text-sm"
+                    className="w-28 h-9 text-sm"
                   />
                   <span className="text-xs text-muted-foreground">دقيقة</span>
                 </div>
@@ -663,21 +664,23 @@ const TasksPage = () => {
             {/* Location - only for in-person */}
             {newAttendanceType === "in_person" && (
               <div>
-                <Label>الموقع *</Label>
-                <Input value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="مثال: مكتب الرياض - حي العليا" />
+                <Label className="text-xs">الموقع *</Label>
+                <Input value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="مثال: مكتب الرياض - حي العليا" className="h-9 text-sm" />
               </div>
             )}
-            {/* Assignee - defaults to me */}
+            {/* Assignee */}
             <div>
-              <Label>إسناد إلى</Label>
+              <Label className="text-xs">إسناد إلى</Label>
               <Select value={newAssignee || profile?.id || ""} onValueChange={setNewAssignee}>
-                <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر موظف" /></SelectTrigger>
                 <SelectContent>
                   {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}{a.id === profile?.id ? " (أنا)" : ""}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={createTask} className="w-full">إنشاء المهمة</Button>
+          </div>
+          <div className="px-4 pb-4 pt-2 border-t border-border shrink-0">
+            <Button onClick={createTask} className="w-full h-10">إنشاء المهمة</Button>
           </div>
         </DialogContent>
       </Dialog>
