@@ -185,11 +185,6 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
   const [editingLabel, setEditingLabel] = useState(false);
   const [labelText, setLabelText] = useState("");
   const pollRef = useRef<NodeJS.Timeout | null>(null);
-  // Pairing code state
-  const [linkMethod, setLinkMethod] = useState<"qr" | "code">("qr");
-  const [pairingCode, setPairingCode] = useState<string | null>(null);
-  const [pairingPhone, setPairingPhone] = useState("");
-  const [isRequestingCode, setIsRequestingCode] = useState(false);
 
   useEffect(() => {
     if (!orgId) return;
