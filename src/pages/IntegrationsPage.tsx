@@ -138,7 +138,6 @@ const IntegrationsPage = () => {
   const [officialEnabled, setOfficialEnabled] = useState(false);
   const [metaSettingsLoaded, setMetaSettingsLoaded] = useState(false);
   const embeddedSignupSelectionRef = useRef<EmbeddedSignupSelection | null>(null);
-  const embeddedSignupAuthHandledRef = useRef(false);
 
   const rememberEmbeddedSignupSelection = useCallback((selection: EmbeddedSignupSelection) => {
     embeddedSignupSelectionRef.current = selection;
@@ -146,7 +145,6 @@ const IntegrationsPage = () => {
 
   const clearEmbeddedSignupSelection = useCallback(() => {
     embeddedSignupSelectionRef.current = null;
-    embeddedSignupAuthHandledRef.current = false;
   }, []);
 
   // Load Meta settings first, then load SDK with correct appId
@@ -404,7 +402,6 @@ const IntegrationsPage = () => {
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
     clearEmbeddedSignupSelection();
-    embeddedSignupAuthHandledRef.current = false;
     setFlowStep("connecting");
     setIsLoading(true);
     setErrorMessage("");
@@ -415,8 +412,6 @@ const IntegrationsPage = () => {
       (response: any) => {
         console.log("[Embedded Signup] FB.login response:", JSON.stringify(response));
         if (response.authResponse) {
-          if (embeddedSignupAuthHandledRef.current) return;
-          embeddedSignupAuthHandledRef.current = true;
           const code = response.authResponse.code;
           const token = response.authResponse.accessToken;
           if (code) {
@@ -424,11 +419,19 @@ const IntegrationsPage = () => {
           } else if (token) {
             handleDirectToken(token);
           } else {
-            embeddedSignupAuthHandledRef.current = false;
             handleError("لم يتم الحصول على بيانات المصادقة");
           }
         } else {
+          // Log the full response for debugging
           console.error("[Embedded Signup] No authResponse. Status:", response?.status, "Full:", JSON.stringify(response));
+          const fbStatus = response?.status;
+          const statusMessages: Record<string, string> = {
+            "not_authorized": "لم يتم منح الصلاحيات المطلوبة — أعد المحاولة واقبل جميع الأذونات",
+            "unknown": "انتهت الجلسة أو تم إلغاء العملية من نافذة ميتا",
+            "connected": "تم الاتصال لكن لم يتم الحصول على بيانات المصادقة",
+          };
+          const detail = statusMessages[fbStatus] || `تم إلغاء العملية أو حدث خطأ (الحالة: ${fbStatus || "غير معروفة"})`;
+          handleError(detail);
         }
       },
       {
@@ -436,8 +439,6 @@ const IntegrationsPage = () => {
         response_type: "code",
         override_default_response_type: true,
         extras: {
-          feature: "whatsapp_embedded_signup",
-          sessionInfoVersion: 3,
           setup: {},
         },
       }
@@ -531,73 +532,6 @@ const IntegrationsPage = () => {
       handleError("حدث خطأ");
     }
   };
-
-  const tryRecoverEmbeddedSignupAuth = useCallback(async (source: string) => {
-    if (flowStep !== "connecting" || embeddedSignupAuthHandledRef.current) return false;
-
-    const FB = (window as any).FB;
-    if (!FB) return false;
-
-    let authResponse = FB.getAuthResponse?.();
-
-    if (!authResponse?.code && !authResponse?.accessToken && typeof FB.getLoginStatus === "function") {
-      authResponse = await new Promise<any>((resolve) => {
-        FB.getLoginStatus((response: any) => resolve(response?.authResponse || null), true);
-      });
-    }
-
-    if (!authResponse?.code && !authResponse?.accessToken) return false;
-
-    embeddedSignupAuthHandledRef.current = true;
-    console.log("[Embedded Signup] Recovered auth after popup close via", source, {
-      hasCode: Boolean(authResponse?.code),
-      hasToken: Boolean(authResponse?.accessToken),
-      hasSelection: Boolean(embeddedSignupSelectionRef.current?.phoneNumberId),
-    });
-
-    if (authResponse.code) {
-      await handleCodeExchange(authResponse.code);
-      return true;
-    }
-
-    if (authResponse.accessToken) {
-      await handleDirectToken(authResponse.accessToken);
-      return true;
-    }
-
-    embeddedSignupAuthHandledRef.current = false;
-    return false;
-  }, [flowStep, handleCodeExchange, handleDirectToken]);
-
-  useEffect(() => {
-    if (flowStep !== "connecting") return;
-
-    const initialRecovery = window.setTimeout(() => {
-      void tryRecoverEmbeddedSignupAuth("initial recovery");
-    }, 1200);
-
-    const recoveryInterval = window.setInterval(() => {
-      void tryRecoverEmbeddedSignupAuth(
-        embeddedSignupSelectionRef.current?.phoneNumberId ? "session event recovery" : "polling recovery"
-      );
-    }, 2000);
-
-    const timeoutTimer = window.setTimeout(() => {
-      void tryRecoverEmbeddedSignupAuth("final timeout recovery").then((recovered) => {
-        if (recovered) return;
-        setErrorMessage("أغلقت نافذة ميتا لكن لم يرجع رمز المصادقة إلى المنصة، لذلك لم يكتمل الربط. غالبًا لم تكتمل الخطوات داخل ميتا أو لم تتم إعادة الجلسة بعد الإغلاق.");
-        setFlowStep("error");
-        setIsLoading(false);
-        loadConfigs(true);
-      });
-    }, 45000);
-
-    return () => {
-      window.clearTimeout(initialRecovery);
-      window.clearInterval(recoveryInterval);
-      window.clearTimeout(timeoutTimer);
-    };
-  }, [flowStep, tryRecoverEmbeddedSignupAuth]);
 
   const selectPhone = async (phone: PhoneNumber, token?: string, wabaId?: string) => {
     setIsLoading(true);
