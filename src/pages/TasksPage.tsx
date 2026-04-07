@@ -47,17 +47,6 @@ interface Task {
   location: string | null;
 }
 
-interface ForwardConfig {
-  id: string;
-  name: string;
-  forward_type: string;
-  target_phone: string | null;
-  target_email: string | null;
-  target_group_jid: string | null;
-  channel_id: string | null;
-  message_template: string;
-  is_active: boolean;
-}
 
 const TASK_TYPES = [
   { value: "contact_customer", label: "تواصل مع عميل", icon: "📞" },
