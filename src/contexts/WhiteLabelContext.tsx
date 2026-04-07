@@ -171,7 +171,7 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
       value={{
         brand,
         loading,
-        isWhiteLabel: !brand.is_default,
+        isWhiteLabel: brand.slug !== "respondly",
         platformName: brand.name,
       }}
     >
