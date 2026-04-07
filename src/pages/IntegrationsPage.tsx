@@ -86,6 +86,7 @@ const IntegrationsPage = () => {
   const [maxPhones, setMaxPhones] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [sdkLoaded, setSdkLoaded] = useState(false);
+  const isMobileDevice = useMemo(() => /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent), []);
   const [flowStep, setFlowStep] = useState<FlowStep>("idle");
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
   const [accessToken, setAccessToken] = useState("");
