@@ -95,6 +95,47 @@ Deno.serve(async (req) => {
               }
             }
           }
+        } else if (msg.channel_type === "email") {
+          // Email retry
+          const { data: emailConfig } = await supabase
+            .from("email_configs")
+            .select("*")
+            .eq("org_id", msg.org_id)
+            .eq("is_active", true)
+            .limit(1)
+            .maybeSingle();
+
+          if (!emailConfig) {
+            lastError = "No active email config";
+          } else {
+            // Invoke email-send edge function with service role
+            const meta = msg.metadata as Record<string, any> || {};
+            const invokeUrl = `${supabaseUrl}/functions/v1/email-send`;
+            const res = await fetch(invokeUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${serviceKey}`,
+                "apikey": serviceKey,
+              },
+              body: JSON.stringify({
+                to: msg.to_phone,
+                subject: meta.subject || "(بدون عنوان)",
+                body: msg.content,
+                cc: meta.cc || null,
+                bcc: meta.bcc || null,
+                config_id: meta.config_id || null,
+                conversation_id: msg.conversation_id,
+                attachments: meta.attachments || [],
+              }),
+            });
+            if (res.ok) {
+              success = true;
+            } else {
+              const result = await res.json().catch(() => ({}));
+              lastError = result?.error || `HTTP ${res.status}`;
+            }
+          }
         } else {
           // Meta API
           const { data: config } = await supabase
@@ -164,6 +205,17 @@ Deno.serve(async (req) => {
               retry_count: newRetryCount,
             })
             .eq("id", msg.id);
+
+          // Update the corresponding message status from pending to sent
+          if (msg.conversation_id) {
+            await supabase
+              .from("messages")
+              .update({ status: "sent" })
+              .eq("conversation_id", msg.conversation_id)
+              .eq("status", "pending")
+              .eq("sender", "agent")
+              .like("content", `%${(msg.content || "").substring(0, 50)}%`);
+          }
           successCount++;
         } else if (newRetryCount >= msg.max_retries) {
           // Exhausted all retries — mark as permanently failed

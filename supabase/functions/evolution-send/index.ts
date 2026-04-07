@@ -356,8 +356,38 @@ serve(async (req) => {
 
     const config = configResult.data;
     if (!config || !config.evolution_instance_name) {
-      logToSystem(adminClient, "error", "واتساب ويب غير مربوط - فشل الإرسال", {}, orgId, profile.id);
-      return json({ error: "لا يوجد رقم واتساب ويب مربوط" }, 400);
+      logToSystem(adminClient, "warn", "واتساب ويب غير مربوط - تم وضع الرسالة في قائمة الانتظار", {}, orgId, profile.id);
+
+      // Queue for later delivery
+      let convId = conversation_id || null;
+      if (to && !convId) {
+        const { data: conv } = await adminClient.from("conversations").select("id").eq("customer_phone", to).eq("org_id", orgId).neq("status", "closed").limit(1).maybeSingle();
+        convId = conv?.id || null;
+      }
+      if (convId) {
+        await adminClient.from("messages").insert({
+          conversation_id: convId,
+          sender: "agent",
+          content: message || `[${media_type || "media"}]`,
+          message_type: media_url ? (media_type || "image") : "text",
+          status: "pending",
+          metadata: { queued: true, queued_at: new Date().toISOString(), sent_by: profile.id },
+        });
+      }
+
+      await adminClient.from("message_retry_queue").insert({
+        org_id: orgId,
+        conversation_id: convId,
+        to_phone: to,
+        content: message || "",
+        message_type: media_url ? (media_type || "image") : "text",
+        media_url: media_url || null,
+        channel_type: "evolution",
+        last_error: "واتساب ويب غير مربوط",
+        metadata: { channel_id },
+      });
+
+      return json({ success: true, queued: true, message: "الرسالة في قائمة الانتظار - سيتم إرسالها عند اتصال القناة" });
     }
 
     let conversation = convResult.data;

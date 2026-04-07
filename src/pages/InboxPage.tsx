@@ -708,12 +708,20 @@ const InboxPage = () => {
 
     const { data, error } = await invokeCloud(sendFunction, { body });
 
-    if (error || data?.error) {
+    if (error || (data?.error && !data?.queued)) {
       toast.error(data?.error || "فشل إرسال الرسالة");
       // Remove optimistic message on failure
       setAllMessages((prev) => ({
         ...prev,
         [convId]: (prev[convId] || []).filter((m) => m.id !== optimisticId),
+      }));
+    } else if (data?.queued) {
+      // Message was queued for later delivery
+      toast.info("⏳ الرسالة معلّقة - سيتم إرسالها تلقائياً عند اتصال القناة", { duration: 5000 });
+      // Update optimistic message status to pending
+      setAllMessages((prev) => ({
+        ...prev,
+        [convId]: (prev[convId] || []).map((m) => m.id === optimisticId ? { ...m, status: "pending" } : m),
       }));
     } else {
       // Auto-assign private conversations to the agent who replied

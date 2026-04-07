@@ -160,8 +160,45 @@ serve(async (req) => {
       .maybeSingle();
 
     if (configError || !config) {
-      await logToSystem(adminClient, "error", "واتساب غير مربوط - فشل الإرسال", { configError: configError?.message }, orgId, user.id);
-      return json({ error: "واتساب غير مربوط بشكل حقيقي بعد" }, 400);
+      await logToSystem(adminClient, "warn", "واتساب غير مربوط - تم وضع الرسالة في قائمة الانتظار", { configError: configError?.message }, orgId, user.id);
+
+      // Queue for later delivery
+      const queueContent = message || caption || `[${type}]`;
+      const queueType = type === "template" ? "template" : type === "media" ? (media_type || "image") : "text";
+      
+      // Save message to conversation first so it appears in UI
+      let convId = conversation_id || null;
+      if (to && !convId) {
+        const { data: conv } = await adminClient.from("conversations").select("id").eq("customer_phone", to).eq("org_id", orgId).neq("status", "closed").limit(1).maybeSingle();
+        convId = conv?.id || null;
+      }
+      if (convId) {
+        await adminClient.from("messages").insert({
+          conversation_id: convId,
+          sender: "agent",
+          content: queueContent,
+          message_type: queueType === "template" ? "template" : queueType,
+          status: "pending",
+          metadata: { queued: true, queued_at: new Date().toISOString(), sent_by: user.id },
+        });
+      }
+
+      await adminClient.from("message_retry_queue").insert({
+        org_id: orgId,
+        conversation_id: convId,
+        to_phone: to,
+        content: queueContent,
+        message_type: queueType,
+        media_url: media_url || null,
+        template_name: template_name || null,
+        template_language: template_language || "ar",
+        template_components: template_components || [],
+        channel_type: "meta_api",
+        last_error: "واتساب غير مربوط",
+        metadata: { phone_number_id: requestedPhoneId, channel_id: requestedChannelId },
+      });
+
+      return json({ success: true, queued: true, message: "الرسالة في قائمة الانتظار - سيتم إرسالها عند اتصال القناة" });
     }
 
     // ── Delete message ──
