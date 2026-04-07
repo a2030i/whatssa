@@ -558,7 +558,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     }
   };
 
-  const canSend = isValidNumber && (isMeta ? !!selectedTemplate : messageText.trim().length > 0);
+  const canSend = isValidNumber && (isMeta ? (useTemplateFallback ? !!selectedTemplate : messageText.trim().length > 0) : messageText.trim().length > 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
