@@ -187,12 +187,22 @@ Deno.serve(async (req) => {
       ? attachments.map((a: any) => a.filename)
       : [];
 
+    // Append org signature if configured
+    const signature = config.email_signature;
+    let finalBody = emailBody;
+    let finalHtml = emailBody;
+    if (signature) {
+      const sigHtml = `<br><br><div style="border-top:1px solid #ccc;padding-top:8px;margin-top:16px;color:#666;font-size:13px;white-space:pre-line">${signature.replace(/\n/g, "<br>")}</div>`;
+      finalBody = emailBody + "\n\n--\n" + signature;
+      finalHtml = emailBody + sigHtml;
+    }
+
     const sendOptions: any = {
       from: config.email_address,
       to,
       subject: threadSubject,
-      content: emailBody,
-      html: emailBody,
+      content: finalBody,
+      html: finalHtml,
       headers: customHeaders,
     };
     if (cc) sendOptions.cc = cc;
