@@ -47,6 +47,11 @@ interface EmbeddedSignupSelection {
   wabaId: string;
 }
 
+interface EmbeddedSignupAuth {
+  code?: string;
+  accessToken?: string;
+}
+
 interface WhatsAppConfig {
   id: string;
   phone_number_id: string;
@@ -87,12 +92,16 @@ const IntegrationsPage = () => {
   const fbCallbackFiredRef = useRef(false);
   const postMessageHandledRef = useRef(false);
   // Refs to hold latest function references for the postMessage listener (avoids stale closures)
-  const handleCodeExchangeRef = useRef<((code: string) => void) | null>(null);
-  const handleDirectTokenRef = useRef<((token: string) => void) | null>(null);
+  const handleCodeExchangeRef = useRef<((code: string) => Promise<void>) | null>(null);
+  const handleDirectTokenRef = useRef<((token: string) => Promise<void>) | null>(null);
   const handleErrorRef = useRef<((msg: string) => void) | null>(null);
   const loadConfigsRef = useRef<((skip?: boolean) => Promise<void>) | null>(null);
   const configsRef = useRef<WhatsAppConfig[]>([]);
   const orgIdRef = useRef<string | null>(null);
+  const flowStepRef = useRef<FlowStep>("idle");
+  const pendingEmbeddedAuthRef = useRef<EmbeddedSignupAuth | null>(null);
+  const embeddedSignupInFlightRef = useRef(false);
+  const signupStartedAtRef = useRef<string | null>(null);
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isReviewMode, setIsReviewMode] = useState(() => window.localStorage.getItem("meta-review-mode") === "1");
@@ -155,6 +164,53 @@ const IntegrationsPage = () => {
   const clearEmbeddedSignupSelection = useCallback(() => {
     embeddedSignupSelectionRef.current = null;
   }, []);
+
+  const recoverLinkedChannel = async (selection?: EmbeddedSignupSelection | null) => {
+    const { data: freshConfigs } = await supabase.rpc("get_org_whatsapp_channels");
+    const currentOrgId = orgIdRef.current;
+    const startedAt = signupStartedAtRef.current ? new Date(signupStartedAtRef.current).getTime() : 0;
+    const existingIds = new Set(configsRef.current.map((config) => config.id));
+
+    const orgConfigs = ((freshConfigs || []) as WhatsAppConfig[]).filter(
+      (config) => config.org_id === currentOrgId && config.channel_type !== "evolution" && config.is_connected && config.phone_number_id
+    );
+
+    return orgConfigs.find((config) => {
+      const matchesSelection = !!selection && (
+        config.phone_number_id === selection.phoneNumberId ||
+        config.business_account_id === selection.wabaId
+      );
+      const isNewChannel = !existingIds.has(config.id);
+      const updatedDuringFlow = !!config.updated_at && new Date(config.updated_at).getTime() >= startedAt;
+      return matchesSelection || isNewChannel || updatedDuringFlow;
+    }) || null;
+  };
+
+  const runPendingEmbeddedSignup = async (reason: string) => {
+    if (embeddedSignupInFlightRef.current) return false;
+
+    const pendingAuth = pendingEmbeddedAuthRef.current;
+    if (!pendingAuth) return false;
+
+    embeddedSignupInFlightRef.current = true;
+    console.log("[Embedded Signup] Processing pending auth:", reason, pendingAuth.code ? "code" : "token");
+
+    try {
+      if (pendingAuth.code && handleCodeExchangeRef.current) {
+        await handleCodeExchangeRef.current(pendingAuth.code);
+        return true;
+      }
+
+      if (pendingAuth.accessToken && handleDirectTokenRef.current) {
+        await handleDirectTokenRef.current(pendingAuth.accessToken);
+        return true;
+      }
+
+      return false;
+    } finally {
+      embeddedSignupInFlightRef.current = false;
+    }
+  };
 
   // Load Meta settings first, then load SDK with correct appId
   useEffect(() => {
@@ -229,16 +285,10 @@ const IntegrationsPage = () => {
           }
         } catch { /* ignore */ }
 
-        // Check if a new channel appeared in the DB (connection completed server-side)
+        // Check if the selected channel was created or updated in DB server-side
         try {
-          const { data: freshConfigs } = await supabase.rpc("get_org_whatsapp_channels");
-          const currentOrgId = orgIdRef.current;
-          const orgConfigs = ((freshConfigs || []) as WhatsAppConfig[]).filter(
-            (c) => c.org_id === currentOrgId && c.channel_type !== "evolution" && c.is_connected && c.phone_number_id
-          );
-          const existingIds = configsRef.current.map(c => c.id);
-          const newChannel = orgConfigs.find(c => !existingIds.includes(c.id));
-          if (newChannel) {
+          const linkedChannel = await recoverLinkedChannel(embeddedSignupSelectionRef.current);
+          if (linkedChannel) {
             console.log("[Embedded Signup] Found new connected channel in DB, recovering");
             clearInterval(interval);
             if (!cancelled) {
@@ -403,7 +453,7 @@ const IntegrationsPage = () => {
       window.addEventListener('message', (event) => {
         if (event.origin && !event.origin.endsWith('facebook.com')) return;
         try {
-          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+            const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           if (!data || typeof data !== "object") return;
           if (data.type === 'WA_EMBEDDED_SIGNUP') {
             console.log('[Embedded Signup] session event:', data);
@@ -414,6 +464,14 @@ const IntegrationsPage = () => {
                 wabaId: data.data.waba_id,
               });
               console.log('[Embedded Signup] Got IDs from session:', data.data.phone_number_id, data.data.waba_id);
+
+                if (
+                  pendingEmbeddedAuthRef.current &&
+                  !embeddedSignupInFlightRef.current &&
+                  (flowStepRef.current === "connecting" || flowStepRef.current === "error")
+                ) {
+                  void runPendingEmbeddedSignup('session_ids_received');
+                }
             }
 
             // CANCEL: user exited before completing — immediately leave connecting state
@@ -441,12 +499,14 @@ const IntegrationsPage = () => {
                     const FB = (window as any).FB;
                     if (FB) {
                       const auth = FB.getAuthResponse();
-                      if (auth?.code && handleCodeExchangeRef.current) {
-                        handleCodeExchangeRef.current(auth.code);
+                       if (auth?.code) {
+                         pendingEmbeddedAuthRef.current = { code: auth.code };
+                         void runPendingEmbeddedSignup('finish_recovered_code');
                         return;
                       }
-                      if (auth?.accessToken && handleDirectTokenRef.current) {
-                        handleDirectTokenRef.current(auth.accessToken);
+                       if (auth?.accessToken) {
+                         pendingEmbeddedAuthRef.current = { accessToken: auth.accessToken };
+                         void runPendingEmbeddedSignup('finish_recovered_token');
                         return;
                       }
                     }
@@ -457,13 +517,8 @@ const IntegrationsPage = () => {
                     console.log('[Embedded Signup] Using postMessage IDs to check DB');
                     setTimeout(async () => {
                       try {
-                        const { data: freshConfigs } = await supabase.rpc("get_org_whatsapp_channels");
-                        const currentOrgId = orgIdRef.current;
-                        const orgConfigs = ((freshConfigs || []) as WhatsAppConfig[]).filter(
-                          (c: WhatsAppConfig) => c.org_id === currentOrgId && c.channel_type !== "evolution" && c.is_connected
-                        );
-                        const prevConfigs = configsRef.current;
-                        if (orgConfigs.length > prevConfigs.length) {
+                         const linkedChannel = await recoverLinkedChannel(selection);
+                         if (linkedChannel) {
                           setFlowStep("idle");
                           setIsLoading(false);
                           if (loadConfigsRef.current) await loadConfigsRef.current(true);
@@ -543,6 +598,9 @@ const IntegrationsPage = () => {
     clearEmbeddedSignupSelection();
     fbCallbackFiredRef.current = false;
     postMessageHandledRef.current = false;
+    pendingEmbeddedAuthRef.current = null;
+    embeddedSignupInFlightRef.current = false;
+    signupStartedAtRef.current = new Date().toISOString();
     setFlowStep("connecting");
     setIsLoading(true);
     setErrorMessage("");
@@ -558,9 +616,11 @@ const IntegrationsPage = () => {
           const code = response.authResponse.code;
           const token = response.authResponse.accessToken;
           if (code) {
-            handleCodeExchange(code);
+            pendingEmbeddedAuthRef.current = { code };
+            void runPendingEmbeddedSignup('fb_login_callback_code');
           } else if (token) {
-            handleDirectToken(token);
+            pendingEmbeddedAuthRef.current = { accessToken: token };
+            void runPendingEmbeddedSignup('fb_login_callback_token');
           } else {
             handleError("لم يتم الحصول على بيانات المصادقة");
           }
@@ -582,6 +642,8 @@ const IntegrationsPage = () => {
         response_type: "code",
         override_default_response_type: true,
         extras: {
+          feature: "whatsapp_embedded_signup",
+          sessionInfoVersion: 3,
           setup: {},
         },
       }
@@ -685,6 +747,7 @@ const IntegrationsPage = () => {
         wabaId: wabaId || phone.waba_id || businessAccountId,
       });
       if (result) {
+        pendingEmbeddedAuthRef.current = null;
         const resolvedDisplayPhone = phone.display_phone_number || result?.selected_phone?.display_phone_number || result?.saved_config?.display_phone || "";
         // If migration, check prereqs before showing success
         if (result.migration_prereqs && !result.migration_prereqs.ready) {
@@ -769,6 +832,7 @@ const IntegrationsPage = () => {
   loadConfigsRef.current = loadConfigs;
   configsRef.current = configs;
   orgIdRef.current = orgId || null;
+  flowStepRef.current = flowStep;
 
   // Manual token connect handler
   const handleManualTokenConnect = async () => {
