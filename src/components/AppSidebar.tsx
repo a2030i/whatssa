@@ -107,6 +107,7 @@ const AppSidebar = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, signOut } = useAuth();
+  const { brand, platformName } = useWhiteLabel();
   const [collapsed, setCollapsed] = useState(false);
   const displayRole = userRole === "super_admin"
     ? "super_admin"
