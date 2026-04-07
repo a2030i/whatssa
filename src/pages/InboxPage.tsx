@@ -684,9 +684,13 @@ const InboxPage = () => {
       [convId]: [...(prev[convId] || []), optimisticMsg],
     }));
 
+    const overrides = emailOverridesRef.current;
+    emailOverridesRef.current = null;
+
     const body = isEmail
       ? {
-          to: conversation.customerPhone,
+          to: overrides?.to || conversation.customerPhone,
+          cc: overrides?.cc || undefined,
           subject: text.length > 60 ? text.substring(0, 60) + "..." : text,
           body: replyTo?.text
             ? `${text}\n\n---\n\nفي ${new Date().toLocaleDateString("ar-SA")}، كتب ${replyTo.senderName || "العميل"}:\n> ${replyTo.text.split("\n").join("\n> ")}`
