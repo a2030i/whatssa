@@ -450,6 +450,16 @@ const CustomersPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        <TabsContent value="scoring">
+          <LeadScoring />
+        </TabsContent>
+
+        <TabsContent value="merge">
+          <MergeDuplicates onMerged={load} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
