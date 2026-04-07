@@ -74,7 +74,10 @@ async function getCallerContext(authHeader: string) {
     .select("id, org_id, team_id, is_supervisor")
     .maybeSingle<CallerProfile>();
 
+  console.log("Profile query result:", { profile, profileError, hasAuth: !!authHeader });
+
   if (profileError || !profile?.id || !profile.org_id) {
+    console.error("Auth failed:", { profileError, profile });
     throw new Error("Unauthorized");
   }
 
