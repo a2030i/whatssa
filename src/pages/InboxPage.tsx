@@ -243,6 +243,13 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         return false;
       });
 
+      // Filter by inbox mode (whatsapp vs email)
+      const modeFiltered = filtered.filter(conv => {
+        if (inboxMode === "email") return conv.conversationType === "email";
+        // whatsapp mode: exclude email conversations
+        return conv.conversationType !== "email";
+      });
+
       // Zero out unread for the currently viewed conversation
       const activeId = selectedIdRef.current;
       if (activeId) {
