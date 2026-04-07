@@ -1375,8 +1375,8 @@ const IntegrationsPage = () => {
                   );
                 })}
 
-                {/* Individual connected unofficial numbers */}
-                {connectedUnofficialConfigs.map((config) => {
+                {/* Individual unofficial numbers (all, not just connected) */}
+                {displayUnofficialConfigs.map((config) => {
                   const isExpanded = expandedChannelBadgeId === config.id;
                   const isActuallyConnected = config.is_connected && (config.registration_status === "connected" || config.evolution_instance_status === "connected");
                   return (
