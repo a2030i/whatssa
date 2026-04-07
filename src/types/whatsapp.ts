@@ -78,6 +78,9 @@ export const mapMetaTemplate = (template: any): WhatsAppTemplate => {
     headerVariableCount,
     bodyVariableCount,
     components,
+    channelId: template?.channel_id || undefined,
+    channelPhone: template?.channel_phone || undefined,
+    channelName: template?.channel_name || undefined,
   };
 };
 
