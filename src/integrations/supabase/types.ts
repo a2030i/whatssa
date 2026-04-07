@@ -2436,6 +2436,7 @@ export type Database = {
           is_ecommerce: boolean | null
           logo_url: string | null
           name: string
+          partner_id: string | null
           plan_id: string | null
           settings: Json | null
           slug: string | null
@@ -2456,6 +2457,7 @@ export type Database = {
           is_ecommerce?: boolean | null
           logo_url?: string | null
           name: string
+          partner_id?: string | null
           plan_id?: string | null
           settings?: Json | null
           slug?: string | null
@@ -2476,6 +2478,7 @@ export type Database = {
           is_ecommerce?: boolean | null
           logo_url?: string | null
           name?: string
+          partner_id?: string | null
           plan_id?: string | null
           settings?: Json | null
           slug?: string | null
@@ -2488,6 +2491,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "organizations_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "white_label_partners"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organizations_plan_id_fkey"
             columns: ["plan_id"]
@@ -2726,6 +2736,7 @@ export type Database = {
           is_supervisor: boolean
           last_seen_at: string | null
           org_id: string | null
+          partner_id: string | null
           phone: string | null
           team_id: string | null
           updated_at: string | null
@@ -2746,6 +2757,7 @@ export type Database = {
           is_supervisor?: boolean
           last_seen_at?: string | null
           org_id?: string | null
+          partner_id?: string | null
           phone?: string | null
           team_id?: string | null
           updated_at?: string | null
@@ -2766,6 +2778,7 @@ export type Database = {
           is_supervisor?: boolean
           last_seen_at?: string | null
           org_id?: string | null
+          partner_id?: string | null
           phone?: string | null
           team_id?: string | null
           updated_at?: string | null
@@ -2782,6 +2795,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "white_label_partners"
             referencedColumns: ["id"]
           },
           {
@@ -4169,6 +4189,87 @@ export type Database = {
           },
         ]
       }
+      white_label_partners: {
+        Row: {
+          accent_color: string | null
+          background_color: string | null
+          created_at: string | null
+          custom_domain: string | null
+          domain_last_check_at: string | null
+          domain_status: string
+          domain_verified_at: string | null
+          domain_verify_token: string | null
+          favicon_url: string | null
+          foreground_color: string | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          logo_url: string | null
+          metadata: Json | null
+          name: string
+          primary_color: string | null
+          privacy_policy_url: string | null
+          secondary_color: string | null
+          slug: string
+          support_email: string | null
+          support_phone: string | null
+          terms_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          background_color?: string | null
+          created_at?: string | null
+          custom_domain?: string | null
+          domain_last_check_at?: string | null
+          domain_status?: string
+          domain_verified_at?: string | null
+          domain_verify_token?: string | null
+          favicon_url?: string | null
+          foreground_color?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          logo_url?: string | null
+          metadata?: Json | null
+          name: string
+          primary_color?: string | null
+          privacy_policy_url?: string | null
+          secondary_color?: string | null
+          slug: string
+          support_email?: string | null
+          support_phone?: string | null
+          terms_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          background_color?: string | null
+          created_at?: string | null
+          custom_domain?: string | null
+          domain_last_check_at?: string | null
+          domain_status?: string
+          domain_verified_at?: string | null
+          domain_verify_token?: string | null
+          favicon_url?: string | null
+          foreground_color?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          logo_url?: string | null
+          metadata?: Json | null
+          name?: string
+          primary_color?: string | null
+          privacy_policy_url?: string | null
+          secondary_color?: string | null
+          slug?: string
+          support_email?: string | null
+          support_phone?: string | null
+          terms_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       widget_configs: {
         Row: {
           button_color: string | null
@@ -4497,6 +4598,7 @@ export type Database = {
         }
       }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
+      get_user_partner_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4507,10 +4609,19 @@ export type Database = {
       hash_api_token: { Args: { _token_id: string }; Returns: undefined }
       increment_mention_count: { Args: { conv_id: string }; Returns: undefined }
       increment_unread: { Args: { conv_id: string }; Returns: undefined }
+      is_partner_admin: {
+        Args: { _partner_id: string; _user_id: string }
+        Returns: boolean
+      }
       validate_coupon: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
-      app_role: "super_admin" | "admin" | "member" | "supervisor"
+      app_role:
+        | "super_admin"
+        | "admin"
+        | "member"
+        | "supervisor"
+        | "partner_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4638,7 +4749,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "admin", "member", "supervisor"],
+      app_role: [
+        "super_admin",
+        "admin",
+        "member",
+        "supervisor",
+        "partner_admin",
+      ],
     },
   },
 } as const
