@@ -27,6 +27,7 @@ interface EmailConfig {
   dedicated_agent_id: string | null;
   dedicated_team_id: string | null;
   sync_mode: string;
+  email_signature?: string | null;
 }
 
 interface TeamOption { id: string; name: string; }
