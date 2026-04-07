@@ -453,12 +453,18 @@ const TemplatesPage = () => {
       return;
     }
 
+    if (metaChannels.length > 1 && !selectedFormChannel) {
+      toast.error(isReviewMode ? "Please select a WhatsApp number" : "يرجى اختيار الرقم الرسمي");
+      return;
+    }
+
     setIsSubmitting(true);
     const action = editingTemplate ? "edit" : "create";
 
     const { data, error } = await invokeCloud("whatsapp-templates", {
       body: {
         action,
+        channel_id: selectedFormChannel || undefined,
         name: formData.name.trim(),
         category: formData.category,
         header_type: formData.headerType,
