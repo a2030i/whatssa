@@ -337,6 +337,27 @@ const TasksPage = () => {
         </TabsList>
 
         <TabsContent value="tasks" className="space-y-4">
+          {/* Scope tabs */}
+          {canSeeTeam && (
+            <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+              <button
+                onClick={() => setTaskScope("mine")}
+                className={cn("px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                  taskScope === "mine" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                مهامي
+              </button>
+              <button
+                onClick={() => setTaskScope("team")}
+                className={cn("px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                  taskScope === "team" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {effectiveRole === "admin" ? "مهام الموظفين" : "مهام الفريق"}
+              </button>
+            </div>
+          )}
           {/* Filters */}
           <div className="flex flex-wrap gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
