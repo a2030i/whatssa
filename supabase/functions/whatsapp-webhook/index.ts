@@ -394,6 +394,8 @@ function fireWebhook(orgId: string, event: string, data: Record<string, unknown>
     body: JSON.stringify({ org_id: orgId, event, data }),
   }).catch(e => console.error("dispatch-webhook fire failed:", e));
 }
+
+serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
