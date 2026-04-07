@@ -757,7 +757,9 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
     const { data, error } = await invokeCloud(sendFunction, { body });
 
     if (error || (data?.error && !data?.queued)) {
-      toast.error(data?.error || "فشل إرسال الرسالة");
+      const errMsg = data?.error || (error instanceof Error ? error.message : typeof error === "string" ? error : "فشل إرسال الرسالة");
+      console.error("[send] function:", sendFunction, "error:", error, "data:", data);
+      toast.error(errMsg);
       // Remove optimistic message on failure
       setAllMessages((prev) => ({
         ...prev,
