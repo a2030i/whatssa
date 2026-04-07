@@ -11,6 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import SlaManagement from "@/components/settings/SlaManagement";
+import CsatDashboard from "@/components/settings/CsatDashboard";
 
 const strategyOptions = [
   { key: "manual", label: "يدوي", icon: Hand, description: "المدير يسند المحادثات يدوياً لكل موظف", color: "text-muted-foreground" },
