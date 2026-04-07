@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   ClipboardCheck, Plus, Filter, Clock, CheckCircle2, AlertCircle,
   User, MessageSquare, ArrowUpDown, MoreHorizontal, Send, Loader2,
-  Bot, UserCircle, Truck, Phone, Mail, RefreshCw, ChevronsUpDown, Check,
+  Bot, UserCircle, Truck, Phone, Mail, RefreshCw, Check,
   MapPin, Calendar, Monitor, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -106,13 +104,12 @@ const TasksPage = () => {
   const [newDesc, setNewDesc] = useState("");
   const [newType, setNewType] = useState("general");
   const [newPriority, setNewPriority] = useState("medium");
-  const [newAssignee, setNewAssignee] = useState("");
-  const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const [customers, setCustomers] = useState<{ id: string; name: string | null; phone: string }[]>([]);
+  const [newAssignee, setNewAssignee] = useState(profile?.id || "");
   const [newAttendanceType, setNewAttendanceType] = useState("remote");
   const [newTaskDate, setNewTaskDate] = useState("");
   const [newStartTime, setNewStartTime] = useState("");
-  const [newEndTime, setNewEndTime] = useState("");
+  const [newDuration, setNewDuration] = useState("30");
+  const [newCustomDuration, setNewCustomDuration] = useState("");
   const [newLocation, setNewLocation] = useState("");
 
   // New config form
@@ -127,7 +124,6 @@ const TasksPage = () => {
     fetchTasks();
     fetchConfigs();
     fetchAgents();
-    fetchCustomers();
     }
   }, [profile?.org_id]);
 
@@ -152,16 +148,6 @@ const TasksPage = () => {
     setConfigs((data as unknown as ForwardConfig[]) || []);
   };
 
-  const fetchCustomers = async () => {
-    if (!profile?.org_id) return;
-    const { data } = await supabase
-      .from("customers")
-      .select("id, name, phone")
-      .eq("org_id", profile.org_id)
-      .order("name");
-    setCustomers(data || []);
-  };
-
   const fetchAgents = async () => {
     let query = supabase
       .from("profiles")
@@ -178,15 +164,29 @@ const TasksPage = () => {
     setAgents(data || []);
   };
 
+  const calcEndTime = (start: string, durationMin: number): string => {
+    const [h, m] = start.split(":").map(Number);
+    const totalMin = h * 60 + m + durationMin;
+    const eh = Math.floor(totalMin / 60) % 24;
+    const em = totalMin % 60;
+    return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+  };
+
+  const getEffectiveDuration = (): number => {
+    if (newDuration === "custom") return parseInt(newCustomDuration) || 0;
+    return parseInt(newDuration) || 0;
+  };
+
   const createTask = async () => {
     if (!newTitle.trim()) return toast.error("أدخل عنوان المهمة");
     if (!newTaskDate) return toast.error("اختر تاريخ المهمة");
-    if (!newStartTime || !newEndTime) return toast.error("حدد وقت البداية والنهاية");
-    if (newStartTime >= newEndTime) return toast.error("وقت النهاية يجب أن يكون بعد وقت البداية");
+    if (!newStartTime) return toast.error("حدد وقت البداية");
+    const dur = getEffectiveDuration();
+    if (dur <= 0) return toast.error("حدد مدة صحيحة");
     if (newAttendanceType === "in_person" && !newLocation.trim()) return toast.error("أدخل الموقع للمهمة الحضورية");
     
-    const assignee = effectiveRole === "member" ? profile!.id : (newAssignee || null);
-    const selectedCust = customers.find(c => c.id === selectedCustomerId);
+    const endTime = calcEndTime(newStartTime, dur);
+    const assignee = newAssignee || profile!.id;
     const { error } = await supabase.from("tasks").insert({
       org_id: profile!.org_id!,
       title: newTitle.trim(),
@@ -194,14 +194,12 @@ const TasksPage = () => {
       task_type: newType,
       priority: newPriority,
       assigned_to: assignee,
-      customer_phone: selectedCust?.phone || null,
-      customer_name: selectedCust?.name || null,
       created_by_type: "agent",
       created_by: profile!.id,
       attendance_type: newAttendanceType,
       task_date: newTaskDate,
       start_time: newStartTime,
-      end_time: newEndTime,
+      end_time: endTime,
       location: newAttendanceType === "in_person" ? newLocation.trim() : null,
     } as any);
     if (error) {
@@ -214,8 +212,8 @@ const TasksPage = () => {
     toast.success("تم إنشاء المهمة");
     setShowNewTask(false);
     setNewTitle(""); setNewDesc(""); setNewType("general"); setNewPriority("medium"); 
-    setNewAssignee(""); setSelectedCustomerId("");
-    setNewAttendanceType("remote"); setNewTaskDate(""); setNewStartTime(""); setNewEndTime(""); setNewLocation("");
+    setNewAssignee(profile?.id || "");
+    setNewAttendanceType("remote"); setNewTaskDate(""); setNewStartTime(""); setNewDuration("30"); setNewCustomDuration(""); setNewLocation("");
     fetchTasks();
   };
 
@@ -605,20 +603,62 @@ const TasksPage = () => {
               </Select>
             </div>
             {/* Date */}
-            <div>
-              <Label>التاريخ *</Label>
-              <Input type="date" value={newTaskDate} onChange={e => setNewTaskDate(e.target.value)} />
-            </div>
-            {/* Time Range */}
+            {/* Date & Start Time */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>من الساعة *</Label>
-                <Input type="time" value={newStartTime} onChange={e => setNewStartTime(e.target.value)} />
+                <Label>التاريخ *</Label>
+                <Input type="date" value={newTaskDate} onChange={e => setNewTaskDate(e.target.value)} className="text-sm" />
               </div>
               <div>
-                <Label>إلى الساعة *</Label>
-                <Input type="time" value={newEndTime} onChange={e => setNewEndTime(e.target.value)} />
+                <Label>وقت البداية *</Label>
+                <Input type="time" value={newStartTime} onChange={e => setNewStartTime(e.target.value)} className="text-sm" />
               </div>
+            </div>
+            {/* Duration */}
+            <div>
+              <Label>لمدة *</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {[
+                  { value: "5", label: "٥ د" },
+                  { value: "10", label: "١٠ د" },
+                  { value: "15", label: "١٥ د" },
+                  { value: "30", label: "٣٠ د" },
+                  { value: "60", label: "ساعة" },
+                  { value: "custom", label: "مخصص" },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setNewDuration(opt.value)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors",
+                      newDuration === opt.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground border-input hover:bg-accent"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {newDuration === "custom" && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={newCustomDuration}
+                    onChange={e => setNewCustomDuration(e.target.value)}
+                    placeholder="عدد الدقائق"
+                    className="w-32 text-sm"
+                  />
+                  <span className="text-xs text-muted-foreground">دقيقة</span>
+                </div>
+              )}
+              {newStartTime && getEffectiveDuration() > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  ⏰ من {newStartTime} إلى {calcEndTime(newStartTime, getEffectiveDuration())}
+                </p>
+              )}
             </div>
             {/* Location - only for in-person */}
             {newAttendanceType === "in_person" && (
@@ -627,53 +667,15 @@ const TasksPage = () => {
                 <Input value={newLocation} onChange={e => setNewLocation(e.target.value)} placeholder="مثال: مكتب الرياض - حي العليا" />
               </div>
             )}
-            {effectiveRole !== "member" && (
-              <div>
-                <Label>إسناد إلى</Label>
-                <Select value={newAssignee || "none"} onValueChange={(v) => setNewAssignee(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">بدون إسناد</SelectItem>
-                    {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            {/* Assignee - defaults to me */}
             <div>
-              <Label>العميل</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                    {selectedCustomerId
-                      ? (() => { const c = customers.find(c => c.id === selectedCustomerId); return c ? `${c.name || "بدون اسم"} — ${c.phone}` : "اختر عميل"; })()
-                      : "اختر عميل"}
-                    <ChevronsUpDown className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="بحث بالاسم أو الرقم..." />
-                    <CommandList>
-                      <CommandEmpty>لا يوجد عملاء</CommandEmpty>
-                      <CommandGroup>
-                        <CommandItem value="none" onSelect={() => setSelectedCustomerId("")}>
-                          بدون عميل
-                        </CommandItem>
-                        {customers.map(c => (
-                          <CommandItem
-                            key={c.id}
-                            value={`${c.name || ""} ${c.phone}`}
-                            onSelect={() => setSelectedCustomerId(c.id)}
-                          >
-                            <Check className={cn("ml-2 h-4 w-4", selectedCustomerId === c.id ? "opacity-100" : "opacity-0")} />
-                            {c.name || "بدون اسم"} — {c.phone}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Label>إسناد إلى</Label>
+              <Select value={newAssignee || profile?.id || ""} onValueChange={setNewAssignee}>
+                <SelectTrigger><SelectValue placeholder="اختر موظف" /></SelectTrigger>
+                <SelectContent>
+                  {agents.map(a => <SelectItem key={a.id} value={a.id}>{a.full_name}{a.id === profile?.id ? " (أنا)" : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={createTask} className="w-full">إنشاء المهمة</Button>
           </div>
