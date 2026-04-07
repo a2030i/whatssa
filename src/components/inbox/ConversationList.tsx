@@ -231,8 +231,6 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
           case "archived": if (!conv.isArchived) return false; break;
         }
       }
-        case "archived": if (!conv.isArchived) return false; break;
-      }
       if (agentFilter !== "all" && conv.assignedTo !== agentFilter) return false;
       if (channelFilter !== "all") {
         if (channelFilter === "meta_api" && conv.channelType !== "meta_api") return false;
