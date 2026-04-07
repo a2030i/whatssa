@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import BlacklistSection from "@/components/settings/BlacklistSection";
 import OutgoingWebhooksSection from "@/components/settings/OutgoingWebhooksSection";
 import AuditLogSection from "@/components/settings/AuditLogSection";
+import SavedRepliesSection from "@/components/settings/SavedRepliesSection";
 
 const PushNotificationSettings = () => {
   const { isSupported, isSubscribed, subscribe, unsubscribe } = usePushNotifications();
@@ -160,6 +161,11 @@ const SettingsPage = () => {
 
       {/* Push Notifications */}
       <PushNotificationSettings />
+
+      {/* Saved / Quick Replies */}
+      <div className="bg-card rounded-lg shadow-card p-5">
+        <SavedRepliesSection />
+      </div>
 
       {/* Blacklist */}
       <div className="bg-card rounded-lg shadow-card p-5">
