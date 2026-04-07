@@ -153,6 +153,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
     groups: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
     emails: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "email").length,
+    emailsSent: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "email" && c.lastMessageSender === "agent").length,
     closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
     archived: conversations.filter(c => c.isArchived).length,
   }), [conversations, myId]);
