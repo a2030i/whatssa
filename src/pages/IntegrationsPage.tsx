@@ -86,6 +86,13 @@ const IntegrationsPage = () => {
   const [accessToken, setAccessToken] = useState("");
   const fbCallbackFiredRef = useRef(false);
   const postMessageHandledRef = useRef(false);
+  // Refs to hold latest function references for the postMessage listener (avoids stale closures)
+  const handleCodeExchangeRef = useRef<((code: string) => void) | null>(null);
+  const handleDirectTokenRef = useRef<((token: string) => void) | null>(null);
+  const handleErrorRef = useRef<((msg: string) => void) | null>(null);
+  const loadConfigsRef = useRef<((skip?: boolean) => Promise<void>) | null>(null);
+  const configsRef = useRef<WhatsAppConfig[]>([]);
+  const orgIdRef = useRef<string | null>(null);
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isReviewMode, setIsReviewMode] = useState(() => window.localStorage.getItem("meta-review-mode") === "1");
@@ -216,7 +223,7 @@ const IntegrationsPage = () => {
             if (auth?.accessToken) {
               console.log("[Embedded Signup] Recovered token via FB.getAuthResponse after popup close");
               clearInterval(interval);
-              if (!cancelled) handleDirectToken(auth.accessToken);
+              if (!cancelled && handleDirectTokenRef.current) handleDirectTokenRef.current(auth.accessToken);
               return;
             }
           }
@@ -225,10 +232,11 @@ const IntegrationsPage = () => {
         // Check if a new channel appeared in the DB (connection completed server-side)
         try {
           const { data: freshConfigs } = await supabase.rpc("get_org_whatsapp_channels");
+          const currentOrgId = orgIdRef.current;
           const orgConfigs = ((freshConfigs || []) as WhatsAppConfig[]).filter(
-            (c) => c.org_id === orgId && c.channel_type !== "evolution" && c.is_connected && c.phone_number_id
+            (c) => c.org_id === currentOrgId && c.channel_type !== "evolution" && c.is_connected && c.phone_number_id
           );
-          const existingIds = configs.map(c => c.id);
+          const existingIds = configsRef.current.map(c => c.id);
           const newChannel = orgConfigs.find(c => !existingIds.includes(c.id));
           if (newChannel) {
             console.log("[Embedded Signup] Found new connected channel in DB, recovering");
@@ -236,7 +244,7 @@ const IntegrationsPage = () => {
             if (!cancelled) {
               setFlowStep("idle");
               setIsLoading(false);
-              await loadConfigs(true);
+              if (loadConfigsRef.current) await loadConfigsRef.current(true);
               toast.success("تم ربط الرقم بنجاح!");
             }
             return;
@@ -251,7 +259,7 @@ const IntegrationsPage = () => {
           console.warn("[Embedded Signup] Watchdog: connecting state timed out after 3min");
           setFlowStep("idle");
           setIsLoading(false);
-          loadConfigs(true);
+          if (loadConfigsRef.current) loadConfigsRef.current(true);
           toast.info("انتهت مهلة الربط — تحقق من حالة القناة أو أعد المحاولة");
         }
       }
@@ -411,7 +419,6 @@ const IntegrationsPage = () => {
             // CANCEL: user exited before completing — immediately leave connecting state
             if (data.event === 'CANCEL') {
               console.log('[Embedded Signup] User cancelled at step:', data.data?.current_step);
-              // Give FB.login callback a brief grace period (it might still fire)
               setTimeout(() => {
                 if (!fbCallbackFiredRef.current && !postMessageHandledRef.current) {
                   postMessageHandledRef.current = true;
@@ -425,55 +432,54 @@ const IntegrationsPage = () => {
             // FINISH: user completed the flow — try to recover token immediately
             if (data.event === 'FINISH') {
               console.log('[Embedded Signup] User finished signup flow');
-              // Give FB.login callback a brief grace period
               setTimeout(() => {
                 if (!fbCallbackFiredRef.current && !postMessageHandledRef.current) {
                   postMessageHandledRef.current = true;
                   console.log('[Embedded Signup] FB.login callback not received, recovering via postMessage FINISH');
-                  // Try FB.getAuthResponse
+                  // Try FB.getAuthResponse — use refs for latest function versions
                   try {
                     const FB = (window as any).FB;
                     if (FB) {
                       const auth = FB.getAuthResponse();
-                      if (auth?.code) {
-                        handleCodeExchange(auth.code);
+                      if (auth?.code && handleCodeExchangeRef.current) {
+                        handleCodeExchangeRef.current(auth.code);
                         return;
                       }
-                      if (auth?.accessToken) {
-                        handleDirectToken(auth.accessToken);
+                      if (auth?.accessToken && handleDirectTokenRef.current) {
+                        handleDirectTokenRef.current(auth.accessToken);
                         return;
                       }
                     }
                   } catch { /* ignore */ }
-                  // Fallback: if we have embedded selection IDs, check DB after a delay
+                  // Fallback: check DB for new/updated channel
                   const selection = embeddedSignupSelectionRef.current;
                   if (selection?.phoneNumberId && selection?.wabaId) {
                     console.log('[Embedded Signup] Using postMessage IDs to check DB');
-                    // Check DB for new channel after short delay
                     setTimeout(async () => {
                       try {
                         const { data: freshConfigs } = await supabase.rpc("get_org_whatsapp_channels");
+                        const currentOrgId = orgIdRef.current;
                         const orgConfigs = ((freshConfigs || []) as WhatsAppConfig[]).filter(
-                          (c: WhatsAppConfig) => c.org_id === orgId && c.channel_type !== "evolution" && c.is_connected
+                          (c: WhatsAppConfig) => c.org_id === currentOrgId && c.channel_type !== "evolution" && c.is_connected
                         );
-                        if (orgConfigs.length > configs.length) {
+                        const prevConfigs = configsRef.current;
+                        if (orgConfigs.length > prevConfigs.length) {
                           setFlowStep("idle");
                           setIsLoading(false);
-                          await loadConfigs(true);
+                          if (loadConfigsRef.current) await loadConfigsRef.current(true);
                           toast.success("تم ربط الرقم بنجاح!");
                           return;
                         }
                       } catch { /* ignore */ }
-                      // If still nothing, show informational message
                       setFlowStep("idle");
                       setIsLoading(false);
-                      loadConfigs(true);
+                      if (loadConfigsRef.current) loadConfigsRef.current(true);
                       toast.info("اكتملت العملية — تحقق من حالة القناة");
                     }, 5000);
                   } else {
                     setFlowStep("idle");
                     setIsLoading(false);
-                    loadConfigs(true);
+                    if (loadConfigsRef.current) loadConfigsRef.current(true);
                     toast.info("اكتملت العملية — تحقق من حالة القناة");
                   }
                 }
@@ -755,6 +761,14 @@ const IntegrationsPage = () => {
     setFlowStep("error");
     setIsLoading(false);
   };
+
+  // Keep refs in sync with latest function versions (for postMessage listener)
+  handleCodeExchangeRef.current = handleCodeExchange;
+  handleDirectTokenRef.current = handleDirectToken;
+  handleErrorRef.current = handleError;
+  loadConfigsRef.current = loadConfigs;
+  configsRef.current = configs;
+  orgIdRef.current = orgId || null;
 
   // Manual token connect handler
   const handleManualTokenConnect = async () => {
