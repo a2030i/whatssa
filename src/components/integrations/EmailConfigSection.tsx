@@ -234,6 +234,22 @@ const EmailConfigSection = () => {
     loadRoutingRules();
   };
 
+  const saveSignature = async (configId: string) => {
+    setSavingSignature(configId);
+    try {
+      const { error } = await invokeCloud("email-config-manage", {
+        body: { action: "update", id: configId, payload: { email_signature: signatureText[configId] || null }, org_id: orgId },
+      });
+      if (error) throw error;
+      toast.success("تم حفظ التوقيع ✅");
+      loadConfigs();
+    } catch (e: any) {
+      toast.error("فشل حفظ التوقيع");
+    } finally {
+      setSavingSignature(null);
+    }
+  };
+
   const loadTeamsAndAgents = async () => {
     const [{ data: t }, { data: a }] = await Promise.all([
       supabase.from("teams").select("id, name").eq("org_id", orgId!),
