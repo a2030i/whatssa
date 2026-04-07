@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { invokeCloud } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Settings, Save, AlertTriangle, CreditCard, Eye, EyeOff, Globe } from "lucide-react";
+import { Settings, Save, AlertTriangle, CreditCard, Eye, EyeOff, Globe, Bell, Key, Copy, CheckCircle, Loader2, Send } from "lucide-react";
 
 const AdminSettings = () => {
   const [settings, setSettings] = useState<Record<string, any>>({});
