@@ -223,7 +223,7 @@ const IntegrationsPage = () => {
             if (auth?.accessToken) {
               console.log("[Embedded Signup] Recovered token via FB.getAuthResponse after popup close");
               clearInterval(interval);
-              if (!cancelled) handleDirectToken(auth.accessToken);
+              if (!cancelled && handleDirectTokenRef.current) handleDirectTokenRef.current(auth.accessToken);
               return;
             }
           }
@@ -232,10 +232,11 @@ const IntegrationsPage = () => {
         // Check if a new channel appeared in the DB (connection completed server-side)
         try {
           const { data: freshConfigs } = await supabase.rpc("get_org_whatsapp_channels");
+          const currentOrgId = orgIdRef.current;
           const orgConfigs = ((freshConfigs || []) as WhatsAppConfig[]).filter(
-            (c) => c.org_id === orgId && c.channel_type !== "evolution" && c.is_connected && c.phone_number_id
+            (c) => c.org_id === currentOrgId && c.channel_type !== "evolution" && c.is_connected && c.phone_number_id
           );
-          const existingIds = configs.map(c => c.id);
+          const existingIds = configsRef.current.map(c => c.id);
           const newChannel = orgConfigs.find(c => !existingIds.includes(c.id));
           if (newChannel) {
             console.log("[Embedded Signup] Found new connected channel in DB, recovering");
@@ -243,7 +244,7 @@ const IntegrationsPage = () => {
             if (!cancelled) {
               setFlowStep("idle");
               setIsLoading(false);
-              await loadConfigs(true);
+              if (loadConfigsRef.current) await loadConfigsRef.current(true);
               toast.success("تم ربط الرقم بنجاح!");
             }
             return;
