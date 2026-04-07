@@ -301,6 +301,7 @@ const AnalyticsPage = () => {
           <TabsTrigger value="heatmap" className="text-xs gap-1 rounded-lg"><Flame className="w-3 h-3" /> خريطة النشاط</TabsTrigger>
           <TabsTrigger value="comparison" className="text-xs gap-1 rounded-lg"><GitCompareArrows className="w-3 h-3" /> مقارنة الفترات</TabsTrigger>
           <TabsTrigger value="roi" className="text-xs gap-1 rounded-lg"><DollarSign className="w-3 h-3" /> ROI</TabsTrigger>
+          <TabsTrigger value="tags" className="text-xs gap-1 rounded-lg"><Tag className="w-3 h-3" /> الوسوم</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
