@@ -465,6 +465,7 @@ const IntegrationsPage = () => {
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
     clearEmbeddedSignupSelection();
+    fbCallbackFiredRef.current = false; // Reset flag before starting
     setFlowStep("connecting");
     setIsLoading(true);
     setErrorMessage("");
@@ -473,6 +474,7 @@ const IntegrationsPage = () => {
 
     FB.login(
       (response: any) => {
+        fbCallbackFiredRef.current = true; // Mark that callback fired
         console.log("[Embedded Signup] FB.login response:", JSON.stringify(response));
         if (response.authResponse) {
           const code = response.authResponse.code;
