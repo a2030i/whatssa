@@ -64,7 +64,11 @@ const formatTimestamp = (isoStr: string | null): string => {
   return date.toLocaleDateString("ar-SA-u-ca-gregory");
 };
 
-const InboxPage = () => {
+interface InboxPageProps {
+  inboxMode?: "whatsapp" | "email";
+}
+
+const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const { orgId, profile, userRole, teamId, isSupervisor, isSuperAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
