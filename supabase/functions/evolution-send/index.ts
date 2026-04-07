@@ -400,9 +400,18 @@ serve(async (req) => {
       logToSystem(adminClient, "warn", `تم حظر الإرسال — القناة متوقفة مؤقتاً للحماية`, {
         channel_id: config.id, reason: config.safety_paused_reason,
       }, orgId, profile.id);
+
+      // Calculate reset_at from safety_paused_at + 1 hour
+      let resetAt: string | null = null;
+      if (config.safety_paused_at) {
+        resetAt = new Date(new Date(config.safety_paused_at).getTime() + 60 * 60 * 1000).toISOString();
+      }
+
       return json({
         error: `الإرسال متوقف مؤقتاً لحماية الرقم من الحظر. السبب: ${config.safety_paused_reason || "تجاوز حدود الإرسال الآمنة"}`,
         safety_paused: true,
+        paused_reason: config.safety_paused_reason,
+        reset_at: resetAt,
       }, 429);
     }
 
@@ -478,9 +487,13 @@ serve(async (req) => {
         }).then(() => {}).catch(() => {});
       }
 
+      const resetAt = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+
       return json({
         error: `تم إيقاف الإرسال تلقائياً لحماية الرقم: ${pauseReason}. يمكنك إعادة التفعيل من صفحة التكاملات.`,
         safety_paused: true,
+        paused_reason: pauseReason,
+        reset_at: resetAt,
       }, 429);
     }
 
