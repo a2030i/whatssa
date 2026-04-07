@@ -466,7 +466,8 @@ const IntegrationsPage = () => {
     if (!FB) { toast.error("جاري تحميل SDK..."); return; }
 
     clearEmbeddedSignupSelection();
-    fbCallbackFiredRef.current = false; // Reset flag before starting
+    fbCallbackFiredRef.current = false;
+    postMessageHandledRef.current = false;
     setFlowStep("connecting");
     setIsLoading(true);
     setErrorMessage("");
