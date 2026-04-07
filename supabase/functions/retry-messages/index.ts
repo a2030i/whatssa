@@ -205,6 +205,17 @@ Deno.serve(async (req) => {
               retry_count: newRetryCount,
             })
             .eq("id", msg.id);
+
+          // Update the corresponding message status from pending to sent
+          if (msg.conversation_id) {
+            await supabase
+              .from("messages")
+              .update({ status: "sent" })
+              .eq("conversation_id", msg.conversation_id)
+              .eq("status", "pending")
+              .eq("sender", "agent")
+              .like("content", `%${(msg.content || "").substring(0, 50)}%`);
+          }
           successCount++;
         } else if (newRetryCount >= msg.max_retries) {
           // Exhausted all retries — mark as permanently failed
