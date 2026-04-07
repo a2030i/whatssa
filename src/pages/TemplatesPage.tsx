@@ -537,6 +537,7 @@ const TemplatesPage = () => {
         template_name: sendTarget.name,
         template_language: sendTarget.language,
         template_components: buildTemplateComponents(sendTarget, testVariables),
+        channel_id: sendTarget.channelId || undefined,
       },
     });
 
