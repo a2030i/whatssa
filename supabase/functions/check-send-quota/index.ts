@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     // Get channel config — use admin to bypass RLS, verify org ownership after
     const { data: channel } = await adminClient
       .from("whatsapp_config")
-      .select("id, channel_type, safety_max_per_hour, safety_max_per_day, safety_max_unique_per_hour, safety_paused, safety_paused_at, safety_paused_reason, channel_age_days, org_id")
+      .select("id, channel_type, safety_max_per_hour, safety_max_per_day, safety_max_unique_per_hour, safety_paused, safety_paused_at, safety_paused_reason, channel_age_days, org_id, safety_limits_enabled")
       .eq("id", channel_id)
       .maybeSingle();
 
@@ -87,6 +87,18 @@ Deno.serve(async (req) => {
 
     // === EVOLUTION (unofficial) — safety limits ===
     if (channel.channel_type === "evolution") {
+      // If safety limits not enabled, return unlimited
+      if (!channel.safety_limits_enabled) {
+        return json({
+          channel_type: "evolution",
+          paused: false,
+          safety_limits_enabled: false,
+          remaining: 999,
+          limits: { hourly: { used: 0, max: 999, remaining: 999 }, daily: { used: 0, max: 999, remaining: 999 }, unique: { used: 0, max: 999, remaining: 999 } },
+          warmup_pct: 100,
+          reset_at: null,
+        });
+      }
       const warmup = getWarmupMultiplier(channel.channel_age_days || 0);
       const maxHour = Math.floor((channel.safety_max_per_hour || 60) * warmup);
       const maxDay = Math.floor((channel.safety_max_per_day || 500) * warmup);

@@ -1,0 +1,1 @@
+ALTER TABLE public.whatsapp_config ADD COLUMN IF NOT EXISTS safety_limits_enabled boolean NOT NULL DEFAULT false;
