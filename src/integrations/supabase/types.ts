@@ -1382,6 +1382,7 @@ export type Database = {
           dedicated_agent_id: string | null
           dedicated_team_id: string | null
           email_address: string
+          email_signature: string | null
           encryption: string
           id: string
           imap_host: string | null
@@ -1402,6 +1403,7 @@ export type Database = {
           dedicated_agent_id?: string | null
           dedicated_team_id?: string | null
           email_address: string
+          email_signature?: string | null
           encryption?: string
           id?: string
           imap_host?: string | null
@@ -1422,6 +1424,7 @@ export type Database = {
           dedicated_agent_id?: string | null
           dedicated_team_id?: string | null
           email_address?: string
+          email_signature?: string | null
           encryption?: string
           id?: string
           imap_host?: string | null

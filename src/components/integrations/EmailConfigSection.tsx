@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Mail, Save, Loader2, Trash2, Eye, EyeOff, CheckCircle2, Plus, Send, Settings, ExternalLink, Info, Users, User, Zap, XCircle, Clock, Download } from "lucide-react";
+import { Mail, Save, Loader2, Trash2, Eye, EyeOff, CheckCircle2, Plus, Send, Settings, ExternalLink, Info, Users, User, Zap, XCircle, Clock, Download, FileSignature } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,7 @@ interface EmailConfig {
   dedicated_agent_id: string | null;
   dedicated_team_id: string | null;
   sync_mode: string;
+  email_signature?: string | null;
 }
 
 interface TeamOption { id: string; name: string; }
@@ -194,6 +195,8 @@ const EmailConfigSection = () => {
   const [routingRules, setRoutingRules] = useState<RoutingRule[]>([]);
   const [showRoutingForm, setShowRoutingForm] = useState(false);
   const [routingForm, setRoutingForm] = useState({ rule_type: "domain", pattern: "", assigned_agent_id: "", assigned_team_id: "", email_config_id: "" });
+  const [signatureText, setSignatureText] = useState<Record<string, string>>({});
+  const [savingSignature, setSavingSignature] = useState<string | null>(null);
 
   useEffect(() => {
     if (orgId) {
@@ -231,6 +234,22 @@ const EmailConfigSection = () => {
     loadRoutingRules();
   };
 
+  const saveSignature = async (configId: string) => {
+    setSavingSignature(configId);
+    try {
+      const { error } = await invokeCloud("email-config-manage", {
+        body: { action: "update", id: configId, payload: { email_signature: signatureText[configId] || null }, org_id: orgId },
+      });
+      if (error) throw error;
+      toast.success("تم حفظ التوقيع ✅");
+      loadConfigs();
+    } catch (e: any) {
+      toast.error("فشل حفظ التوقيع");
+    } finally {
+      setSavingSignature(null);
+    }
+  };
+
   const loadTeamsAndAgents = async () => {
     const [{ data: t }, { data: a }] = await Promise.all([
       supabase.from("teams").select("id, name").eq("org_id", orgId!),
@@ -247,7 +266,12 @@ const EmailConfigSection = () => {
         body: { action: "list", org_id: orgId },
       });
       if (error) throw error;
-      setConfigs(res?.data || []);
+      const loadedConfigs = res?.data || [];
+      setConfigs(loadedConfigs);
+      // Initialize signature state from loaded configs
+      const sigs: Record<string, string> = {};
+      loadedConfigs.forEach((c: EmailConfig) => { sigs[c.id] = c.email_signature || ""; });
+      setSignatureText(sigs);
     } catch (e) {
       console.error("Failed to load email configs:", e);
     }
@@ -561,6 +585,31 @@ const EmailConfigSection = () => {
                         )}
                       </div>
                     )}
+
+                    {/* Email Signature */}
+                    <div className="rounded-lg border border-border p-2.5 space-y-2">
+                      <p className="text-[11px] font-semibold flex items-center gap-1.5">
+                        <FileSignature className="w-3 h-3 text-primary" />
+                        التوقيع الموحد
+                      </p>
+                      <textarea
+                        value={signatureText[config.id] || ""}
+                        onChange={(e) => setSignatureText(prev => ({ ...prev, [config.id]: e.target.value }))}
+                        placeholder={"مثال:\n--\nاسم الشركة\nهاتف: +966...\nwww.example.com"}
+                        className="w-full text-[11px] bg-background border border-border rounded-md p-2 min-h-[70px] resize-y placeholder:text-muted-foreground"
+                        dir="rtl"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => saveSignature(config.id)}
+                        disabled={savingSignature === config.id}
+                        className="text-[10px] h-7 px-3 gap-1 w-full"
+                      >
+                        {savingSignature === config.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                        حفظ التوقيع
+                      </Button>
+                    </div>
 
                     {/* Action buttons */}
                     <div className="flex gap-2 justify-end flex-wrap">
