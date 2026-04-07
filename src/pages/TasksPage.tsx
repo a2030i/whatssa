@@ -106,13 +106,12 @@ const TasksPage = () => {
   const [newDesc, setNewDesc] = useState("");
   const [newType, setNewType] = useState("general");
   const [newPriority, setNewPriority] = useState("medium");
-  const [newAssignee, setNewAssignee] = useState("");
-  const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const [customers, setCustomers] = useState<{ id: string; name: string | null; phone: string }[]>([]);
+  const [newAssignee, setNewAssignee] = useState(profile?.id || "");
   const [newAttendanceType, setNewAttendanceType] = useState("remote");
   const [newTaskDate, setNewTaskDate] = useState("");
   const [newStartTime, setNewStartTime] = useState("");
-  const [newEndTime, setNewEndTime] = useState("");
+  const [newDuration, setNewDuration] = useState("30");
+  const [newCustomDuration, setNewCustomDuration] = useState("");
   const [newLocation, setNewLocation] = useState("");
 
   // New config form
