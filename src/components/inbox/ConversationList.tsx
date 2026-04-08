@@ -245,6 +245,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
           case "mine": if (conv.assignedToId !== myId) return false; break;
           case "waitingCustomer": if (conv.assignedToId !== myId || conv.lastMessageSender !== "agent") return false; break;
           case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
+          case "assigned": if (!conv.assignedTo || conv.assignedTo === "غير معيّن") return false; break;
           case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
           case "unread": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
           case "groups": if (conv.conversationType !== "group") return false; break;
