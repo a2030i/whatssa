@@ -20,10 +20,24 @@ interface EmployeeGroupAccessProps {
   profileName: string;
 }
 
+const getGroupIdentityKey = (group: Pick<GroupConversation, "channel_id" | "customer_phone">) =>
+  `${group.channel_id || "no-channel"}:${group.customer_phone || "no-phone"}`;
+
+const dedupeGroups = (groups: GroupConversation[]) => {
+  const unique = new Map<string, GroupConversation>();
+
+  groups.forEach((group) => {
+    const key = getGroupIdentityKey(group);
+    if (!unique.has(key)) unique.set(key, group);
+  });
+
+  return Array.from(unique.values());
+};
+
 const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProps) => {
   const { orgId, profile: currentUser } = useAuth();
   const [assignedGroups, setAssignedGroups] = useState<GroupConversation[]>([]);
-  const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
+  const [assignedGroupKeys, setAssignedGroupKeys] = useState<Set<string>>(new Set());
   const [availableGroups, setAvailableGroups] = useState<GroupConversation[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,16 +59,19 @@ const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProp
     }
 
     const ids = ((access || []) as any[]).map(a => a.conversation_id);
-    setAssignedIds(new Set(ids));
 
     if (ids.length > 0) {
       const { data: convs } = await supabase
         .from("conversations")
         .select("id, customer_name, customer_phone, channel_id")
         .in("id", ids);
-      setAssignedGroups((convs || []) as unknown as GroupConversation[]);
+
+      const normalizedGroups = (convs || []) as unknown as GroupConversation[];
+      setAssignedGroups(dedupeGroups(normalizedGroups));
+      setAssignedGroupKeys(new Set(normalizedGroups.map(getGroupIdentityKey)));
     } else {
       setAssignedGroups([]);
+      setAssignedGroupKeys(new Set());
     }
   };
 
@@ -67,7 +84,7 @@ const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProp
       .neq("status", "closed")
       .order("last_message_at", { ascending: false });
 
-    setAvailableGroups((data || []) as unknown as GroupConversation[]);
+    setAvailableGroups(dedupeGroups((data || []) as unknown as GroupConversation[]));
   };
 
   const openDialog = () => {
@@ -91,12 +108,7 @@ const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProp
     }
 
     toast.success("تمت إضافة القروب");
-    // Update local state immediately
-    setAssignedIds(prev => new Set([...prev, conversationId]));
-    const addedGroup = availableGroups.find(g => g.id === conversationId);
-    if (addedGroup) {
-      setAssignedGroups(prev => [...prev, addedGroup]);
-    }
+    await loadAccess();
   };
 
   const removeGroup = async (conversationId: string) => {
@@ -112,12 +124,7 @@ const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProp
     }
 
     toast.success("تم إزالة القروب");
-    setAssignedIds(prev => {
-      const next = new Set(prev);
-      next.delete(conversationId);
-      return next;
-    });
-    setAssignedGroups(prev => prev.filter(g => g.id !== conversationId));
+    await loadAccess();
   };
 
   const filtered = availableGroups.filter(g =>
@@ -176,7 +183,7 @@ const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProp
               {filtered.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-6">لا توجد قروبات متاحة</p>
               ) : filtered.map(g => {
-                const isAdded = assignedIds.has(g.id);
+                const isAdded = assignedGroupKeys.has(getGroupIdentityKey(g));
                 return (
                   <button
                     key={g.id}
