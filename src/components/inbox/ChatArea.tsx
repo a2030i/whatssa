@@ -1870,6 +1870,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             media_type: mediaType,
             caption: caption || "",
             conversation_id: conversation.id,
+            channel_id: conversation.channelId,
           },
         });
         if (error || data?.error) {
