@@ -54,6 +54,36 @@ async function logToSystem(
   }
 }
 
+const normalizePhone = (value: string | null | undefined) => String(value || "").replace(/\D/g, "");
+
+async function findPrivateConversation(
+  client: ReturnType<typeof createClient>,
+  orgId: string,
+  customerPhone: string,
+  channelId?: string | null,
+  status: "open" | "closed" = "open",
+) {
+  const normalizedPhone = normalizePhone(customerPhone);
+  if (!normalizedPhone) return null;
+
+  let query = client
+    .from("conversations")
+    .select("id, status")
+    .eq("org_id", orgId)
+    .eq("conversation_type", "private")
+    .eq("customer_phone", normalizedPhone);
+
+  if (channelId) query = query.eq("channel_id", channelId);
+  query = status === "closed" ? query.eq("status", "closed") : query.neq("status", "closed");
+
+  const { data } = await query
+    .order(status === "closed" ? "closed_at" : "updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -83,7 +113,7 @@ serve(async (req) => {
     const orgId = profile.org_id;
 
     const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id, action, group_name, members, sender_name, poll_name, poll_options } = body;
-    const normalizedPhone = String(to || "").replace(/\D/g, "");
+    const normalizedPhone = normalizePhone(to);
 
     // ── Create Group (Evolution API) ──
     if (action === "create_group") {
@@ -359,14 +389,14 @@ serve(async (req) => {
 
     // Parallel: fetch config + resolve conversation simultaneously
       const [configResult, convResult] = await Promise.all([
-      adminClient.from("whatsapp_config").select("*").eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true).limit(1).maybeSingle(),
+      (() => {
+        let query = adminClient.from("whatsapp_config").select("*").eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true);
+        if (channel_id) query = query.eq("id", channel_id);
+        return query.limit(1).maybeSingle();
+      })(),
       conversation_id
         ? adminClient.from("conversations").select("id").eq("id", conversation_id).eq("org_id", orgId).maybeSingle()
-          : (() => {
-              let query = adminClient.from("conversations").select("id").eq("customer_phone", normalizedPhone).eq("org_id", orgId).neq("status", "closed");
-              if (channel_id) query = query.eq("channel_id", channel_id);
-              return query.order("updated_at", { ascending: false }).limit(1).maybeSingle();
-            })(),
+          : findPrivateConversation(adminClient, orgId, normalizedPhone, channel_id, "open"),
     ]);
 
     const config = configResult.data;
@@ -376,30 +406,12 @@ serve(async (req) => {
       // Queue for later delivery
       let convId = conversation_id || null;
       if (to && !convId) {
-        const { data: openConv } = await adminClient
-          .from("conversations")
-          .select("id")
-          .eq("customer_phone", normalizedPhone)
-          .eq("org_id", orgId)
-          .neq("status", "closed")
-          .eq("channel_id", channel_id)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          const openConv = await findPrivateConversation(adminClient, orgId, normalizedPhone, channel_id, "open");
 
         if (openConv?.id) {
           convId = openConv.id;
         } else {
-          const { data: closedConv } = await adminClient
-            .from("conversations")
-            .select("id")
-            .eq("customer_phone", normalizedPhone)
-            .eq("org_id", orgId)
-            .eq("channel_id", channel_id)
-            .eq("status", "closed")
-            .order("closed_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            const closedConv = await findPrivateConversation(adminClient, orgId, normalizedPhone, channel_id, "closed");
           convId = closedConv?.id || null;
         }
       }
@@ -734,40 +746,45 @@ serve(async (req) => {
     }, orgId, profile.id);
 
     if (!conversation && !conversation_id) {
-      const { data: closedConv } = await adminClient
-        .from("conversations")
-        .select("id")
-        .eq("customer_phone", normalizedPhone)
-        .eq("org_id", orgId)
-        .eq("channel_id", channel_id || config.id)
-        .eq("status", "closed")
-        .order("closed_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const closedConv = await findPrivateConversation(adminClient, orgId, normalizedPhone, channel_id || config.id, "closed");
       if (closedConv) {
+        await adminClient.from("conversations").update({
+          status: "active",
+          closed_at: null,
+          closed_by: null,
+          closure_reason_id: null,
+          updated_at: new Date().toISOString(),
+        }).eq("id", closedConv.id);
         conversation = closedConv;
       }
     }
 
     // Create conversation if none exists
     if (!conversation) {
-      const { data: newConv } = await adminClient
+      const { data: newConv, error: newConvError } = await adminClient
         .from("conversations")
         .insert({
           org_id: orgId,
           customer_phone: normalizedPhone,
           customer_name: reqCustomerName || to,
           channel_id: channel_id || config.id,
+          conversation_type: "private",
           status: "active",
           last_message: sentContent,
           last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select("id")
         .single();
-      conversation = newConv;
-      logToSystem(adminClient, "info", `تم إنشاء محادثة جديدة (Evolution Send) للرقم ${to}`, {
-        conversation_id: newConv?.id,
-      }, orgId, profile.id);
+      if (newConvError?.code === "23505") {
+        conversation = await findPrivateConversation(adminClient, orgId, normalizedPhone, channel_id || config.id, "open")
+          || await findPrivateConversation(adminClient, orgId, normalizedPhone, channel_id || config.id, "closed");
+      } else {
+        conversation = newConv;
+        logToSystem(adminClient, "info", `تم إنشاء محادثة جديدة (Evolution Send) للرقم ${to}`, {
+          conversation_id: newConv?.id,
+        }, orgId, profile.id);
+      }
     }
 
     if (conversation) {

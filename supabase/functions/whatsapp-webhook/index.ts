@@ -6,6 +6,33 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const normalizePhone = (value: string | null | undefined) => String(value || "").replace(/\D/g, "");
+
+async function findPrivateConversation(
+  client: ReturnType<typeof createClient>,
+  orgId: string,
+  customerPhone: string,
+  channelId?: string | null,
+  status: "open" | "closed" = "open",
+) {
+  const normalizedPhone = normalizePhone(customerPhone);
+  if (!normalizedPhone) return null;
+
+  let query = client
+    .from("conversations")
+    .select("id, unread_count, status, dedicated_agent_id, dedicated_agent_name")
+    .eq("org_id", orgId)
+    .eq("conversation_type", "private")
+    .eq("customer_phone", normalizedPhone);
+
+  if (channelId) query = query.eq("channel_id", channelId);
+  query = status === "closed" ? query.eq("status", "closed") : query.neq("status", "closed");
+
+  const orderColumn = status === "closed" ? "closed_at" : "updated_at";
+  const { data } = await query.order(orderColumn, { ascending: false }).limit(1).maybeSingle();
+  return data;
+}
+
 // ── Chatbot Flow Processor ──
 async function processChatbotFlow(
   client: ReturnType<typeof createClient>,
@@ -493,7 +520,8 @@ serve(async (req) => {
         const orgSettings = (orgData?.settings as Record<string, any>) || {};
 
         for (const incomingMessage of value.messages) {
-          const customerPhone = incomingMessage.from;
+          const customerPhone = normalizePhone(incomingMessage.from);
+          if (!customerPhone) continue;
           const contactName = value.contacts?.[0]?.profile?.name || customerPhone;
           const messageContent = incomingMessage.text?.body || `[${incomingMessage.type}]`;
 
@@ -512,6 +540,7 @@ serve(async (req) => {
                 .select("id, assigned_to")
                 .eq("customer_phone", customerPhone)
                 .eq("org_id", orgId)
+                .eq("conversation_type", "private")
                 .eq("status", "closed")
                 .eq("satisfaction_status", "pending");
               if (channelConfigId) pendingQuery = pendingQuery.eq("channel_id", channelConfigId);
@@ -536,31 +565,11 @@ serve(async (req) => {
             }
           }
 
-          let openQuery = supabase
-            .from("conversations")
-            .select("id, unread_count, status")
-            .eq("customer_phone", customerPhone)
-            .eq("org_id", orgId)
-            .neq("status", "closed");
-          if (channelConfigId) openQuery = openQuery.eq("channel_id", channelConfigId);
-          let { data: conversation } = await openQuery
-            .order("updated_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          let conversation = await findPrivateConversation(supabase, orgId, customerPhone, channelConfigId, "open");
 
           // If no open conversation, check for a closed one to reopen
           if (!conversation) {
-            let closedQuery = supabase
-              .from("conversations")
-              .select("id, unread_count, status, dedicated_agent_id, dedicated_agent_name")
-              .eq("customer_phone", customerPhone)
-              .eq("org_id", orgId)
-              .eq("status", "closed");
-            if (channelConfigId) closedQuery = closedQuery.eq("channel_id", channelConfigId);
-            const { data: closedConv } = await closedQuery
-              .order("closed_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+            const closedConv = await findPrivateConversation(supabase, orgId, customerPhone, channelConfigId, "closed");
 
             if (closedConv) {
               // Determine assignment: sticky (dedicated) or smart reassign or reset
@@ -694,13 +703,18 @@ serve(async (req) => {
               .single();
 
             if (convError) {
-              await logToSystem(supabase, "error", "فشل إنشاء محادثة جديدة", {
-                error: convError.message,
-                customer_phone: customerPhone,
-              }, orgId);
+              if (convError.code === "23505") {
+                conversation = await findPrivateConversation(supabase, orgId, customerPhone, channelConfigId, "open")
+                  || await findPrivateConversation(supabase, orgId, customerPhone, channelConfigId, "closed");
+              } else {
+                await logToSystem(supabase, "error", "فشل إنشاء محادثة جديدة", {
+                  error: convError.message,
+                  customer_phone: customerPhone,
+                }, orgId);
+              }
             }
 
-            conversation = newConversation;
+            conversation = conversation || newConversation;
 
             if (conversation) {
               await logToSystem(supabase, "info", `محادثة جديدة أُنشئت للعميل ${customerPhone}`, {

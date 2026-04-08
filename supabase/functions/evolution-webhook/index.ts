@@ -241,6 +241,40 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const normalizePhone = (value: string | null | undefined) => String(value || "").replace(/\D/g, "");
+
+const normalizeConversationIdentity = (customerPhone: string | null | undefined, conversationType: string) =>
+  conversationType === "private" ? normalizePhone(customerPhone) : String(customerPhone || "");
+
+async function findConversationByIdentity(
+  client: ReturnType<typeof createClient>,
+  orgId: string,
+  customerPhone: string,
+  channelId: string | null,
+  conversationType: string,
+  status: "open" | "closed" = "open",
+) {
+  const identity = normalizeConversationIdentity(customerPhone, conversationType);
+  if (!identity) return null;
+
+  let query = client
+    .from("conversations")
+    .select("id, unread_count, status, dedicated_agent_id, dedicated_agent_name")
+    .eq("org_id", orgId)
+    .eq("conversation_type", conversationType)
+    .eq("customer_phone", identity);
+
+  if (channelId) query = query.eq("channel_id", channelId);
+  query = status === "closed" ? query.eq("status", "closed") : query.neq("status", "closed");
+
+  const { data } = await query
+    .order(status === "closed" ? "closed_at" : "updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data;
+}
+
 async function logToSystem(
   client: ReturnType<typeof createClient>,
   level: string,
@@ -569,7 +603,7 @@ serve(async (req) => {
         } else {
           // For private chats with @lid, use senderPn if available
           const rawPhone = remoteJid.replace("@s.whatsapp.net", "").replace("@lid", "");
-          phone = (remoteJid.includes("@lid") && senderPn) ? senderPn.replace(/\D/g, "") : rawPhone;
+          phone = normalizePhone((remoteJid.includes("@lid") && senderPn) ? senderPn : rawPhone);
         }
         if (!phone || phone.includes("status")) continue;
 
@@ -799,30 +833,10 @@ serve(async (req) => {
             : null;
 
           // Find existing conversation to sync the outgoing message
-          let { data: existingConv } = await supabase
-            .from("conversations")
-            .select("id")
-            .eq("customer_phone", phone)
-            .eq("org_id", orgId)
-            .eq("conversation_type", conversationType)
-            .eq("channel_id", config.id)
-            .neq("status", "closed")
-            .order("updated_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          let existingConv = await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "open");
 
           if (!existingConv) {
-            const { data: closedConv } = await supabase
-              .from("conversations")
-              .select("id")
-              .eq("customer_phone", phone)
-              .eq("org_id", orgId)
-              .eq("conversation_type", conversationType)
-              .eq("channel_id", config.id)
-              .eq("status", "closed")
-              .order("closed_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+            const closedConv = await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "closed");
 
             if (closedConv) {
               await supabase.from("conversations").update({
@@ -874,7 +888,7 @@ serve(async (req) => {
               } catch {}
             }
 
-            const { data: newOutConv } = await supabase
+            const { data: newOutConv, error: newOutConvError } = await supabase
               .from("conversations")
               .insert({
                 customer_phone: phone,
@@ -890,10 +904,15 @@ serve(async (req) => {
               .select("id")
               .single();
 
-            existingConv = newOutConv;
-            await logToSystem(supabase, "info", `محادثة جديدة أُنشئت من رسالة صادرة (Evolution) إلى ${phone}`, {
-              conversation_id: newOutConv?.id,
-            }, orgId);
+            if (newOutConvError?.code === "23505") {
+              existingConv = await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "open")
+                || await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "closed");
+            } else {
+              existingConv = newOutConv;
+              await logToSystem(supabase, "info", `محادثة جديدة أُنشئت من رسالة صادرة (Evolution) إلى ${phone}`, {
+                conversation_id: newOutConv?.id,
+              }, orgId);
+            }
           } else if (resolvedOutgoingName) {
             const safeOutgoingName = chooseBestContactName(resolvedOutgoingName, msg.pushName);
             if (safeOutgoingName) {
@@ -993,31 +1012,11 @@ serve(async (req) => {
           : null;
         let conversationDisplayName = chooseBestContactName(resolvedIncomingName, msg.pushName) || phone;
 
-        let { data: conversation } = await supabase
-          .from("conversations")
-          .select("id, status")
-          .eq("customer_phone", phone)
-          .eq("org_id", orgId)
-          .eq("conversation_type", conversationType)
-          .eq("channel_id", config.id)
-          .neq("status", "closed")
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        let conversation = await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "open");
 
         // If no open conversation, check for a closed one to reopen
         if (!conversation) {
-            const { data: closedConv } = await supabase
-              .from("conversations")
-              .select("id, status, dedicated_agent_id, dedicated_agent_name")
-              .eq("customer_phone", phone)
-              .eq("org_id", orgId)
-              .eq("conversation_type", conversationType)
-              .eq("channel_id", config.id)
-              .eq("status", "closed")
-              .order("closed_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+            const closedConv = await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "closed");
 
           if (closedConv) {
             // Determine assignment: sticky (dedicated) or smart reassign or reset
@@ -1196,16 +1195,20 @@ serve(async (req) => {
             .single();
 
           if (convError) {
-            await logToSystem(supabase, "error", "فشل إنشاء محادثة جديدة (Evolution)", {
-              error: convError.message, customer_phone: phone,
-            }, orgId);
+            if (convError.code === "23505") {
+              conversation = await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "open")
+                || await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "closed");
+            } else {
+              await logToSystem(supabase, "error", "فشل إنشاء محادثة جديدة (Evolution)", {
+                error: convError.message, customer_phone: phone,
+              }, orgId);
+            }
           } else {
             await logToSystem(supabase, "info", `محادثة جديدة أُنشئت (Evolution) للعميل ${phone}`, {
               conversation_id: newConv?.id,
             }, orgId);
+            conversation = newConv;
           }
-
-          conversation = newConv;
 
             // Trigger auto-assign for new conversations with team routing (skip groups)
             if (newConv && conversationType !== "group" && config.default_team_id && !config.default_agent_id) {
