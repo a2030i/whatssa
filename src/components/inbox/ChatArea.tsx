@@ -1051,6 +1051,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   useEffect(() => {
     setIsBlocked(conversation.isBlocked || false);
     setGroupPicture(conversation.profilePic || null);
+    // Auto-show templates when opening a closed meta conversation
+    if (isMetaChannel && conversation.status === "closed") {
+      setShowTemplates(true);
+    }
   }, [conversation.id, conversation.isBlocked, conversation.profilePic]);
 
   // Compute mention message IDs for floating @ navigation
