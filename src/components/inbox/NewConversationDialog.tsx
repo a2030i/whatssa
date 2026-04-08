@@ -78,14 +78,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [localNumber, setLocalNumber] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [messageText, setMessageText] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null);
-  const [templateVars, setTemplateVars] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
-  const [loadingCustomers, setLoadingCustomers] = useState(false);
-  const [has24hWindow, setHas24hWindow] = useState(false);
-  const [checking24h, setChecking24h] = useState(false);
-  const [useTemplateFallback, setUseTemplateFallback] = useState(true);
-  const [saveCustomer, setSaveCustomer] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [isExistingCustomer, setIsExistingCustomer] = useState(false);
   // Group state
