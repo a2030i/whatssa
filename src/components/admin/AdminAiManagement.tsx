@@ -222,7 +222,7 @@ const AdminAiManagement = () => {
       {topConsumers.length > 0 && (
         <div className="bg-card rounded-xl shadow-card p-4 space-y-3">
           <h3 className="text-xs font-semibold flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-yellow-500" /> أكثر المؤسسات استهلاكاً
+            <Trophy className="w-4 h-4 text-accent-foreground" /> أكثر المؤسسات استهلاكاً
           </h3>
           <div className="space-y-2">
             {topConsumers.map((org, i) => {
