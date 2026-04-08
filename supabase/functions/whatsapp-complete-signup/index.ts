@@ -428,6 +428,7 @@ serve(async (req) => {
         .select("id, webhook_verify_token")
         .eq("org_id", org_id)
         .eq("channel_type", "meta_api")
+        .eq("phone_number_id", phoneId)
         .maybeSingle();
 
       const alreadyRegistered = phoneData.status === "CONNECTED";
