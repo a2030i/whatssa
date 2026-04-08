@@ -47,7 +47,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     items: [
       { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
       { label: "صندوق الواتساب", icon: MessageSquare, path: "/inbox", emoji: "💬" },
-      { label: "صندوق الإيميل", icon: Mail, path: "/email-inbox", emoji: "📧", minRole: "admin" },
+      { label: "صندوق الإيميل", icon: Mail, path: "/email-inbox", emoji: "📧", minRole: "member" },
       { label: "التذاكر", icon: Ticket, path: "/tickets", emoji: "🎫" },
       { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
     ],
@@ -120,8 +120,30 @@ const roleLabels: Record<string, string> = {
 const AppSidebar = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, orgId, signOut } = useAuth();
+  const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, orgId, signOut, teamId } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [hasEmailAccess, setHasEmailAccess] = useState(false);
+
+  // Check if non-admin user has email access (assigned as dedicated agent or team)
+  useState(() => {
+    if (!orgId || !profile?.id) return;
+    const effectiveR = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
+    if (effectiveR === "admin") {
+      setHasEmailAccess(true);
+      return;
+    }
+    // Check if user or their team is assigned to any email config
+    let query = supabase.from("email_configs").select("id").eq("org_id", orgId).eq("is_active", true);
+    const conditions: string[] = [`dedicated_agent_id.eq.${profile.id}`];
+    if (teamId) conditions.push(`dedicated_team_id.eq.${teamId}`);
+    if (profile?.team_ids && Array.isArray(profile.team_ids)) {
+      profile.team_ids.forEach((tid: string) => conditions.push(`dedicated_team_id.eq.${tid}`));
+    }
+    query.or(conditions.join(",")).limit(1).then(({ data }) => {
+      setHasEmailAccess(!!data && data.length > 0);
+    });
+  });
+
   const displayRole = userRole === "super_admin"
     ? "super_admin"
     : userRole === "admin"
@@ -151,9 +173,12 @@ const AppSidebar = () => {
   };
 
   // For non-admin users, completely hide locked items instead of showing them as locked
+  // Also hide email inbox if user has no email access
   const isVisible = (item: NavItem): boolean => {
     if (!hasAccess(item)) return false;
     if (effectiveRole !== "admin" && !isSuperAdmin && isLocked(item)) return false;
+    // Email inbox: hide for non-admin users without email assignment
+    if (item.path === "/email-inbox" && effectiveRole !== "admin" && !isSuperAdmin && !hasEmailAccess) return false;
     return true;
   };
 
