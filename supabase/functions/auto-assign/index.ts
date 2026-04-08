@@ -133,21 +133,34 @@ Deno.serve(async (req) => {
     }
 
     // Get members (filter by team if applicable)
+    // Always exclude supervisors and admins from auto-assign — only regular members
     let membersQuery = supabase
       .from("profiles")
-      .select("id, full_name, is_online, is_supervisor, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2, team_id")
+      .select("id, full_name, is_online, is_supervisor, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2, team_id, team_ids")
       .eq("org_id", org_id)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("is_supervisor", false);
 
-    if (exclude_supervisors) {
-      membersQuery = membersQuery.eq("is_supervisor", false);
-    }
+    // Also exclude admins by checking user_roles
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .in("role", ["admin", "super_admin"]);
+    const adminUserIds = (adminRoles || []).map((r: any) => r.user_id);
+
+    const { data: allMembers, error: membersErr } = await membersQuery;
+
+    // Filter: exclude admins + filter by team (checking both team_id and team_ids array)
+    let members = (allMembers || []).filter((m: any) => !adminUserIds.includes(m.id));
 
     if (targetTeam) {
-      membersQuery = membersQuery.eq("team_id", targetTeam.id);
+      members = members.filter((m: any) => {
+        if (Array.isArray(m.team_ids) && m.team_ids.length > 0) {
+          return m.team_ids.includes(targetTeam.id);
+        }
+        return m.team_id === targetTeam.id;
+      });
     }
-
-    const { data: members, error: membersErr } = await membersQuery;
 
     if (membersErr || !members || members.length === 0) {
       await logToSystem(supabase, "warn", "لم يتم التوزيع: لا يوجد أعضاء", { conversation_id, error: membersErr?.message, team: targetTeam?.name }, org_id);
