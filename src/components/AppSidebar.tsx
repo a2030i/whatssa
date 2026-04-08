@@ -56,6 +56,14 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     ],
   },
   {
+    section: "الذكاء الاصطناعي",
+    emoji: "🧠",
+    items: [
+      { label: "إعدادات AI", icon: Brain, path: "/ai-settings", emoji: "🤖", minRole: "admin" },
+      { label: "أدوات النمو", icon: Zap, path: "/growth-tools", emoji: "🚀", minRole: "admin" },
+    ],
+  },
+  {
     section: "العملاء والمبيعات",
     emoji: "👥",
     items: [
@@ -80,13 +88,10 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     emoji: "⚙️",
     items: [
       { label: "التكاملات", icon: Plug, path: "/integrations", emoji: "🔗", minRole: "admin" },
-      { label: "الذكاء الاصطناعي", icon: Brain, path: "/ai-settings", emoji: "🤖", minRole: "admin" },
-      { label: "استوديو AI", icon: Sparkles, path: "/ai-studio", emoji: "✨", minRole: "admin" },
-      { label: "أدوات النمو", icon: Zap, path: "/growth-tools", emoji: "🚀", minRole: "admin" },
       { label: "الفريق والصلاحيات", icon: Users, path: "/team", emoji: "👤", minRole: "supervisor" },
-      { label: "الإشعارات", icon: Bell, path: "/settings", emoji: "🔔", minRole: "admin" },
-      { label: "الأمان", icon: Shield, path: "/conversation-settings", emoji: "🛡️", minRole: "admin" },
-      { label: "الصلاحيات والنسخ الاحتياطي", icon: Database, path: "/permissions", emoji: "🔐", minRole: "admin" },
+      { label: "الإعدادات العامة", icon: Settings, path: "/settings", emoji: "⚙️", minRole: "admin" },
+      { label: "إعدادات المحادثات", icon: MessageSquare, path: "/conversation-settings", emoji: "💬", minRole: "admin" },
+      { label: "الأمان والصلاحيات", icon: Shield, path: "/permissions", emoji: "🔐", minRole: "admin" },
       { label: "مفاتيح API", icon: Code2, path: "/api-tokens", emoji: "🔑", minRole: "admin" },
       { label: "الباقة والفواتير", icon: CreditCard, path: "/plans", emoji: "💳", minRole: "admin" },
     ],
