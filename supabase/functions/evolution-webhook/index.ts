@@ -1450,8 +1450,8 @@ serve(async (req) => {
           })
           .eq("id", conversation.id);
 
-        // ── Out-of-hours check (per-channel first, then org fallback) ──
-        if (messageType === "text") {
+        // ── Out-of-hours check (per-channel first, then org fallback) — skip groups ──
+        if (messageType === "text" && conversationType !== "group") {
           let oohConfig: { enabled: boolean; message: string; work_start: string; work_end: string; work_days: number[] } | null = null;
           
           // Check channel-level OOH settings first
