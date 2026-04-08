@@ -32,6 +32,51 @@ async function logToSystem(
   }
 }
 
+/** Insert a system message into the conversation timeline */
+async function insertSystemMessage(client: any, conversationId: string, content: string) {
+  try {
+    await client.from("messages").insert({
+      conversation_id: conversationId,
+      content,
+      sender: "system",
+      message_type: "text",
+    });
+  } catch (_) {
+    // silent
+  }
+}
+
+/** Send a WhatsApp message to customer (best-effort) */
+async function sendCustomerMessage(
+  client: any,
+  orgId: string,
+  conversationId: string,
+  phone: string,
+  text: string,
+  replacements: Record<string, string> = {}
+) {
+  try {
+    let msg = text;
+    for (const [key, val] of Object.entries(replacements)) {
+      msg = msg.replace(new RegExp(`\\{${key}\\}`, "g"), val);
+    }
+    const { data: channel } = await client
+      .from("whatsapp_config")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("is_connected", true)
+      .limit(1)
+      .single();
+    if (channel) {
+      await client.functions.invoke("whatsapp-send", {
+        body: { org_id: orgId, channel_id: channel.id, to: phone, text: msg, conversation_id: conversationId },
+      });
+    }
+  } catch (_) {
+    // silent — don't block assignment flow
+  }
+}
+
 /** Check if currentTime falls within a shift, supporting overnight (e.g. 22:00→06:00) */
 function isInShift(currentTime: string, currentDay: number, start: string, end: string, days: number[]): boolean {
   if (!days.includes(currentDay)) return false;
@@ -89,12 +134,16 @@ Deno.serve(async (req) => {
     // Get org defaults
     const { data: org } = await supabase
       .from("organizations")
-      .select("default_assignment_strategy, default_max_conversations")
+      .select("default_assignment_strategy, default_max_conversations, settings")
       .eq("id", org_id)
       .single();
 
     const orgStrategy = org?.default_assignment_strategy || "round_robin";
     const orgMaxConv = org?.default_max_conversations;
+    const orgSettings = ((org as any)?.settings as Record<string, any>) || {};
+    const autoAssignOnReconnect = !!orgSettings.auto_assign_on_reconnect;
+    const failMessage: string = orgSettings.auto_assign_fail_message || "";
+    const successMessage: string = orgSettings.auto_assign_success_message || "";
 
     // Get all teams for skill-based routing
     const { data: allTeams } = await supabase
@@ -128,6 +177,7 @@ Deno.serve(async (req) => {
 
     // If strategy is manual, don't auto-assign
     if (strategy === "manual") {
+      await insertSystemMessage(supabase, conversation_id, "⚙️ الإسناد التلقائي: الاستراتيجية يدوية — بانتظار إسناد يدوي من المدير");
       await logToSystem(supabase, "info", "لم يتم التوزيع: الاستراتيجية يدوية", { conversation_id, strategy }, org_id);
       return json({ assigned: false, reason: "manual_strategy" });
     }
@@ -163,6 +213,7 @@ Deno.serve(async (req) => {
     }
 
     if (membersErr || !members || members.length === 0) {
+      await insertSystemMessage(supabase, conversation_id, `⚙️ الإسناد التلقائي: لا يوجد موظفين في ${targetTeam ? `فريق "${targetTeam.name}"` : "المنظمة"}`);
       await logToSystem(supabase, "warn", "لم يتم التوزيع: لا يوجد موظفين (تم استثناء المشرفين والمدراء)", { conversation_id, error: membersErr?.message, team: targetTeam?.name }, org_id);
       return json({ assigned: false, reason: "no_members" });
     }
@@ -196,12 +247,17 @@ Deno.serve(async (req) => {
         escalated: false,
       }).eq("id", conversation_id);
 
-      if (!fallback) {
-        await supabase.from("messages").insert({
-          conversation_id,
-          content: `تم إسناد المحادثة تلقائياً إلى ${agent.full_name}`,
-          sender: "system",
-          message_type: "text",
+      // Log assignment step in conversation timeline
+      const stepMsg = fallback
+        ? `⚙️ الإسناد التلقائي: تم الإسناد إلى ${agent.full_name} (خارج الوردية — fallback)`
+        : `⚙️ الإسناد التلقائي: تم الإسناد إلى ${agent.full_name}${targetTeam ? ` — فريق "${targetTeam.name}"` : ""} (${strategy})`;
+      await insertSystemMessage(supabase, conversation_id, stepMsg);
+
+      // Optional: send success message to customer
+      if (successMessage && conversation?.customer_phone) {
+        await sendCustomerMessage(supabase, org_id, conversation_id, conversation.customer_phone, successMessage, {
+          agent_name: agent.full_name || "",
+          team_name: targetTeam?.name || "",
         });
       }
 
@@ -274,23 +330,43 @@ Deno.serve(async (req) => {
 
     // Try available agents first
     if (available.length > 0) {
+      await insertSystemMessage(supabase, conversation_id, `⚙️ الإسناد التلقائي: ${available.length} موظف متاح — جاري التوزيع بـ "${strategy}"`);
       const result = await pickAgent(available);
       if (result) return result;
+      await insertSystemMessage(supabase, conversation_id, `⚙️ الإسناد التلقائي: جميع الموظفين وصلوا للحد الأقصى (${maxConv} محادثة)`);
       await logToSystem(supabase, "warn", "جميع الوكلاء وصلوا للحد الأقصى", { conversation_id, available_count: available.length, max_conv: maxConv }, org_id);
-      return json({ assigned: false, reason: "all_agents_at_capacity" });
     }
 
     // Fallback: anyone online regardless of shift hours
     const onlineOnly = members.filter((m) => m.is_online);
-    if (onlineOnly.length > 0) {
+    if (onlineOnly.length > 0 && available.length === 0) {
+      await insertSystemMessage(supabase, conversation_id, `⚙️ الإسناد التلقائي: لا يوجد موظف في الوردية — محاولة مع ${onlineOnly.length} موظف متصل`);
       const result = await pickAgent(onlineOnly, true);
       if (result) return result;
+      await insertSystemMessage(supabase, conversation_id, "⚙️ الإسناد التلقائي: جميع الموظفين المتصلين وصلوا للحد الأقصى");
       await logToSystem(supabase, "warn", "جميع الوكلاء المتصلين وصلوا للحد الأقصى (fallback)", { conversation_id, online_count: onlineOnly.length }, org_id);
-      return json({ assigned: false, reason: "all_agents_at_capacity" });
     }
 
-    await logToSystem(supabase, "warn", "لا يوجد وكلاء متاحين للتوزيع", { conversation_id, total_members: members.length }, org_id);
-    return json({ assigned: false, reason: "no_available_agents" });
+    // === No agent could be assigned ===
+    const noAgentMsg = autoAssignOnReconnect
+      ? `⚠️ الإسناد التلقائي: لا يوجد موظف متاح حالياً — سيتم الإسناد تلقائياً عند اتصال أول موظف`
+      : `⚠️ الإسناد التلقائي: لا يوجد موظف متاح حالياً (${members.length} موظف مسجل)`;
+    await insertSystemMessage(supabase, conversation_id, noAgentMsg);
+
+    // Mark conversation for deferred assignment
+    if (autoAssignOnReconnect) {
+      await supabase.from("conversations").update({
+        status: "pending_assignment",
+      } as any).eq("id", conversation_id);
+    }
+
+    // Optional: send failure message to customer
+    if (failMessage && conversation?.customer_phone) {
+      await sendCustomerMessage(supabase, org_id, conversation_id, conversation.customer_phone, failMessage);
+    }
+
+    await logToSystem(supabase, "warn", "لا يوجد وكلاء متاحين للتوزيع", { conversation_id, total_members: members.length, pending_reconnect: autoAssignOnReconnect }, org_id);
+    return json({ assigned: false, reason: "no_available_agents", pending_reconnect: autoAssignOnReconnect });
   } catch (err) {
     await logToSystem(supabase, "error", "خطأ في التوزيع التلقائي", { error: err.message, stack: err.stack });
     return json({ error: err.message }, 500);

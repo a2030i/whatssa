@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Zap, Save, Hand, RotateCcw, Scale, Target, Moon, Star, MessageSquare, Plus, Trash2, Edit, X } from "lucide-react";
+import { Zap, Save, Hand, RotateCcw, Scale, Target, Moon, Star, MessageSquare, Plus, Trash2, Edit, X, UserCheck, UserX, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,9 @@ const ConversationSettingsPage = () => {
   const [loadingAssign, setLoadingAssign] = useState(true);
   const [savingAssign, setSavingAssign] = useState(false);
   const [smartReassignMinutes, setSmartReassignMinutes] = useState("");
+  const [autoAssignOnReconnect, setAutoAssignOnReconnect] = useState(false);
+  const [autoAssignFailMessage, setAutoAssignFailMessage] = useState("");
+  const [autoAssignSuccessMessage, setAutoAssignSuccessMessage] = useState("");
 
   const [channels, setChannels] = useState<ChannelOption[]>([]);
   const [selectedOohChannel, setSelectedOohChannel] = useState<string>("global");
@@ -126,6 +129,9 @@ const ConversationSettingsPage = () => {
       setDefaultMaxConv(data.default_max_conversations ? String(data.default_max_conversations) : "");
       const settings = (data.settings as Record<string, any>) || {};
       setSmartReassignMinutes(settings.smart_reassign_minutes ? String(settings.smart_reassign_minutes) : "");
+      setAutoAssignOnReconnect(!!settings.auto_assign_on_reconnect);
+      setAutoAssignFailMessage(settings.auto_assign_fail_message || "");
+      setAutoAssignSuccessMessage(settings.auto_assign_success_message || "");
       setOohSettings(prev => ({
         ...prev,
         global: { enabled: settings.out_of_hours_enabled || false, message: settings.out_of_hours_message || defaultOoh.message, work_start: settings.work_start || "09:00", work_end: settings.work_end || "17:00", work_days: Array.isArray(settings.work_days) ? settings.work_days : [0, 1, 2, 3, 4] }
@@ -145,7 +151,13 @@ const ConversationSettingsPage = () => {
     await supabase.from("organizations").update({
       default_assignment_strategy: defaultStrategy,
       default_max_conversations: defaultMaxConv ? parseInt(defaultMaxConv) : null,
-      settings: { ...currentSettings, smart_reassign_minutes: smartReassignMinutes ? parseInt(smartReassignMinutes) : null },
+      settings: {
+        ...currentSettings,
+        smart_reassign_minutes: smartReassignMinutes ? parseInt(smartReassignMinutes) : null,
+        auto_assign_on_reconnect: autoAssignOnReconnect,
+        auto_assign_fail_message: autoAssignFailMessage.trim() || null,
+        auto_assign_success_message: autoAssignSuccessMessage.trim() || null,
+      },
     }).eq("id", orgId);
     toast.success("تم حفظ إعدادات الإسناد");
     setSavingAssign(false);
@@ -241,6 +253,53 @@ const ConversationSettingsPage = () => {
               <span className="text-[11px] text-muted-foreground">{smartReassignMinutes ? `خلال ${smartReassignMinutes} دقيقة (${Math.round(parseInt(smartReassignMinutes) / 60)} ساعة)` : "معطل — سيتم إعادة الفتح بدون إسناد"}</span>
             </div>
           </div>
+
+          {/* Auto-assign on reconnect */}
+          <div className="bg-primary/5 rounded-xl p-4 space-y-3 border border-primary/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <WifiOff className="w-4 h-4 text-warning" />
+                <Label className="text-xs font-semibold">الإسناد عند اتصال موظف</Label>
+              </div>
+              <Switch checked={autoAssignOnReconnect} onCheckedChange={setAutoAssignOnReconnect} />
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              عند عدم توفر موظف، تبقى المحادثة معلقة وتُسند تلقائياً لأول موظف يتصل
+            </p>
+          </div>
+
+          {/* Fail message */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <UserX className="w-4 h-4 text-destructive" />
+              <Label className="text-xs font-semibold">رسالة تعذر الإسناد (اختياري)</Label>
+            </div>
+            <p className="text-[11px] text-muted-foreground">تُرسل للعميل عبر واتساب عند عدم وجود موظف متاح — اتركها فارغة لتعطيلها</p>
+            <Textarea
+              value={autoAssignFailMessage}
+              onChange={(e) => setAutoAssignFailMessage(e.target.value)}
+              placeholder="شكراً لتواصلك! جميع موظفينا مشغولون حالياً وسنرد عليك في أقرب وقت 🙏"
+              className="bg-secondary border-0 min-h-[60px] text-sm"
+            />
+          </div>
+
+          {/* Success message */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-success" />
+              <Label className="text-xs font-semibold">رسالة نجاح الإسناد (اختياري)</Label>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              تُرسل للعميل عند إسناد المحادثة لموظف — استخدم {"{agent_name}"} لاسم الموظف و{"{team_name}"} لاسم الفريق
+            </p>
+            <Textarea
+              value={autoAssignSuccessMessage}
+              onChange={(e) => setAutoAssignSuccessMessage(e.target.value)}
+              placeholder="مرحباً! تم تحويلك إلى {agent_name} وسيساعدك الآن 😊"
+              className="bg-secondary border-0 min-h-[60px] text-sm"
+            />
+          </div>
+
           <div className="flex justify-end">
             <Button size="sm" onClick={saveAssignSettings} disabled={savingAssign || loadingAssign} className="gap-1.5">
               <Save className="w-3.5 h-3.5" />
