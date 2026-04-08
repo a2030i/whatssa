@@ -466,7 +466,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   <Languages className="w-3.5 h-3.5" /> ترجمة
                 </DropdownMenuItem>
               )}
-              {!isEmailConversation && msg.waMessageId && conversation.channelType === "evolution" && (
+              {!isEmailConversation && msg.waMessageId && (
                 <>
                   <DropdownMenuSeparator />
                   <div className="px-2 py-1.5">
