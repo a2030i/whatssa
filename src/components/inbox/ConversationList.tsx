@@ -65,6 +65,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilter = searchParams.get("filter") || (inboxMode === "email" ? "all" : "mine");
   const [activeQuickFilter, setActiveQuickFilterState] = useState(initialFilter);
+  const setActiveQuickFilter = useCallback((id: string) => {
+    setActiveQuickFilterState(id);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (id === "mine" && inboxMode !== "email") next.delete("filter");
+      else next.set("filter", id);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams, inboxMode]);
   const [agentFilter, setAgentFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
