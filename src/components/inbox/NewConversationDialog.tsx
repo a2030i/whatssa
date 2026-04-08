@@ -576,7 +576,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             customer_name: customerName || cleanPhone,
           },
         });
-        const data = result?.data;
+        const data = result?.data as any;
         const error = result?.error;
         if (data?.safety_paused) {
           toast.warning("⛔ الإرسال متوقف مؤقتاً لحماية الرقم. الرسالة ستُعلّق ⏳ وترسل تلقائياً فور تجدد الحد.", {
@@ -585,7 +585,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           });
           if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
         } else if (error || data?.error) {
-          throw new Error(data?.error || error?.message || "فشل إرسال الرسالة");
+          throw new Error(data?.error || (error as any)?.message || "فشل إرسال الرسالة");
         } else {
           if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
         }
