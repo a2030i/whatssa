@@ -834,6 +834,23 @@ const TeamPage = () => {
                 <p className="text-[10px] text-muted-foreground">{formTeams.length} فريق محدد</p>
               )}
             </div>
+            {/* Shift Assignment */}
+            <div className="space-y-2">
+              <Label className="text-xs flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-primary" /> الشفت
+              </Label>
+              <Select value={formShiftId} onValueChange={setFormShiftId}>
+                <SelectTrigger className="bg-secondary border-0 text-xs"><SelectValue placeholder="بدون شفت" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="" className="text-xs">بدون شفت</SelectItem>
+                  {shiftTemplates.map(s => (
+                    <SelectItem key={s.id} value={s.id} className="text-xs">
+                      {s.name_ar} ({s.start_time?.slice(0, 5)} - {s.end_time?.slice(0, 5)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label className="text-xs">البريد الإلكتروني</Label>
               <Input 
@@ -845,6 +862,10 @@ const TeamPage = () => {
                 dir="ltr"
               />
             </div>
+            {/* Group Access */}
+            {editingProfile && (
+              <EmployeeGroupAccess profileId={editingProfile.id} profileName={editingProfile.full_name || "الموظف"} />
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>إلغاء</Button>
