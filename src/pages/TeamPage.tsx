@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Shield, MoreVertical, Trash2, Edit, Save, UserPlus, Users, Layers, Clock, Eye, CalendarDays, AlertTriangle, CheckCircle, Settings2, Zap, Hand, RotateCcw, Scale, Target, MessageSquare, Timer } from "lucide-react";
+import { Plus, Shield, MoreVertical, Trash2, Edit, Save, UserPlus, Users, Layers, Clock, Eye, CalendarDays, AlertTriangle, CheckCircle, Settings2, Zap, Hand, RotateCcw, Scale, Target, MessageSquare, Timer, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import ShiftManagement from "@/components/team/ShiftManagement";
+import EmployeeGroupAccess from "@/components/team/EmployeeGroupAccess";
+import AttendanceReport from "@/components/team/AttendanceReport";
 
 const roleConfig: Record<string, { label: string; className: string }> = {
   admin: { label: "مدير", className: "bg-kpi-3/10 text-kpi-3" },
@@ -48,6 +51,10 @@ const TeamPage = () => {
   const [workEnd2, setWorkEnd2] = useState("02:00");
   const [workDays2, setWorkDays2] = useState<number[]>([]);
   const [rolesRepaired, setRolesRepaired] = useState(false);
+  const [shiftTemplates, setShiftTemplates] = useState<any[]>([]);
+  const [employeeShifts, setEmployeeShifts] = useState<Record<string, string>>({});
+  const [attendanceDialog, setAttendanceDialog] = useState<any>(null);
+  const [formShiftId, setFormShiftId] = useState<string>("");
 
   // Assignment config dialog
   const [assignDialog, setAssignDialog] = useState<any>(null);
@@ -61,15 +68,23 @@ const TeamPage = () => {
   const dayLabels = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
   const load = async () => {
-    const [t, p, r, conv] = await Promise.all([
+    const [t, p, r, conv, empShifts] = await Promise.all([
       supabase.from("teams").select("*").eq("org_id", orgId),
       supabase.from("profiles").select("*").eq("org_id", orgId),
       supabase.from("user_roles").select("*"),
       supabase.from("conversations").select("assigned_to, status").eq("org_id", orgId).eq("status", "active"),
+      supabase.from("employee_shifts" as any).select("profile_id, shift_id").eq("org_id", orgId),
     ]);
     setTeams(t.data || []);
     setProfiles(p.data || []);
     setRoles(r.data || []);
+
+    // Map employee -> shift
+    const shiftMap: Record<string, string> = {};
+    ((empShifts.data || []) as any[]).forEach((es: any) => {
+      shiftMap[es.profile_id] = es.shift_id;
+    });
+    setEmployeeShifts(shiftMap);
 
     const counts: Record<string, number> = {};
     (conv.data || []).forEach((c: any) => {
@@ -139,6 +154,7 @@ const TeamPage = () => {
       setFormRole("member");
     }
     setFormEmail("");
+    setFormShiftId(employeeShifts[profile.id] || "");
     setDialogOpen(true);
   };
 
@@ -182,6 +198,22 @@ const TeamPage = () => {
       } catch {
         toast.error("فشل تحديث البريد الإلكتروني");
       }
+    }
+
+    // Save shift assignment
+    if (editingProfile && formShiftId) {
+      const today = new Date().toISOString().split("T")[0];
+      // Remove old assignments
+      await supabase.from("employee_shifts" as any).delete().eq("profile_id", editingProfile.id).eq("org_id", orgId);
+      // Add new
+      await supabase.from("employee_shifts" as any).insert({
+        org_id: orgId,
+        profile_id: editingProfile.id,
+        shift_id: formShiftId,
+        effective_from: today,
+      } as any);
+    } else if (editingProfile && !formShiftId) {
+      await supabase.from("employee_shifts" as any).delete().eq("profile_id", editingProfile.id).eq("org_id", orgId);
     }
 
     toast.success("تم تحديث بيانات العضو");
@@ -526,6 +558,9 @@ const TeamPage = () => {
                         <DropdownMenuItem onClick={() => openSchedule(profile)} className="gap-2 text-xs">
                           <Clock className="w-3.5 h-3.5" /> أوقات العمل
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setAttendanceDialog(profile)} className="gap-2 text-xs">
+                          <BarChart3 className="w-3.5 h-3.5" /> سجل الحضور
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDeleteMember(profile)} className="gap-2 text-xs text-destructive">
                           <Trash2 className="w-3.5 h-3.5" /> حذف الموظف
                         </DropdownMenuItem>
@@ -538,6 +573,13 @@ const TeamPage = () => {
           })}
         </div>
       </div>
+
+      {/* Shift Templates Management */}
+      {isAdmin && (
+        <div className="bg-card rounded-lg shadow-card p-4 md:p-5">
+          <ShiftManagement onShiftsLoaded={(s) => setShiftTemplates(s)} />
+        </div>
+      )}
 
       {/* Weekly Schedule View */}
       {profiles.length > 0 && (
@@ -802,6 +844,23 @@ const TeamPage = () => {
                 <p className="text-[10px] text-muted-foreground">{formTeams.length} فريق محدد</p>
               )}
             </div>
+            {/* Shift Assignment */}
+            <div className="space-y-2">
+              <Label className="text-xs flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-primary" /> الشفت
+              </Label>
+              <Select value={formShiftId} onValueChange={setFormShiftId}>
+                <SelectTrigger className="bg-secondary border-0 text-xs"><SelectValue placeholder="بدون شفت" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="" className="text-xs">بدون شفت</SelectItem>
+                  {shiftTemplates.map(s => (
+                    <SelectItem key={s.id} value={s.id} className="text-xs">
+                      {s.name_ar} ({s.start_time?.slice(0, 5)} - {s.end_time?.slice(0, 5)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label className="text-xs">البريد الإلكتروني</Label>
               <Input 
@@ -813,6 +872,10 @@ const TeamPage = () => {
                 dir="ltr"
               />
             </div>
+            {/* Group Access */}
+            {editingProfile && (
+              <EmployeeGroupAccess profileId={editingProfile.id} profileName={editingProfile.full_name || "الموظف"} />
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>إلغاء</Button>
@@ -1170,6 +1233,21 @@ const TeamPage = () => {
                 </Button>
               </DialogFooter>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Attendance Report Dialog */}
+      <Dialog open={!!attendanceDialog} onOpenChange={() => setAttendanceDialog(null)}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <BarChart3 className="w-4 h-4 text-primary" />
+              سجل حضور {attendanceDialog?.full_name}
+            </DialogTitle>
+          </DialogHeader>
+          {attendanceDialog && (
+            <AttendanceReport profileId={attendanceDialog.id} />
           )}
         </DialogContent>
       </Dialog>

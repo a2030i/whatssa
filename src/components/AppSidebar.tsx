@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import AttendanceClockButton from "@/components/team/AttendanceClockButton";
 
 interface NavItem {
   label: string;
@@ -291,6 +292,11 @@ const AppSidebar = () => {
             </NavLink>
           </div>
         )}
+
+        {/* Attendance Clock Button */}
+        <div className={cn("px-3 pb-1", collapsed && "flex justify-center")}>
+          <AttendanceClockButton />
+        </div>
 
         {/* User Profile */}
         <div className={cn("p-3", collapsed ? "flex justify-center" : "")}>

@@ -507,6 +507,64 @@ export type Database = {
           },
         ]
       }
+      attendance_logs: {
+        Row: {
+          classification: string | null
+          created_at: string
+          event_at: string
+          event_type: string
+          id: string
+          note: string | null
+          org_id: string
+          profile_id: string
+          shift_id: string | null
+        }
+        Insert: {
+          classification?: string | null
+          created_at?: string
+          event_at?: string
+          event_type: string
+          id?: string
+          note?: string | null
+          org_id: string
+          profile_id: string
+          shift_id?: string | null
+        }
+        Update: {
+          classification?: string | null
+          created_at?: string
+          event_at?: string
+          event_type?: string
+          id?: string
+          note?: string | null
+          org_id?: string
+          profile_id?: string
+          shift_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_logs_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shift_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_logs: {
         Row: {
           action_result: string | null
@@ -1909,6 +1967,114 @@ export type Database = {
             columns: ["ticket_assigned_team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_group_access: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          granted_by: string | null
+          id: string
+          org_id: string
+          profile_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          org_id: string
+          profile_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          org_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_group_access_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_group_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_group_access_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_group_access_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_shifts: {
+        Row: {
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          org_id: string
+          profile_id: string
+          shift_id: string
+        }
+        Insert: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          org_id: string
+          profile_id: string
+          shift_id: string
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          org_id?: string
+          profile_id?: string
+          shift_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_shifts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_shifts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_shifts_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shift_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -3322,6 +3488,56 @@ export type Database = {
           },
           {
             foreignKeyName: "scheduled_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_templates: {
+        Row: {
+          color: string | null
+          created_at: string
+          end_time: string
+          id: string
+          is_active: boolean
+          name: string
+          name_ar: string
+          org_id: string
+          start_time: string
+          updated_at: string
+          work_days: number[]
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          end_time: string
+          id?: string
+          is_active?: boolean
+          name: string
+          name_ar: string
+          org_id: string
+          start_time: string
+          updated_at?: string
+          work_days?: number[]
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          name_ar?: string
+          org_id?: string
+          start_time?: string
+          updated_at?: string
+          work_days?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_templates_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
