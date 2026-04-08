@@ -30,6 +30,13 @@ interface KBEntry {
   category: string;
   is_active: boolean;
   created_at: string;
+  channel_ids: string[] | null;
+}
+
+interface ChannelOption {
+  id: string;
+  label: string;
+  channel_type: string;
 }
 
 interface PendingQuestion {
