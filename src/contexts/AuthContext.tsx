@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -169,6 +169,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Set online immediately
     updatePresence();
+
+    // Trigger assign-on-reconnect for pending conversations
+    if (profile?.org_id) {
+      invokeCloud("assign-on-reconnect", {
+        body: { org_id: profile.org_id, agent_id: user.id },
+      }).catch(() => {});
+    }
 
     // Update every 2 minutes
     const interval = setInterval(updatePresence, 2 * 60 * 1000);
