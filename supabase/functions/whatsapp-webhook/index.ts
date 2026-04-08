@@ -670,7 +670,7 @@ serve(async (req) => {
               status: "active",
               last_message: messageContent,
               unread_count: 1,
-              conversation_type: "meta_api",
+              conversation_type: "private",
               channel_id: channelConfigId,
             };
             if (channelDefaultAgentId) {
@@ -848,14 +848,14 @@ serve(async (req) => {
             const stickerId = incomingMessage.sticker?.id;
             if (stickerId) {
               try {
-                const { data: metaConfig } = await supabase
+                let stickerCfgQ = supabase
                   .from("whatsapp_config")
                   .select("access_token")
-                  .eq("org_id", orgId)
                   .eq("is_connected", true)
-                  .eq("channel_type", "meta_api")
-                  .limit(1)
-                  .maybeSingle();
+                  .eq("channel_type", "meta_api");
+                if (channelConfigId) stickerCfgQ = stickerCfgQ.eq("id", channelConfigId);
+                else stickerCfgQ = stickerCfgQ.eq("org_id", orgId);
+                const { data: metaConfig } = await stickerCfgQ.limit(1).maybeSingle();
 
                 if (metaConfig) {
                   const mediaInfoRes = await fetch(`https://graph.facebook.com/v21.0/${stickerId}`, {
@@ -902,14 +902,14 @@ serve(async (req) => {
             if (mediaId) {
               try {
                 // Step 1: Get media URL from Meta
-                const { data: metaConfig } = await supabase
+                let mediaCfgQ = supabase
                   .from("whatsapp_config")
                   .select("access_token")
-                  .eq("org_id", orgId)
                   .eq("is_connected", true)
-                  .eq("channel_type", "meta_api")
-                  .limit(1)
-                  .maybeSingle();
+                  .eq("channel_type", "meta_api");
+                if (channelConfigId) mediaCfgQ = mediaCfgQ.eq("id", channelConfigId);
+                else mediaCfgQ = mediaCfgQ.eq("org_id", orgId);
+                const { data: metaConfig } = await mediaCfgQ.limit(1).maybeSingle();
 
                 if (metaConfig) {
                   const mediaInfoRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
@@ -1199,14 +1199,14 @@ serve(async (req) => {
 
                 // ── Action: Reply ──
                 if (actionType === "reply" || actionType === "reply_and_tag") {
-                  const { data: config } = await supabase
+                  let replyCfgQ = supabase
                     .from("whatsapp_config")
                     .select("phone_number_id, access_token")
-                    .eq("org_id", orgId)
                     .eq("is_connected", true)
-                    .order("created_at", { ascending: true })
-                    .limit(1)
-                    .maybeSingle();
+                    .eq("channel_type", "meta_api");
+                  if (channelConfigId) replyCfgQ = replyCfgQ.eq("id", channelConfigId);
+                  else replyCfgQ = replyCfgQ.eq("org_id", orgId);
+                  const { data: config } = await replyCfgQ.limit(1).maybeSingle();
 
                   if (config && matchedRule.reply_text) {
                     const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
@@ -1266,14 +1266,14 @@ serve(async (req) => {
                   });
                   const aiData = aiResp.data;
                   if (aiData?.reply && !aiData?.skip) {
-                    const { data: waConfig } = await supabase
+                    let aiCfgQ = supabase
                       .from("whatsapp_config")
                       .select("phone_number_id, access_token")
-                      .eq("org_id", orgId)
                       .eq("is_connected", true)
-                      .eq("channel_type", "meta_api")
-                      .limit(1)
-                      .maybeSingle();
+                      .eq("channel_type", "meta_api");
+                    if (channelConfigId) aiCfgQ = aiCfgQ.eq("id", channelConfigId);
+                    else aiCfgQ = aiCfgQ.eq("org_id", orgId);
+                    const { data: waConfig } = await aiCfgQ.limit(1).maybeSingle();
 
                     if (waConfig) {
                       const sendResp = await fetch(`https://graph.facebook.com/v21.0/${waConfig.phone_number_id}/messages`, {
