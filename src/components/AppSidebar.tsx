@@ -81,6 +81,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     items: [
       { label: "التكاملات", icon: Plug, path: "/integrations", emoji: "🔗", minRole: "admin" },
       { label: "الذكاء الاصطناعي", icon: Brain, path: "/ai-settings", emoji: "🤖", minRole: "admin" },
+      { label: "استوديو AI", icon: Sparkles, path: "/ai-studio", emoji: "✨", minRole: "admin" },
       { label: "أدوات النمو", icon: Zap, path: "/growth-tools", emoji: "🚀", minRole: "admin" },
       { label: "الفريق والصلاحيات", icon: Users, path: "/team", emoji: "👤", minRole: "supervisor" },
       { label: "الإشعارات", icon: Bell, path: "/settings", emoji: "🔔", minRole: "admin" },
