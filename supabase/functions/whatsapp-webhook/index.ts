@@ -20,7 +20,7 @@ async function findPrivateConversation(
 
   let query = client
     .from("conversations")
-    .select("id, unread_count, status, dedicated_agent_id, dedicated_agent_name")
+    .select("id, unread_count, status")
     .eq("org_id", orgId)
     .eq("conversation_type", "private")
     .eq("customer_phone", normalizedPhone);
@@ -29,7 +29,9 @@ async function findPrivateConversation(
   query = status === "closed" ? query.eq("status", "closed") : query.neq("status", "closed");
 
   const orderColumn = status === "closed" ? "closed_at" : "updated_at";
-  const { data } = await query.order(orderColumn, { ascending: false }).limit(1).maybeSingle();
+  const { data, error } = await query.order(orderColumn, { ascending: false }).limit(1).maybeSingle();
+  if (error) console.error("findPrivateConversation error:", error.message);
+  return data;
   return data;
 }
 
