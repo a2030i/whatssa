@@ -175,6 +175,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.conversationType !== "group").length,
       waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent" && c.conversationType !== "group").length,
       unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن") && c.conversationType !== "group").length,
+      assigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedTo && c.assignedTo !== "غير معيّن" && c.conversationType !== "group").length,
       unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId && c.conversationType !== "group").length,
       mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
       groups: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
