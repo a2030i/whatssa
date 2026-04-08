@@ -173,10 +173,31 @@ serve(async (req) => {
       // Save message to conversation first so it appears in UI
       let convId = conversation_id || null;
       if (to && !convId) {
-        let convQuery = adminClient.from("conversations").select("id").eq("customer_phone", to).eq("org_id", orgId).neq("status", "closed");
-        if (requestedChannelId) convQuery = convQuery.eq("channel_id", requestedChannelId);
-        const { data: conv } = await convQuery.limit(1).maybeSingle();
-        convId = conv?.id || null;
+        let openConvQuery = adminClient
+          .from("conversations")
+          .select("id")
+          .eq("customer_phone", to)
+          .eq("org_id", orgId)
+          .neq("status", "closed");
+        if (requestedChannelId) openConvQuery = openConvQuery.eq("channel_id", requestedChannelId);
+        const { data: openConv } = await openConvQuery.limit(1).maybeSingle();
+
+        if (openConv?.id) {
+          convId = openConv.id;
+        } else {
+          let closedConvQuery = adminClient
+            .from("conversations")
+            .select("id")
+            .eq("customer_phone", to)
+            .eq("org_id", orgId)
+            .eq("status", "closed");
+          if (requestedChannelId) closedConvQuery = closedConvQuery.eq("channel_id", requestedChannelId);
+          const { data: closedConv } = await closedConvQuery
+            .order("closed_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          convId = closedConv?.id || null;
+        }
       }
       if (convId) {
         await adminClient.from("messages").insert({
@@ -528,12 +549,27 @@ serve(async (req) => {
     if (!conversation) {
       let convLookup = adminClient
         .from("conversations")
-        .select("id")
+        .select("id, status")
         .eq("customer_phone", to)
         .eq("org_id", orgId)
         .neq("status", "closed");
       if (requestedChannelId) convLookup = convLookup.eq("channel_id", requestedChannelId);
       const { data } = await convLookup.limit(1).maybeSingle();
+      conversation = data;
+    }
+
+    if (!conversation) {
+      let closedConvLookup = adminClient
+        .from("conversations")
+        .select("id, status")
+        .eq("customer_phone", to)
+        .eq("org_id", orgId)
+        .eq("status", "closed");
+      if (requestedChannelId) closedConvLookup = closedConvLookup.eq("channel_id", requestedChannelId);
+      const { data } = await closedConvLookup
+        .order("closed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
       conversation = data;
     }
 
