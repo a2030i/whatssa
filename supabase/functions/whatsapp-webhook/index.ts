@@ -637,6 +637,7 @@ serve(async (req) => {
               last_message: messageContent,
               unread_count: 1,
               conversation_type: "meta_api",
+              channel_id: channelConfigId,
             };
             if (channelDefaultAgentId) {
               convInsert.assigned_to = channelDefaultAgentId;
