@@ -227,28 +227,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     let initialSessionHandled = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (!initialSessionHandled) return; // skip duplicate initial event
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          try {
-            await fetchUserData(session.user.id);
-          } catch (e) {
-            console.error("Failed to fetch user data:", e);
-          }
-        } else {
-          setProfile(null);
-          setUserRole(null);
-          setOrgId(null);
-          setIsEcommerce(false);
-          setImpersonatedOrgId(null);
-        }
-        setIsLoading(false);
-      }
-    );
-
+    // Step 1: Restore session from storage FIRST (synchronous source of truth)
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       initialSessionHandled = true;
       setSession(session);
@@ -267,6 +246,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       clearTimeout(safetyTimeout);
       setIsLoading(false);
     });
+
+    // Step 2: Listen for SUBSEQUENT auth changes (sign-in, sign-out, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        // Skip the initial event — getSession already handled it
+        if (!initialSessionHandled) return;
+        // Skip token refreshes that don't change the user
+        if (event === 'TOKEN_REFRESHED') {
+          setSession(session);
+          return;
+        }
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          // Use setTimeout to avoid blocking the auth state change callback
+          setTimeout(async () => {
+            try {
+              await fetchUserData(session.user.id);
+            } catch (e) {
+              console.error("Failed to fetch user data:", e);
+            }
+            setIsLoading(false);
+          }, 0);
+        } else {
+          setProfile(null);
+          setUserRole(null);
+          setOrgId(null);
+          setIsEcommerce(false);
+          setImpersonatedOrgId(null);
+          setIsLoading(false);
+        }
+      }
+    );
 
     return () => {
       clearTimeout(safetyTimeout);
