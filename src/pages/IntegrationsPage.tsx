@@ -379,12 +379,24 @@ const IntegrationsPage = () => {
 
   const loadConfigs = async (skipAutoSync = false) => {
     if (!orgId) return;
-    const [allConfigsRes, orgRes] = await Promise.all([
+    const [allConfigsRes, orgRes, extraFieldsRes] = await Promise.all([
       supabase.rpc("get_org_whatsapp_channels"),
       supabase.from("organizations").select("plans(max_phone_numbers)").eq("id", orgId).maybeSingle(),
+      // Fetch fields that RPC might not include
+      supabase.from("whatsapp_config").select("id, exclude_supervisors, last_webhook_at").eq("org_id", orgId),
     ]);
 
-    const allConfigs = ((allConfigsRes.data || []) as WhatsAppConfig[]).filter((config) => config.org_id === orgId);
+    const extraMap = new Map((extraFieldsRes.data || []).map((r: any) => [r.id, r]));
+    const allConfigs = ((allConfigsRes.data || []) as WhatsAppConfig[])
+      .filter((config) => config.org_id === orgId)
+      .map((config) => {
+        const extra = extraMap.get(config.id);
+        if (extra) {
+          if (config.exclude_supervisors === undefined || config.exclude_supervisors === null) config.exclude_supervisors = extra.exclude_supervisors;
+          if (!config.last_webhook_at) config.last_webhook_at = extra.last_webhook_at;
+        }
+        return config;
+      });
     const officialConfigs = allConfigs.filter((config) => config.channel_type !== "evolution");
     const unofficial = allConfigs.filter((config) => config.channel_type === "evolution");
 
@@ -410,7 +422,16 @@ const IntegrationsPage = () => {
           );
 
           const { data: refreshed } = await supabase.rpc("get_org_whatsapp_channels");
-          const updated = ((refreshed || []) as WhatsAppConfig[]).filter((c) => c.org_id === orgId && c.channel_type === "evolution");
+          const updated = ((refreshed || []) as WhatsAppConfig[])
+            .filter((c) => c.org_id === orgId && c.channel_type === "evolution")
+            .map((c) => {
+              const extra = extraMap.get(c.id);
+              if (extra) {
+                if (c.exclude_supervisors === undefined || c.exclude_supervisors === null) c.exclude_supervisors = extra.exclude_supervisors;
+                if (!c.last_webhook_at) c.last_webhook_at = extra.last_webhook_at;
+              }
+              return c;
+            });
           setUnofficialConfigs(updated);
         }
       }
@@ -1369,7 +1390,7 @@ const IntegrationsPage = () => {
             <p className="text-[9px] text-muted-foreground mt-0.5">حافظ على جودة المحتوى لتجنب تخفيض المستوى.</p>
           </div>
         )}
-        {ms.healthIssues && ms.healthIssues.length > 0 && (
+        {ms.healthIssues && ms.healthIssues.length > 0 && ms.healthIssues.some((issue: any) => translateHealthIssue(issue) !== null) && (
           <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
             <p className="text-[11px] font-semibold text-destructive flex items-center gap-1">
               <AlertTriangle className="w-3.5 h-3.5" /> مشاكل تحتاج معالجة
