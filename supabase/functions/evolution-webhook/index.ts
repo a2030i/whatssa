@@ -917,13 +917,15 @@ serve(async (req) => {
         if (messageType === "text" && text) {
           const ratingNum = parseInt(text.trim());
           if (ratingNum >= 1 && ratingNum <= 5) {
-            const { data: pendingConv } = await supabase
+            let satQuery = supabase
               .from("conversations")
               .select("id, assigned_to")
               .eq("customer_phone", phone)
               .eq("org_id", orgId)
+              .eq("channel_id", config.id)
               .eq("status", "closed")
-              .eq("satisfaction_status", "pending")
+              .eq("satisfaction_status", "pending");
+            const { data: pendingConv } = await satQuery
               .order("closed_at", { ascending: false })
               .limit(1)
               .maybeSingle();
