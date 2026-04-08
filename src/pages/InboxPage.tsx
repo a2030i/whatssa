@@ -223,7 +223,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         });
       }
 
-      const mapped: Conversation[] = (data || []).map((conversation: any) => {
+      const mapped: Conversation[] = (filteredData).map((conversation: any) => {
         const channelConfig = conversation.channel_id ? channelMap.get(conversation.channel_id) : null;
         const channelType = conversation.conversation_type === "email" ? "email" as const :
           channelConfig?.channel_type === "evolution" ? "evolution" : 
