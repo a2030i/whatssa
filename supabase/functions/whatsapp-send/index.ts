@@ -509,14 +509,14 @@ serve(async (req) => {
     }
 
     if (!conversation) {
-      const { data } = await adminClient
+      let convLookup = adminClient
         .from("conversations")
         .select("id")
         .eq("customer_phone", to)
         .eq("org_id", orgId)
-        .neq("status", "closed")
-        .limit(1)
-        .maybeSingle();
+        .neq("status", "closed");
+      if (requestedChannelId) convLookup = convLookup.eq("channel_id", requestedChannelId);
+      const { data } = await convLookup.limit(1).maybeSingle();
       conversation = data;
     }
 
