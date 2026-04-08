@@ -89,6 +89,7 @@ const IntegrationsPage = () => {
   const isMobileDevice = useMemo(() => /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent), []);
   const [flowStep, setFlowStep] = useState<FlowStep>("idle");
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
+  const [selectedPhoneId, setSelectedPhoneId] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState("");
   const fbCallbackFiredRef = useRef(false);
   const postMessageHandledRef = useRef(false);
@@ -157,6 +158,10 @@ const IntegrationsPage = () => {
   const [officialEnabled, setOfficialEnabled] = useState(false);
   const [metaSettingsLoaded, setMetaSettingsLoaded] = useState(false);
   const embeddedSignupSelectionRef = useRef<EmbeddedSignupSelection | null>(null);
+  const selectedPhone = useMemo(
+    () => phoneNumbers.find((phone) => phone.id === selectedPhoneId) ?? null,
+    [phoneNumbers, selectedPhoneId]
+  );
 
   const rememberEmbeddedSignupSelection = useCallback((selection: EmbeddedSignupSelection) => {
     embeddedSignupSelectionRef.current = selection;
@@ -815,9 +820,11 @@ const IntegrationsPage = () => {
 
       if (allPhones.length === 1) {
         const selectedPhone = allPhones[0];
+        setSelectedPhoneId(selectedPhone.id);
         setBusinessAccountId(selectedPhone.waba_id || "");
         await selectPhone(selectedPhone, token, selectedPhone.waba_id);
       } else if (allPhones.length > 0) {
+        setSelectedPhoneId(null);
         setBusinessAccountId(allPhones[0].waba_id || "");
         setPhoneNumbers(allPhones);
         setFlowStep("pick_phone");
@@ -1033,6 +1040,7 @@ const IntegrationsPage = () => {
   const resetFlow = () => {
     setFlowStep("idle");
     setPhoneNumbers([]);
+    setSelectedPhoneId(null);
     setErrorMessage("");
     setIsLoading(false);
     setConnectedPhone("");
@@ -2412,13 +2420,19 @@ const IntegrationsPage = () => {
             {phoneNumbers.map((phone) => {
               const phoneStatus = (phone as any).status;
               const isAlreadyConnected = phoneStatus === "CONNECTED";
+              const isSelected = selectedPhoneId === phone.id;
               const statusLabel = isAlreadyConnected ? "متصل" : phoneStatus === "PENDING" ? "معلّق" : null;
               return (
                 <button
                   key={phone.id}
-                  onClick={() => selectPhone(phone)}
+                  onClick={() => setSelectedPhoneId(phone.id)}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-right"
+                  className={cn(
+                    "w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-right",
+                    isSelected
+                      ? "border-primary bg-primary/5 shadow-card"
+                      : "border-border hover:border-primary hover:bg-primary/5"
+                  )}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
@@ -2444,6 +2458,11 @@ const IntegrationsPage = () => {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
+                    {isSelected && (
+                      <Badge className="bg-primary/10 text-primary border-0 text-[10px]">
+                        {t("تم الاختيار", "Selected")}
+                      </Badge>
+                    )}
                     {phone.quality_rating && (
                       <Badge variant="outline" className={cn("text-[10px]",
                         phone.quality_rating === "GREEN" ? "text-success border-success/30" : "text-warning border-warning/30"
@@ -2455,6 +2474,23 @@ const IntegrationsPage = () => {
                 </button>
               );
             })}
+
+            {selectedPhone && (
+              <div className="pt-3 space-y-2">
+                <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+                  {t("الرقم المحدد:", "Selected number:")} <span dir="ltr" className="font-semibold">{selectedPhone.display_phone_number || selectedPhone.id}</span>
+                </div>
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => selectPhone(selectedPhone, accessToken, selectedPhone.waba_id)}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                  {t("التالي", "Next")}
+                </Button>
+              </div>
+            )}
+
             <Button variant="ghost" size="sm" className="text-xs mt-2" onClick={resetFlow}>{t("← رجوع", "← Back")}</Button>
           </div>
         </div>
