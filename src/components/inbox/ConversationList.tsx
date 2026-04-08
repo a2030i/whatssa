@@ -599,10 +599,14 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                         <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded leading-none">Meta</span>
                       ) : conv.channelType === "evolution" ? (
                         <span className="text-[8px] font-bold text-warning bg-warning/10 px-1.5 py-0.5 rounded leading-none">QR</span>
-                      ) : conv.channelType === "email" ? (
+                      ) : (conv.channelType === "email" || conv.conversationType === "email") ? (
                         <span className="text-[8px] font-bold text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded leading-none">Email</span>
+                      ) : conv.conversationType === "group" ? (
+                        <span className="text-[8px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded leading-none">قروب</span>
+                      ) : conv.conversationType === "broadcast" ? (
+                        <span className="text-[8px] font-bold text-accent-foreground bg-accent px-1.5 py-0.5 rounded leading-none">قائمة</span>
                       ) : (
-                        <span className="text-[8px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded leading-none">WA</span>
+                        <span className="text-[8px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded leading-none">واتساب</span>
                       )}
                       {conv.channelName && (
                         <span className="text-[9px] text-muted-foreground/50 truncate max-w-[80px]">
