@@ -31,6 +31,7 @@ export interface Conversation {
   lastMessageSender?: "agent" | "customer" | null;
   sentiment?: "positive" | "neutral" | "negative" | null;
   sentimentScore?: number | null;
+  closedBy?: string | null;
 }
 
 export interface MessageTemplate {
