@@ -507,14 +507,14 @@ serve(async (req) => {
           channelDefaultAgentId = config?.default_agent_id || null;
           channelExcludeSupervisors = !!(config as any)?.exclude_supervisors;
 
-          // Update last webhook activity timestamp
+          // Update last webhook activity timestamp (fire-and-forget)
           if (channelConfigId) {
-            await supabase.from("whatsapp_config").update({ last_webhook_at: new Date().toISOString() }).eq("id", channelConfigId);
+            supabase.from("whatsapp_config").update({ last_webhook_at: new Date().toISOString() }).eq("id", channelConfigId).then(() => {}).catch(() => {});
           }
         }
 
         if (!orgId) {
-          await logToSystem(supabase, "warn", "Webhook وارد بدون مؤسسة مطابقة", { phone_number_id: metadataPhoneId });
+          logToSystem(supabase, "warn", "Webhook وارد بدون مؤسسة مطابقة", { phone_number_id: metadataPhoneId });
           continue;
         }
 
@@ -530,7 +530,8 @@ serve(async (req) => {
             const contactName = value.contacts?.[0]?.profile?.name || customerPhone;
             const messageContent = incomingMessage.text?.body || `[${incomingMessage.type}]`;
 
-            await logToSystem(supabase, "info", `رسالة واردة من ${customerPhone}`, {
+            // Non-blocking log
+            logToSystem(supabase, "info", `رسالة واردة من ${customerPhone}`, {
               type: incomingMessage.type,
               wa_message_id: incomingMessage.id,
               contact_name: contactName,
