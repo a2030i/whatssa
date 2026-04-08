@@ -47,7 +47,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     items: [
       { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
       { label: "صندوق الواتساب", icon: MessageSquare, path: "/inbox", emoji: "💬" },
-      { label: "صندوق الإيميل", icon: Mail, path: "/email-inbox", emoji: "📧" },
+      { label: "صندوق الإيميل", icon: Mail, path: "/email-inbox", emoji: "📧", minRole: "admin" },
       { label: "التذاكر", icon: Ticket, path: "/tickets", emoji: "🎫" },
       { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
     ],
@@ -150,11 +150,18 @@ const AppSidebar = () => {
     return false;
   };
 
+  // For non-admin users, completely hide locked items instead of showing them as locked
+  const isVisible = (item: NavItem): boolean => {
+    if (!hasAccess(item)) return false;
+    if (effectiveRole !== "admin" && !isSuperAdmin && isLocked(item)) return false;
+    return true;
+  };
+
   const isActive = (path: string) => location.pathname === path;
 
   const renderItem = (item: NavItem | NavGroup) => {
     if (isGroup(item)) return null;
-    if (!hasAccess(item)) return null;
+    if (!isVisible(item)) return null;
     const active = isActive(item.path);
     const locked = isLocked(item);
 
@@ -262,22 +269,28 @@ const AppSidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto scrollbar-thin pb-2">
-        {navSections.map((section) => (
-          <div key={section.section}>
-            <div className="px-4 pt-4 pb-1.5">
-              {!collapsed ? (
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/35">
-                  {section.section}
-                </span>
-              ) : (
-                <div className="border-t border-sidebar-border/15 mx-1" />
-              )}
+        {navSections.map((section) => {
+          // Check if section has any visible items
+          const visibleItems = section.items.filter(item => !isGroup(item) && isVisible(item as NavItem));
+          if (visibleItems.length === 0) return null;
+
+          return (
+            <div key={section.section}>
+              <div className="px-4 pt-4 pb-1.5">
+                {!collapsed ? (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/35">
+                    {section.section}
+                  </span>
+                ) : (
+                  <div className="border-t border-sidebar-border/15 mx-1" />
+                )}
+              </div>
+              <div className={cn("space-y-0.5", collapsed ? "px-2" : "px-2.5")}>
+                {section.items.map((item) => renderItem(item))}
+              </div>
             </div>
-            <div className={cn("space-y-0.5", collapsed ? "px-2" : "px-2.5")}>
-              {section.items.map((item) => renderItem(item))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Bottom Section */}
