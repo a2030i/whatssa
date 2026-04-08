@@ -1443,7 +1443,8 @@ serve(async (req) => {
       });
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
-      await logToSystem(supabase, "critical", "خطأ غير متوقع في Webhook واتساب", { error: errMsg });
+      const errStack = error instanceof Error ? error.stack : "";
+      await logToSystem(supabase, "critical", "خطأ غير متوقع في Webhook واتساب", { error: errMsg, stack: errStack, trace_step: "CRASH" });
       console.error("Webhook error:", error);
       return new Response(JSON.stringify({ error: "Internal error" }), {
         status: 200,
