@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, FileText, Loader2, Plus, X, Save, Globe, ChevronDown, Users, Image as ImageIcon, Mail } from "lucide-react";
+import { Search, Phone, Send, MessageSquare, ShieldCheck, Wifi, User, Loader2, Plus, X, Globe, ChevronDown, Users, Image as ImageIcon, Mail, ArrowRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,6 @@ import { supabase, invokeCloud } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import type { WhatsAppTemplate } from "@/types/whatsapp";
-import { buildTemplateComponents } from "@/types/whatsapp";
 
 interface Channel {
   id: string;
@@ -68,7 +67,6 @@ const COUNTRY_CODES = [
 
 const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCreated }: NewConversationDialogProps) => {
   const { orgId, profile, userRole, isSuperAdmin, isSupervisor } = useAuth();
-  const [step, setStep] = useState<"contact" | "channel">("contact");
   const [dialogMode, setDialogMode] = useState<DialogMode>("private");
   const [channels, setChannels] = useState<Channel[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -77,11 +75,11 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [countryCode, setCountryCode] = useState("966");
   const [localNumber, setLocalNumber] = useState("");
   const [customerName, setCustomerName] = useState("");
-  const [messageText, setMessageText] = useState("");
-  const [sending, setSending] = useState(false);
   const [navigating, setNavigating] = useState(false);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [isExistingCustomer, setIsExistingCustomer] = useState(false);
+  const [saveCustomer, setSaveCustomer] = useState(false);
   // Group state
   const [groupName, setGroupName] = useState("");
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
@@ -133,21 +131,14 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   // Reset on open
   useEffect(() => {
     if (open) {
-      setStep("contact");
       setSelectedChannel(null);
       setCountryCode("966");
       setLocalNumber("");
       setCustomerName("");
-      setMessageText("");
-      setSelectedTemplate(null);
-      setTemplateVars([]);
       setSearchQuery("");
       setSaveCustomer(false);
       setIsExistingCustomer(false);
       setShowCountryPicker(false);
-      setHas24hWindow(false);
-      setChecking24h(false);
-      setUseTemplateFallback(true);
       setGroupName("");
       setGroupMembers([]);
       setGroupMemberInput("");
@@ -164,7 +155,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setEmailSubject("");
       setEmailBody("");
       setSelectedEmailConfig(null);
-      // Don't set dialogMode here - will be set after channels/email load
+      setNavigating(false);
     }
   }, [open]);
 
@@ -186,7 +177,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     const load = async () => {
       let connectedChannels: Channel[] = [];
 
-      // Always load from whatsapp_config_safe with routing fields
       const { data: allChannels } = await supabase
         .from("whatsapp_config_safe")
         .select("id, display_phone, channel_type, evolution_instance_name, business_name, is_connected, created_at, channel_label, default_team_id, default_agent_id")
@@ -195,7 +185,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         .order("created_at");
       connectedChannels = ((allChannels || []) as unknown as (Channel & { default_team_id?: string | null; default_agent_id?: string | null })[]);
 
-      // Filter for non-admin/non-supervisor members: show only assigned channels or unrouted ones
       const isAdmin = isSuperAdmin || userRole === "admin";
       const isSup = isSupervisor || profile?.is_supervisor;
       if (!isAdmin && !isSup && profile?.id) {
@@ -205,7 +194,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 
         connectedChannels = connectedChannels.filter((ch: any) => {
           const hasRouting = ch.default_agent_id || ch.default_team_id;
-          if (!hasRouting) return true; // No routing = visible to all
+          if (!hasRouting) return true;
           if (ch.default_agent_id === profile.id) return true;
           if (ch.default_team_id && myTeamIds.includes(ch.default_team_id)) return true;
           return false;
@@ -223,25 +212,19 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     load();
 
     const handleRefreshChannels = () => {
-      if (document.visibilityState === "visible") {
-        void load();
-      }
+      if (document.visibilityState === "visible") void load();
     };
 
     const channelsChannel = supabase
       .channel(`new-conversation-whatsapp-config-${orgId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_config", filter: `org_id=eq.${orgId}` }, () => {
-        void load();
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_config", filter: `org_id=eq.${orgId}` }, () => void load())
       .subscribe();
 
     window.addEventListener("focus", handleRefreshChannels);
     document.addEventListener("visibilitychange", handleRefreshChannels);
 
     const refreshInterval = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void load();
-      }
+      if (document.visibilityState === "visible") void load();
     }, 12000);
 
     return () => {
@@ -261,19 +244,16 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         body: { action: "list" },
       });
       setEmailConfigs(res?.data || []);
-      if (res?.data?.length > 0) {
-        setSelectedEmailConfig(res.data[0].id);
-      }
+      if (res?.data?.length > 0) setSelectedEmailConfig(res.data[0].id);
     };
     load();
   }, [orgId, open]);
 
-  // Search customers - triggered by searchQuery OR localNumber input
+  // Search customers
   useEffect(() => {
     if (!orgId || !open) return;
     const query = searchQuery || localNumber;
     if (!query.trim()) {
-      // Load recent customers
       const load = async () => {
         setLoadingCustomers(true);
         const { data } = await supabase
@@ -305,15 +285,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     return () => clearTimeout(timer);
   }, [orgId, open, searchQuery, localNumber]);
 
-  const isMeta = selectedChannel?.channel_type === "meta_api";
-  const approvedTemplates = useMemo(() => {
-    const approved = templates.filter(t => t.status?.toUpperCase() === "APPROVED");
-    if (selectedChannel?.channel_type === "meta_api" && selectedChannel?.id) {
-      const channelSpecific = approved.filter(t => t.channelId === selectedChannel.id);
-      if (channelSpecific.length > 0) return channelSpecific;
-    }
-    return approved;
-  }, [templates, selectedChannel]);
   const evolutionChannels = useMemo(() => channels.filter(c => c.channel_type === "evolution"), [channels]);
   const hasEvolution = evolutionChannels.length > 0;
   const hasEmailConfigs = emailConfigs.length > 0;
@@ -340,9 +311,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       if (data?.error) throw new Error(data.error);
       
       toast.success("✅ تم إرسال الإيميل بنجاح");
-      if (data?.conversation_id) {
-        onConversationCreated(data.conversation_id);
-      }
+      if (data?.conversation_id) onConversationCreated(data.conversation_id);
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || "فشل إرسال الإيميل");
@@ -377,10 +346,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       });
       if (error || data?.error) throw new Error(data?.error || "فشل إنشاء القروب");
 
-      // Upload group picture if selected
       if (groupImageFile && data?.group_jid) {
         try {
-          // Upload to storage first
           const ext = groupImageFile.name.split(".").pop() || "jpg";
           const path = `group-pics/${orgId}/${Date.now()}.${ext}`;
           const { error: uploadErr } = await supabase.storage.from("chat-media").upload(path, groupImageFile);
@@ -398,7 +365,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             }
           }
         } catch {
-          // Non-critical - group was created
           console.warn("Failed to set group picture");
         }
       }
@@ -413,7 +379,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   };
 
   const selectCustomer = (c: Customer) => {
-    // Parse phone - try to extract country code
     const rawPhone = c.phone.replace(/[^0-9]/g, "");
     const matched = COUNTRY_CODES.find(cc => rawPhone.startsWith(cc.code));
     if (matched) {
@@ -424,117 +389,30 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     }
     setCustomerName(c.name || "");
     setIsExistingCustomer(true);
-    if (channels.length === 1) {
-      setSelectedChannel(channels[0]);
-      setStep("message");
-    } else {
-      setStep("channel");
-    }
   };
 
-  const proceedWithNumber = () => {
-    if (!isValidNumber) {
-      toast.error(`الرقم يجب أن يكون ${selectedCountry.digits} أرقام بعد مفتاح الدولة`);
+  // ═══ NEW: Navigate directly to conversation ═══
+  const handleStartConversation = async () => {
+    if (!isValidNumber || !orgId) return;
+    const channel = selectedChannel || channels[0];
+    if (!channel) {
+      toast.error("لا توجد قناة متصلة");
       return;
     }
-    if (channels.length === 1) {
-      setSelectedChannel(channels[0]);
-      setStep("message");
-    } else {
-      setStep("channel");
-    }
-  };
 
-  const selectChannel = async (ch: Channel) => {
-    setSelectedChannel(ch);
-    setSelectedTemplate(null);
-    setTemplateVars([]);
-    setMessageText("");
-    setUseTemplateFallback(true);
-    setHas24hWindow(false);
-    setStep("message");
-
-    // Check 24h window for Meta channels
-    if (ch.channel_type === "meta_api" && isValidNumber && orgId) {
-      setChecking24h(true);
-      try {
-        const twentyFourAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const phoneVariants = getPhoneSearchVariants(fullPhone);
-
-        if (phoneVariants.length === 0) return;
-        const phoneFilters = Array.from(new Set(phoneVariants.flatMap((variant) => [
-          `customer_phone.eq.${variant}`,
-          `customer_phone.like.%${variant}%`,
-        ])));
-        
-        const { data: recentConvs } = await supabase
-          .from("conversations")
-          .select("id, customer_phone, last_message_at, last_message_sender, channel_id")
-          .eq("org_id", orgId)
-          .eq("conversation_type", "private")
-          .gte("last_message_at", twentyFourAgo)
-          .or(phoneFilters.join(","))
-          .order("last_message_at", { ascending: false })
-          .limit(20);
-
-        const matchedConversationIds = (recentConvs || [])
-          .filter((conv: any) => phoneNumbersMatch(conv.customer_phone, fullPhone))
-          .map((conv: any) => conv.id);
-
-        if (matchedConversationIds.length > 0) {
-          const { data: incomingMsg } = await supabase
-            .from("messages")
-            .select("id")
-            .in("conversation_id", matchedConversationIds)
-            .eq("sender", "customer")
-            .gte("created_at", twentyFourAgo)
-            .limit(1)
-            .maybeSingle();
-
-          if (incomingMsg) {
-            setHas24hWindow(true);
-            setUseTemplateFallback(false);
-          }
-        }
-      } catch {
-        // Fail silently - default to template mode
-      } finally {
-        setChecking24h(false);
-      }
-    }
-  };
-
-  const handleSelectTemplate = (t: WhatsAppTemplate) => {
-    setSelectedTemplate(t);
-    const varCount = t.components?.reduce((acc, c) => {
-      const matches = c.text?.match(/\{\{(\d+)\}\}/g);
-      return acc + (matches ? matches.length : 0);
-    }, 0) || 0;
-    setTemplateVars(Array(varCount).fill(""));
-  };
-
-  const handleSend = async () => {
-    if (!selectedChannel || !isValidNumber || !orgId) return;
-
-    setSending(true);
+    setNavigating(true);
     try {
       const cleanPhone = fullPhone;
-      const messagePreview = isMeta && useTemplateFallback ? `📋 ${selectedTemplate?.name}` : messageText.trim();
 
       // Save customer if requested
-      if (saveCustomer && !isExistingCustomer && orgId) {
+      if (saveCustomer && !isExistingCustomer) {
         await supabase.from("customers").upsert(
-          {
-            org_id: orgId,
-            phone: cleanPhone,
-            name: customerName || null,
-            source: "manual",
-          },
+          { org_id: orgId, phone: cleanPhone, name: customerName || null, source: "manual" },
           { onConflict: "org_id,phone" }
         );
       }
 
-      // Find existing conversation (read-only, no RLS issue)
+      // Find existing conversation for this phone + channel
       const phoneVariants = getPhoneSearchVariants(cleanPhone);
       const phoneFilters = Array.from(new Set(phoneVariants.flatMap((variant) => [
         `customer_phone.eq.${variant}`,
@@ -545,7 +423,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         .from("conversations")
         .select("id, status, customer_phone")
         .eq("org_id", orgId)
-        .eq("channel_id", selectedChannel.id)
+        .eq("channel_id", channel.id)
         .or(phoneFilters.join(","))
         .order("updated_at", { ascending: false })
         .limit(10);
@@ -554,88 +432,34 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 
       let conversationId = existingConv?.id;
 
-      if (isMeta && selectedTemplate) {
-        const result = await invokeCloud("whatsapp-send", {
-          body: {
-            to: cleanPhone,
-            type: "template",
-            template_name: selectedTemplate.name,
-            template_language: selectedTemplate.language,
-            template_components: buildTemplateComponents(selectedTemplate, templateVars),
-            conversation_id: conversationId,
-            channel_id: selectedChannel.id,
+      if (!conversationId) {
+        // Create a new conversation record
+        const { data: newConv, error: createErr } = await supabase
+          .from("conversations")
+          .insert({
+            org_id: orgId,
+            customer_phone: cleanPhone,
             customer_name: customerName || cleanPhone,
-          },
-        });
-        const data = result?.data;
-        const error = result?.error;
-        if (error || data?.error) throw new Error(data?.error || error?.message || "فشل إرسال القالب");
-        // Edge function may return conversation_id if it created one
-        if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
-      } else if (!isMeta && messageText.trim()) {
-        const result = await invokeCloud("evolution-send", {
-          body: {
-            to: cleanPhone,
-            message: messageText,
-            conversation_id: conversationId,
-            channel_id: selectedChannel.id,
-            customer_name: customerName || cleanPhone,
-          },
-        });
-        const data = result?.data as any;
-        const error = result?.error;
-        if (data?.safety_paused) {
-          toast.warning("⛔ الإرسال متوقف مؤقتاً لحماية الرقم. الرسالة ستُعلّق ⏳ وترسل تلقائياً فور تجدد الحد.", {
-            duration: 10000,
-            icon: "🛡️",
-          });
-          if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
-        } else if (error || data?.error) {
-          throw new Error(data?.error || (error as any)?.message || "فشل إرسال الرسالة");
-        } else {
-          if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
-        }
-        // Edge function creates conversation if needed — get its ID
-        if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
-      } else if (isMeta && !useTemplateFallback && messageText.trim()) {
-        // 24h window - send free-form text via whatsapp-send
-        const result = await invokeCloud("whatsapp-send", {
-          body: {
-            to: cleanPhone,
-            type: "text",
-            message: messageText.trim(),
-            conversation_id: conversationId,
-            channel_id: selectedChannel.id,
-            customer_name: customerName || cleanPhone,
-          },
-        });
-        const data = result?.data;
-        const error = result?.error;
-        if (error || data?.error) throw new Error(data?.error || error?.message || "فشل إرسال الرسالة");
-        if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
-      } else if (isMeta && useTemplateFallback && !selectedTemplate) {
-        toast.error("يجب اختيار قالب للقناة الرسمية");
-        setSending(false);
-        return;
-      } else {
-        toast.error("أدخل نص الرسالة");
-        setSending(false);
-        return;
-      }
+            channel_id: channel.id,
+            status: "active",
+            conversation_type: "private",
+            last_message_at: new Date().toISOString(),
+          })
+          .select("id")
+          .single();
 
-      if (conversationId && !existingConv && messagePreview) {
+        if (createErr || !newConv) throw new Error("فشل إنشاء المحادثة");
+        conversationId = newConv.id;
+      } else if (existingConv?.status === "closed") {
+        // Reopen closed conversation
         await supabase
           .from("conversations")
-          .update({
-            last_message: messagePreview,
-            last_message_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
+          .update({ status: "active", updated_at: new Date().toISOString() })
           .eq("id", conversationId);
       }
 
-      // Auto-assign private conversations to the creator
-      if (conversationId && dialogMode === "private" && profile?.id) {
+      // Auto-assign to creator
+      if (conversationId && profile?.id) {
         await supabase
           .from("conversations")
           .update({
@@ -646,20 +470,14 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           .eq("id", conversationId);
       }
 
-      if (conversationId) {
-        onConversationCreated(conversationId);
-      }
-
-      toast.success("تم إرسال الرسالة بنجاح");
+      onConversationCreated(conversationId!);
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || "حدث خطأ");
     } finally {
-      setSending(false);
+      setNavigating(false);
     }
   };
-
-  const canSend = isValidNumber && (isMeta ? (useTemplateFallback ? !!selectedTemplate : messageText.trim().length > 0) : messageText.trim().length > 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -673,7 +491,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             {dialogMode === "group" ? "إنشاء قروب" : dialogMode === "email" ? "إرسال إيميل" : "محادثة جديدة"}
           </DialogTitle>
 
-          {/* Mode toggle - only show modes that have channels/configs */}
+          {/* Mode toggle */}
           {(hasWhatsApp || hasEvolution || hasEmailConfigs) ? (
             <div className="flex items-center gap-1 mt-3 bg-muted rounded-lg p-1">
               {hasWhatsApp && (
@@ -716,38 +534,11 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               <p className="text-[10px] text-muted-foreground mt-1">يجب ربط رقم واتساب أو إعداد إيميل من صفحة التكاملات</p>
             </div>
           )}
-
-          {/* Stepper - only for private mode */}
-          {dialogMode === "private" && (
-            <div className="flex items-center gap-2 mt-3">
-              {(["contact", "channel", "message"] as Step[]).map((s, i) => {
-                const labels = ["جهة الاتصال", "القناة", "الرسالة"];
-                const isActive = s === step;
-                const isDone = (step === "channel" && i === 0) || (step === "message" && i < 2);
-                return (
-                  <div key={s} className="flex items-center gap-1.5 flex-1">
-                    <div className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
-                      isActive ? "bg-primary text-primary-foreground" :
-                      isDone ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                    )}>
-                      {i + 1}
-                    </div>
-                    <span className={cn("text-[11px]", isActive ? "text-foreground font-medium" : "text-muted-foreground")}>
-                      {labels[i]}
-                    </span>
-                    {i < 2 && <div className="flex-1 h-px bg-border/60" />}
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </DialogHeader>
 
         {/* ═══ GROUP MODE ═══ */}
         {dialogMode === "group" && (
           <div className="p-4 space-y-4">
-            {/* Group image + name */}
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -784,7 +575,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
             </div>
 
-            {/* Channel selector for group - evolution channels */}
             {evolutionChannels.length > 0 ? (
               <div className="space-y-2">
                 <Label className="text-xs font-medium">📱 القناة</Label>
@@ -813,7 +603,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
             )}
 
-            {/* Add members */}
             <div className="space-y-2">
               <Label className="text-xs font-medium">👥 الأعضاء ({groupMembers.length})</Label>
               <div className="flex gap-1.5" dir="ltr">
@@ -832,7 +621,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
               <p className="text-[10px] text-muted-foreground">أدخل الرقم مع مفتاح الدولة (بدون +)</p>
 
-              {/* Members list */}
               {groupMembers.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {groupMembers.map((m, i) => (
@@ -846,7 +634,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                 </div>
               )}
 
-              {/* Quick add from customers */}
               <div className="mt-3">
                 <div className="relative">
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -865,9 +652,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                       return (
                         <button
                           key={c.id}
-                          onClick={() => {
-                            if (!isAdded) setGroupMembers(prev => [...prev, rawPhone]);
-                          }}
+                          onClick={() => { if (!isAdded) setGroupMembers(prev => [...prev, rawPhone]); }}
                           disabled={isAdded}
                           className={cn(
                             "w-full flex items-center gap-2 p-2 rounded-lg text-right transition-colors",
@@ -890,7 +675,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
             </div>
 
-            {/* Create button */}
             <Button
               className="w-full h-11 gap-2"
               disabled={!groupName.trim() || groupMembers.length < 1 || creatingGroup}
@@ -905,7 +689,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         {/* ═══ EMAIL MODE ═══ */}
         {dialogMode === "email" && (
           <div className="p-4 space-y-4">
-            {/* From selector */}
             {emailConfigs.length > 1 && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">📤 من</Label>
@@ -935,26 +718,19 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
             )}
 
-            {/* To - chips style */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">📩 إلى</Label>
                 <div className="flex items-center gap-2">
-                  {!showCcField && (
-                    <button onClick={() => setShowCcField(true)} className="text-[10px] text-primary hover:underline">+ Cc</button>
-                  )}
-                  {!showBccField && (
-                    <button onClick={() => setShowBccField(true)} className="text-[10px] text-primary hover:underline">+ Bcc</button>
-                  )}
+                  {!showCcField && <button onClick={() => setShowCcField(true)} className="text-[10px] text-primary hover:underline">+ Cc</button>}
+                  {!showBccField && <button onClick={() => setShowBccField(true)} className="text-[10px] text-primary hover:underline">+ Bcc</button>}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-1 min-h-[40px] rounded-lg border border-input bg-background px-2 py-1.5" dir="ltr">
                 {emailToList.map((email, i) => (
                   <Badge key={i} variant="secondary" className="gap-1 text-xs py-0.5 px-2 shrink-0">
                     {email}
-                    <button onClick={() => setEmailToList(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive">
-                      <X className="w-3 h-3" />
-                    </button>
+                    <button onClick={() => setEmailToList(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive"><X className="w-3 h-3" /></button>
                   </Badge>
                 ))}
                 <input
@@ -963,13 +739,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   value={emailToInput}
                   onChange={(e) => setEmailToInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") {
-                      e.preventDefault();
-                      addEmailTo();
-                    }
-                    if (e.key === "Backspace" && !emailToInput && emailToList.length > 0) {
-                      setEmailToList(prev => prev.slice(0, -1));
-                    }
+                    if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") { e.preventDefault(); addEmailTo(); }
+                    if (e.key === "Backspace" && !emailToInput && emailToList.length > 0) setEmailToList(prev => prev.slice(0, -1));
                   }}
                   onBlur={() => addEmailTo()}
                   className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
@@ -977,7 +748,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
             </div>
 
-            {/* CC - chips style */}
             {showCcField && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">📋 Cc</Label>
@@ -985,9 +755,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   {emailCcList.map((email, i) => (
                     <Badge key={i} variant="outline" className="gap-1 text-xs py-0.5 px-2 shrink-0">
                       {email}
-                      <button onClick={() => setEmailCcList(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive">
-                        <X className="w-3 h-3" />
-                      </button>
+                      <button onClick={() => setEmailCcList(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive"><X className="w-3 h-3" /></button>
                     </Badge>
                   ))}
                   <input
@@ -996,13 +764,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                     value={emailCcInput}
                     onChange={(e) => setEmailCcInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") {
-                        e.preventDefault();
-                        addEmailCc();
-                      }
-                      if (e.key === "Backspace" && !emailCcInput && emailCcList.length > 0) {
-                        setEmailCcList(prev => prev.slice(0, -1));
-                      }
+                      if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") { e.preventDefault(); addEmailCc(); }
+                      if (e.key === "Backspace" && !emailCcInput && emailCcList.length > 0) setEmailCcList(prev => prev.slice(0, -1));
                     }}
                     onBlur={() => addEmailCc()}
                     className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
@@ -1011,7 +774,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
             )}
 
-            {/* BCC - chips style */}
             {showBccField && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">🔒 Bcc</Label>
@@ -1019,9 +781,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   {emailBccList.map((email, i) => (
                     <Badge key={i} variant="outline" className="gap-1 text-xs py-0.5 px-2 shrink-0 border-dashed">
                       {email}
-                      <button onClick={() => setEmailBccList(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive">
-                        <X className="w-3 h-3" />
-                      </button>
+                      <button onClick={() => setEmailBccList(prev => prev.filter((_, j) => j !== i))} className="hover:text-destructive"><X className="w-3 h-3" /></button>
                     </Badge>
                   ))}
                   <input
@@ -1030,13 +790,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                     value={emailBccInput}
                     onChange={(e) => setEmailBccInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") {
-                        e.preventDefault();
-                        addEmailBcc();
-                      }
-                      if (e.key === "Backspace" && !emailBccInput && emailBccList.length > 0) {
-                        setEmailBccList(prev => prev.slice(0, -1));
-                      }
+                      if (e.key === "Enter" || e.key === "," || e.key === " " || e.key === "Tab") { e.preventDefault(); addEmailBcc(); }
+                      if (e.key === "Backspace" && !emailBccInput && emailBccList.length > 0) setEmailBccList(prev => prev.slice(0, -1));
                     }}
                     onBlur={() => addEmailBcc()}
                     className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
@@ -1045,43 +800,25 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               </div>
             )}
 
-            {/* Subject */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">📝 الموضوع</Label>
-              <Input
-                placeholder="موضوع الإيميل..."
-                value={emailSubject}
-                onChange={(e) => setEmailSubject(e.target.value)}
-                className="h-10 text-sm bg-background"
-              />
+              <Input placeholder="موضوع الإيميل..." value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="h-10 text-sm bg-background" />
             </div>
 
-            {/* Body */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">✉️ نص الرسالة</Label>
-              <Textarea
-                placeholder="اكتب نص الإيميل هنا..."
-                value={emailBody}
-                onChange={(e) => setEmailBody(e.target.value)}
-                className="min-h-[120px] text-sm resize-none bg-background"
-              />
+              <Textarea placeholder="اكتب نص الإيميل هنا..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)} className="min-h-[120px] text-sm resize-none bg-background" />
             </div>
 
-            {/* Send */}
-            <Button
-              className="w-full h-11 gap-2"
-              disabled={emailToList.length === 0 || !emailSubject || !emailBody || sendingEmail}
-              onClick={handleSendEmail}
-            >
+            <Button className="w-full h-11 gap-2" disabled={emailToList.length === 0 || !emailSubject || !emailBody || sendingEmail} onClick={handleSendEmail}>
               {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               {sendingEmail ? "جاري الإرسال..." : "إرسال الإيميل"}
             </Button>
           </div>
         )}
 
-        {/* ═══ PRIVATE MODE ═══ */}
-        {/* Step: Contact */}
-        {dialogMode === "private" && step === "contact" && (
+        {/* ═══ PRIVATE MODE — Single screen: Phone + Channel ═══ */}
+        {dialogMode === "private" && (
           <div className="flex flex-col">
             {/* Phone input with country code */}
             <div className="p-4 pb-2 space-y-2">
@@ -1121,34 +858,25 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                 </div>
 
                 {/* Number input */}
-                <div className="relative flex-1">
-                  <Input
-                    type="tel"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    autoComplete="tel-national"
-                    enterKeyHint="next"
-                    placeholder={`${"0".repeat(selectedCountry.digits)}`}
-                    value={localNumber}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "");
-                      setLocalNumber(val);
-                      setIsExistingCustomer(false);
-                    }}
-                    className="text-base h-10 bg-background font-mono tracking-wider"
-                    maxLength={selectedCountry.digits + 1}
-                  />
-                </div>
-
-                {/* Next button */}
-                <Button
-                  size="sm"
-                  className="h-10 px-4"
-                  onClick={proceedWithNumber}
-                  disabled={!isValidNumber}
-                >
-                  التالي
-                </Button>
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="tel-national"
+                  enterKeyHint="go"
+                  placeholder={`${"0".repeat(selectedCountry.digits)}`}
+                  value={localNumber}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    setLocalNumber(val);
+                    setIsExistingCustomer(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && isValidNumber) handleStartConversation();
+                  }}
+                  className="flex-1 text-base h-10 bg-background font-mono tracking-wider"
+                  maxLength={selectedCountry.digits + 1}
+                />
               </div>
 
               {/* Validation feedback */}
@@ -1156,7 +884,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                 <p className={cn(
                   "text-[10px] transition-colors",
                   localNumber.length > 0
-                    ? isValidNumber ? "text-emerald-500" : "text-destructive"
+                    ? isValidNumber ? "text-success" : "text-destructive"
                     : "text-muted-foreground"
                 )}>
                   {localNumber.length > 0
@@ -1167,7 +895,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   }
                 </p>
 
-                {/* Save customer checkbox */}
                 {!isExistingCustomer && localNumber.length > 0 && (
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <Checkbox
@@ -1180,7 +907,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                 )}
               </div>
 
-              {/* Customer name input (when saving) */}
               {saveCustomer && !isExistingCustomer && (
                 <Input
                   placeholder="اسم العميل (اختياري)"
@@ -1189,6 +915,86 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   className="h-9 text-sm bg-background"
                 />
               )}
+            </div>
+
+            {/* Channel selector - show inline if multiple channels */}
+            {channels.length > 1 && (
+              <div className="px-4 pb-2 space-y-2">
+                <Label className="text-xs font-medium flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5" />
+                  اختر القناة
+                </Label>
+                <div className="grid gap-1.5">
+                  {channels.map((ch) => {
+                    const isMetaCh = ch.channel_type === "meta_api";
+                    const isSelected = selectedChannel?.id === ch.id;
+                    return (
+                      <button
+                        key={ch.id}
+                        onClick={() => setSelectedChannel(ch)}
+                        className={cn(
+                          "flex items-center gap-3 p-2.5 rounded-xl border transition-all text-right",
+                          isSelected
+                            ? "border-primary/30 bg-primary/5"
+                            : "border-border/40 bg-card/50 hover:border-border/80"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center",
+                          isMetaCh ? "bg-success/10" : "bg-warning/10"
+                        )}>
+                          {isMetaCh ? <ShieldCheck className="w-4 h-4 text-success" /> : <Wifi className="w-4 h-4 text-warning" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">
+                            {ch.channel_label || ch.business_name || ch.display_phone || ch.evolution_instance_name || "قناة"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground" dir="ltr">
+                            {ch.display_phone || ch.evolution_instance_name}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className={cn(
+                          "text-[9px] shrink-0",
+                          isMetaCh ? "border-success/30 text-success" : "border-warning/30 text-warning"
+                        )}>
+                          {isMetaCh ? "رسمي" : "ويب"}
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Single channel indicator */}
+            {channels.length === 1 && (
+              <div className="px-4 pb-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2.5">
+                  {channels[0].channel_type === "meta_api" 
+                    ? <ShieldCheck className="w-3.5 h-3.5 text-success" /> 
+                    : <Wifi className="w-3.5 h-3.5 text-warning" />}
+                  <span>{channels[0].channel_label || channels[0].business_name || channels[0].display_phone || channels[0].evolution_instance_name}</span>
+                  <Badge variant="outline" className="text-[9px] mr-auto">
+                    {channels[0].channel_type === "meta_api" ? "رسمي" : "ويب"}
+                  </Badge>
+                </div>
+              </div>
+            )}
+
+            {/* Start conversation button */}
+            <div className="px-4 pb-2">
+              <Button
+                className="w-full h-11 gap-2"
+                disabled={!isValidNumber || channels.length === 0 || navigating}
+                onClick={handleStartConversation}
+              >
+                {navigating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="w-4 h-4" />
+                )}
+                {navigating ? "جاري الفتح..." : "ابدأ المحادثة"}
+              </Button>
             </div>
 
             {/* Divider */}
@@ -1212,16 +1018,14 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             </div>
 
             {/* Customer list */}
-            <ScrollArea className="h-[200px]">
+            <ScrollArea className="h-[180px]">
               <div className="px-2 pb-2">
                 {loadingCustomers ? (
                   <div className="flex justify-center py-6">
                     <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : customers.length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground text-xs">
-                    لا يوجد عملاء
-                  </div>
+                  <div className="text-center py-6 text-muted-foreground text-xs">لا يوجد عملاء</div>
                 ) : (
                   customers.map((c) => (
                     <button
@@ -1241,228 +1045,6 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                 )}
               </div>
             </ScrollArea>
-          </div>
-        )}
-
-        {/* Step: Channel Selection */}
-        {dialogMode === "private" && step === "channel" && (
-          <div className="p-4 space-y-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Phone className="w-4 h-4" />
-              <span dir="ltr">+{fullPhone}</span>
-              {customerName && <Badge variant="outline" className="text-[10px]">{customerName}</Badge>}
-              <button onClick={() => setStep("contact")} className="mr-auto text-xs text-primary hover:underline">تغيير</button>
-            </div>
-
-            <Label className="text-xs font-medium">اختر القناة للإرسال</Label>
-
-            <div className="grid gap-2">
-              {channels.map((ch) => {
-                const isMetaCh = ch.channel_type === "meta_api";
-                return (
-                  <button
-                    key={ch.id}
-                    onClick={() => selectChannel(ch)}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-card/50 hover:border-primary/40 hover:bg-primary/5 transition-all text-right"
-                  >
-                    <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center",
-                      isMetaCh ? "bg-emerald-500/10" : "bg-amber-500/10"
-                    )}>
-                      {isMetaCh ? <ShieldCheck className="w-5 h-5 text-emerald-500" /> : <Wifi className="w-5 h-5 text-amber-500" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">
-                        {ch.business_name || ch.channel_label || ch.display_phone || ch.evolution_instance_name || "قناة"}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground" dir="ltr">
-                        {ch.display_phone || ch.evolution_instance_name}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className={cn(
-                      "text-[9px] shrink-0",
-                      isMetaCh ? "border-emerald-500/30 text-emerald-600 bg-emerald-500/5" : "border-amber-500/30 text-amber-600 bg-amber-500/5"
-                    )}>
-                      {isMetaCh ? "رسمي - يتطلب قالب" : "ويب - رسالة حرة"}
-                    </Badge>
-                  </button>
-                );
-              })}
-            </div>
-
-            {channels.length === 0 && (
-              <div className="text-center py-6 text-muted-foreground text-xs">
-                لا توجد قنوات متصلة. اربط واتساب أولاً
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step: Message */}
-        {dialogMode === "private" && step === "message" && selectedChannel && (
-          <div className="flex flex-col">
-            {/* Summary bar */}
-            <div className="p-3 border-b border-border/30 flex items-center gap-2 text-xs text-muted-foreground bg-muted/30">
-              <User className="w-3.5 h-3.5" />
-              <span>{customerName || `+${fullPhone}`}</span>
-              <span className="mx-1">•</span>
-              {isMeta ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Wifi className="w-3.5 h-3.5 text-amber-500" />}
-              <span dir="ltr">{selectedChannel.business_name || selectedChannel.display_phone || selectedChannel.evolution_instance_name}</span>
-              <button onClick={() => setStep(channels.length > 1 ? "channel" : "contact")} className="mr-auto text-primary hover:underline text-[11px]">تغيير</button>
-            </div>
-
-            {isMeta ? (
-              <div className="p-4 space-y-3">
-                {checking24h ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    جاري التحقق من نافذة الـ 24 ساعة...
-                  </div>
-                ) : has24hWindow ? (
-                  <>
-                    <div className="bg-success/10 border border-success/20 rounded-xl p-3">
-                      <p className="text-xs font-medium text-success flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        نافذة 24 ساعة مفتوحة — يمكنك إرسال رسالة حرة أو قالب
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-                      <button
-                        onClick={() => { setUseTemplateFallback(false); setSelectedTemplate(null); }}
-                        className={cn(
-                          "flex-1 text-xs font-semibold py-2 rounded-md transition-colors",
-                          !useTemplateFallback ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <MessageSquare className="w-3.5 h-3.5 inline ml-1" /> رسالة حرة
-                      </button>
-                      <button
-                        onClick={() => setUseTemplateFallback(true)}
-                        className={cn(
-                          "flex-1 text-xs font-semibold py-2 rounded-md transition-colors",
-                          useTemplateFallback ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <FileText className="w-3.5 h-3.5 inline ml-1" /> قالب
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-primary" />
-                      <Label className="text-xs font-medium">اختر قالب للإرسال</Label>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      القناة الرسمية تتطلب إرسال قالب معتمد كأول رسالة
-                    </p>
-                  </>
-                )}
-
-                {!useTemplateFallback ? (
-                  <div className="space-y-2">
-                    <Textarea
-                      placeholder="اكتب رسالتك هنا..."
-                      value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
-                      className="min-h-[100px] text-sm resize-none bg-background"
-                    />
-                  </div>
-                ) : !selectedTemplate ? (
-                  <ScrollArea className="h-[200px]">
-                    <div className="grid gap-1.5">
-                      {approvedTemplates.length === 0 ? (
-                        <div className="text-center py-6 text-muted-foreground text-xs">
-                          لا توجد قوالب معتمدة
-                        </div>
-                      ) : (
-                        approvedTemplates.map((t) => (
-                          <button
-                            key={t.id || t.name}
-                            onClick={() => handleSelectTemplate(t)}
-                            className="w-full text-right p-3 rounded-xl border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all"
-                          >
-                            <p className="text-sm font-medium">{t.name}</p>
-                            <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">
-                              {t.components?.find(c => c.type === "BODY")?.text || ""}
-                            </p>
-                            <div className="flex gap-1.5 mt-1.5">
-                              <Badge variant="outline" className="text-[9px]">{t.language}</Badge>
-                              <Badge variant="outline" className="text-[9px]">{t.category}</Badge>
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </ScrollArea>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium">{selectedTemplate.name}</p>
-                        <button onClick={() => setSelectedTemplate(null)} className="text-muted-foreground hover:text-foreground">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        {selectedTemplate.components?.find(c => c.type === "BODY")?.text || ""}
-                      </p>
-                    </div>
-
-                    {templateVars.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">المتغيرات</Label>
-                        {templateVars.map((v, i) => (
-                          <Input
-                            key={i}
-                            placeholder={`متغير {{${i + 1}}}`}
-                            value={v}
-                            onChange={(e) => {
-                              const next = [...templateVars];
-                              next[i] = e.target.value;
-                              setTemplateVars(next);
-                            }}
-                            className="h-9 text-sm"
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-primary" />
-                  <Label className="text-xs font-medium">اكتب رسالتك</Label>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  القناة غير الرسمية تتيح إرسال رسائل حرة مباشرة
-                </p>
-                <Textarea
-                  placeholder="اكتب رسالتك هنا..."
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  className="min-h-[100px] text-sm resize-none bg-background"
-                />
-              </div>
-            )}
-
-            {/* Send button */}
-            <div className="p-4 pt-2 border-t border-border/30">
-              <Button
-                className="w-full h-11 gap-2"
-                disabled={!canSend || sending}
-                onClick={handleSend}
-              >
-                {sending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-                {sending ? "جاري الإرسال..." : saveCustomer ? "حفظ وإرسال" : "إرسال"}
-              </Button>
-            </div>
           </div>
         )}
       </DialogContent>
