@@ -2556,6 +2556,92 @@ export type Database = {
           },
         ]
       }
+      org_ai_wallets: {
+        Row: {
+          balance_sar: number
+          created_at: string | null
+          id: string
+          org_id: string
+          total_charged_sar: number
+          total_consumed_sar: number
+          updated_at: string | null
+        }
+        Insert: {
+          balance_sar?: number
+          created_at?: string | null
+          id?: string
+          org_id: string
+          total_charged_sar?: number
+          total_consumed_sar?: number
+          updated_at?: string | null
+        }
+        Update: {
+          balance_sar?: number
+          created_at?: string | null
+          id?: string
+          org_id?: string
+          total_charged_sar?: number
+          total_consumed_sar?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_ai_wallets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_module_subscriptions: {
+        Row: {
+          created_at: string | null
+          enabled: boolean
+          id: string
+          module_id: string
+          monthly_cost: number
+          org_id: string
+          quantity: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean
+          id?: string
+          module_id: string
+          monthly_cost?: number
+          org_id: string
+          quantity?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean
+          id?: string
+          module_id?: string
+          monthly_cost?: number
+          org_id?: string
+          quantity?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_module_subscriptions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "plan_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_module_subscriptions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_webhooks: {
         Row: {
           created_at: string
@@ -2758,6 +2844,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plan_modules: {
+        Row: {
+          category: string
+          created_at: string | null
+          free_qty: number | null
+          id: string
+          is_active: boolean | null
+          key: string
+          max_qty: number | null
+          min_qty: number | null
+          name_ar: string
+          pricing_type: string
+          sort_order: number | null
+          unit_label: string | null
+          unit_price: number
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          free_qty?: number | null
+          id?: string
+          is_active?: boolean | null
+          key: string
+          max_qty?: number | null
+          min_qty?: number | null
+          name_ar: string
+          pricing_type?: string
+          sort_order?: number | null
+          unit_label?: string | null
+          unit_price?: number
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          free_qty?: number | null
+          id?: string
+          is_active?: boolean | null
+          key?: string
+          max_qty?: number | null
+          min_qty?: number | null
+          name_ar?: string
+          pricing_type?: string
+          sort_order?: number | null
+          unit_label?: string | null
+          unit_price?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       plans: {
         Row: {
