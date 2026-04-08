@@ -1046,6 +1046,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                 {/* Number input */}
                 <div className="relative flex-1">
                   <Input
+                    className="text-base"
                     type="tel"
                     inputMode="numeric"
                     pattern="[0-9]*"
