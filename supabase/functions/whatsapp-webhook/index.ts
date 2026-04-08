@@ -1050,7 +1050,7 @@ serve(async (req) => {
             const { error: msgError } = await supabase.from("messages").insert(msgInsert);
 
             if (msgError) {
-              await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
+              logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
                 error: msgError.message, wa_message_id: incomingMessage.id, conversation_id: conversation.id,
               }, orgId);
             } else {
