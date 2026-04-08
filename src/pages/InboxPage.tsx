@@ -258,6 +258,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           lastMessageSender: (conversation as any).last_message_sender || null,
           sentiment: conversation.sentiment || null,
           sentimentScore: conversation.sentiment_score || null,
+          closedBy: conversation.closed_by || null,
         };
       });
 
@@ -276,16 +277,23 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       const filtered = isAdmin ? mapped : mapped.filter(conv => {
         // No team assigned to user → show all (legacy behavior)
         if (!teamId) return true;
-        // Conversation not assigned to any team → visible to all in org
+
+        // Closed conversations: show if closed by this member or was assigned to them/their team
+        if (conv.status === "closed") {
+          if (conv.closedBy === profile?.id) return true;
+          if (conv.assignedToId === profile?.id) return true;
+          if (conv.assignedTeamId === teamId) return true;
+          if (conv.dedicatedAgentId === profile?.id) return true;
+          // Supervisors see all closed conversations in their team
+          if (isSupervisor && conv.assignedTeamId === teamId) return true;
+        }
+
+        // Active/waiting conversations
         if (!conv.assignedTeamId) return true;
-        // Conversation assigned to user's team
         if (conv.assignedTeamId === teamId) {
-          // Supervisors see all team conversations
           if (isSupervisor) return true;
-          // Members see only their own or unassigned
           return !conv.assignedToId || conv.assignedToId === profile?.id;
         }
-        // Conversation assigned to different team → not visible
         return false;
       });
 
