@@ -16,12 +16,14 @@ import AdminBaileys from "@/components/admin/AdminBaileys";
 import AdminLogs from "@/components/admin/AdminLogs";
 import AdminEmergency from "@/components/admin/AdminEmergency";
 import AdminAiManagement from "@/components/admin/AdminAiManagement";
+import AdminPricingManager from "@/components/admin/AdminPricingManager";
 
 const tabs = [
   { id: "overview", label: "نظرة عامة" },
   { id: "accounts", label: "الحسابات" },
   { id: "finance", label: "المالية" },
   { id: "plans", label: "الباقات" },
+  { id: "pricing", label: "💎 التسعير" },
   { id: "coupons", label: "الكوبونات" },
   { id: "usage", label: "الاستخدام" },
   { id: "ai", label: "✨ AI" },
@@ -43,6 +45,7 @@ const AdminDashboard = () => {
       case "accounts": return <AdminAccounts />;
       case "finance": return <AdminFinance />;
       case "plans": return <AdminPlans />;
+      case "pricing": return <AdminPricingManager />;
       case "coupons": return <AdminCoupons />;
       case "usage": return <AdminUsage />;
       case "ai": return <AdminAiManagement />;
