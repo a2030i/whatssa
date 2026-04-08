@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { Users, Plus, X, Search } from "lucide-react";
+import { Users, Plus, X, Search, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -24,6 +23,7 @@ interface EmployeeGroupAccessProps {
 const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProps) => {
   const { orgId, profile: currentUser } = useAuth();
   const [assignedGroups, setAssignedGroups] = useState<GroupConversation[]>([]);
+  const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
   const [availableGroups, setAvailableGroups] = useState<GroupConversation[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,20 +33,25 @@ const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProp
   }, [orgId, profileId]);
 
   const loadAccess = async () => {
-    // Load assigned groups
-    const { data: access } = await supabase
+    const { data: access, error } = await supabase
       .from("employee_group_access" as any)
       .select("conversation_id")
       .eq("profile_id", profileId)
       .eq("org_id", orgId);
 
-    const assignedIds = ((access || []) as any[]).map(a => a.conversation_id);
+    if (error) {
+      console.error("Error loading group access:", error);
+      return;
+    }
 
-    if (assignedIds.length > 0) {
+    const ids = ((access || []) as any[]).map(a => a.conversation_id);
+    setAssignedIds(new Set(ids));
+
+    if (ids.length > 0) {
       const { data: convs } = await supabase
         .from("conversations")
         .select("id, customer_name, customer_phone, channel_id")
-        .in("id", assignedIds);
+        .in("id", ids);
       setAssignedGroups((convs || []) as unknown as GroupConversation[]);
     } else {
       setAssignedGroups([]);
@@ -62,8 +67,7 @@ const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProp
       .neq("status", "closed")
       .order("last_message_at", { ascending: false });
 
-    const assigned = new Set(assignedGroups.map(g => g.id));
-    setAvailableGroups(((data || []) as unknown as GroupConversation[]).filter(g => !assigned.has(g.id)));
+    setAvailableGroups((data || []) as unknown as GroupConversation[]);
   };
 
   const openDialog = () => {
@@ -73,25 +77,47 @@ const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProp
   };
 
   const addGroup = async (conversationId: string) => {
-    await supabase.from("employee_group_access" as any).insert({
+    const { error } = await supabase.from("employee_group_access" as any).insert({
       org_id: orgId,
       profile_id: profileId,
       conversation_id: conversationId,
       granted_by: currentUser?.id,
     } as any);
+
+    if (error) {
+      console.error("Error adding group:", error);
+      toast.error("فشل إضافة القروب: " + error.message);
+      return;
+    }
+
     toast.success("تمت إضافة القروب");
-    loadAccess();
-    setAvailableGroups(prev => prev.filter(g => g.id !== conversationId));
+    // Update local state immediately
+    setAssignedIds(prev => new Set([...prev, conversationId]));
+    const addedGroup = availableGroups.find(g => g.id === conversationId);
+    if (addedGroup) {
+      setAssignedGroups(prev => [...prev, addedGroup]);
+    }
   };
 
   const removeGroup = async (conversationId: string) => {
-    await supabase
+    const { error } = await supabase
       .from("employee_group_access" as any)
       .delete()
       .eq("profile_id", profileId)
       .eq("conversation_id", conversationId);
+
+    if (error) {
+      toast.error("فشل إزالة القروب");
+      return;
+    }
+
     toast.success("تم إزالة القروب");
-    loadAccess();
+    setAssignedIds(prev => {
+      const next = new Set(prev);
+      next.delete(conversationId);
+      return next;
+    });
+    setAssignedGroups(prev => prev.filter(g => g.id !== conversationId));
   };
 
   const filtered = availableGroups.filter(g =>
@@ -149,20 +175,32 @@ const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProp
             <div className="max-h-60 overflow-y-auto space-y-1.5">
               {filtered.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-6">لا توجد قروبات متاحة</p>
-              ) : filtered.map(g => (
-                <button
-                  key={g.id}
-                  onClick={() => addGroup(g.id)}
-                  className="w-full flex items-center gap-2 p-2.5 rounded-lg border border-transparent hover:border-primary/20 hover:bg-primary/5 transition-all text-right"
-                >
-                  <Users className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{g.customer_name || "مجموعة واتساب"}</p>
-                    <p className="text-[10px] text-muted-foreground">{g.customer_phone}</p>
-                  </div>
-                  <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
-                </button>
-              ))}
+              ) : filtered.map(g => {
+                const isAdded = assignedIds.has(g.id);
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => !isAdded && addGroup(g.id)}
+                    disabled={isAdded}
+                    className={`w-full flex items-center gap-2 p-2.5 rounded-lg border transition-all text-right ${
+                      isAdded
+                        ? "border-success/30 bg-success/5 opacity-70"
+                        : "border-transparent hover:border-primary/20 hover:bg-primary/5"
+                    }`}
+                  >
+                    <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{g.customer_name || "مجموعة واتساب"}</p>
+                      <p className="text-[10px] text-muted-foreground">{g.customer_phone}</p>
+                    </div>
+                    {isAdded ? (
+                      <Check className="w-3.5 h-3.5 text-success shrink-0" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </DialogContent>
