@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       // Direct password reset
       const { error: updateError } = await adminClient.auth.admin.updateUser(user_id, {
         password: new_password,
-        user_metadata: { must_change_password: true },
+        user_metadata: { must_change_password: false },
       });
       if (updateError) throw updateError;
 
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
         success: true,
         method: "direct",
         temp_password: new_password,
-        message: "تم تعيين كلمة مرور مؤقتة — سيُطلب من الموظف تغييرها عند الدخول",
+        message: "تم تعيين كلمة المرور الجديدة — يمكن للموظف الدخول بها مباشرة",
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } else {
       // Get user email and generate recovery link
