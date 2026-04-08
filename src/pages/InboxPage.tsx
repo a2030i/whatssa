@@ -1422,8 +1422,8 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         open={newConvOpen}
         onOpenChange={setNewConvOpen}
         templates={templates}
-        onConversationCreated={(convId) => {
-          void fetchConversationsRef.current?.();
+        onConversationCreated={async (convId) => {
+          await fetchConversationsRef.current?.();
           setSelectedId(convId);
         }}
       />
