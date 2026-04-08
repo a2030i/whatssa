@@ -1380,6 +1380,20 @@ serve(async (req) => {
           }
         }
 
+        // ── Duplicate check: skip if wa_message_id already exists ──
+        if (key.id) {
+          const { data: existingIncomingMsg } = await supabase
+            .from("messages")
+            .select("id")
+            .eq("wa_message_id", key.id)
+            .limit(1)
+            .maybeSingle();
+          if (existingIncomingMsg) {
+            await logToSystem(supabase, "info", `رسالة واردة مكررة تم تجاهلها (Evolution)`, { wa_message_id: key.id }, orgId);
+            continue;
+          }
+        }
+
         const { error: messageInsertError } = await supabase.from("messages").insert({
           conversation_id: conversation.id,
           content,

@@ -564,7 +564,17 @@ serve(async (req) => {
           logToSystem(adminClient, "error", `فشل إرسال صوت Evolution إلى ${to}`, {
             to, http_status: response.status, error: result?.message || "unknown",
           }, orgId, profile.id);
-          return json({ error: result?.message || "فشل إرسال الصوت عبر Evolution" }, response.status);
+          // Add to retry queue for transient errors
+          const retryableStatuses = [429, 500, 502, 503, 504];
+          if (retryableStatuses.includes(response.status)) {
+            await adminClient.from("message_retry_queue").insert({
+              org_id: orgId, conversation_id: conversation_id || null,
+              to_phone: to, content: "[audio]", message_type: "audio",
+              media_url: media_url || null, channel_type: "evolution",
+              last_error: result?.message || `HTTP ${response.status}`,
+            });
+          }
+          return json({ error: result?.message || "فشل إرسال الصوت عبر Evolution", retrying: retryableStatuses.includes(response.status) }, response.status);
         }
 
         waMessageId = result.key?.id || null;
@@ -598,7 +608,16 @@ serve(async (req) => {
           logToSystem(adminClient, "error", `فشل إرسال وسائط Evolution إلى ${to}`, {
             to, http_status: response.status, error: result?.message || "unknown",
           }, orgId, profile.id);
-          return json({ error: result?.message || "فشل إرسال الوسائط عبر Evolution" }, response.status);
+          const retryableStatuses = [429, 500, 502, 503, 504];
+          if (retryableStatuses.includes(response.status)) {
+            await adminClient.from("message_retry_queue").insert({
+              org_id: orgId, conversation_id: conversation_id || null,
+              to_phone: to, content: message || `[${sentMessageType}]`, message_type: sentMessageType,
+              media_url: media_url || null, channel_type: "evolution",
+              last_error: result?.message || `HTTP ${response.status}`,
+            });
+          }
+          return json({ error: result?.message || "فشل إرسال الوسائط عبر Evolution", retrying: retryableStatuses.includes(response.status) }, response.status);
         }
 
         waMessageId = result.key?.id || null;
@@ -669,7 +688,16 @@ serve(async (req) => {
         logToSystem(adminClient, "error", `فشل إرسال رسالة Evolution إلى ${to}`, {
           to, http_status: response.status, error: result?.message || "unknown", instance: instanceName,
         }, orgId, profile.id);
-        return json({ error: result?.message || "فشل إرسال الرسالة عبر Evolution" }, response.status);
+        const retryableStatuses = [429, 500, 502, 503, 504];
+        if (retryableStatuses.includes(response.status)) {
+          await adminClient.from("message_retry_queue").insert({
+            org_id: orgId, conversation_id: conversation_id || null,
+            to_phone: to, content: message || "", message_type: "text",
+            channel_type: "evolution",
+            last_error: result?.message || `HTTP ${response.status}`,
+          });
+        }
+        return json({ error: result?.message || "فشل إرسال الرسالة عبر Evolution", retrying: retryableStatuses.includes(response.status) }, response.status);
       }
 
       waMessageId = result.key?.id || null;
