@@ -356,6 +356,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                 >
                   <Pencil className="w-2.5 h-2.5" />
                 </button>
+                <button
+                  onClick={() => deleteCustomInbox(inbox.id)}
+                  className="hidden group-hover:flex p-0.5 rounded text-muted-foreground hover:text-destructive"
+                  title="حذف الصندوق"
+                >
+                  <Trash2 className="w-2.5 h-2.5" />
+                </button>
               </div>
             ))}
           </div>
