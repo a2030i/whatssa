@@ -514,6 +514,7 @@ serve(async (req) => {
                 .eq("org_id", orgId)
                 .eq("status", "closed")
                 .eq("satisfaction_status", "pending")
+                ...(channelConfigId ? [{ filter: "channel_id", value: channelConfigId }] : [])
                 .order("closed_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
