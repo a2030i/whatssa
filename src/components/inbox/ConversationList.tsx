@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff, CheckSquare, Square, Mail, Send } from "lucide-react";
 import BulkActionsBar from "./BulkActionsBar";
 import { cn } from "@/lib/utils";
@@ -61,7 +62,18 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const { orgId, profile, userRole, isSuperAdmin } = useAuth();
   const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeQuickFilter, setActiveQuickFilter] = useState(inboxMode === "email" ? "all" : "mine");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialFilter = searchParams.get("filter") || (inboxMode === "email" ? "all" : "mine");
+  const [activeQuickFilter, setActiveQuickFilterState] = useState(initialFilter);
+  const setActiveQuickFilter = useCallback((id: string) => {
+    setActiveQuickFilterState(id);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (id === "mine" && inboxMode !== "email") next.delete("filter");
+      else next.set("filter", id);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams, inboxMode]);
   const [agentFilter, setAgentFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
