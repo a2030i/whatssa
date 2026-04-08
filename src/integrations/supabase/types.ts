@@ -2739,6 +2739,7 @@ export type Database = {
           partner_id: string | null
           phone: string | null
           team_id: string | null
+          team_ids: string[] | null
           updated_at: string | null
           work_days: number[] | null
           work_days_2: number[] | null
@@ -2760,6 +2761,7 @@ export type Database = {
           partner_id?: string | null
           phone?: string | null
           team_id?: string | null
+          team_ids?: string[] | null
           updated_at?: string | null
           work_days?: number[] | null
           work_days_2?: number[] | null
@@ -2781,6 +2783,7 @@ export type Database = {
           partner_id?: string | null
           phone?: string | null
           team_id?: string | null
+          team_ids?: string[] | null
           updated_at?: string | null
           work_days?: number[] | null
           work_days_2?: number[] | null
