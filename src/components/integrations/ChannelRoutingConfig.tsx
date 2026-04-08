@@ -20,7 +20,8 @@ const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId, 
   const [agents, setAgents] = useState<{ id: string; full_name: string }[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState(defaultTeamId || "");
   const [selectedAgentId, setSelectedAgentId] = useState(defaultAgentId || "");
-  const [excludeSupervisors, setExcludeSupervisors] = useState(defaultExclude || false);
+  const [excludeSupervisors, setExcludeSupervisors] = useState(defaultExclude ?? false);
+  const [supportsExcludeSupervisors, setSupportsExcludeSupervisors] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -35,21 +36,52 @@ const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId, 
     load();
   }, [orgId]);
 
-  const save = async (teamId: string | null, agentId: string | null, exclSup: boolean) => {
+  const save = async (
+    teamId: string | null,
+    agentId: string | null,
+    exclSup: boolean,
+    source: "routing" | "exclude" = "routing"
+  ) => {
     setSaving(true);
-    const { error } = await supabase
+
+    const basePayload = {
+      default_team_id: teamId || null,
+      default_agent_id: agentId || null,
+    } as any;
+
+    let usedFallback = false;
+
+    let { error } = await supabase
       .from("whatsapp_config")
       .update({
-        default_team_id: teamId || null,
-        default_agent_id: agentId || null,
+        ...basePayload,
         exclude_supervisors: exclSup,
       } as any)
       .eq("id", configId);
+
+    if (error?.message?.includes("exclude_supervisors")) {
+      usedFallback = true;
+      setSupportsExcludeSupervisors(false);
+      setExcludeSupervisors(false);
+
+      const retry = await supabase
+        .from("whatsapp_config")
+        .update(basePayload)
+        .eq("id", configId);
+
+      error = retry.error;
+    }
+
     setSaving(false);
+
     if (error) {
       toast.error("فشل حفظ التوجيه");
     } else {
-      toast.success("تم حفظ إعدادات التوجيه");
+      toast.success(
+        usedFallback && source === "exclude"
+          ? "تم الحفظ بدون استثناء المشرفين"
+          : "تم حفظ إعدادات التوجيه"
+      );
     }
   };
 
@@ -57,19 +89,19 @@ const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId, 
     const v = val === "none" ? "" : val;
     setSelectedTeamId(v);
     if (v) setSelectedAgentId("");
-    save(v || null, v ? null : selectedAgentId || null, excludeSupervisors);
+    save(v || null, v ? null : selectedAgentId || null, excludeSupervisors, "routing");
   };
 
   const handleAgentChange = (val: string) => {
     const v = val === "none" ? "" : val;
     setSelectedAgentId(v);
     if (v) { setSelectedTeamId(""); setExcludeSupervisors(false); }
-    save(v ? null : selectedTeamId || null, v || null, v ? false : excludeSupervisors);
+    save(v ? null : selectedTeamId || null, v || null, v ? false : excludeSupervisors, "routing");
   };
 
   const handleExcludeToggle = (checked: boolean) => {
     setExcludeSupervisors(checked);
-    save(selectedTeamId || null, selectedAgentId || null, checked);
+    save(selectedTeamId || null, selectedAgentId || null, checked, "exclude");
   };
 
   return (
@@ -124,7 +156,7 @@ const ChannelRoutingConfig = ({ configId, orgId, defaultTeamId, defaultAgentId, 
         </div>
       </div>
 
-      {selectedTeamId && (
+      {selectedTeamId && supportsExcludeSupervisors && (
         <div className="flex items-center justify-between pt-1">
           <Label className="text-[10px] text-muted-foreground">استثناء المشرفين من التوزيع التلقائي</Label>
           <Switch
