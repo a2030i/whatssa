@@ -118,7 +118,7 @@ const KnowledgeBaseManager = () => {
     setSaving(false);
     setShowDialog(false);
     setEditing(null);
-    setForm({ title: "", content: "", category: "general" });
+    setForm({ title: "", content: "", category: "general", channelIds: [] });
     loadEntries();
   };
 
@@ -141,7 +141,7 @@ const KnowledgeBaseManager = () => {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ title: "", content: "", category: "general" });
+    setForm({ title: "", content: "", category: "general", channelIds: [] });
     setShowDialog(true);
   };
 
