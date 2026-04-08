@@ -535,6 +535,7 @@ serve(async (req) => {
               type: incomingMessage.type,
               wa_message_id: incomingMessage.id,
               contact_name: contactName,
+              trace_step: "1_received",
             }, orgId);
 
             // ── Check for satisfaction rating response ──
@@ -572,6 +573,7 @@ serve(async (req) => {
             }
 
             let conversation = await findPrivateConversation(supabase, orgId, customerPhone, channelConfigId, "open");
+            logToSystem(supabase, "info", `[TRACE] findConv`, { wa_message_id: incomingMessage.id, found: !!conversation, conv_id: conversation?.id || null, trace_step: "2_find_conv" }, orgId);
 
             // If no open conversation, check for a closed one to reopen
             if (!conversation) {
@@ -760,7 +762,10 @@ serve(async (req) => {
                 .eq("id", conversation.id);
             }
 
-            if (!conversation) continue;
+            if (!conversation) {
+              await logToSystem(supabase, "error", `[TRACE] رسالة ضائعة: conversation=null بعد كل المحاولات`, { wa_message_id: incomingMessage.id, customer_phone: customerPhone, trace_step: "3_no_conv_drop" }, orgId);
+              continue;
+            }
 
             // Auto-save customer record (fire-and-forget — non-critical)
             (async () => {
@@ -1021,6 +1026,7 @@ serve(async (req) => {
             }
 
             // ── Duplicate check: skip if wa_message_id already exists ──
+            logToSystem(supabase, "info", `[TRACE] pre-dedup`, { wa_message_id: incomingMessage.id, conv_id: conversation.id, trace_step: "4_pre_dedup" }, orgId);
             if (incomingMessage.id) {
               const { data: existingMsg } = await supabase
                 .from("messages")
@@ -1029,7 +1035,7 @@ serve(async (req) => {
                 .limit(1)
                 .maybeSingle();
               if (existingMsg) {
-                logToSystem(supabase, "info", `رسالة مكررة تم تجاهلها`, { wa_message_id: incomingMessage.id }, orgId);
+                logToSystem(supabase, "info", `رسالة مكررة تم تجاهلها`, { wa_message_id: incomingMessage.id, trace_step: "4b_duplicate" }, orgId);
                 continue;
               }
             }
@@ -1047,13 +1053,15 @@ serve(async (req) => {
               msgInsert.metadata = messageMetadata;
             }
 
+            logToSystem(supabase, "info", `[TRACE] pre-insert`, { wa_message_id: incomingMessage.id, conv_id: conversation.id, trace_step: "5_pre_insert" }, orgId);
             const { error: msgError } = await supabase.from("messages").insert(msgInsert);
 
             if (msgError) {
-              logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
-                error: msgError.message, wa_message_id: incomingMessage.id, conversation_id: conversation.id,
+              await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
+                error: msgError.message, wa_message_id: incomingMessage.id, conversation_id: conversation.id, trace_step: "5b_insert_fail",
               }, orgId);
             } else {
+              logToSystem(supabase, "info", `[TRACE] msg saved OK`, { wa_message_id: incomingMessage.id, conv_id: conversation.id, trace_step: "6_saved" }, orgId);
               // Fire outgoing webhook for message received
               fireWebhook(orgId!, "message.received", { conversation_id: conversation.id, customer_phone: customerPhone, content, message_type: messageType });
             }
@@ -1435,7 +1443,8 @@ serve(async (req) => {
       });
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
-      await logToSystem(supabase, "critical", "خطأ غير متوقع في Webhook واتساب", { error: errMsg });
+      const errStack = error instanceof Error ? error.stack : "";
+      await logToSystem(supabase, "critical", "خطأ غير متوقع في Webhook واتساب", { error: errMsg, stack: errStack, trace_step: "CRASH" });
       console.error("Webhook error:", error);
       return new Response(JSON.stringify({ error: "Internal error" }), {
         status: 200,
