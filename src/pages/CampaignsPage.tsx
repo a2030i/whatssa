@@ -21,7 +21,9 @@ import * as XLSX from "xlsx";
 const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
   draft: { label: "مسودة", icon: FileText, className: "bg-muted text-muted-foreground" },
   scheduled: { label: "مجدولة", icon: Clock, className: "bg-info/10 text-info" },
+  queued: { label: "في الطابور", icon: Clock, className: "bg-info/10 text-info" },
   sending: { label: "جاري الإرسال", icon: Send, className: "bg-warning/10 text-warning" },
+  paused: { label: "متوقفة مؤقتاً", icon: Clock, className: "bg-warning/10 text-warning" },
   sent: { label: "تم الإرسال", icon: Check, className: "bg-success/10 text-success" },
   failed: { label: "فشل", icon: AlertCircle, className: "bg-destructive/10 text-destructive" },
   recurring: { label: "متكررة", icon: Repeat, className: "bg-primary/10 text-primary" },
@@ -477,8 +479,9 @@ const CampaignsPage = () => {
         const statusDist = [
           { name: "مسودة", value: campaigns.filter((c) => c.status === "draft").length, color: "hsl(var(--muted-foreground))" },
           { name: "مجدولة", value: campaigns.filter((c) => c.status === "scheduled").length, color: "hsl(var(--info))" },
+          { name: "في الطابور", value: campaigns.filter((c) => c.status === "queued").length, color: "hsl(var(--info))" },
           { name: "تم الإرسال", value: campaigns.filter((c) => c.status === "sent").length, color: "hsl(var(--success))" },
-          { name: "جاري الإرسال", value: campaigns.filter((c) => c.status === "sending").length, color: "hsl(var(--warning))" },
+          { name: "جاري الإرسال", value: campaigns.filter((c) => ["sending", "paused"].includes(c.status)).length, color: "hsl(var(--warning))" },
           { name: "فشل", value: campaigns.filter((c) => c.status === "failed").length, color: "hsl(var(--destructive))" },
         ].filter((d) => d.value > 0);
 
