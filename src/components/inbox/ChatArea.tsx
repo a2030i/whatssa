@@ -1726,15 +1726,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       const isEvolution = conversation.channelType === "evolution" || !conversation.channelType;
       const sendFn = isEvolution ? "evolution-send" : "whatsapp-send";
 
-      const { data, error } = await invokeCloud(sendFn, {
-        body: {
+      const sendBody: Record<string, any> = {
           to: conversation.customerPhone,
           message: "",
           conversation_id: conversation.id,
           media_url: storagePath,
           media_type: "audio",
-        },
-      });
+        };
+      if (!isEvolution) {
+        sendBody.type = "media";
+        sendBody.channel_id = conversation.channelId;
+      }
+      const { data, error } = await invokeCloud(sendFn, { body: sendBody });
       if (data?.safety_paused) {
         toast.warning("⛔ الإرسال متوقف مؤقتاً لحماية الرقم. الرسالة ستُعلّق ⏳ وترسل تلقائياً فور تجدد الحد.", { duration: 10000, icon: "🛡️" });
         window.dispatchEvent(new CustomEvent("optimistic-message-pending", { detail: { conversationId: conversation.id, messageId: optimisticId } }));
@@ -1867,6 +1870,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             media_type: mediaType,
             caption: caption || "",
             conversation_id: conversation.id,
+            channel_id: conversation.channelId,
           },
         });
         if (error || data?.error) {
