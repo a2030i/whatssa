@@ -303,8 +303,11 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         const effectiveTeamIds = myTeamIdsList.length > 0 ? myTeamIdsList : (teamId ? [teamId] : []);
         if (conv.assignedTeamId && effectiveTeamIds.includes(conv.assignedTeamId)) return true;
 
-        // Unassigned conversations (no team, no agent) — visible to all
-        if (!conv.assignedTeamId && !conv.assignedToId) return true;
+        // Unassigned conversations — only if channel is routed to me/my team or has no routing
+        if (!conv.assignedTeamId && !conv.assignedToId) {
+          if (!conv.channelId) return true; // No channel = visible
+          return accessibleChannelIds.has(conv.channelId);
+        }
 
         // Closed conversations: show if closed by this member
         if (conv.status === "closed" && conv.closedBy === profile?.id) return true;
