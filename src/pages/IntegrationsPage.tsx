@@ -379,12 +379,24 @@ const IntegrationsPage = () => {
 
   const loadConfigs = async (skipAutoSync = false) => {
     if (!orgId) return;
-    const [allConfigsRes, orgRes] = await Promise.all([
+    const [allConfigsRes, orgRes, extraFieldsRes] = await Promise.all([
       supabase.rpc("get_org_whatsapp_channels"),
       supabase.from("organizations").select("plans(max_phone_numbers)").eq("id", orgId).maybeSingle(),
+      // Fetch fields that RPC might not include
+      supabase.from("whatsapp_config").select("id, exclude_supervisors, last_webhook_at").eq("org_id", orgId),
     ]);
 
-    const allConfigs = ((allConfigsRes.data || []) as WhatsAppConfig[]).filter((config) => config.org_id === orgId);
+    const extraMap = new Map((extraFieldsRes.data || []).map((r: any) => [r.id, r]));
+    const allConfigs = ((allConfigsRes.data || []) as WhatsAppConfig[])
+      .filter((config) => config.org_id === orgId)
+      .map((config) => {
+        const extra = extraMap.get(config.id);
+        if (extra) {
+          if (config.exclude_supervisors === undefined || config.exclude_supervisors === null) config.exclude_supervisors = extra.exclude_supervisors;
+          if (!config.last_webhook_at) config.last_webhook_at = extra.last_webhook_at;
+        }
+        return config;
+      });
     const officialConfigs = allConfigs.filter((config) => config.channel_type !== "evolution");
     const unofficial = allConfigs.filter((config) => config.channel_type === "evolution");
 
