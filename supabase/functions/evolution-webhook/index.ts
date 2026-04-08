@@ -1131,8 +1131,8 @@ serve(async (req) => {
 
           conversation = newConv;
 
-            // Trigger auto-assign for new conversations with team routing
-            if (newConv && config.default_team_id && !config.default_agent_id) {
+            // Trigger auto-assign for new conversations with team routing (skip groups)
+            if (newConv && conversationType !== "group" && config.default_team_id && !config.default_agent_id) {
               try {
                 await supabase.functions.invoke("auto-assign", {
                   body: { conversation_id: newConv.id, org_id: orgId, message_text: text || "", exclude_supervisors: !!(config as any).exclude_supervisors },
@@ -1498,8 +1498,8 @@ serve(async (req) => {
           }
         }
 
-        // ── Chatbot flow processing ──
-        if (messageType === "text" && content) {
+        // ── Chatbot flow processing (skip groups — no automation for group chats) ──
+        if (messageType === "text" && content && conversationType !== "group") {
           const chatbotHandled = await processChatbotFlow(supabase, orgId, conversation.id, phone, content, "evolution", logToSystem, config.id);
           
           // ── Automation rules (only if chatbot didn't handle) ──
