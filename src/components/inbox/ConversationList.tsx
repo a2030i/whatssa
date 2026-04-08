@@ -451,7 +451,19 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto px-3 pt-1 pb-2 border-t border-primary/15">
-        {filtered.length === 0 ? (
+        {activeQuickFilter === "groups" && filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+            <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center mb-3">
+              <Users className="w-6 h-6 opacity-25" />
+            </div>
+            <p className="text-sm font-medium">لا توجد مجموعات</p>
+            <p className="text-xs text-muted-foreground/60 mt-1 text-center px-4 leading-relaxed">
+              القروبات متاحة فقط في قناة الواتساب غير الرسمية (QR).
+              <br />
+              القناة الرسمية (Meta API) لا تدعم المجموعات.
+            </p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center mb-3">
               <MessageSquare className="w-6 h-6 opacity-25" />
