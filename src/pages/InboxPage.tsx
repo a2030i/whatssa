@@ -197,43 +197,32 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       const channelConfigs = channelRes.data || [];
       const channelMap = new Map(channelConfigs.map((c: any) => [c.id, c]));
 
-      // Channel access filtering for regular members (not admin/supervisor/super_admin)
+      // Build accessible channel set for the current member
       const isRegularMember = userRole === "member" && !isSupervisor && !isSuperAdmin;
-      let filteredData = data || [];
+      const myId = profile?.id;
+      const myTeamIds: string[] = Array.isArray(profile?.team_ids) && profile.team_ids.length > 0
+        ? profile.team_ids
+        : profile?.team_id ? [profile.team_id] : [];
 
-      if (isRegularMember && profile) {
-        const myId = profile.id;
-        const myTeamIds: string[] = Array.isArray(profile.team_ids) && profile.team_ids.length > 0
-          ? profile.team_ids
-          : profile.team_id ? [profile.team_id] : [];
-
-        // Build set of channel IDs this member has access to
-        const accessibleChannelIds = new Set<string>();
-        const channelsWithRouting = new Set<string>();
-
-        for (const ch of channelConfigs) {
-          if (ch.default_agent_id === myId) {
-            accessibleChannelIds.add(ch.id);
-            channelsWithRouting.add(ch.id);
-          } else if (ch.default_team_id && myTeamIds.includes(ch.default_team_id)) {
-            accessibleChannelIds.add(ch.id);
-            channelsWithRouting.add(ch.id);
-          } else if (ch.default_team_id || ch.default_agent_id) {
-            // Channel has routing but not to this member's team/agent
-            channelsWithRouting.add(ch.id);
-          } else {
-            // No routing configured — accessible to all
-            accessibleChannelIds.add(ch.id);
-          }
+      const accessibleChannelIds = new Set<string>();
+      for (const ch of channelConfigs) {
+        if (!isRegularMember) {
+          accessibleChannelIds.add(ch.id); // admin/supervisor see all
+        } else if (ch.default_agent_id === myId) {
+          accessibleChannelIds.add(ch.id);
+        } else if (ch.default_team_id && myTeamIds.includes(ch.default_team_id)) {
+          accessibleChannelIds.add(ch.id);
+        } else if (!ch.default_team_id && !ch.default_agent_id) {
+          accessibleChannelIds.add(ch.id); // No routing = accessible to all
         }
+      }
 
+      let filteredData = data || [];
+      if (isRegularMember && profile) {
         filteredData = filteredData.filter((conv: any) => {
-          // Conversations assigned directly to this member always visible
           if (conv.assigned_to_id === myId) return true;
-          // Conversations in my team always visible
           if (conv.assigned_team_id && myTeamIds.includes(conv.assigned_team_id)) return true;
-          // Filter by channel access
-          if (!conv.channel_id) return true; // No channel = visible
+          if (!conv.channel_id) return true;
           return accessibleChannelIds.has(conv.channel_id);
         });
       }
