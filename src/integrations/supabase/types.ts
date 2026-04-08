@@ -187,6 +187,76 @@ export type Database = {
           },
         ]
       }
+      ai_pending_questions: {
+        Row: {
+          admin_answer: string | null
+          answered_at: string | null
+          answered_by: string | null
+          conversation_id: string | null
+          created_at: string
+          customer_phone: string | null
+          customer_question: string
+          id: string
+          knowledge_entry_id: string | null
+          org_id: string
+          status: string
+          suggested_questions: Json
+          updated_at: string
+        }
+        Insert: {
+          admin_answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          customer_phone?: string | null
+          customer_question: string
+          id?: string
+          knowledge_entry_id?: string | null
+          org_id: string
+          status?: string
+          suggested_questions?: Json
+          updated_at?: string
+        }
+        Update: {
+          admin_answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          customer_phone?: string | null
+          customer_question?: string
+          id?: string
+          knowledge_entry_id?: string | null
+          org_id?: string
+          status?: string
+          suggested_questions?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_pending_questions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_pending_questions_knowledge_entry_id_fkey"
+            columns: ["knowledge_entry_id"]
+            isOneToOne: false
+            referencedRelation: "ai_knowledge_base"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_pending_questions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_provider_configs: {
         Row: {
           api_key: string
