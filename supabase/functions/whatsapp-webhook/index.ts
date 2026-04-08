@@ -544,6 +544,7 @@ serve(async (req) => {
             .neq("status", "closed");
           if (channelConfigId) openQuery = openQuery.eq("channel_id", channelConfigId);
           let { data: conversation } = await openQuery
+            .order("updated_at", { ascending: false })
             .limit(1)
             .maybeSingle();
 

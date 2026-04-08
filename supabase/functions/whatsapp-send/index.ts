@@ -18,6 +18,20 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+function getUserIdFromAuthHeader(authHeader: string) {
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+    const decoded = JSON.parse(atob(padded));
+    return typeof decoded?.sub === "string" ? decoded.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 async function logToSystem(
   client: ReturnType<typeof createClient>,
   level: string,
@@ -78,19 +92,16 @@ serve(async (req) => {
 
   try {
     const authorization = req.headers.get("Authorization") || "";
-    if (!authorization) {
+    const userId = getUserIdFromAuthHeader(authorization);
+    if (!authorization || !userId) {
       await logToSystem(adminClient, "warn", "طلب إرسال بدون توثيق (Authorization header مفقود)");
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authorization } },
-    });
-
-    // Use RLS-scoped query instead of auth.getUser()
-    const { data: profile, error: profileError } = await authClient
+    const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("id, org_id")
+      .eq("id", userId)
       .limit(1)
       .maybeSingle();
 
@@ -139,6 +150,7 @@ serve(async (req) => {
       delete_message_id,
       sender_name,
     } = body;
+    const normalizedPhone = String(to || "").replace(/\D/g, "");
 
     if (!to || typeof to !== "string") {
       return json({ error: "رقم المستلم مطلوب" }, 400);
@@ -176,7 +188,7 @@ serve(async (req) => {
         let openConvQuery = adminClient
           .from("conversations")
           .select("id")
-          .eq("customer_phone", to)
+            .eq("customer_phone", normalizedPhone)
           .eq("org_id", orgId)
           .neq("status", "closed");
         if (requestedChannelId) openConvQuery = openConvQuery.eq("channel_id", requestedChannelId);
@@ -188,7 +200,7 @@ serve(async (req) => {
           let closedConvQuery = adminClient
             .from("conversations")
             .select("id")
-            .eq("customer_phone", to)
+            .eq("customer_phone", normalizedPhone)
             .eq("org_id", orgId)
             .eq("status", "closed");
           if (requestedChannelId) closedConvQuery = closedConvQuery.eq("channel_id", requestedChannelId);
@@ -550,7 +562,7 @@ serve(async (req) => {
       let convLookup = adminClient
         .from("conversations")
         .select("id, status")
-        .eq("customer_phone", to)
+        .eq("customer_phone", normalizedPhone)
         .eq("org_id", orgId)
         .neq("status", "closed");
       if (requestedChannelId) convLookup = convLookup.eq("channel_id", requestedChannelId);
@@ -562,7 +574,7 @@ serve(async (req) => {
       let closedConvLookup = adminClient
         .from("conversations")
         .select("id, status")
-        .eq("customer_phone", to)
+        .eq("customer_phone", normalizedPhone)
         .eq("org_id", orgId)
         .eq("status", "closed");
       if (requestedChannelId) closedConvLookup = closedConvLookup.eq("channel_id", requestedChannelId);
@@ -580,7 +592,7 @@ serve(async (req) => {
         .from("conversations")
         .insert({
           org_id: orgId,
-          customer_phone: to,
+          customer_phone: normalizedPhone,
           customer_name: customerName,
           channel_id: requestedChannelId || config.id,
           conversation_type: "private",
