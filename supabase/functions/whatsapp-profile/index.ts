@@ -32,6 +32,8 @@ Deno.serve(async (req) => {
 
     if (!config_id) return new Response(JSON.stringify({ error: "config_id required" }), { status: 400, headers: corsHeaders });
 
+    console.log("whatsapp-profile: config_id=", config_id, "action=", action);
+
     // Get config
     const { data: config, error: cfgErr } = await supabase
       .from("whatsapp_config")
@@ -39,7 +41,11 @@ Deno.serve(async (req) => {
       .eq("id", config_id)
       .maybeSingle();
 
-    if (cfgErr || !config) return new Response(JSON.stringify({ error: "Config not found" }), { status: 404, headers: corsHeaders });
+    if (cfgErr || !config) {
+      console.error("whatsapp-profile: Config not found", cfgErr?.message, "config_id=", config_id);
+      return new Response(JSON.stringify({ error: "Config not found" }), { status: 404, headers: corsHeaders });
+    }
+    console.log("whatsapp-profile: config found, channel_type=", config.channel_type, "phone_id=", config.phone_number_id);
 
     // Verify user belongs to same org
     const { data: profile } = await supabase.from("profiles").select("org_id").eq("id", user.id).maybeSingle();
