@@ -152,3 +152,6 @@ verify_jwt = false
 
 [functions.send-push-notification]
 verify_jwt = false
+
+[functions.diag-message-flow]
+verify_jwt = false
