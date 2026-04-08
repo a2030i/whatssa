@@ -288,26 +288,27 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
 
       // Team-based visibility filtering
       const isAdmin = userRole === "admin" || isSuperAdmin;
+      const myTeamIdsList: string[] = Array.isArray(profile?.team_ids) && profile.team_ids.length > 0
+        ? profile.team_ids
+        : profile?.team_id ? [profile.team_id] : [];
       const filtered = isAdmin ? mapped : mapped.filter(conv => {
         // No team assigned to user → show all (legacy behavior)
-        if (!teamId) return true;
+        if (myTeamIdsList.length === 0 && !teamId) return true;
 
-        // Closed conversations: show if closed by this member or was assigned to them/their team
-        if (conv.status === "closed") {
-          if (conv.closedBy === profile?.id) return true;
-          if (conv.assignedToId === profile?.id) return true;
-          if (conv.assignedTeamId === teamId) return true;
-          if (conv.dedicatedAgentId === profile?.id) return true;
-          // Supervisors see all closed conversations in their team
-          if (isSupervisor && conv.assignedTeamId === teamId) return true;
-        }
+        // Always show conversations assigned directly to this member
+        if (conv.assignedToId === profile?.id) return true;
+        if (conv.dedicatedAgentId === profile?.id) return true;
 
-        // Active/waiting conversations
-        if (!conv.assignedTeamId) return true;
-        if (conv.assignedTeamId === teamId) {
-          if (isSupervisor) return true;
-          return !conv.assignedToId || conv.assignedToId === profile?.id;
-        }
+        // Show conversations assigned to any of my teams (all members see team conversations)
+        const effectiveTeamIds = myTeamIdsList.length > 0 ? myTeamIdsList : (teamId ? [teamId] : []);
+        if (conv.assignedTeamId && effectiveTeamIds.includes(conv.assignedTeamId)) return true;
+
+        // Unassigned conversations (no team, no agent) — visible to all
+        if (!conv.assignedTeamId && !conv.assignedToId) return true;
+
+        // Closed conversations: show if closed by this member
+        if (conv.status === "closed" && conv.closedBy === profile?.id) return true;
+
         return false;
       });
 
