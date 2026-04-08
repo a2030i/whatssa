@@ -1,18 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Lock, Eye, EyeOff } from "lucide-react";
+import { Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useAuthReady, waitForAuthSession } from "@/hooks/useAuthReady";
 
 const ForceChangePasswordPage = () => {
   const { user } = useAuth();
+  const { isReady, session, user: readyUser } = useAuthReady();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const currentUser = readyUser ?? user;
+
+  useEffect(() => {
+    if (isReady && !currentUser) {
+      window.location.href = "/auth";
+    }
+  }, [isReady, currentUser]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +36,11 @@ const ForceChangePasswordPage = () => {
     }
     setLoading(true);
     try {
+      const activeSession = session ?? (await waitForAuthSession());
+      if (!activeSession || !currentUser) {
+        throw new Error("جلسة الدخول لم تكتمل بعد، أعد المحاولة الآن");
+      }
+
       // Update password and clear must_change_password in a single call
       const { error } = await supabase.auth.updateUser({
         password,
@@ -42,6 +57,17 @@ const ForceChangePasswordPage = () => {
     }
     setLoading(false);
   };
+
+  if (!isReady || !currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4" dir="rtl">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          <span>جاري تجهيز جلسة الدخول...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4" dir="rtl">
