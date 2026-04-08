@@ -150,6 +150,13 @@ const AppSidebar = () => {
     return false;
   };
 
+  // For non-admin users, completely hide locked items instead of showing them as locked
+  const isVisible = (item: NavItem): boolean => {
+    if (!hasAccess(item)) return false;
+    if (effectiveRole !== "admin" && !isSuperAdmin && isLocked(item)) return false;
+    return true;
+  };
+
   const isActive = (path: string) => location.pathname === path;
 
   const renderItem = (item: NavItem | NavGroup) => {
