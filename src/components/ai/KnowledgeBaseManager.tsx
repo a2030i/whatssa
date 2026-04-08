@@ -190,7 +190,7 @@ const KnowledgeBaseManager = () => {
       .update({
         status: "answered",
         admin_answer: content,
-        answered_by: userId,
+        answered_by: user?.id || null,
         answered_at: new Date().toISOString(),
         knowledge_entry_id: (newEntry as any)?.id || null,
         updated_at: new Date().toISOString(),
