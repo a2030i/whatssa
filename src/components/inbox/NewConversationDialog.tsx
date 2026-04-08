@@ -543,7 +543,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       let conversationId = existingConv?.id;
 
       if (isMeta && selectedTemplate) {
-        const { data, error } = await invokeCloud("whatsapp-send", {
+        const result = await invokeCloud("whatsapp-send", {
           body: {
             to: cleanPhone,
             type: "template",
@@ -555,7 +555,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             customer_name: customerName || cleanPhone,
           },
         });
-        if (error || data?.error) throw new Error(data?.error || "فشل إرسال القالب");
+        const data = result?.data;
+        const error = result?.error;
+        if (error || data?.error) throw new Error(data?.error || error?.message || "فشل إرسال القالب");
         // Edge function may return conversation_id if it created one
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (!isMeta && messageText.trim()) {
