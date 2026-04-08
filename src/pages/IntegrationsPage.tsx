@@ -818,14 +818,22 @@ const IntegrationsPage = () => {
         return;
       }
 
-      if (allPhones.length === 1) {
-        const selectedPhone = allPhones[0];
+      // Filter out phones already saved in our DB
+      const newPhones = allPhones.filter((p) => !configs.some((c) => c.phone_number_id === p.id));
+
+      if (newPhones.length === 1) {
+        const selectedPhone = newPhones[0];
         setSelectedPhoneId(selectedPhone.id);
         setBusinessAccountId(selectedPhone.waba_id || "");
         await selectPhone(selectedPhone, token, selectedPhone.waba_id);
-      } else if (allPhones.length > 0) {
+      } else if (newPhones.length > 0) {
         setSelectedPhoneId(null);
-        setBusinessAccountId(allPhones[0].waba_id || "");
+        setBusinessAccountId(newPhones[0].waba_id || "");
+        setPhoneNumbers(allPhones);
+        setFlowStep("pick_phone");
+        setIsLoading(false);
+      } else if (allPhones.length > 0) {
+        // All phones already saved
         setPhoneNumbers(allPhones);
         setFlowStep("pick_phone");
         setIsLoading(false);
@@ -2402,6 +2410,8 @@ const IntegrationsPage = () => {
   // ============ PICK PHONE NUMBER ============
   if (flowStep === "pick_phone") {
     const isMigration = onboardingMode !== "new";
+    const newPhones = phoneNumbers.filter((p) => !configs.some((c) => c.phone_number_id === p.id));
+    const allAlreadySaved = newPhones.length === 0;
     return (
       <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
         <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
@@ -2413,15 +2423,26 @@ const IntegrationsPage = () => {
               </h2>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              {t(`تم العثور على ${phoneNumbers.length} رقم — اختر الرقم الذي تريد ${isMigration ? "نقله" : "ربطه"}`, `Found ${phoneNumbers.length} number(s) — select the one you want to ${isMigration ? "migrate" : "connect"}`)}
+              {allAlreadySaved
+                ? t("جميع الأرقام مربوطة بالفعل في المنصة", "All numbers are already connected")
+                : t(`تم العثور على ${newPhones.length} رقم جديد — اختر الرقم الذي تريد ${isMigration ? "نقله" : "ربطه"}`, `Found ${newPhones.length} new number(s) — select the one you want to ${isMigration ? "migrate" : "connect"}`)}
             </p>
           </div>
           <div className="p-4 space-y-2">
+            {allAlreadySaved && (
+              <div className="text-center py-6 text-sm text-muted-foreground">
+                <CheckCircle2 className="w-10 h-10 text-success mx-auto mb-2" />
+                {t("كل الأرقام في حسابك مضافة بالفعل. يمكنك العودة للتكاملات.", "All numbers in your account are already added.")}
+              </div>
+            )}
             {phoneNumbers.map((phone) => {
               const phoneStatus = (phone as any).status;
               const isAlreadyConnected = phoneStatus === "CONNECTED";
               const isSelected = selectedPhoneId === phone.id;
               const statusLabel = isAlreadyConnected ? "متصل" : phoneStatus === "PENDING" ? "معلّق" : null;
+              // Check if this phone is already saved in our DB
+              const isAlreadySaved = configs.some((c) => c.phone_number_id === phone.id);
+              if (isAlreadySaved) return null;
               return (
                 <button
                   key={phone.id}
