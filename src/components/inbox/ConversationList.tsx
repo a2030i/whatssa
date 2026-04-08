@@ -571,6 +571,9 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                     </p>
                     <div className="flex items-center gap-1 mt-1">
+                      {conv.channelType === "meta_api" && (
+                        <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded leading-none">Meta</span>
+                      )}
                       {conv.channelName && (
                         <span className="text-[9px] text-muted-foreground/50 truncate max-w-[80px]">
                           {conv.channelName}
@@ -578,7 +581,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       )}
                       {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
                         <>
-                          {conv.channelName && <span className="text-[9px] text-muted-foreground/30">•</span>}
+                          {(conv.channelName || conv.channelType === "meta_api") && <span className="text-[9px] text-muted-foreground/30">•</span>}
                           <span className="text-[10px] text-primary/60 leading-none truncate max-w-[80px] font-medium">
                             {conv.assignedTo.split(" ")[0]}
                           </span>
