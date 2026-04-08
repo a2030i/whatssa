@@ -1,0 +1,174 @@
+import { useState, useEffect } from "react";
+import { Users, Plus, X, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+
+interface GroupConversation {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  channel_id: string;
+}
+
+interface EmployeeGroupAccessProps {
+  profileId: string;
+  profileName: string;
+}
+
+const EmployeeGroupAccess = ({ profileId, profileName }: EmployeeGroupAccessProps) => {
+  const { orgId, profile: currentUser } = useAuth();
+  const [assignedGroups, setAssignedGroups] = useState<GroupConversation[]>([]);
+  const [availableGroups, setAvailableGroups] = useState<GroupConversation[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (orgId && profileId) loadAccess();
+  }, [orgId, profileId]);
+
+  const loadAccess = async () => {
+    // Load assigned groups
+    const { data: access } = await supabase
+      .from("employee_group_access" as any)
+      .select("conversation_id")
+      .eq("profile_id", profileId)
+      .eq("org_id", orgId);
+
+    const assignedIds = ((access || []) as any[]).map(a => a.conversation_id);
+
+    if (assignedIds.length > 0) {
+      const { data: convs } = await supabase
+        .from("conversations")
+        .select("id, customer_name, customer_phone, channel_id")
+        .in("id", assignedIds);
+      setAssignedGroups((convs || []) as unknown as GroupConversation[]);
+    } else {
+      setAssignedGroups([]);
+    }
+  };
+
+  const loadAvailable = async () => {
+    const { data } = await supabase
+      .from("conversations")
+      .select("id, customer_name, customer_phone, channel_id")
+      .eq("org_id", orgId)
+      .eq("conversation_type", "group")
+      .neq("status", "closed")
+      .order("last_message_at", { ascending: false });
+
+    const assigned = new Set(assignedGroups.map(g => g.id));
+    setAvailableGroups(((data || []) as unknown as GroupConversation[]).filter(g => !assigned.has(g.id)));
+  };
+
+  const openDialog = () => {
+    loadAvailable();
+    setSearchQuery("");
+    setDialogOpen(true);
+  };
+
+  const addGroup = async (conversationId: string) => {
+    await supabase.from("employee_group_access" as any).insert({
+      org_id: orgId,
+      profile_id: profileId,
+      conversation_id: conversationId,
+      granted_by: currentUser?.id,
+    } as any);
+    toast.success("تمت إضافة القروب");
+    loadAccess();
+    setAvailableGroups(prev => prev.filter(g => g.id !== conversationId));
+  };
+
+  const removeGroup = async (conversationId: string) => {
+    await supabase
+      .from("employee_group_access" as any)
+      .delete()
+      .eq("profile_id", profileId)
+      .eq("conversation_id", conversationId);
+    toast.success("تم إزالة القروب");
+    loadAccess();
+  };
+
+  const filtered = availableGroups.filter(g =>
+    !searchQuery || (g.customer_name || g.customer_phone || "").toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs flex items-center gap-1.5">
+          <Users className="w-3.5 h-3.5 text-primary" />
+          القروبات المخصصة
+        </Label>
+        <Button size="sm" variant="outline" onClick={openDialog} className="gap-1 text-[10px] h-7 px-2">
+          <Plus className="w-3 h-3" /> إضافة
+        </Button>
+      </div>
+
+      {assignedGroups.length === 0 ? (
+        <p className="text-[10px] text-muted-foreground bg-muted/30 rounded-lg p-3 text-center">
+          لم يتم تخصيص قروبات — الموظف يشوف فقط قروبات قنواته
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {assignedGroups.map(g => (
+            <div key={g.id} className="flex items-center gap-2 bg-muted/30 rounded-lg p-2">
+              <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs flex-1 truncate">{g.customer_name || g.customer_phone || "قروب"}</span>
+              <Button size="icon" variant="ghost" className="h-5 w-5 text-destructive shrink-0" onClick={() => removeGroup(g.id)}>
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              إضافة قروبات لـ {profileName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="ابحث عن قروب..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="text-xs pr-9"
+              />
+            </div>
+            <div className="max-h-60 overflow-y-auto space-y-1.5">
+              {filtered.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">لا توجد قروبات متاحة</p>
+              ) : filtered.map(g => (
+                <button
+                  key={g.id}
+                  onClick={() => addGroup(g.id)}
+                  className="w-full flex items-center gap-2 p-2.5 rounded-lg border border-transparent hover:border-primary/20 hover:bg-primary/5 transition-all text-right"
+                >
+                  <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{g.customer_name || "مجموعة واتساب"}</p>
+                    <p className="text-[10px] text-muted-foreground">{g.customer_phone}</p>
+                  </div>
+                  <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default EmployeeGroupAccess;
