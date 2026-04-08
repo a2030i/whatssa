@@ -30,6 +30,48 @@ const strategyConfig: Record<string, { label: string; icon: typeof Zap; descript
   skill_based: { label: "حسب المهارة", icon: Target, description: "بناءً على كلمات مفتاحية", color: "text-warning" },
 };
 
+const ResetPasswordInline = ({ userId }: { userId: string }) => {
+  const [newPass, setNewPass] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleReset = async () => {
+    if (newPass.length < 6) {
+      toast.error("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data, error } = await invokeCloud("admin-reset-password", {
+        body: { user_id: userId, new_password: newPass },
+      });
+      if (error && !data) throw new Error("فشل في إعادة تعيين كلمة المرور");
+      const result = data || {};
+      if (result.error) throw new Error(result.error);
+      toast.success("تم تعيين كلمة المرور الجديدة — سيُطلب من الموظف تغييرها عند الدخول");
+      setNewPass("");
+    } catch (err: any) {
+      toast.error(err.message || "حدث خطأ");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="flex gap-2">
+      <Input
+        type="text"
+        placeholder="كلمة المرور الجديدة"
+        value={newPass}
+        onChange={(e) => setNewPass(e.target.value)}
+        className="bg-secondary border-0 text-sm flex-1"
+        dir="ltr"
+      />
+      <Button type="button" variant="outline" size="sm" className="text-xs shrink-0" onClick={handleReset} disabled={saving || newPass.length < 6}>
+        {saving ? "جاري..." : "تعيين"}
+      </Button>
+    </div>
+  );
+};
+
 const TeamPage = () => {
   const { orgId, userRole } = useAuth();
   const [teams, setTeams] = useState<any[]>([]);
