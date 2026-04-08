@@ -156,11 +156,20 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
     }
 
     const fetchConversations = async () => {
-      const { data, error } = await supabase
-        .from("conversations")
-        .select("*")
-        .eq("org_id", currentOrgId)
-        .order("last_message_at", { ascending: false });
+      // Fetch conversations and channel configs in parallel
+      const [convRes, channelRes] = await Promise.all([
+        supabase
+          .from("conversations")
+          .select("*")
+          .eq("org_id", currentOrgId)
+          .order("last_message_at", { ascending: false }),
+        supabase
+          .from("whatsapp_config_safe")
+          .select("id, display_phone, business_name, channel_label, channel_type, evolution_instance_name, default_team_id, default_agent_id")
+          .eq("org_id", currentOrgId),
+      ]);
+
+      const { data, error } = convRes;
 
       if (!active) return;
 
@@ -170,13 +179,49 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         return;
       }
 
-      // Load channel configs for channel name mapping
-      const { data: channelConfigs } = await supabase
-        .from("whatsapp_config_safe")
-        .select("id, display_phone, business_name, channel_label, channel_type, evolution_instance_name")
-        .eq("org_id", currentOrgId);
+      const channelConfigs = channelRes.data || [];
+      const channelMap = new Map(channelConfigs.map((c: any) => [c.id, c]));
 
-      const channelMap = new Map((channelConfigs || []).map((c: any) => [c.id, c]));
+      // Channel access filtering for regular members (not admin/supervisor/super_admin)
+      const isRegularMember = userRole === "member" && !isSupervisor && !isSuperAdmin;
+      let filteredData = data || [];
+
+      if (isRegularMember && profile) {
+        const myId = profile.id;
+        const myTeamIds: string[] = Array.isArray(profile.team_ids) && profile.team_ids.length > 0
+          ? profile.team_ids
+          : profile.team_id ? [profile.team_id] : [];
+
+        // Build set of channel IDs this member has access to
+        const accessibleChannelIds = new Set<string>();
+        const channelsWithRouting = new Set<string>();
+
+        for (const ch of channelConfigs) {
+          if (ch.default_agent_id === myId) {
+            accessibleChannelIds.add(ch.id);
+            channelsWithRouting.add(ch.id);
+          } else if (ch.default_team_id && myTeamIds.includes(ch.default_team_id)) {
+            accessibleChannelIds.add(ch.id);
+            channelsWithRouting.add(ch.id);
+          } else if (ch.default_team_id || ch.default_agent_id) {
+            // Channel has routing but not to this member's team/agent
+            channelsWithRouting.add(ch.id);
+          } else {
+            // No routing configured — accessible to all
+            accessibleChannelIds.add(ch.id);
+          }
+        }
+
+        filteredData = filteredData.filter((conv: any) => {
+          // Conversations assigned directly to this member always visible
+          if (conv.assigned_to_id === myId) return true;
+          // Conversations in my team always visible
+          if (conv.assigned_team_id && myTeamIds.includes(conv.assigned_team_id)) return true;
+          // Filter by channel access
+          if (!conv.channel_id) return true; // No channel = visible
+          return accessibleChannelIds.has(conv.channel_id);
+        });
+      }
 
       const mapped: Conversation[] = (data || []).map((conversation: any) => {
         const channelConfig = conversation.channel_id ? channelMap.get(conversation.channel_id) : null;
