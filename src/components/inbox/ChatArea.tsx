@@ -295,28 +295,36 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
 
   const handleReaction = async (emoji: string) => {
     try {
-      // Optimistic update: show reaction immediately
-      const msgEl = document.querySelector(`[data-message-id="${msg.id}"]`);
-      if (msgEl) {
-        // We can't directly update state here since msg comes from props,
-        // but we dispatch a custom event that InboxPage listens to
-        window.dispatchEvent(new CustomEvent("optimistic-reaction", {
-          detail: { messageId: msg.id, waMessageId: msg.waMessageId, emoji },
-        }));
+      // Optimistic update
+      window.dispatchEvent(new CustomEvent("optimistic-reaction", {
+        detail: { messageId: msg.id, waMessageId: msg.waMessageId, emoji },
+      }));
+
+      if (conversation.channelType === "evolution") {
+        const { error } = await invokeCloud("evolution-manage", {
+          body: {
+            action: "send_reaction",
+            phone: conversation.customerPhone,
+            channel_id: conversation.channelId,
+            message_id: msg.waMessageId,
+            emoji,
+            is_group: conversation.conversationType === "group",
+          },
+        });
+        if (error) throw error;
+      } else {
+        // Meta API reaction
+        const { data, error } = await invokeCloud("whatsapp-send", {
+          body: {
+            phone: conversation.customerPhone,
+            channel_id: conversation.channelId,
+            type: "reaction",
+            reaction_message_id: msg.waMessageId,
+            reaction_emoji: emoji,
+          },
+        });
+        if (error || data?.error) throw new Error(data?.error || "Failed");
       }
-
-      const { error } = await invokeCloud("evolution-manage", {
-        body: {
-          action: "send_reaction",
-          phone: conversation.customerPhone,
-          channel_id: conversation.channelId,
-          message_id: msg.waMessageId,
-          emoji,
-          is_group: conversation.conversationType === "group",
-        },
-      });
-
-      if (error) throw error;
       setReactionPickerOpen(false);
       toast.success("تم إرسال التفاعل");
     } catch {
