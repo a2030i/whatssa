@@ -68,7 +68,7 @@ const COUNTRY_CODES = [
 ];
 
 const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCreated }: NewConversationDialogProps) => {
-  const { orgId, profile } = useAuth();
+  const { orgId, profile, userRole, isSuperAdmin, isSupervisor } = useAuth();
   const [step, setStep] = useState<Step>("contact");
   const [dialogMode, setDialogMode] = useState<DialogMode>("private");
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -187,30 +187,36 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     }
   }, [open, channels.length, emailConfigs.length]);
 
-  // Load channels
+  // Load channels (filtered by routing for non-admin members)
   useEffect(() => {
     if (!orgId || !open) return;
     const load = async () => {
-      // Try RPC first, fallback to direct query
       let connectedChannels: Channel[] = [];
-      try {
-        const { data } = await supabase.rpc("get_org_whatsapp_channels");
-        connectedChannels = ((data || []) as Channel[])
-          .filter((channel) => channel.org_id === orgId && channel.is_connected)
-          .sort((a: any, b: any) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
-      } catch {
-        // RPC might not exist, fallback to view
-      }
 
-      // Fallback: query whatsapp_config_safe directly if RPC returned nothing
-      if (connectedChannels.length === 0) {
-        const { data: fallbackData } = await supabase
-          .from("whatsapp_config_safe")
-          .select("id, display_phone, channel_type, evolution_instance_name, business_name, is_connected, created_at, channel_label")
-          .eq("org_id", orgId)
-          .eq("is_connected", true)
-          .order("created_at");
-        connectedChannels = ((fallbackData || []) as unknown as Channel[]);
+      // Always load from whatsapp_config_safe with routing fields
+      const { data: allChannels } = await supabase
+        .from("whatsapp_config_safe")
+        .select("id, display_phone, channel_type, evolution_instance_name, business_name, is_connected, created_at, channel_label, default_team_id, default_agent_id")
+        .eq("org_id", orgId)
+        .eq("is_connected", true)
+        .order("created_at");
+      connectedChannels = ((allChannels || []) as unknown as (Channel & { default_team_id?: string | null; default_agent_id?: string | null })[]);
+
+      // Filter for non-admin/non-supervisor members: show only assigned channels or unrouted ones
+      const isAdmin = isSuperAdmin || userRole === "admin";
+      const isSup = isSupervisor || profile?.is_supervisor;
+      if (!isAdmin && !isSup && profile?.id) {
+        const myTeamIds: string[] = Array.isArray(profile.team_ids)
+          ? profile.team_ids
+          : profile.team_id ? [profile.team_id] : [];
+
+        connectedChannels = connectedChannels.filter((ch: any) => {
+          const hasRouting = ch.default_agent_id || ch.default_team_id;
+          if (!hasRouting) return true; // No routing = visible to all
+          if (ch.default_agent_id === profile.id) return true;
+          if (ch.default_team_id && myTeamIds.includes(ch.default_team_id)) return true;
+          return false;
+        });
       }
 
       setChannels(connectedChannels);
@@ -252,7 +258,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       document.removeEventListener("visibilitychange", handleRefreshChannels);
       supabase.removeChannel(channelsChannel);
     };
-  }, [orgId, open]);
+  }, [orgId, open, userRole, isSuperAdmin, isSupervisor, profile?.id, profile?.team_id, profile?.team_ids, profile?.is_supervisor]);
 
   // Load email configs
   useEffect(() => {
