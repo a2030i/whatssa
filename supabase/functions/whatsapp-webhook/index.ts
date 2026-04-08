@@ -607,12 +607,29 @@ serve(async (req) => {
                   }
                 }
                 if (!smartReassigned) {
-                  // Normal: reset to unassigned
-                  reopenUpdate.assigned_to_id = null;
-                  reopenUpdate.assigned_to = null;
-                  reopenUpdate.assigned_team_id = null;
-                  reopenUpdate.assigned_team = null;
-                  reopenUpdate.assigned_at = null;
+                  // Re-apply channel routing if configured
+                  if (channelDefaultAgentId) {
+                    const { data: agentData } = await supabase.from("profiles").select("full_name").eq("id", channelDefaultAgentId).maybeSingle();
+                    reopenUpdate.assigned_to_id = channelDefaultAgentId;
+                    reopenUpdate.assigned_to = agentData?.full_name || null;
+                    reopenUpdate.assigned_at = new Date().toISOString();
+                    reopenUpdate.assigned_team_id = null;
+                    reopenUpdate.assigned_team = null;
+                  } else if (channelDefaultTeamId) {
+                    const { data: teamData } = await supabase.from("teams").select("name").eq("id", channelDefaultTeamId).maybeSingle();
+                    reopenUpdate.assigned_to_id = null;
+                    reopenUpdate.assigned_to = null;
+                    reopenUpdate.assigned_team_id = channelDefaultTeamId;
+                    reopenUpdate.assigned_team = teamData?.name || null;
+                    reopenUpdate.assigned_at = null;
+                  } else {
+                    // No routing: reset to unassigned
+                    reopenUpdate.assigned_to_id = null;
+                    reopenUpdate.assigned_to = null;
+                    reopenUpdate.assigned_team_id = null;
+                    reopenUpdate.assigned_team = null;
+                    reopenUpdate.assigned_at = null;
+                  }
                 }
               }
               if (channelConfigId) reopenUpdate.channel_id = channelConfigId;
@@ -625,6 +642,20 @@ serve(async (req) => {
                 message_type: "text",
               });
               await logToSystem(supabase, "info", `تم إعادة فتح محادثة مغلقة للعميل ${customerPhone}`, { conversation_id: closedConv.id }, orgId);
+              
+              // Trigger auto-assign for reopened conversations with team routing
+              if (channelDefaultTeamId && !channelDefaultAgentId && !closedConv.dedicated_agent_id) {
+                try {
+                  await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/auto-assign`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                    },
+                    body: JSON.stringify({ conversation_id: closedConv.id, org_id: orgId, message_text: messageContent, exclude_supervisors: channelExcludeSupervisors }),
+                  });
+                } catch (_) {}
+              }
             }
           }
 
@@ -641,12 +672,17 @@ serve(async (req) => {
               channel_id: channelConfigId,
             };
             if (channelDefaultAgentId) {
-              convInsert.assigned_to = channelDefaultAgentId;
+              // Fetch agent name for display
+              const { data: agentData } = await supabase.from("profiles").select("full_name").eq("id", channelDefaultAgentId).maybeSingle();
+              convInsert.assigned_to_id = channelDefaultAgentId;
+              convInsert.assigned_to = agentData?.full_name || null;
               convInsert.assigned_at = new Date().toISOString();
             } else if (channelDefaultTeamId) {
-              // Fetch team name for assigned_team column
               const { data: teamData } = await supabase.from("teams").select("name").eq("id", channelDefaultTeamId).single();
-              if (teamData) convInsert.assigned_team = teamData.name;
+              if (teamData) {
+                convInsert.assigned_team = teamData.name;
+                convInsert.assigned_team_id = channelDefaultTeamId;
+              }
             }
 
             const { data: newConversation, error: convError } = await supabase
