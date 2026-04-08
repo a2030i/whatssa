@@ -30,6 +30,48 @@ const strategyConfig: Record<string, { label: string; icon: typeof Zap; descript
   skill_based: { label: "حسب المهارة", icon: Target, description: "بناءً على كلمات مفتاحية", color: "text-warning" },
 };
 
+const ResetPasswordInline = ({ userId }: { userId: string }) => {
+  const [newPass, setNewPass] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleReset = async () => {
+    if (newPass.length < 6) {
+      toast.error("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data, error } = await invokeCloud("admin-reset-password", {
+        body: { user_id: userId, new_password: newPass },
+      });
+      if (error && !data) throw new Error("فشل في إعادة تعيين كلمة المرور");
+      const result = data || {};
+      if (result.error) throw new Error(result.error);
+      toast.success("تم تعيين كلمة المرور الجديدة — سيُطلب من الموظف تغييرها عند الدخول");
+      setNewPass("");
+    } catch (err: any) {
+      toast.error(err.message || "حدث خطأ");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="flex gap-2">
+      <Input
+        type="text"
+        placeholder="كلمة المرور الجديدة"
+        value={newPass}
+        onChange={(e) => setNewPass(e.target.value)}
+        className="bg-secondary border-0 text-sm flex-1"
+        dir="ltr"
+      />
+      <Button type="button" variant="outline" size="sm" className="text-xs shrink-0" onClick={handleReset} disabled={saving || newPass.length < 6}>
+        {saving ? "جاري..." : "تعيين"}
+      </Button>
+    </div>
+  );
+};
+
 const TeamPage = () => {
   const { orgId, userRole } = useAuth();
   const [teams, setTeams] = useState<any[]>([]);
@@ -878,65 +920,13 @@ const TeamPage = () => {
             )}
 
             {/* Reset Password */}
+            {/* Reset Password */}
             {editingProfile && (
               <div className="border-t pt-3 space-y-2">
                 <p className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground">
                   <KeyRound className="w-3.5 h-3.5" /> إعادة تعيين كلمة المرور
                 </p>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs flex-1"
-                    onClick={async () => {
-                      const pin = String(Math.floor(1000 + Math.random() * 9000));
-                      const tempPass = pin + pin;
-                      try {
-                        const { data, error } = await invokeCloud("admin-reset-password", {
-                          body: { user_id: editingProfile.id, new_password: tempPass },
-                        });
-                        if (error && !data) throw new Error("فشل في إعادة تعيين كلمة المرور");
-                        const result = data || {};
-                        if (result.error) throw new Error(result.error);
-                        navigator.clipboard?.writeText(tempPass);
-                        toast.success(`تم تعيين كلمة مرور مؤقتة: ${tempPass} — تم نسخها`, { duration: 10000 });
-                      } catch (err: any) {
-                        toast.error(err.message || "حدث خطأ");
-                      }
-                    }}
-                  >
-                    <KeyRound className="w-3 h-3 ml-1" />
-                    كلمة مرور مؤقتة
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs flex-1"
-                    onClick={async () => {
-                      try {
-                        const { data, error } = await invokeCloud("admin-reset-password", {
-                          body: { user_id: editingProfile.id },
-                        });
-                        if (error && !data) throw new Error("فشل في إنشاء رابط الاستعادة");
-                        const result = data || {};
-                        if (result.error) throw new Error(result.error);
-                        if (result.recovery_link) {
-                          navigator.clipboard?.writeText(result.recovery_link);
-                          toast.success("تم نسخ رابط إعادة التعيين — أرسله للموظف", { duration: 8000 });
-                        } else {
-                          toast.success("تم إنشاء الرابط بنجاح");
-                        }
-                      } catch (err: any) {
-                        toast.error(err.message || "حدث خطأ");
-                      }
-                    }}
-                  >
-                    <Copy className="w-3 h-3 ml-1" />
-                    رابط استعادة
-                  </Button>
-                </div>
+                <ResetPasswordInline userId={editingProfile.id} />
               </div>
             )}
           </div>
