@@ -76,11 +76,13 @@ async function handleMetaProfile(config: any, action: string, body: any) {
   if (action === "get") {
     // Get business profile
     const fields = "about,address,description,email,profile_picture_url,websites,vertical";
+    console.log("whatsapp-profile META get: phoneId=", phoneId, "token length=", token?.length);
     const res = await fetch(
       `https://graph.facebook.com/v21.0/${phoneId}/whatsapp_business_profile?fields=${fields}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     const data = await res.json();
+    console.log("whatsapp-profile META get response:", JSON.stringify(data).slice(0, 500));
     if (data.error) return new Response(JSON.stringify({ error: data.error.message }), { status: 400, headers: corsHeaders });
 
     const profile = data.data?.[0] || {};
