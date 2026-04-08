@@ -400,6 +400,16 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               </PopoverContent>
             </Popover>
           )}
+          {canEdit && onEdit && (
+            <button onClick={() => onEdit(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="تعديل">
+              <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          )}
+          {canDelete && onDelete && (
+            <button onClick={() => onDelete(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-destructive/10" title="حذف">
+              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+            </button>
+          )}
           {!isEmailConversation && onForward && msg.type === "text" && !msg.isDeleted && (
             <button onClick={() => onForward(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="إعادة توجيه">
               <Forward className="w-3.5 h-3.5 text-muted-foreground" />
