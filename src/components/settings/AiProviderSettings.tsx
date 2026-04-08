@@ -143,12 +143,13 @@ const AiProviderSettings = () => {
       return;
     }
 
+    const isManaged = (providerInfo as any).managed;
     const { error } = await supabase.from("ai_provider_configs" as any).insert({
       org_id: orgId,
       provider: newProvider,
-      api_key: "",
+      api_key: isManaged ? "MANAGED_BY_PLATFORM" : "",
       model: providerInfo.models[0].value,
-      is_active: false,
+      is_active: isManaged,
       capabilities: { chat_reply: true, conversation_summary: false, smart_analysis: false },
     } as any);
     if (error) {
@@ -233,7 +234,12 @@ const AiProviderSettings = () => {
   };
 
   const usedProviders = configs.map(c => c.provider);
-  const availableProviders = providers.filter(p => !usedProviders.includes(p.key));
+  const availableProviders = providers.filter(p => {
+    if (usedProviders.includes(p.key)) return false;
+    // Lovable AI only available if super admin enabled it for this org
+    if (p.key === "lovable_ai" && !lovableAiEnabled && !isSuperAdmin) return false;
+    return true;
+  });
 
   return (
     <div className="bg-card rounded-lg shadow-card">
@@ -334,7 +340,13 @@ const AiProviderSettings = () => {
                   </div>
                 </div>
 
-                {/* API Key */}
+                {/* API Key - hide for managed providers */}
+                {(providerInfo as any).managed ? (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                    <p className="text-xs text-primary font-medium">✨ مُدار من المنصة — لا يحتاج مفتاح API</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">يتم احتساب الاستهلاك على وحدات المنصة</p>
+                  </div>
+                ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs">مفتاح API</Label>
