@@ -146,6 +146,7 @@ export type Database = {
       ai_knowledge_base: {
         Row: {
           category: string | null
+          channel_ids: string[] | null
           content: string
           created_at: string | null
           created_by: string | null
@@ -157,6 +158,7 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          channel_ids?: string[] | null
           content: string
           created_at?: string | null
           created_by?: string | null
@@ -168,6 +170,7 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          channel_ids?: string[] | null
           content?: string
           created_at?: string | null
           created_by?: string | null
@@ -4184,6 +4187,10 @@ export type Database = {
         Row: {
           access_token: string
           account_mode: string | null
+          ai_auto_reply_enabled: boolean | null
+          ai_max_attempts: number | null
+          ai_transfer_keywords: string[] | null
+          ai_welcome_message: string | null
           app_scoped_user_id: string | null
           business_account_id: string
           business_name: string | null
@@ -4241,6 +4248,10 @@ export type Database = {
         Insert: {
           access_token: string
           account_mode?: string | null
+          ai_auto_reply_enabled?: boolean | null
+          ai_max_attempts?: number | null
+          ai_transfer_keywords?: string[] | null
+          ai_welcome_message?: string | null
           app_scoped_user_id?: string | null
           business_account_id: string
           business_name?: string | null
@@ -4298,6 +4309,10 @@ export type Database = {
         Update: {
           access_token?: string
           account_mode?: string | null
+          ai_auto_reply_enabled?: boolean | null
+          ai_max_attempts?: number | null
+          ai_transfer_keywords?: string[] | null
+          ai_welcome_message?: string | null
           app_scoped_user_id?: string | null
           business_account_id?: string
           business_name?: string | null
@@ -4717,6 +4732,10 @@ export type Database = {
         Returns: {
           access_token: string
           account_mode: string | null
+          ai_auto_reply_enabled: boolean | null
+          ai_max_attempts: number | null
+          ai_transfer_keywords: string[] | null
+          ai_welcome_message: string | null
           app_scoped_user_id: string | null
           business_account_id: string
           business_name: string | null
