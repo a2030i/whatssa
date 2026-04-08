@@ -4026,6 +4026,7 @@ export type Database = {
           id: string
           is_connected: boolean | null
           last_register_attempt_at: string | null
+          last_webhook_at: string | null
           messaging_limit_tier: string | null
           meta_business_id: string | null
           migrated_at: string | null
@@ -4082,6 +4083,7 @@ export type Database = {
           id?: string
           is_connected?: boolean | null
           last_register_attempt_at?: string | null
+          last_webhook_at?: string | null
           messaging_limit_tier?: string | null
           meta_business_id?: string | null
           migrated_at?: string | null
@@ -4138,6 +4140,7 @@ export type Database = {
           id?: string
           is_connected?: boolean | null
           last_register_attempt_at?: string | null
+          last_webhook_at?: string | null
           messaging_limit_tier?: string | null
           meta_business_id?: string | null
           migrated_at?: string | null
@@ -4556,6 +4559,7 @@ export type Database = {
           id: string
           is_connected: boolean | null
           last_register_attempt_at: string | null
+          last_webhook_at: string | null
           messaging_limit_tier: string | null
           meta_business_id: string | null
           migrated_at: string | null
