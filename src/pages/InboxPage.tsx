@@ -218,8 +218,18 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       }
 
       let filteredData = data || [];
+      // For regular members, also load explicitly granted group access
+      let grantedGroupIds = new Set<string>();
       if (isRegularMember && profile) {
+        const { data: groupAccess } = await supabase
+          .from("employee_group_access")
+          .select("conversation_id")
+          .eq("profile_id", myId);
+        grantedGroupIds = new Set((groupAccess || []).map((g: any) => g.conversation_id));
+
         filteredData = filteredData.filter((conv: any) => {
+          // Explicitly granted group access
+          if (grantedGroupIds.has(conv.id)) return true;
           if (conv.assigned_to_id === myId) return true;
           if (conv.assigned_team_id && myTeamIds.includes(conv.assigned_team_id)) return true;
           if (!conv.channel_id) return true;
