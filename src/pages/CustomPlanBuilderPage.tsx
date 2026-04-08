@@ -63,8 +63,9 @@ const CustomPlanBuilderPage = () => {
 
       const sel: Record<string, number> = {};
       const tog: Record<string, boolean> = {};
+      const subsArr = (subs || []) as any[];
       mods.forEach(m => {
-        const sub = (subs || []).find((s: any) => s.module_id === m.id);
+        const sub = subsArr.find((s: any) => s.module_id === m.id);
         if (m.pricing_type === "toggle") {
           tog[m.id] = sub?.enabled || false;
         } else {
