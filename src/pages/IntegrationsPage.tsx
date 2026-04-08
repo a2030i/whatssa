@@ -422,7 +422,16 @@ const IntegrationsPage = () => {
           );
 
           const { data: refreshed } = await supabase.rpc("get_org_whatsapp_channels");
-          const updated = ((refreshed || []) as WhatsAppConfig[]).filter((c) => c.org_id === orgId && c.channel_type === "evolution");
+          const updated = ((refreshed || []) as WhatsAppConfig[])
+            .filter((c) => c.org_id === orgId && c.channel_type === "evolution")
+            .map((c) => {
+              const extra = extraMap.get(c.id);
+              if (extra) {
+                if (c.exclude_supervisors === undefined || c.exclude_supervisors === null) c.exclude_supervisors = extra.exclude_supervisors;
+                if (!c.last_webhook_at) c.last_webhook_at = extra.last_webhook_at;
+              }
+              return c;
+            });
           setUnofficialConfigs(updated);
         }
       }
