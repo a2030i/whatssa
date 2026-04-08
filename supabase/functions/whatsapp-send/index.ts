@@ -626,7 +626,7 @@ serve(async (req) => {
         fetch(`${baseUrl}/functions/v1/dispatch-webhook`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${svcKey}` },
-          body: JSON.stringify({ org_id: orgId, event: "message.sent", data: { conversation_id: conversation_id, phone: phone, content, message_id: waMessageId } }),
+          body: JSON.stringify({ org_id: orgId, event: "message.sent", data: { conversation_id: conversation_id, phone: to, content, message_id: waMessageId } }),
         }).catch(() => {});
       }
     }
