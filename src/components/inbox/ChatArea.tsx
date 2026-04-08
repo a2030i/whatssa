@@ -427,7 +427,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       {hasAnyAction && (
         <div className={cn(
           "absolute top-1 z-10 md:hidden",
-          msg.sender === "agent" ? "-left-1" : "-right-1"
+          msg.sender === "agent" ? "-right-1" : "-left-1"
         )}>
           <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <DropdownMenuTrigger asChild>
