@@ -82,6 +82,36 @@ async function uploadMediaToMeta(
   return result.id || null;
 }
 
+const normalizePhone = (value: string | null | undefined) => String(value || "").replace(/\D/g, "");
+
+async function findPrivateConversation(
+  client: ReturnType<typeof createClient>,
+  orgId: string,
+  customerPhone: string,
+  channelId?: string | null,
+  status: "open" | "closed" = "open",
+) {
+  const normalizedPhone = normalizePhone(customerPhone);
+  if (!normalizedPhone) return null;
+
+  let query = client
+    .from("conversations")
+    .select("id, status")
+    .eq("org_id", orgId)
+    .eq("conversation_type", "private")
+    .eq("customer_phone", normalizedPhone);
+
+  if (channelId) query = query.eq("channel_id", channelId);
+  query = status === "closed" ? query.eq("status", "closed") : query.neq("status", "closed");
+
+  const { data } = await query
+    .order(status === "closed" ? "closed_at" : "updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -150,7 +180,7 @@ serve(async (req) => {
       delete_message_id,
       sender_name,
     } = body;
-    const normalizedPhone = String(to || "").replace(/\D/g, "");
+    const normalizedPhone = normalizePhone(to);
 
     if (!to || typeof to !== "string") {
       return json({ error: "رقم المستلم مطلوب" }, 400);
@@ -185,29 +215,12 @@ serve(async (req) => {
       // Save message to conversation first so it appears in UI
       let convId = conversation_id || null;
       if (to && !convId) {
-        let openConvQuery = adminClient
-          .from("conversations")
-          .select("id")
-            .eq("customer_phone", normalizedPhone)
-          .eq("org_id", orgId)
-          .neq("status", "closed");
-        if (requestedChannelId) openConvQuery = openConvQuery.eq("channel_id", requestedChannelId);
-        const { data: openConv } = await openConvQuery.limit(1).maybeSingle();
+        const openConv = await findPrivateConversation(adminClient, orgId, normalizedPhone, requestedChannelId, "open");
 
         if (openConv?.id) {
           convId = openConv.id;
         } else {
-          let closedConvQuery = adminClient
-            .from("conversations")
-            .select("id")
-            .eq("customer_phone", normalizedPhone)
-            .eq("org_id", orgId)
-            .eq("status", "closed");
-          if (requestedChannelId) closedConvQuery = closedConvQuery.eq("channel_id", requestedChannelId);
-          const { data: closedConv } = await closedConvQuery
-            .order("closed_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          const closedConv = await findPrivateConversation(adminClient, orgId, normalizedPhone, requestedChannelId, "closed");
           convId = closedConv?.id || null;
         }
       }
@@ -559,30 +572,21 @@ serve(async (req) => {
     }
 
     if (!conversation) {
-      let convLookup = adminClient
-        .from("conversations")
-        .select("id, status")
-        .eq("customer_phone", normalizedPhone)
-        .eq("org_id", orgId)
-        .neq("status", "closed");
-      if (requestedChannelId) convLookup = convLookup.eq("channel_id", requestedChannelId);
-      const { data } = await convLookup.limit(1).maybeSingle();
-      conversation = data;
+      conversation = await findPrivateConversation(adminClient, orgId, normalizedPhone, requestedChannelId, "open");
     }
 
     if (!conversation) {
-      let closedConvLookup = adminClient
-        .from("conversations")
-        .select("id, status")
-        .eq("customer_phone", normalizedPhone)
-        .eq("org_id", orgId)
-        .eq("status", "closed");
-      if (requestedChannelId) closedConvLookup = closedConvLookup.eq("channel_id", requestedChannelId);
-      const { data } = await closedConvLookup
-        .order("closed_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      conversation = data;
+      const closedConversation = await findPrivateConversation(adminClient, orgId, normalizedPhone, requestedChannelId, "closed");
+      if (closedConversation?.id) {
+        await adminClient.from("conversations").update({
+          status: "active",
+          closed_at: null,
+          closed_by: null,
+          closure_reason_id: null,
+          updated_at: new Date().toISOString(),
+        }).eq("id", closedConversation.id);
+        conversation = { id: closedConversation.id, status: "active" };
+      }
     }
 
     // Create conversation if none exists (for new conversations from the dialog or first-time sends)
@@ -603,7 +607,10 @@ serve(async (req) => {
         .select("id")
         .single();
 
-      if (!newConvErr && newConv) {
+      if (newConvErr?.code === "23505") {
+        conversation = await findPrivateConversation(adminClient, orgId, normalizedPhone, requestedChannelId || config.id, "open")
+          || await findPrivateConversation(adminClient, orgId, normalizedPhone, requestedChannelId || config.id, "closed");
+      } else if (!newConvErr && newConv) {
         conversation = newConv;
         await logToSystem(adminClient, "info", `تم إنشاء محادثة جديدة مع ${to}`, { conversation_id: newConv.id }, orgId, requesterUserId);
       } else {
