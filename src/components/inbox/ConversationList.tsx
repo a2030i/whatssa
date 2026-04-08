@@ -207,7 +207,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const roleHierarchy: Record<string, number> = { member: 0, supervisor: 1, admin: 2 };
   const userLevel = roleHierarchy[effectiveRole] ?? 0;
   // Always-visible filters (shown even when count is 0)
-  const alwaysVisible = new Set(["mine", "all", "unassigned"]);
+  const alwaysVisible = new Set(["mine", "all"]);
   const quickFilters = allQuickFilters.filter(f => {
     if (f.minRole && userLevel < (roleHierarchy[f.minRole] ?? 0)) return false;
     // Hide filters with 0 count (except always-visible ones)
