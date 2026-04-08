@@ -415,6 +415,7 @@ const AiProviderSettings = () => {
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Test Connection */}
                 <div className="flex items-center gap-3">
