@@ -1631,7 +1631,7 @@ const IntegrationsPage = () => {
                       >
                         <Badge className={cn("text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer", config.is_connected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
                           {config.is_connected ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
-                          {config.channel_label || config.display_phone || config.business_name || "رسمي"}
+                          <span dir="ltr">{config.channel_label || config.display_phone || config.business_name || "رسمي"}</span>
                           {!config.is_connected && " (غير متصل)"}
                         </Badge>
                       </button>
@@ -1789,7 +1789,7 @@ const IntegrationsPage = () => {
                       >
                         <Badge className={cn("text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer", isActuallyConnected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
                           <QrCode className="w-2.5 h-2.5" />
-                          {config.channel_label || config.display_phone || config.business_name || "واتساب ويب"}
+                          <span dir="ltr">{config.channel_label || config.display_phone || config.business_name || "واتساب ويب"}</span>
                         </Badge>
                       </button>
 
