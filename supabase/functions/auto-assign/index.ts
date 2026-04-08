@@ -188,7 +188,9 @@ Deno.serve(async (req) => {
     const assignTo = async (agent: any, fallback = false) => {
       await supabase.from("conversations").update({
         assigned_to: agent.full_name,
+        assigned_to_id: agent.id,
         assigned_team: targetTeam?.name || null,
+        assigned_team_id: targetTeam?.id || null,
         assigned_at: new Date().toISOString(),
         first_response_at: null,
         escalated: false,

@@ -641,12 +641,17 @@ serve(async (req) => {
               channel_id: channelConfigId,
             };
             if (channelDefaultAgentId) {
-              convInsert.assigned_to = channelDefaultAgentId;
+              // Fetch agent name for display
+              const { data: agentData } = await supabase.from("profiles").select("full_name").eq("id", channelDefaultAgentId).maybeSingle();
+              convInsert.assigned_to_id = channelDefaultAgentId;
+              convInsert.assigned_to = agentData?.full_name || null;
               convInsert.assigned_at = new Date().toISOString();
             } else if (channelDefaultTeamId) {
-              // Fetch team name for assigned_team column
               const { data: teamData } = await supabase.from("teams").select("name").eq("id", channelDefaultTeamId).single();
-              if (teamData) convInsert.assigned_team = teamData.name;
+              if (teamData) {
+                convInsert.assigned_team = teamData.name;
+                convInsert.assigned_team_id = channelDefaultTeamId;
+              }
             }
 
             const { data: newConversation, error: convError } = await supabase

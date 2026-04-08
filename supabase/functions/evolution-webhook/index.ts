@@ -1101,11 +1101,16 @@ serve(async (req) => {
             };
             // Apply channel routing
             if (config.default_agent_id) {
-              convInsert.assigned_to = config.default_agent_id;
+              const { data: agentData } = await supabase.from("profiles").select("full_name").eq("id", config.default_agent_id).maybeSingle();
+              convInsert.assigned_to_id = config.default_agent_id;
+              convInsert.assigned_to = agentData?.full_name || null;
               convInsert.assigned_at = new Date().toISOString();
             } else if (config.default_team_id) {
               const { data: teamData } = await supabase.from("teams").select("name").eq("id", config.default_team_id).single();
-              if (teamData) convInsert.assigned_team = teamData.name;
+              if (teamData) {
+                convInsert.assigned_team = teamData.name;
+                convInsert.assigned_team_id = config.default_team_id;
+              }
             }
 
           const { data: newConv, error: convError } = await supabase
