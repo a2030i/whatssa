@@ -1390,7 +1390,7 @@ const IntegrationsPage = () => {
             <p className="text-[9px] text-muted-foreground mt-0.5">حافظ على جودة المحتوى لتجنب تخفيض المستوى.</p>
           </div>
         )}
-        {ms.healthIssues && ms.healthIssues.length > 0 && (
+        {ms.healthIssues && ms.healthIssues.length > 0 && ms.healthIssues.some((issue: any) => translateHealthIssue(issue) !== null) && (
           <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
             <p className="text-[11px] font-semibold text-destructive flex items-center gap-1">
               <AlertTriangle className="w-3.5 h-3.5" /> مشاكل تحتاج معالجة
