@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Shield, MoreVertical, Trash2, Edit, Save, UserPlus, Users, Layers, Clock, Eye, CalendarDays, AlertTriangle, CheckCircle, Settings2, Zap, Hand, RotateCcw, Scale, Target, MessageSquare, Timer, BarChart3 } from "lucide-react";
+import { Plus, Shield, MoreVertical, Trash2, Edit, Save, UserPlus, Users, Layers, Clock, Eye, CalendarDays, AlertTriangle, CheckCircle, Settings2, Zap, Hand, RotateCcw, Scale, Target, MessageSquare, Timer, BarChart3, KeyRound, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -875,6 +875,69 @@ const TeamPage = () => {
             {/* Group Access */}
             {editingProfile && (
               <EmployeeGroupAccess profileId={editingProfile.id} profileName={editingProfile.full_name || "الموظف"} />
+            )}
+
+            {/* Reset Password */}
+            {editingProfile && (
+              <div className="border-t pt-3 space-y-2">
+                <p className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground">
+                  <KeyRound className="w-3.5 h-3.5" /> إعادة تعيين كلمة المرور
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs flex-1"
+                    onClick={async () => {
+                      const pin = String(Math.floor(1000 + Math.random() * 9000));
+                      const tempPass = pin + pin;
+                      try {
+                        const { data, error } = await invokeCloud("admin-reset-password", {
+                          body: { user_id: editingProfile.id, new_password: tempPass },
+                        });
+                        if (error && !data) throw new Error("فشل في إعادة تعيين كلمة المرور");
+                        const result = data || {};
+                        if (result.error) throw new Error(result.error);
+                        navigator.clipboard?.writeText(tempPass);
+                        toast.success(`تم تعيين كلمة مرور مؤقتة: ${tempPass} — تم نسخها`, { duration: 10000 });
+                      } catch (err: any) {
+                        toast.error(err.message || "حدث خطأ");
+                      }
+                    }}
+                  >
+                    <KeyRound className="w-3 h-3 ml-1" />
+                    كلمة مرور مؤقتة
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs flex-1"
+                    onClick={async () => {
+                      try {
+                        const { data, error } = await invokeCloud("admin-reset-password", {
+                          body: { user_id: editingProfile.id },
+                        });
+                        if (error && !data) throw new Error("فشل في إنشاء رابط الاستعادة");
+                        const result = data || {};
+                        if (result.error) throw new Error(result.error);
+                        if (result.recovery_link) {
+                          navigator.clipboard?.writeText(result.recovery_link);
+                          toast.success("تم نسخ رابط إعادة التعيين — أرسله للموظف", { duration: 8000 });
+                        } else {
+                          toast.success("تم إنشاء الرابط بنجاح");
+                        }
+                      } catch (err: any) {
+                        toast.error(err.message || "حدث خطأ");
+                      }
+                    }}
+                  >
+                    <Copy className="w-3 h-3 ml-1" />
+                    رابط استعادة
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
           <DialogFooter className="gap-2">
