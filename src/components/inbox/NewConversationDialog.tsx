@@ -1058,7 +1058,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                       setLocalNumber(val);
                       setIsExistingCustomer(false);
                     }}
-                    className="text-sm h-10 bg-background font-mono tracking-wider"
+                    className="text-base h-10 bg-background font-mono tracking-wider"
                     maxLength={selectedCountry.digits + 1}
                   />
                 </div>
