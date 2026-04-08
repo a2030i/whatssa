@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -64,14 +64,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const effectiveOrgId = isImpersonating ? impersonatedOrgId : orgId;
 
   // Cache to skip re-fetch on rapid auth events
-  const lastFetchRef = { userId: "", ts: 0 };
+  const lastFetchRef = useRef({ userId: "", ts: 0 });
 
   const fetchUserData = async (userId: string) => {
     // Skip if same user fetched within last 3 seconds
     const now = Date.now();
-    if (lastFetchRef.userId === userId && now - lastFetchRef.ts < 3000) return;
-    lastFetchRef.userId = userId;
-    lastFetchRef.ts = now;
+    if (lastFetchRef.current.userId === userId && now - lastFetchRef.current.ts < 3000) return;
+    lastFetchRef.current.userId = userId;
+    lastFetchRef.current.ts = now;
 
     // Fire ALL queries in parallel — no sequential waits
     const [profileRes, roleRes] = await Promise.all([
