@@ -5,6 +5,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -18,19 +24,31 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       console.error("whatsapp-profile: No auth header");
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+      return json({ error: "Unauthorized" }, 401);
     }
-    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-    if (authError || !user) {
+
+    const authClient = createClient(
+      Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: requesterProfile, error: authError } = await authClient
+      .from("profiles")
+      .select("id, org_id")
+      .limit(1)
+      .maybeSingle();
+
+    if (authError || !requesterProfile?.id) {
       console.error("whatsapp-profile: Auth failed", authError?.message);
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+      return json({ error: "Unauthorized" }, 401);
     }
-    console.log("whatsapp-profile: user", user.id, "action requested");
+    console.log("whatsapp-profile: user", requesterProfile.id, "action requested");
 
     const body = await req.json();
     const { action, config_id } = body;
 
-    if (!config_id) return new Response(JSON.stringify({ error: "config_id required" }), { status: 400, headers: corsHeaders });
+    if (!config_id) return json({ error: "config_id required" }, 400);
 
     console.log("whatsapp-profile: config_id=", config_id, "action=", action);
 
@@ -43,15 +61,14 @@ Deno.serve(async (req) => {
 
     if (cfgErr || !config) {
       console.error("whatsapp-profile: Config not found", cfgErr?.message, "config_id=", config_id);
-      return new Response(JSON.stringify({ error: "Config not found" }), { status: 404, headers: corsHeaders });
+      return json({ error: "Config not found" }, 404);
     }
     console.log("whatsapp-profile: config found, channel_type=", config.channel_type, "phone_id=", config.phone_number_id);
 
     // Verify user belongs to same org
-    const { data: profile } = await supabase.from("profiles").select("org_id").eq("id", user.id).maybeSingle();
-    const isSuperAdmin = await supabase.rpc("has_role", { _user_id: user.id, _role: "super_admin" });
-    if (!isSuperAdmin.data && profile?.org_id !== config.org_id) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: corsHeaders });
+    const isSuperAdmin = await supabase.rpc("has_role", { _user_id: requesterProfile.id, _role: "super_admin" });
+    if (!isSuperAdmin.data && requesterProfile.org_id !== config.org_id) {
+      return json({ error: "Forbidden" }, 403);
     }
 
     const channelType = config.channel_type || "meta_api";
@@ -65,7 +82,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "Unsupported channel type" }), { status: 400, headers: corsHeaders });
   } catch (e) {
     console.error("whatsapp-profile error:", e);
-    return new Response(JSON.stringify({ error: e.message, stack: e.stack }), { status: 500, headers: corsHeaders });
+    return json({ error: e.message, stack: e.stack }, 500);
   }
 });
 
@@ -79,14 +96,14 @@ async function handleMetaProfile(config: any, action: string, body: any) {
     console.log("whatsapp-profile META get: phoneId=", phoneId, "token length=", token?.length);
     const res = await fetch(
       `https://graph.facebook.com/v21.0/${phoneId}/whatsapp_business_profile?fields=${fields}`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000) }
     );
     const data = await res.json();
     console.log("whatsapp-profile META get response:", JSON.stringify(data).slice(0, 500));
-    if (data.error) return new Response(JSON.stringify({ error: data.error.message }), { status: 400, headers: corsHeaders });
+    if (data.error) return json({ error: data.error.message }, 400);
 
     const profile = data.data?.[0] || {};
-    return new Response(JSON.stringify({
+    return json({
       success: true,
       profile: {
         about: profile.about || "",
@@ -98,12 +115,12 @@ async function handleMetaProfile(config: any, action: string, body: any) {
         vertical: profile.vertical || "",
       },
       channel_type: "meta_api",
-    }), { headers: corsHeaders });
+    });
   }
 
   if (action === "update") {
     const { profile_data } = body;
-    if (!profile_data) return new Response(JSON.stringify({ error: "profile_data required" }), { status: 400, headers: corsHeaders });
+    if (!profile_data) return json({ error: "profile_data required" }, 400);
 
     // Build payload - only include non-empty fields
     const payload: Record<string, any> = { messaging_product: "whatsapp" };
@@ -119,18 +136,19 @@ async function handleMetaProfile(config: any, action: string, body: any) {
       {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(15000),
         body: JSON.stringify(payload),
       }
     );
     const data = await res.json();
-    if (data.error) return new Response(JSON.stringify({ error: data.error.message }), { status: 400, headers: corsHeaders });
+    if (data.error) return json({ error: data.error.message }, 400);
 
-    return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    return json({ success: true });
   }
 
   if (action === "update_photo") {
     const { photo_url } = body;
-    if (!photo_url) return new Response(JSON.stringify({ error: "photo_url required" }), { status: 400, headers: corsHeaders });
+    if (!photo_url) return json({ error: "photo_url required" }, 400);
 
     // First get upload handle
     const handleRes = await fetch(
@@ -138,16 +156,17 @@ async function handleMetaProfile(config: any, action: string, body: any) {
       {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(15000),
         body: JSON.stringify({ messaging_product: "whatsapp", profile_picture_url: photo_url }),
       }
     );
     const handleData = await handleRes.json();
-    if (handleData.error) return new Response(JSON.stringify({ error: handleData.error.message }), { status: 400, headers: corsHeaders });
+    if (handleData.error) return json({ error: handleData.error.message }, 400);
 
-    return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    return json({ success: true });
   }
 
-  return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: corsHeaders });
+  return json({ error: "Invalid action" }, 400);
 }
 
 async function handleEvolutionProfile(config: any, action: string, body: any) {
@@ -156,7 +175,7 @@ async function handleEvolutionProfile(config: any, action: string, body: any) {
   const instanceName = config.evolution_instance_name;
 
   if (!apiUrl || !apiKey || !instanceName) {
-    return new Response(JSON.stringify({ error: "Evolution API not configured" }), { status: 400, headers: corsHeaders });
+    return json({ error: "Evolution API not configured" }, 400);
   }
 
   const baseUrl = apiUrl.replace(/\/$/, "");
@@ -165,6 +184,7 @@ async function handleEvolutionProfile(config: any, action: string, body: any) {
     const res = await fetch(`${baseUrl}/chat/fetchProfile/${instanceName}`, {
       method: "POST",
       headers: { apikey: apiKey, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15000),
       body: JSON.stringify({ number: config.display_phone?.replace(/\D/g, "") || "" }),
     });
 
@@ -178,16 +198,16 @@ async function handleEvolutionProfile(config: any, action: string, body: any) {
       };
     } catch { /* empty */ }
 
-    return new Response(JSON.stringify({
+    return json({
       success: true,
       profile,
       channel_type: "evolution",
-    }), { headers: corsHeaders });
+    });
   }
 
   if (action === "update") {
     const { profile_data } = body;
-    if (!profile_data) return new Response(JSON.stringify({ error: "profile_data required" }), { status: 400, headers: corsHeaders });
+    if (!profile_data) return json({ error: "profile_data required" }, 400);
 
     const results: string[] = [];
 
@@ -196,6 +216,7 @@ async function handleEvolutionProfile(config: any, action: string, body: any) {
       const res = await fetch(`${baseUrl}/chat/updateProfileStatus/${instanceName}`, {
         method: "PUT",
         headers: { apikey: apiKey, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(15000),
         body: JSON.stringify({ status: profile_data.about }),
       });
       if (res.ok) results.push("status");
@@ -206,27 +227,29 @@ async function handleEvolutionProfile(config: any, action: string, body: any) {
       const res = await fetch(`${baseUrl}/chat/updateProfileName/${instanceName}`, {
         method: "PUT",
         headers: { apikey: apiKey, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(15000),
         body: JSON.stringify({ name: profile_data.name }),
       });
       if (res.ok) results.push("name");
     }
 
-    return new Response(JSON.stringify({ success: true, updated: results }), { headers: corsHeaders });
+    return json({ success: true, updated: results });
   }
 
   if (action === "update_photo") {
     const { photo_url } = body;
-    if (!photo_url) return new Response(JSON.stringify({ error: "photo_url required" }), { status: 400, headers: corsHeaders });
+    if (!photo_url) return json({ error: "photo_url required" }, 400);
 
     const res = await fetch(`${baseUrl}/chat/updateProfilePicture/${instanceName}`, {
       method: "PUT",
       headers: { apikey: apiKey, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15000),
       body: JSON.stringify({ picture: photo_url }),
     });
 
-    if (!res.ok) return new Response(JSON.stringify({ error: "Failed to update photo" }), { status: 400, headers: corsHeaders });
-    return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    if (!res.ok) return json({ error: "Failed to update photo" }, 400);
+    return json({ success: true });
   }
 
-  return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: corsHeaders });
+  return json({ error: "Invalid action" }, 400);
 }

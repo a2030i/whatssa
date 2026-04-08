@@ -9,6 +9,8 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const CLOUD_SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const CLOUD_SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -72,6 +74,7 @@ serve(async (req) => {
   }
 
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const storageClient = createClient(CLOUD_SUPABASE_URL, CLOUD_SUPABASE_SERVICE_ROLE_KEY);
 
   try {
     const authorization = req.headers.get("Authorization") || "";
@@ -102,6 +105,7 @@ serve(async (req) => {
     }
 
     const orgId = profile.org_id;
+    const requesterUserId = profile.id;
 
     const body = await req.json();
     const {
@@ -160,7 +164,7 @@ serve(async (req) => {
       .maybeSingle();
 
     if (configError || !config) {
-      await logToSystem(adminClient, "warn", "واتساب غير مربوط - تم وضع الرسالة في قائمة الانتظار", { configError: configError?.message }, orgId, user.id);
+      await logToSystem(adminClient, "warn", "واتساب غير مربوط - تم وضع الرسالة في قائمة الانتظار", { configError: configError?.message }, orgId, requesterUserId);
 
       // Queue for later delivery
       const queueContent = message || caption || `[${type}]`;
@@ -181,7 +185,7 @@ serve(async (req) => {
           content: queueContent,
           message_type: queueType === "template" ? "template" : queueType,
           status: "pending",
-          metadata: { queued: true, queued_at: new Date().toISOString(), sent_by: user.id },
+          metadata: { queued: true, queued_at: new Date().toISOString(), sent_by: requesterUserId },
         });
       }
 
@@ -319,7 +323,7 @@ serve(async (req) => {
       // If media_url is a storage path, download and upload to Meta
       if (media_url && media_url.startsWith("storage:chat-media/")) {
         const path = media_url.replace("storage:chat-media/", "");
-        const { data: fileData, error: dlError } = await adminClient.storage.from("chat-media").download(path);
+          const { data: fileData, error: dlError } = await storageClient.storage.from("chat-media").download(path);
         if (dlError || !fileData) {
           return json({ error: "فشل تحميل الملف من التخزين" }, 400);
         }
@@ -442,7 +446,7 @@ serve(async (req) => {
       };
     }
 
-    await logToSystem(adminClient, "info", `إرسال رسالة ${messagePayload.type} إلى ${to}`, { type: messagePayload.type, to, template_name: template_name || null }, orgId, user.id);
+    await logToSystem(adminClient, "info", `إرسال رسالة ${messagePayload.type} إلى ${to}`, { type: messagePayload.type, to, template_name: template_name || null }, orgId, requesterUserId);
 
     const response = await fetch(`https://graph.facebook.com/v21.0/${config.phone_number_id}/messages`, {
       method: "POST",
@@ -463,7 +467,7 @@ serve(async (req) => {
         wa_error: result?.error?.message || "unknown",
         wa_error_code: result?.error?.code || null,
         phone_number_id: config.phone_number_id,
-      }, orgId, user.id);
+      }, orgId, requesterUserId);
 
       // Add to retry queue for transient errors
       const retryableStatuses = [429, 500, 502, 503, 504];
@@ -482,7 +486,7 @@ serve(async (req) => {
           last_error: result?.error?.message || `HTTP ${response.status}`,
           metadata: { original_payload: messagePayload },
         });
-        await logToSystem(adminClient, "info", `تمت إضافة الرسالة لقائمة إعادة المحاولة`, { to }, orgId, user.id);
+        await logToSystem(adminClient, "info", `تمت إضافة الرسالة لقائمة إعادة المحاولة`, { to }, orgId, requesterUserId);
       }
 
       return json({ error: result?.error?.message || "Failed to send message", details: result, retrying: retryableStatuses.includes(response.status) }, response.status);
@@ -493,7 +497,7 @@ serve(async (req) => {
     await logToSystem(adminClient, "info", `تم إرسال رسالة بنجاح إلى ${to}`, {
       wa_message_id: waMessageId,
       type: messagePayload.type,
-    }, orgId, user.id);
+    }, orgId, requesterUserId);
 
     // ── Save to conversation ──
     let conversation = null;
