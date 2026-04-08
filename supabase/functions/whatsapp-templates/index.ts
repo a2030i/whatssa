@@ -112,25 +112,40 @@ serve(async (req) => {
   if (action === "list_all") {
     const allConfigs = (context as any).allConfigs || [config];
     const allTemplates: any[] = [];
+    console.log("list_all: configs count =", allConfigs.length);
 
     for (const cfg of allConfigs) {
-      const response = await fetch(
-        `https://graph.facebook.com/v21.0/${cfg.business_account_id}/message_templates?fields=id,name,status,language,category,components&limit=250`,
-        { headers: { Authorization: `Bearer ${cfg.access_token}` } },
-      );
-      const result = await response.json();
-      if (response.ok && result.data) {
-        for (const t of result.data) {
-          allTemplates.push({
-            ...t,
-            channel_id: cfg.id,
-            channel_phone: cfg.display_phone,
-            channel_name: cfg.channel_label || cfg.business_name || cfg.display_phone,
-          });
+      console.log("list_all: fetching for channel", cfg.id, "biz_account_id=", cfg.business_account_id, "token_len=", cfg.access_token?.length);
+      
+      if (!cfg.business_account_id) {
+        console.warn("list_all: skipping channel", cfg.id, "- no business_account_id");
+        continue;
+      }
+
+      try {
+        const url = `https://graph.facebook.com/v21.0/${cfg.business_account_id}/message_templates?fields=id,name,status,language,category,components&limit=250`;
+        const response = await fetch(url, { headers: { Authorization: `Bearer ${cfg.access_token}` } });
+        const result = await response.json();
+        console.log("list_all: response status=", response.status, "templates count=", result.data?.length || 0, "error=", result.error?.message || "none");
+        
+        if (response.ok && result.data) {
+          for (const t of result.data) {
+            allTemplates.push({
+              ...t,
+              channel_id: cfg.id,
+              channel_phone: cfg.display_phone,
+              channel_name: cfg.channel_label || cfg.business_name || cfg.display_phone,
+            });
+          }
+        } else if (result.error) {
+          console.error("list_all: Meta API error for channel", cfg.id, ":", result.error.message);
         }
+      } catch (fetchErr) {
+        console.error("list_all: fetch error for channel", cfg.id, ":", (fetchErr as Error).message);
       }
     }
 
+    console.log("list_all: total templates =", allTemplates.length);
     return json({ templates: allTemplates });
   }
 
