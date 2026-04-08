@@ -87,12 +87,25 @@ Deno.serve(async (req) => {
       const resolvedTeamIds = Array.isArray(team_ids) && team_ids.length > 0 ? team_ids : team_id ? [team_id] : [];
       const primaryTeamId = resolvedTeamIds.length > 0 ? resolvedTeamIds[0] : null;
 
-      // Update profile
-      const { error: profileError } = await adminClient.from("profiles").update({
+      // Update profile — try with team_ids first, fallback without it if column doesn't exist
+      let profileError: any = null;
+      const { error: err1 } = await adminClient.from("profiles").update({
         team_id: primaryTeamId,
         team_ids: resolvedTeamIds,
         is_supervisor: !!is_supervisor,
       }).eq("id", user_id);
+      
+      if (err1 && err1.message?.includes("team_ids")) {
+        // Fallback: column doesn't exist in external DB
+        const { error: err2 } = await adminClient.from("profiles").update({
+          team_id: primaryTeamId,
+          is_supervisor: !!is_supervisor,
+        }).eq("id", user_id);
+        profileError = err2;
+      } else {
+        profileError = err1;
+      }
+      
       if (profileError) {
         console.error("Profile update error:", profileError);
         return new Response(JSON.stringify({ error: "فشل تحديث الملف الشخصي: " + profileError.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

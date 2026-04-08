@@ -73,14 +73,19 @@ Deno.serve(async (req) => {
 
     // Update profile to caller's org
     const isSupervisor = role === "supervisor";
-    await adminClient.from("profiles").update({
+    const profileUpdate: Record<string, any> = {
       org_id: callerProfile.org_id,
       full_name,
       team_id: primaryTeamId,
       team_ids: resolvedTeamIds,
       is_active: true,
       is_supervisor: isSupervisor,
-    }).eq("id", userId);
+    };
+    const { error: profErr } = await adminClient.from("profiles").update(profileUpdate).eq("id", userId);
+    if (profErr && profErr.message?.includes("team_ids")) {
+      delete profileUpdate.team_ids;
+      await adminClient.from("profiles").update(profileUpdate).eq("id", userId);
+    }
 
     // Delete phantom org if it was auto-created and is different from caller's org
     if (phantomOrgId && phantomOrgId !== callerProfile.org_id) {
