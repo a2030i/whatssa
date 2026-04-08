@@ -345,7 +345,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
     } catch { toast.error("فشل الترجمة"); }
   };
 
-  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (!isEmailConversation && msg.sender === "customer" && msg.type === "text") || (!isEmailConversation && msg.waMessageId && conversation.channelType === "evolution"));
+  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (!isEmailConversation && msg.sender === "customer" && msg.type === "text") || (!isEmailConversation && msg.waMessageId));
 
   return (
     <div
