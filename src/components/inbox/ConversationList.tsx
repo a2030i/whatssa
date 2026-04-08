@@ -363,42 +363,38 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
         </div>
       </div>
 
-      {/* Quick Filters */}
-      <div className="shrink-0 relative">
-        <div className="px-4 pb-3 overflow-x-auto scrollbar-none" dir="rtl">
-          <div className="flex gap-1.5 w-max">
-            {quickFilters.map((qf) => {
-              const isActive = activeQuickFilter === qf.id && !activeCustomInbox;
-              return (
-                <button
-                  key={qf.id}
-                  onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all border",
+      {/* Quick Filters - Grid */}
+      <div className="shrink-0 px-4 pb-3">
+        <div className="grid grid-cols-3 gap-1.5">
+          {quickFilters.map((qf) => {
+            const isActive = activeQuickFilter === qf.id && !activeCustomInbox;
+            return (
+              <button
+                key={qf.id}
+                onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
+                className={cn(
+                  "flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-[11px] font-semibold transition-all border",
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_hsl(var(--primary)/0.25)]"
+                    : "bg-card text-muted-foreground border-border/40 hover:border-primary/40 hover:text-foreground hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                )}
+              >
+                <qf.icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{qf.label}</span>
+                {(qf.count ?? 0) > 0 && (
+                  <span className={cn(
+                    "text-[9px] min-w-[16px] h-[16px] rounded-full flex items-center justify-center font-bold px-0.5 shrink-0",
                     isActive
-                      ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_hsl(var(--primary)/0.25)]"
-                      : "bg-card text-muted-foreground border-primary/20 hover:border-primary/40 hover:text-foreground hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
-                  )}
-                >
-                  <qf.icon className="w-3.5 h-3.5" />
-                  <span>{qf.label}</span>
-                  {(qf.count ?? 0) > 0 && (
-                    <span className={cn(
-                      "text-[9px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold px-1",
-                      isActive
-                        ? "bg-primary-foreground/20 text-primary-foreground"
-                        : "bg-primary/10 text-primary"
-                    )}>
-                      {qf.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-primary/10 text-primary"
+                  )}>
+                    {qf.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
-        {/* Scroll fade indicator - left side (end of scroll in RTL) */}
-        <div className="pointer-events-none absolute left-0 top-0 bottom-3 w-8 bg-gradient-to-r from-card to-transparent" />
       </div>
 
       {/* Advanced Filters */}
