@@ -252,7 +252,14 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   }, [orgId, open, searchQuery, localNumber]);
 
   const isMeta = selectedChannel?.channel_type === "meta_api";
-  const approvedTemplates = useMemo(() => templates.filter(t => t.status?.toUpperCase() === "APPROVED"), [templates]);
+  const approvedTemplates = useMemo(() => {
+    const approved = templates.filter(t => t.status?.toUpperCase() === "APPROVED");
+    if (selectedChannel?.channel_type === "meta_api" && selectedChannel?.id) {
+      const channelSpecific = approved.filter(t => t.channelId === selectedChannel.id);
+      if (channelSpecific.length > 0) return channelSpecific;
+    }
+    return approved;
+  }, [templates, selectedChannel]);
   const evolutionChannels = useMemo(() => channels.filter(c => c.channel_type === "evolution"), [channels]);
   const hasEvolution = evolutionChannels.length > 0;
   const hasEmailConfigs = emailConfigs.length > 0;
@@ -1189,9 +1196,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">
-                        {ch.business_name || ch.display_phone || ch.evolution_instance_name || "قناة"}
+                        {ch.business_name || ch.channel_label || ch.display_phone || ch.evolution_instance_name || "قناة"}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[10px] text-muted-foreground" dir="ltr">
                         {ch.display_phone || ch.evolution_instance_name}
                       </p>
                     </div>
@@ -1223,7 +1230,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               <span>{customerName || `+${fullPhone}`}</span>
               <span className="mx-1">•</span>
               {isMeta ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Wifi className="w-3.5 h-3.5 text-amber-500" />}
-              <span>{selectedChannel.business_name || selectedChannel.display_phone || selectedChannel.evolution_instance_name}</span>
+              <span dir="ltr">{selectedChannel.business_name || selectedChannel.display_phone || selectedChannel.evolution_instance_name}</span>
               <button onClick={() => setStep(channels.length > 1 ? "channel" : "contact")} className="mr-auto text-primary hover:underline text-[11px]">تغيير</button>
             </div>
 
