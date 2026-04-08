@@ -1664,6 +1664,19 @@ const IntegrationsPage = () => {
                                 </span>
                               </div>
                             )}
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">Webhook:</span>
+                              {(config as any).last_webhook_at ? (
+                                <span className="text-success font-medium flex items-center gap-1">
+                                  ✅ نشط
+                                  <span className="text-muted-foreground font-normal text-[9px]">
+                                    ({new Date((config as any).last_webhook_at).toLocaleDateString("ar-SA-u-ca-gregory")} {new Date((config as any).last_webhook_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })})
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-warning font-medium">⚠️ لم يستقبل بعد</span>
+                              )}
+                            </div>
                           </div>
 
                           {/* Action buttons — like email */}

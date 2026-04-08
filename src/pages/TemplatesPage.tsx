@@ -621,7 +621,7 @@ const TemplatesPage = () => {
           )}
           <Button variant="outline" size="sm" className="gap-2" onClick={() => loadTemplates(true)} disabled={isRefreshing}>
             {isRefreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            {isReviewMode ? "Refresh" : "تحديث"}
+            {isReviewMode ? "Sync from Meta" : "مزامنة من Meta"}
           </Button>
           <Button className="gradient-whatsapp text-whatsapp-foreground gap-2" onClick={openCreateDialog}>
             <Plus className="w-4 h-4" /> {isReviewMode ? "Create Template" : "إنشاء قالب"}

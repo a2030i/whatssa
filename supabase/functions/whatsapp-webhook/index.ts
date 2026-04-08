@@ -471,6 +471,11 @@ serve(async (req) => {
         var channelDefaultTeamId = config?.default_team_id || null;
         var channelDefaultAgentId = config?.default_agent_id || null;
         var channelExcludeSupervisors = !!(config as any)?.exclude_supervisors;
+
+        // Update last webhook activity timestamp
+        if (channelConfigId) {
+          await supabase.from("whatsapp_config").update({ last_webhook_at: new Date().toISOString() }).eq("id", channelConfigId);
+        }
       }
 
       if (!orgId) {
