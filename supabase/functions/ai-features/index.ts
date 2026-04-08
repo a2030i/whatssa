@@ -186,6 +186,7 @@ Deno.serve(async (req) => {
         .join("\n");
 
       const reply = await callAi(config, systemPrompt, `آخر رسائل المحادثة:\n${lastMessages}\n\nاقترح 3 ردود:`);
+      if (config.provider === "lovable_ai") await logLovableAiUsage(serviceClient, orgId, "suggest_replies", config.model, profile.id);
       if (!reply) return json({ suggestions: [] });
 
       const suggestions = reply
@@ -210,6 +211,7 @@ Deno.serve(async (req) => {
         .map((m: any) => m.content).join("\n");
 
       const reply = await callAi(config, systemPrompt, text);
+      if (config.provider === "lovable_ai") await logLovableAiUsage(serviceClient, orgId, "classify", config.model, profile.id);
       return json({ category: reply?.trim() || "أخرى" });
     }
 
@@ -235,6 +237,7 @@ Deno.serve(async (req) => {
       ).join("\n");
 
       const reply = await callAi(config, systemPrompt, text);
+      if (config.provider === "lovable_ai") await logLovableAiUsage(serviceClient, orgId, "summarize", config.model, profile.id);
       return json({ summary: reply || "تعذر التلخيص" });
     }
 
@@ -246,6 +249,7 @@ Deno.serve(async (req) => {
 
       const systemPrompt = `ترجم النص التالي إلى ${target_language || "العربية"}. أرجع الترجمة فقط بدون أي شرح.`;
       const reply = await callAi(config, systemPrompt, text);
+      if (config.provider === "lovable_ai") await logLovableAiUsage(serviceClient, orgId, "translate", config.model, profile.id);
       return json({ translation: reply || text });
     }
 
