@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X,
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
@@ -125,7 +125,7 @@ const AppSidebar = () => {
   const [hasEmailAccess, setHasEmailAccess] = useState(false);
 
   // Check if non-admin user has email access (assigned as dedicated agent or team)
-  useState(() => {
+  useEffect(() => {
     if (!orgId || !profile?.id) return;
     const effectiveR = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
     if (effectiveR === "admin") {
@@ -133,16 +133,16 @@ const AppSidebar = () => {
       return;
     }
     // Check if user or their team is assigned to any email config
-    let query = supabase.from("email_configs").select("id").eq("org_id", orgId).eq("is_active", true);
     const conditions: string[] = [`dedicated_agent_id.eq.${profile.id}`];
     if (teamId) conditions.push(`dedicated_team_id.eq.${teamId}`);
     if (profile?.team_ids && Array.isArray(profile.team_ids)) {
       profile.team_ids.forEach((tid: string) => conditions.push(`dedicated_team_id.eq.${tid}`));
     }
-    query.or(conditions.join(",")).limit(1).then(({ data }) => {
-      setHasEmailAccess(!!data && data.length > 0);
-    });
-  });
+    supabase.from("email_configs").select("id").eq("org_id", orgId).eq("is_active", true)
+      .or(conditions.join(",")).limit(1).then(({ data }) => {
+        setHasEmailAccess(!!data && data.length > 0);
+      });
+  }, [orgId, profile?.id, teamId, userRole, isSuperAdmin]);
 
   const displayRole = userRole === "super_admin"
     ? "super_admin"
