@@ -1036,8 +1036,7 @@ serve(async (req) => {
               reopenUpdate.assigned_at = new Date().toISOString();
             } else {
               let smartReassigned = false;
-              const { data: orgSettings } = await supabase.from("organizations").select("settings").eq("id", orgId).single();
-              const smartMinutes = (orgSettings?.settings as any)?.smart_reassign_minutes;
+              const smartMinutes = orgSettings?.smart_reassign_minutes;
               if (smartMinutes && smartMinutes > 0) {
                 const cutoff = new Date(Date.now() - smartMinutes * 60 * 1000).toISOString();
                 const { data: lastAgentMsg } = await supabase
@@ -1062,14 +1061,33 @@ serve(async (req) => {
                 }
               }
               if (!smartReassigned) {
-                reopenUpdate.assigned_to_id = null;
-                reopenUpdate.assigned_to = null;
-                reopenUpdate.assigned_team_id = null;
-                reopenUpdate.assigned_team = null;
-                reopenUpdate.assigned_at = null;
+                // Apply channel routing if configured
+                if (config.default_agent_id) {
+                  const { data: agentData } = await supabase.from("profiles").select("full_name").eq("id", config.default_agent_id).maybeSingle();
+                  reopenUpdate.assigned_to_id = config.default_agent_id;
+                  reopenUpdate.assigned_to = agentData?.full_name || null;
+                  reopenUpdate.assigned_at = new Date().toISOString();
+                  reopenUpdate.assigned_team_id = null;
+                  reopenUpdate.assigned_team = null;
+                } else if (config.default_team_id) {
+                  const { data: teamData } = await supabase.from("teams").select("name").eq("id", config.default_team_id).maybeSingle();
+                  reopenUpdate.assigned_to_id = null;
+                  reopenUpdate.assigned_to = null;
+                  reopenUpdate.assigned_team_id = config.default_team_id;
+                  reopenUpdate.assigned_team = teamData?.name || null;
+                  reopenUpdate.assigned_at = null;
+                } else {
+                  // No routing: reset to unassigned
+                  reopenUpdate.assigned_to_id = null;
+                  reopenUpdate.assigned_to = null;
+                  reopenUpdate.assigned_team_id = null;
+                  reopenUpdate.assigned_team = null;
+                  reopenUpdate.assigned_at = null;
+                }
               }
             }
             reopenUpdate.channel_id = config.id;
+            reopenUpdate.updated_at = new Date().toISOString();
             await supabase.from("conversations").update(reopenUpdate).eq("id", closedConv.id);
             conversation = { ...closedConv, status: "active" };
             await supabase.from("messages").insert({
@@ -1079,6 +1097,20 @@ serve(async (req) => {
               message_type: "text",
             });
             await logToSystem(supabase, "info", `تم إعادة فتح محادثة مغلقة (Evolution) للعميل ${phone}`, { conversation_id: closedConv.id }, orgId);
+
+            // Trigger auto-assign for reopened conversations with team routing
+            if (config.default_team_id && !config.default_agent_id && !closedConv.dedicated_agent_id) {
+              try {
+                await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/auto-assign`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                  },
+                  body: JSON.stringify({ conversation_id: closedConv.id, org_id: orgId, message_text: text || "", exclude_supervisors: !!(config as any).exclude_supervisors }),
+                });
+              } catch (_) {}
+            }
           }
         }
 
