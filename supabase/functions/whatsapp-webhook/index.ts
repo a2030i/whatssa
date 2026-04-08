@@ -761,7 +761,10 @@ serve(async (req) => {
                 .eq("id", conversation.id);
             }
 
-            if (!conversation) continue;
+            if (!conversation) {
+              await logToSystem(supabase, "error", `[TRACE] رسالة ضائعة: conversation=null بعد كل المحاولات`, { wa_message_id: incomingMessage.id, customer_phone: customerPhone, trace_step: "3_no_conv_drop" }, orgId);
+              continue;
+            }
 
             // Auto-save customer record (fire-and-forget — non-critical)
             (async () => {
