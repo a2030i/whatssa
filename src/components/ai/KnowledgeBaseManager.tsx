@@ -44,7 +44,7 @@ interface PendingQuestion {
 }
 
 const KnowledgeBaseManager = () => {
-  const { orgId, userId } = useAuth();
+  const { orgId, user } = useAuth();
   const [entries, setEntries] = useState<KBEntry[]>([]);
   const [pendingQuestions, setPendingQuestions] = useState<PendingQuestion[]>([]);
   const [loading, setLoading] = useState(true);
