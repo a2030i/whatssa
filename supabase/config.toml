@@ -155,3 +155,6 @@ verify_jwt = false
 
 [functions.diag-message-flow]
 verify_jwt = false
+
+[functions.init-external-conv-columns]
+verify_jwt = false
