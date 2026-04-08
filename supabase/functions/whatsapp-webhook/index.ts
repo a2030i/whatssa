@@ -642,6 +642,20 @@ serve(async (req) => {
                 message_type: "text",
               });
               await logToSystem(supabase, "info", `تم إعادة فتح محادثة مغلقة للعميل ${customerPhone}`, { conversation_id: closedConv.id }, orgId);
+              
+              // Trigger auto-assign for reopened conversations with team routing
+              if (channelDefaultTeamId && !channelDefaultAgentId && !closedConv.dedicated_agent_id) {
+                try {
+                  await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/auto-assign`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                    },
+                    body: JSON.stringify({ conversation_id: closedConv.id, org_id: orgId, message_text: messageContent, exclude_supervisors: channelExcludeSupervisors }),
+                  });
+                } catch (_) {}
+              }
             }
           }
 
