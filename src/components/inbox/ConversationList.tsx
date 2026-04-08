@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff, CheckSquare, Square, Mail, Send } from "lucide-react";
+import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff, CheckSquare, Square, Mail, Send, UserCheck } from "lucide-react";
 import BulkActionsBar from "./BulkActionsBar";
 import { cn } from "@/lib/utils";
 import { Conversation } from "@/data/mockData";
@@ -175,6 +175,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.conversationType !== "group").length,
       waitingCustomer: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId && c.lastMessageSender === "agent" && c.conversationType !== "group").length,
       unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن") && c.conversationType !== "group").length,
+      assigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedTo && c.assignedTo !== "غير معيّن" && c.conversationType !== "group").length,
       unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0 && c.assignedToId === myId && c.conversationType !== "group").length,
       mentions: conversations.filter(c => c.status !== "closed" && !c.isArchived && (c.unreadMentionCount || 0) > 0).length,
       groups: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.conversationType === "group").length,
@@ -197,6 +198,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
     { id: "waitingCustomer", label: "بانتظار العميل", icon: Clock, count: (counts as any).waitingCustomer },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
+    { id: "assigned", label: "معيّنة", icon: UserCheck, count: (counts as any).assigned, minRole: "supervisor" },
     { id: "mentions", label: "إشارات", icon: AtSign, count: (counts as any).mentions, minRole: "supervisor" },
     { id: "groups", label: "المجموعات", icon: Users, count: (counts as any).groups },
     { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
@@ -243,6 +245,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
           case "mine": if (conv.assignedToId !== myId) return false; break;
           case "waitingCustomer": if (conv.assignedToId !== myId || conv.lastMessageSender !== "agent") return false; break;
           case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
+          case "assigned": if (!conv.assignedTo || conv.assignedTo === "غير معيّن") return false; break;
           case "mentions": if ((conv.unreadMentionCount || 0) <= 0) return false; break;
           case "unread": if (conv.unread <= 0 || conv.assignedToId !== myId) return false; break;
           case "groups": if (conv.conversationType !== "group") return false; break;
