@@ -737,8 +737,8 @@ const IntegrationsPage = () => {
   const handleDirectToken = async (token: string) => {
     try {
       setAccessToken(token);
-      const embeddedSelection = embeddedSignupSelectionRef.current;
-      console.log("[Embedded Signup] Calling exchange-token with access_token...");
+      let embeddedSelection = embeddedSignupSelectionRef.current;
+      console.log("[Embedded Signup] Calling exchange-token with access_token...", { hasSelection: !!embeddedSelection });
       const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { access_token: token } });
       console.log("[Embedded Signup] Exchange response:", JSON.stringify({ 
         error, 
@@ -762,15 +762,55 @@ const IntegrationsPage = () => {
 
       console.log("[Embedded Signup] Total phones found:", allPhones.length);
 
+      // Re-check selection (postMessage may have arrived while exchange-token was running)
+      if (!embeddedSelection?.phoneNumberId) {
+        embeddedSelection = embeddedSignupSelectionRef.current;
+        console.log("[Embedded Signup] Re-checked selection after API call:", embeddedSelection?.phoneNumberId || "still empty");
+      }
+
+      // If still no selection and multiple phones, wait briefly for the postMessage to arrive
+      if (!embeddedSelection?.phoneNumberId && allPhones.length > 1) {
+        console.log("[Embedded Signup] Multiple phones & no selection yet — waiting 3s for Meta postMessage...");
+        await new Promise<void>((resolve) => {
+          let resolved = false;
+          const checkInterval = setInterval(() => {
+            const sel = embeddedSignupSelectionRef.current;
+            if (sel?.phoneNumberId) {
+              clearInterval(checkInterval);
+              if (!resolved) { resolved = true; resolve(); }
+            }
+          }, 300);
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            if (!resolved) { resolved = true; resolve(); }
+          }, 3000);
+        });
+        embeddedSelection = embeddedSignupSelectionRef.current;
+        console.log("[Embedded Signup] After wait, selection:", embeddedSelection?.phoneNumberId || "none");
+      }
+
+      // Try to auto-select from embedded selection
       if (embeddedSelection?.phoneNumberId && embeddedSelection?.wabaId) {
-        const selectedPhone = allPhones.find((phone) => phone.id === embeddedSelection.phoneNumberId);
+        const selectedPhone = allPhones.find((phone) => phone.id === embeddedSelection!.phoneNumberId);
 
         if (selectedPhone) {
-          console.log("[Embedded Signup] Using exact phone selected in popup:", embeddedSelection.phoneNumberId);
+          console.log("[Embedded Signup] Auto-selecting phone from popup:", embeddedSelection.phoneNumberId);
           setBusinessAccountId(embeddedSelection.wabaId);
           await selectPhone(selectedPhone, token, embeddedSelection.wabaId);
           return;
         }
+
+        // Phone ID from popup not in API results — try direct lookup as fallback
+        console.warn("[Embedded Signup] Phone from popup not in API results, using direct IDs");
+        setBusinessAccountId(embeddedSelection.wabaId);
+        await selectPhone({
+          id: embeddedSelection.phoneNumberId,
+          display_phone_number: "",
+          verified_name: "",
+          quality_rating: "",
+          waba_id: embeddedSelection.wabaId,
+        }, token, embeddedSelection.wabaId);
+        return;
       }
 
       if (allPhones.length === 1) {
@@ -782,16 +822,6 @@ const IntegrationsPage = () => {
         setPhoneNumbers(allPhones);
         setFlowStep("pick_phone");
         setIsLoading(false);
-      } else if (embeddedSelection?.phoneNumberId && embeddedSelection?.wabaId) {
-        console.warn("[Embedded Signup] No phones returned from token lookup, using popup-selected IDs fallback");
-        setBusinessAccountId(embeddedSelection.wabaId);
-        await selectPhone({
-          id: embeddedSelection.phoneNumberId,
-          display_phone_number: "",
-          verified_name: "",
-          quality_rating: "",
-          waba_id: embeddedSelection.wabaId,
-        }, token, embeddedSelection.wabaId);
       } else {
         console.error("[Embedded Signup] No phones found. WABA IDs:", data.waba_ids, "Message:", data.message);
         handleError("لا توجد أرقام واتساب مربوطة بحسابك");
