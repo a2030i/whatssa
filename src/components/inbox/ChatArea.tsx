@@ -295,28 +295,36 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
 
   const handleReaction = async (emoji: string) => {
     try {
-      // Optimistic update: show reaction immediately
-      const msgEl = document.querySelector(`[data-message-id="${msg.id}"]`);
-      if (msgEl) {
-        // We can't directly update state here since msg comes from props,
-        // but we dispatch a custom event that InboxPage listens to
-        window.dispatchEvent(new CustomEvent("optimistic-reaction", {
-          detail: { messageId: msg.id, waMessageId: msg.waMessageId, emoji },
-        }));
+      // Optimistic update
+      window.dispatchEvent(new CustomEvent("optimistic-reaction", {
+        detail: { messageId: msg.id, waMessageId: msg.waMessageId, emoji },
+      }));
+
+      if (conversation.channelType === "evolution") {
+        const { error } = await invokeCloud("evolution-manage", {
+          body: {
+            action: "send_reaction",
+            phone: conversation.customerPhone,
+            channel_id: conversation.channelId,
+            message_id: msg.waMessageId,
+            emoji,
+            is_group: conversation.conversationType === "group",
+          },
+        });
+        if (error) throw error;
+      } else {
+        // Meta API reaction
+        const { data, error } = await invokeCloud("whatsapp-send", {
+          body: {
+            phone: conversation.customerPhone,
+            channel_id: conversation.channelId,
+            type: "reaction",
+            reaction_message_id: msg.waMessageId,
+            reaction_emoji: emoji,
+          },
+        });
+        if (error || data?.error) throw new Error(data?.error || "Failed");
       }
-
-      const { error } = await invokeCloud("evolution-manage", {
-        body: {
-          action: "send_reaction",
-          phone: conversation.customerPhone,
-          channel_id: conversation.channelId,
-          message_id: msg.waMessageId,
-          emoji,
-          is_group: conversation.conversationType === "group",
-        },
-      });
-
-      if (error) throw error;
       setReactionPickerOpen(false);
       toast.success("تم إرسال التفاعل");
     } catch {
@@ -337,7 +345,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
     } catch { toast.error("فشل الترجمة"); }
   };
 
-  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (!isEmailConversation && msg.sender === "customer" && msg.type === "text") || (!isEmailConversation && msg.waMessageId && conversation.channelType === "evolution"));
+  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (!isEmailConversation && msg.sender === "customer" && msg.type === "text") || (!isEmailConversation && msg.waMessageId));
 
   return (
     <div
@@ -365,7 +373,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               <Languages className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
-          {!isEmailConversation && msg.waMessageId && conversation.channelType === "evolution" && (
+          {!isEmailConversation && msg.waMessageId && (
             <Popover open={reactionPickerOpen} onOpenChange={setReactionPickerOpen}>
               <PopoverTrigger asChild>
                 <button
@@ -401,7 +409,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             <button onClick={() => onDelete(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-destructive/10" title="حذف">
               <Trash2 className="w-3.5 h-3.5 text-destructive" />
             </button>
-           )}
+          )}
           {!isEmailConversation && onForward && msg.type === "text" && !msg.isDeleted && (
             <button onClick={() => onForward(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="إعادة توجيه">
               <Forward className="w-3.5 h-3.5 text-muted-foreground" />
@@ -419,7 +427,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       {hasAnyAction && (
         <div className={cn(
           "absolute top-2 z-10 md:hidden",
-          msg.sender === "agent" ? "right-full mr-1" : "left-full ml-1"
+          msg.sender === "agent" ? "left-full ml-1" : "right-full mr-1"
         )}>
           <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <DropdownMenuTrigger asChild>
@@ -458,7 +466,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   <Languages className="w-3.5 h-3.5" /> ترجمة
                 </DropdownMenuItem>
               )}
-              {!isEmailConversation && msg.waMessageId && conversation.channelType === "evolution" && (
+              {!isEmailConversation && msg.waMessageId && (
                 <>
                   <DropdownMenuSeparator />
                   <div className="px-2 py-1.5">
