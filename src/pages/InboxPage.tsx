@@ -15,7 +15,16 @@ import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from 
 
 const TYPING_TIMEOUT = 3000;
 const SENTIMENT_ANALYSIS_INTERVAL = 5; // Analyze every N customer messages
+const MESSAGE_RESYNC_INTERVAL = 4000;
 const sentimentCounters = new Map<string, number>();
+
+const sortMessagesByCreatedAt = (messages: Message[]) =>
+  [...messages].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (aTime === bTime) return a.id.localeCompare(b.id);
+    return aTime - bTime;
+  });
 
 const triggerSentimentAnalysis = async (conversationId: string, orgId: string) => {
   const count = (sentimentCounters.get(conversationId) || 0) + 1;
@@ -83,6 +92,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const selectedIdRef = useRef<string | null>(null);
   const deepLinkApplied = useRef(false);
   const fetchConversationsRef = useRef<(() => Promise<void>) | null>(null);
+  const conversationsRef = useRef<Conversation[]>([]);
 
   const isMobile = useIsMobile();
 
@@ -99,6 +109,10 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   useEffect(() => {
     if (authLoading || !orgId) {
@@ -381,25 +395,29 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   useEffect(() => {
     if (!selectedId) return;
 
-    // Fetch messages if not already loaded
+    let active = true;
+    const currentConversationId = selectedId;
+
     const fetchMessages = async () => {
       // Fetch messages and email details in parallel
-      const conv = conversations.find(c => c.id === selectedId);
+      const conv = conversationsRef.current.find(c => c.id === currentConversationId);
       const isEmailConv = conv?.channelType === "email" || conv?.conversationType === "email";
 
       const [msgResult, emailDetailsResult] = await Promise.all([
         supabase
           .from("messages")
           .select("*")
-          .eq("conversation_id", selectedId)
+          .eq("conversation_id", currentConversationId)
           .order("created_at", { ascending: true }),
         isEmailConv
           ? supabase
               .from("email_message_details" as any)
               .select("*")
-              .eq("conversation_id", selectedId)
+              .eq("conversation_id", currentConversationId)
           : Promise.resolve({ data: null, error: null }),
       ]);
+
+      if (!active) return;
 
       if (msgResult.error) {
         console.error("Error fetching messages:", msgResult.error);
@@ -460,14 +478,31 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         };
       });
 
-      setAllMessages((prev) => ({ ...prev, [selectedId]: mapped }));
+      setAllMessages((prev) => {
+        const existing = prev[currentConversationId] || [];
+        const optimistic = existing.filter((message) => message.id.startsWith("optimistic-"));
+        const unresolvedOptimistic = optimistic.filter((optimisticMessage) => {
+          return !mapped.some((dbMessage) =>
+            dbMessage.id === optimisticMessage.id ||
+            (optimisticMessage.sender === "agent" && dbMessage.sender === "agent" && (
+              dbMessage.text === optimisticMessage.text ||
+              (optimisticMessage.type === "audio" && dbMessage.type === "audio")
+            ))
+          );
+        });
+
+        return {
+          ...prev,
+          [currentConversationId]: sortMessagesByCreatedAt([...mapped, ...unresolvedOptimistic]),
+        };
+      });
     };
 
-    fetchMessages();
+    void fetchMessages();
 
     const channel = supabase
-      .channel(`messages-${selectedId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${selectedId}` }, (payload) => {
+      .channel(`messages-${currentConversationId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${currentConversationId}` }, (payload) => {
         const message = payload.new as any;
         const newMessage: Message = {
           id: message.id,
@@ -513,31 +548,31 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         };
         setAllMessages((prev) => ({
           ...prev,
-          [selectedId]: (prev[selectedId] || []).some((m) => m.id === newMessage.id)
-            ? (prev[selectedId] || []).map((m) => m.id === newMessage.id ? newMessage : m)
+          [currentConversationId]: (prev[currentConversationId] || []).some((m) => m.id === newMessage.id)
+            ? sortMessagesByCreatedAt((prev[currentConversationId] || []).map((m) => m.id === newMessage.id ? newMessage : m))
             : // Replace matching optimistic message (text match or audio type match)
               (() => {
-                const withoutOptimistic = (prev[selectedId] || []).filter((m) =>
+                const withoutOptimistic = (prev[currentConversationId] || []).filter((m) =>
                   !(m.id.startsWith("optimistic-") && m.sender === "agent" && (
                     m.text === newMessage.text ||
                     newMessage.text?.includes(m.text) ||
                     (m.type === "audio" && newMessage.type === "audio")
                   ))
                 );
-                return [...withoutOptimistic, newMessage];
+                return sortMessagesByCreatedAt([...withoutOptimistic, newMessage]);
               })(),
         }));
 
         // Trigger sentiment analysis for customer messages
         if (message.sender === "customer" && orgId) {
-          triggerSentimentAnalysis(selectedId, orgId);
+          triggerSentimentAnalysis(currentConversationId, orgId);
         }
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${selectedId}` }, (payload) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${currentConversationId}` }, (payload) => {
         const updated = payload.new as any;
         setAllMessages((prev) => ({
           ...prev,
-          [selectedId]: (prev[selectedId] || []).map((m) => {
+          [currentConversationId]: sortMessagesByCreatedAt((prev[currentConversationId] || []).map((m) => {
             const isMatch = m.id === updated.id || (m.waMessageId && m.waMessageId === updated.wa_message_id);
             if (!isMatch) return m;
             return {
@@ -552,13 +587,44 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
               readBy: updated.metadata?.read_by || m.readBy,
               groupSize: updated.metadata?.group_size || m.groupSize,
             };
-          }),
+          })),
         }));
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void fetchMessages();
+        }
+      });
+
+    const conversationSyncChannel = supabase
+      .channel(`conversation-sync-${currentConversationId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversations", filter: `id=eq.${currentConversationId}` }, () => {
+        void fetchMessages();
       })
       .subscribe();
 
+    const handleMessagesRefresh = () => {
+      if (document.visibilityState === "visible") {
+        void fetchMessages();
+      }
+    };
+
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void fetchMessages();
+      }
+    }, MESSAGE_RESYNC_INTERVAL);
+
+    window.addEventListener("focus", handleMessagesRefresh);
+    document.addEventListener("visibilitychange", handleMessagesRefresh);
+
     return () => {
+      active = false;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", handleMessagesRefresh);
+      document.removeEventListener("visibilitychange", handleMessagesRefresh);
       supabase.removeChannel(channel);
+      supabase.removeChannel(conversationSyncChannel);
     };
   }, [selectedId]);
 
