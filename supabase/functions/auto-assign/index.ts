@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     }
 
     if (membersErr || !members || members.length === 0) {
-      await logToSystem(supabase, "warn", "لم يتم التوزيع: لا يوجد أعضاء", { conversation_id, error: membersErr?.message, team: targetTeam?.name }, org_id);
+      await logToSystem(supabase, "warn", "لم يتم التوزيع: لا يوجد موظفين (تم استثناء المشرفين والمدراء)", { conversation_id, error: membersErr?.message, team: targetTeam?.name }, org_id);
       return json({ assigned: false, reason: "no_members" });
     }
 
