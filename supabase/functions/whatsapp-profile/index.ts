@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "Unsupported channel type" }), { status: 400, headers: corsHeaders });
   } catch (e) {
     console.error("whatsapp-profile error:", e);
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: e.message, stack: e.stack }), { status: 500, headers: corsHeaders });
   }
 });
 
