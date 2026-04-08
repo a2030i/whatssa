@@ -1230,7 +1230,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
               <span>{customerName || `+${fullPhone}`}</span>
               <span className="mx-1">•</span>
               {isMeta ? <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> : <Wifi className="w-3.5 h-3.5 text-amber-500" />}
-              <span>{selectedChannel.business_name || selectedChannel.display_phone || selectedChannel.evolution_instance_name}</span>
+              <span dir="ltr">{selectedChannel.business_name || selectedChannel.display_phone || selectedChannel.evolution_instance_name}</span>
               <button onClick={() => setStep(channels.length > 1 ? "channel" : "contact")} className="mr-auto text-primary hover:underline text-[11px]">تغيير</button>
             </div>
 
