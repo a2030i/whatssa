@@ -21,6 +21,21 @@ import {
 
 const providers = [
   {
+    key: "lovable_ai",
+    label: "Lovable AI",
+    logo: "✨",
+    description: "مدعوم من المنصة — يتم تفعيله من الإدارة",
+    placeholder: "يتم إدارته من المنصة",
+    managed: true,
+    models: [
+      { value: "google/gemini-3-flash-preview", label: "Gemini Flash (سريع)" },
+      { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (متوازن)" },
+      { value: "google/gemini-2.5-pro", label: "Gemini Pro (متقدم)" },
+      { value: "openai/gpt-5-mini", label: "GPT-5 Mini" },
+    ],
+    docsUrl: "",
+  },
+  {
     key: "openai",
     label: "OpenAI",
     logo: "🤖",
