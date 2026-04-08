@@ -221,11 +221,16 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       // For regular members, also load explicitly granted group access
       let grantedGroupIds = new Set<string>();
       if (isRegularMember && profile) {
-        const { data: groupAccess } = await supabase
+        const { data: groupAccess, error: gaErr } = await supabase
           .from("employee_group_access")
           .select("conversation_id")
           .eq("profile_id", myId);
+        console.log("[INBOX] employee_group_access query:", { myId, groupAccess, gaErr, isRegularMember });
         grantedGroupIds = new Set((groupAccess || []).map((g: any) => g.conversation_id));
+
+        const beforeCount = filteredData.length;
+        const groupConvs = filteredData.filter((c: any) => c.conversation_type === "group");
+        console.log("[INBOX] groups in raw data:", groupConvs.length, "granted:", [...grantedGroupIds]);
 
         filteredData = filteredData.filter((conv: any) => {
           // Explicitly granted group access
@@ -235,6 +240,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           if (!conv.channel_id) return true;
           return accessibleChannelIds.has(conv.channel_id);
         });
+        console.log("[INBOX] filtered:", beforeCount, "->", filteredData.length, "groups after filter:", filteredData.filter((c: any) => c.conversation_type === "group").length);
       }
 
       const mapped: Conversation[] = (filteredData).map((conversation: any) => {
