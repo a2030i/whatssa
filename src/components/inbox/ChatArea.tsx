@@ -316,7 +316,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         // Meta API reaction
         const { data, error } = await invokeCloud("whatsapp-send", {
           body: {
-            phone: conversation.customerPhone,
+            to: conversation.customerPhone,
             channel_id: conversation.channelId,
             type: "reaction",
             reaction_message_id: msg.waMessageId,
@@ -1714,8 +1714,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       const { data: uploadData, error: uploadError } = await invokeCloud("upload-chat-media", {
         body: {
           conversation_id: conversation.id,
-          file_name: `${Date.now()}.webm`,
-          content_type: blob.type || "audio/webm",
+          file_name: `${Date.now()}.${blob.type.includes("ogg") ? "ogg" : blob.type.includes("aac") ? "aac" : blob.type.includes("mp4") ? "m4a" : "webm"}`,
+          content_type: blob.type || "audio/mp4",
           base64,
         },
       });

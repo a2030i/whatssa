@@ -9,6 +9,18 @@ interface VoiceRecorderProps {
 
 const BAR_COUNT = 45;
 
+const getPreferredRecordingMimeType = () => {
+  const candidates = [
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+    "audio/aac",
+    "audio/webm;codecs=opus",
+    "audio/webm",
+  ];
+
+  return candidates.find((mimeType) => MediaRecorder.isTypeSupported(mimeType)) || "";
+};
+
 const VoiceRecorder = ({ onSend, onCancel }: VoiceRecorderProps) => {
   const [phase, setPhase] = useState<"recording" | "preview">("recording");
   const [time, setTime] = useState(0);
@@ -27,6 +39,7 @@ const VoiceRecorder = ({ onSend, onCancel }: VoiceRecorderProps) => {
   const blobRef = useRef<Blob | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recordedBarsRef = useRef<number[]>([]);
+  const mimeTypeRef = useRef<string>(getPreferredRecordingMimeType());
 
   // Start recording on mount
   useEffect(() => {
@@ -90,17 +103,19 @@ const VoiceRecorder = ({ onSend, onCancel }: VoiceRecorderProps) => {
         analyserRef.current = analyser;
 
         // MediaRecorder on processed stream
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : "audio/webm";
+        const mimeType = getPreferredRecordingMimeType();
+        mimeTypeRef.current = mimeType;
         audioChunksRef.current = [];
         recordedBarsRef.current = [];
-        const recorder = new MediaRecorder(destination.stream, { mimeType });
+        const recorder = mimeType
+          ? new MediaRecorder(destination.stream, { mimeType })
+          : new MediaRecorder(destination.stream);
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0) audioChunksRef.current.push(e.data);
         };
         recorder.onstop = () => {
-          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          const resolvedMimeType = mimeType || recorder.mimeType || "audio/mp4";
+          const blob = new Blob(audioChunksRef.current, { type: resolvedMimeType });
           blobRef.current = blob;
           stream.getTracks().forEach(t => t.stop());
           setPreviewBars([...recordedBarsRef.current]);
