@@ -569,11 +569,21 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                     )} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "normal", overflowWrap: "normal" }}>
                       {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                     </p>
-                    {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                      <span className="text-[10px] text-primary/60 leading-none mt-1 block truncate max-w-[100px] font-medium">
-                        {conv.assignedTo.split(" ")[0]}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 mt-1">
+                      {conv.channelName && (
+                        <span className="text-[9px] text-muted-foreground/50 truncate max-w-[80px]">
+                          {conv.channelName}
+                        </span>
+                      )}
+                      {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
+                        <>
+                          {conv.channelName && <span className="text-[9px] text-muted-foreground/30">•</span>}
+                          <span className="text-[10px] text-primary/60 leading-none truncate max-w-[80px] font-medium">
+                            {conv.assignedTo.split(" ")[0]}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Meta */}
