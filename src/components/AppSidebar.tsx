@@ -330,7 +330,7 @@ const AppSidebar = () => {
                   />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="start" className="min-w-[160px]" dir="rtl">
+              <DropdownMenuContent side="top" align="start" className="min-w-[160px]">
                 <DropdownMenuItem
                   onClick={async () => {
                     if (!profile?.id || !orgId) return;
