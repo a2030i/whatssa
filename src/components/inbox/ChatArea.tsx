@@ -435,7 +435,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 <MoreVertical className="w-3 h-3 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align={msg.sender === "agent" ? "start" : "end"} className="min-w-[140px]">
+            <DropdownMenuContent align={msg.sender === "agent" ? "end" : "start"} className="min-w-[140px]">
               {canReply && (
                 <DropdownMenuItem onClick={() => onReply(msg)} className="text-xs gap-2">
                   <Reply className="w-3.5 h-3.5" /> رد
