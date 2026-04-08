@@ -111,6 +111,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailConfigs, setEmailConfigs] = useState<{ id: string; email_address: string; label: string | null }[]>([]);
   const [selectedEmailConfig, setSelectedEmailConfig] = useState<string | null>(null);
+  const loadChannelsRef = useRef<(() => Promise<void>) | null>(null);
 
   const addEmailTo = (val?: string) => {
     const email = (val || emailToInput).trim().toLowerCase();
@@ -213,8 +214,44 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       }
 
       setChannels(connectedChannels);
+      setSelectedChannel((prev) => {
+        if (!connectedChannels.length) return null;
+        if (prev && connectedChannels.some((channel) => channel.id === prev.id)) return prev;
+        return connectedChannels[0];
+      });
     };
+    loadChannelsRef.current = load;
     load();
+
+    const handleRefreshChannels = () => {
+      if (document.visibilityState === "visible") {
+        void load();
+      }
+    };
+
+    const channelsChannel = supabase
+      .channel(`new-conversation-whatsapp-config-${orgId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_config", filter: `org_id=eq.${orgId}` }, () => {
+        void load();
+      })
+      .subscribe();
+
+    window.addEventListener("focus", handleRefreshChannels);
+    document.addEventListener("visibilitychange", handleRefreshChannels);
+
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void load();
+      }
+    }, 12000);
+
+    return () => {
+      loadChannelsRef.current = null;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", handleRefreshChannels);
+      document.removeEventListener("visibilitychange", handleRefreshChannels);
+      supabase.removeChannel(channelsChannel);
+    };
   }, [orgId, open]);
 
   // Load email configs

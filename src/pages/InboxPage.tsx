@@ -82,6 +82,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const [desktopInfoOpen, setDesktopInfoOpen] = useState(false);
   const selectedIdRef = useRef<string | null>(null);
   const deepLinkApplied = useRef(false);
+  const fetchConversationsRef = useRef<(() => Promise<void>) | null>(null);
 
   const isMobile = useIsMobile();
 
@@ -325,18 +326,47 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       setLoading(false);
     };
 
+    fetchConversationsRef.current = fetchConversations;
+
     fetchConversations();
 
-    const channel = supabase
+    const conversationsChannel = supabase
       .channel(`conversations-changes-${currentOrgId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "conversations", filter: `org_id=eq.${currentOrgId}` }, () => {
-        fetchConversations();
+        void fetchConversations();
       })
       .subscribe();
 
+    const channelsChannel = supabase
+      .channel(`whatsapp-config-changes-${currentOrgId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_config", filter: `org_id=eq.${currentOrgId}` }, () => {
+        void fetchConversations();
+      })
+      .subscribe();
+
+    const handleWindowRefresh = () => {
+      if (document.visibilityState === "visible") {
+        void fetchConversations();
+      }
+    };
+
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void fetchConversations();
+      }
+    }, 12000);
+
+    window.addEventListener("focus", handleWindowRefresh);
+    document.addEventListener("visibilitychange", handleWindowRefresh);
+
     return () => {
       active = false;
-      supabase.removeChannel(channel);
+      fetchConversationsRef.current = null;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener("focus", handleWindowRefresh);
+      document.removeEventListener("visibilitychange", handleWindowRefresh);
+      supabase.removeChannel(conversationsChannel);
+      supabase.removeChannel(channelsChannel);
     };
   }, [orgId, authLoading, inboxMode]);
 
@@ -1312,6 +1342,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         onOpenChange={setNewConvOpen}
         templates={templates}
         onConversationCreated={(convId) => {
+          void fetchConversationsRef.current?.();
           setSelectedId(convId);
         }}
       />
