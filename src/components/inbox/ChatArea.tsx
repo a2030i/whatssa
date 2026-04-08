@@ -1446,7 +1446,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         })
     : teamMembers.filter((m) => (m.full_name || "").includes(mentionFilter));
 
-  // 24h window: query actual last INBOUND message across all org channels
+  // 24h window: query actual last INBOUND message across org channels for same customer
   const [realLastInbound, setRealLastInbound] = useState<string | undefined>(conversation.lastCustomerMessageAt);
 
   useEffect(() => {
