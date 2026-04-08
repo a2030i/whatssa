@@ -298,8 +298,12 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           return accessibleChannelIds.has(conv.channelId);
         }
 
-        // Closed conversations: show if closed by this member
-        if (conv.status === "closed" && conv.closedBy === profile?.id) return true;
+        // Closed conversations: show if closed by this member OR belongs to accessible channel
+        if (conv.status === "closed") {
+          if (conv.closedBy === profile?.id) return true;
+          if (conv.channelId && accessibleChannelIds.has(conv.channelId)) return true;
+          return false;
+        }
 
         return false;
       });
