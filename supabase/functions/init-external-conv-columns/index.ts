@@ -8,11 +8,33 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const dbUrl = Deno.env.get("EXTERNAL_SUPABASE_DB_URL");
+  // Try multiple connection formats
+  let dbUrl = Deno.env.get("EXTERNAL_SUPABASE_DB_URL");
   if (!dbUrl) {
     return new Response(JSON.stringify({ error: "EXTERNAL_SUPABASE_DB_URL not set" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+  }
+
+  // If using pooler, try direct connection instead
+  if (dbUrl.includes("pooler.supabase.com")) {
+    // Extract project ref from username (postgres.PROJECT_REF)
+    const match = dbUrl.match(/postgres\.([a-z]+):(.*?)@/);
+    if (match) {
+      const ref = match[1];
+      const pass = match[2];
+      // Try direct connection
+      dbUrl = `postgresql://postgres:${pass}@db.${ref}.supabase.co:5432/postgres`;
+      console.log("Switched to direct connection:", `db.${ref}.supabase.co:5432`);
+    }
+  }
+
+  // Log connection info (masked) for debugging
+  try {
+    const u = new URL(dbUrl);
+    console.log("Connecting to:", u.hostname, "port:", u.port, "user:", u.username, "db:", u.pathname);
+  } catch (e) {
+    console.log("URL parse error:", (e as Error).message);
   }
 
   // Use postgres connection to run DDL
