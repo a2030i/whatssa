@@ -8,6 +8,7 @@ const corsHeaders = {
 const OPENAI_BASE = "https://api.openai.com/v1";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
+const LOVABLE_AI_BASE = "https://ai.gateway.lovable.dev/v1";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -118,13 +119,24 @@ ${correctionsContext}
 ${messagesContext}`;
 
     // 8. Call AI
+    const isLovable = aiConfig.provider === "lovable_ai";
     const result = await chatCompletion(
       aiConfig.provider,
-      aiConfig.api_key,
+      isLovable ? "LOVABLE" : aiConfig.api_key,
       aiConfig.model,
       [{ role: "user", content: customer_message }],
       systemPrompt
     );
+
+    // Log usage for lovable_ai
+    if (isLovable) {
+      await serviceClient.from("ai_usage_logs").insert({
+        org_id: org_id,
+        action: "auto_reply",
+        model: aiConfig.model,
+        tokens_used: 1,
+      });
+    }
 
     if (result.error) {
       return new Response(JSON.stringify({ error: result.error }), {
@@ -149,6 +161,18 @@ async function chatCompletion(
 ) {
   const fullMessages = [{ role: "system", content: systemPrompt }, ...messages];
   try {
+    if (provider === "lovable_ai") {
+      const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!lovableKey) return { error: "LOVABLE_API_KEY غير مُعد" };
+      const res = await fetch(`${LOVABLE_AI_BASE}/chat/completions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: model || "google/gemini-3-flash-preview", messages: fullMessages, max_tokens: 500, temperature: 0.3 }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data?.error?.message || "فشل" };
+      return { reply: data.choices?.[0]?.message?.content || "" };
+    }
     if (provider === "openai") {
       const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
         method: "POST",
