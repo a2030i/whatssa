@@ -26,20 +26,18 @@ const ForceChangePasswordPage = () => {
     }
     setLoading(true);
     try {
-      const { error: pwError } = await supabase.auth.updateUser({ password });
-      if (pwError) throw pwError;
-
-      // Clear the must_change_password flag
-      const { error: metaError } = await supabase.auth.updateUser({
+      // Update password and clear must_change_password in a single call
+      const { error } = await supabase.auth.updateUser({
+        password,
         data: { must_change_password: false },
       });
-      if (metaError) throw metaError;
+      if (error) throw error;
 
       toast.success("تم تغيير كلمة المرور بنجاح — سجّل دخولك بالكلمة الجديدة");
-      // Sign out and redirect to login page
       await supabase.auth.signOut();
-      setTimeout(() => window.location.href = "/auth", 500);
+      window.location.href = "/auth";
     } catch (err: any) {
+      console.error("Password change error:", err);
       toast.error(err.message || "حدث خطأ");
     }
     setLoading(false);
