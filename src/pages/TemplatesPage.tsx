@@ -887,7 +887,7 @@ const TemplatesPage = () => {
           )}
 
           <div className="space-y-4 mt-2">
-            {metaChannels.length > 1 && (
+            {metaChannels.length >= 1 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">{isReviewMode ? "WhatsApp number" : "الرقم الرسمي"}</Label>
                 <Select value={selectedFormChannel} onValueChange={setSelectedFormChannel}>
