@@ -536,23 +536,27 @@ serve(async (req) => {
             }
           }
 
-          let { data: conversation } = await supabase
+          let openQuery = supabase
             .from("conversations")
             .select("id, unread_count, status")
             .eq("customer_phone", customerPhone)
             .eq("org_id", orgId)
-            .neq("status", "closed")
+            .neq("status", "closed");
+          if (channelConfigId) openQuery = openQuery.eq("channel_id", channelConfigId);
+          let { data: conversation } = await openQuery
             .limit(1)
             .maybeSingle();
 
           // If no open conversation, check for a closed one to reopen
           if (!conversation) {
-            const { data: closedConv } = await supabase
+            let closedQuery = supabase
               .from("conversations")
               .select("id, unread_count, status, dedicated_agent_id, dedicated_agent_name")
               .eq("customer_phone", customerPhone)
               .eq("org_id", orgId)
-              .eq("status", "closed")
+              .eq("status", "closed");
+            if (channelConfigId) closedQuery = closedQuery.eq("channel_id", channelConfigId);
+            const { data: closedConv } = await closedQuery
               .order("closed_at", { ascending: false })
               .limit(1)
               .maybeSingle();
