@@ -63,36 +63,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // The effective org_id used throughout the app
   const effectiveOrgId = isImpersonating ? impersonatedOrgId : orgId;
 
+  // Cache to skip re-fetch on rapid auth events
+  const lastFetchRef = { userId: "", ts: 0 };
+
   const fetchUserData = async (userId: string) => {
+    // Skip if same user fetched within last 3 seconds
+    const now = Date.now();
+    if (lastFetchRef.userId === userId && now - lastFetchRef.ts < 3000) return;
+    lastFetchRef.userId = userId;
+    lastFetchRef.ts = now;
+
+    // Fire ALL queries in parallel — no sequential waits
     const [profileRes, roleRes] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
-    if (profileRes.data) {
-      setProfile(profileRes.data);
-      setOrgId(profileRes.data.org_id);
-      if (profileRes.data.org_id) {
-        const [orgRes, metaRes] = await Promise.all([
-          supabase.from("organizations").select("is_ecommerce").eq("id", profileRes.data.org_id).maybeSingle(),
-          supabase.from("whatsapp_config_safe").select("id").eq("org_id", profileRes.data.org_id).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
-        ]);
-        setIsEcommerce(orgRes.data?.is_ecommerce || false);
-        setHasMetaApi(!!metaRes.data);
-      }
+
+    const profileData = profileRes.data;
+    const orgIdVal = profileData?.org_id;
+
+    // Set profile & role immediately (no waiting for org queries)
+    if (profileData) {
+      setProfile(profileData);
+      setOrgId(orgIdVal);
     }
+
+    // Resolve role synchronously
     if (roleRes.data && roleRes.data.length > 0) {
       const roles = roleRes.data.map((r: any) => r.role);
-      const hasSuperAdmin = roles.includes("super_admin");
-      const hasAdmin = roles.includes("admin");
-      const hasMember = roles.includes("member");
-
-      if (hasSuperAdmin) setUserRole("super_admin");
-      else if (hasAdmin && !hasMember) setUserRole("admin");
-      else if (hasMember) setUserRole("member");
-      else if (hasAdmin) setUserRole("admin");
+      if (roles.includes("super_admin")) setUserRole("super_admin");
+      else if (roles.includes("admin") && !roles.includes("member")) setUserRole("admin");
+      else if (roles.includes("member")) setUserRole("member");
+      else if (roles.includes("admin")) setUserRole("admin");
       else setUserRole(roles[0]);
     } else {
       setUserRole("member");
+    }
+
+    // Org-level data in background (non-blocking)
+    if (orgIdVal) {
+      Promise.all([
+        supabase.from("organizations").select("is_ecommerce").eq("id", orgIdVal).maybeSingle(),
+        supabase.from("whatsapp_config_safe").select("id").eq("org_id", orgIdVal).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
+      ]).then(([orgRes, metaRes]) => {
+        setIsEcommerce(orgRes.data?.is_ecommerce || false);
+        setHasMetaApi(!!metaRes.data);
+      });
     }
   };
 
