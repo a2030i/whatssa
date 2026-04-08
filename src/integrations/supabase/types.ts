@@ -292,6 +292,44 @@ export type Database = {
           },
         ]
       }
+      ai_usage_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          model: string | null
+          org_id: string
+          tokens_used: number | null
+          triggered_by: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          org_id: string
+          tokens_used?: number | null
+          triggered_by?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          org_id?: string
+          tokens_used?: number | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_request_logs: {
         Row: {
           created_at: string | null

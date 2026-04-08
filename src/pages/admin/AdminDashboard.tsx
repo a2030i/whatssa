@@ -15,6 +15,7 @@ import AdminMeta from "@/components/admin/AdminMeta";
 import AdminBaileys from "@/components/admin/AdminBaileys";
 import AdminLogs from "@/components/admin/AdminLogs";
 import AdminEmergency from "@/components/admin/AdminEmergency";
+import AdminAiManagement from "@/components/admin/AdminAiManagement";
 
 const tabs = [
   { id: "overview", label: "نظرة عامة" },
@@ -23,6 +24,7 @@ const tabs = [
   { id: "plans", label: "الباقات" },
   { id: "coupons", label: "الكوبونات" },
   { id: "usage", label: "الاستخدام" },
+  { id: "ai", label: "✨ AI" },
   { id: "meta", label: "ربط ميتا" },
   { id: "baileys", label: "سيرفر QR" },
   { id: "logs", label: "السجلات" },
@@ -43,6 +45,7 @@ const AdminDashboard = () => {
       case "plans": return <AdminPlans />;
       case "coupons": return <AdminCoupons />;
       case "usage": return <AdminUsage />;
+      case "ai": return <AdminAiManagement />;
       case "meta": return <AdminMeta />;
       case "baileys": return <AdminBaileys />;
       case "logs": return <AdminLogs />;

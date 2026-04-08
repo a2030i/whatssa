@@ -21,6 +21,21 @@ import {
 
 const providers = [
   {
+    key: "lovable_ai",
+    label: "Lovable AI",
+    logo: "✨",
+    description: "مدعوم من المنصة — يتم تفعيله من الإدارة",
+    placeholder: "يتم إدارته من المنصة",
+    managed: true,
+    models: [
+      { value: "google/gemini-3-flash-preview", label: "Gemini Flash (سريع)" },
+      { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (متوازن)" },
+      { value: "google/gemini-2.5-pro", label: "Gemini Pro (متقدم)" },
+      { value: "openai/gpt-5-mini", label: "GPT-5 Mini" },
+    ],
+    docsUrl: "",
+  },
+  {
     key: "openai",
     label: "OpenAI",
     logo: "🤖",
@@ -81,17 +96,31 @@ interface AiConfig {
 }
 
 const AiProviderSettings = () => {
-  const { orgId } = useAuth();
+  const { orgId, isSuperAdmin } = useAuth();
   const [configs, setConfigs] = useState<AiConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [testing, setTesting] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newProvider, setNewProvider] = useState("openai");
+  const [lovableAiEnabled, setLovableAiEnabled] = useState(false);
 
   useEffect(() => {
-    if (orgId) loadConfigs();
+    if (orgId) {
+      loadConfigs();
+      checkLovableAiEnabled();
+    }
   }, [orgId]);
+
+  const checkLovableAiEnabled = async () => {
+    // Check if Lovable AI is enabled for this org
+    const { data } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", `lovable_ai_enabled_${orgId}`)
+      .maybeSingle();
+    setLovableAiEnabled(data?.value === true || data?.value === "true");
+  };
 
   const loadConfigs = async () => {
     setIsLoading(true);
@@ -114,12 +143,13 @@ const AiProviderSettings = () => {
       return;
     }
 
+    const isManaged = (providerInfo as any).managed;
     const { error } = await supabase.from("ai_provider_configs" as any).insert({
       org_id: orgId,
       provider: newProvider,
-      api_key: "",
+      api_key: isManaged ? "MANAGED_BY_PLATFORM" : "",
       model: providerInfo.models[0].value,
-      is_active: false,
+      is_active: isManaged,
       capabilities: { chat_reply: true, conversation_summary: false, smart_analysis: false },
     } as any);
     if (error) {
@@ -204,7 +234,12 @@ const AiProviderSettings = () => {
   };
 
   const usedProviders = configs.map(c => c.provider);
-  const availableProviders = providers.filter(p => !usedProviders.includes(p.key));
+  const availableProviders = providers.filter(p => {
+    if (usedProviders.includes(p.key)) return false;
+    // Lovable AI only available if super admin enabled it for this org
+    if (p.key === "lovable_ai" && !lovableAiEnabled && !isSuperAdmin) return false;
+    return true;
+  });
 
   return (
     <div className="bg-card rounded-lg shadow-card">
@@ -305,7 +340,13 @@ const AiProviderSettings = () => {
                   </div>
                 </div>
 
-                {/* API Key */}
+                {/* API Key - hide for managed providers */}
+                {(providerInfo as any).managed ? (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                    <p className="text-xs text-primary font-medium">✨ مُدار من المنصة — لا يحتاج مفتاح API</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">يتم احتساب الاستهلاك على وحدات المنصة</p>
+                  </div>
+                ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs">مفتاح API</Label>
@@ -374,6 +415,7 @@ const AiProviderSettings = () => {
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Test Connection */}
                 <div className="flex items-center gap-3">
