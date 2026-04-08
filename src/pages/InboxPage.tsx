@@ -297,6 +297,9 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         ? profile.team_ids
         : profile?.team_id ? [profile.team_id] : [];
       const filtered = isAdmin ? mapped : mapped.filter(conv => {
+        // Granted group access always visible
+        if (grantedGroupIds.has(conv.id)) return true;
+
         // No team assigned to user → show all (legacy behavior)
         if (myTeamIdsList.length === 0 && !teamId) return true;
 
