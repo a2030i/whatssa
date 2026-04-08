@@ -77,6 +77,7 @@ Deno.serve(async (req) => {
       org_id: callerProfile.org_id,
       full_name,
       team_id: primaryTeamId,
+      team_ids: resolvedTeamIds,
       is_active: true,
       is_supervisor: isSupervisor,
     }).eq("id", userId);
@@ -100,13 +101,7 @@ Deno.serve(async (req) => {
 
     // If multiple teams, insert into team_members junction table if it exists,
     // otherwise we just use primary team_id
-    if (resolvedTeamIds.length > 1) {
-      // Try adding to additional teams via profile updates or a junction approach
-      // For now, store additional teams in profile metadata
-      await adminClient.from("profiles").update({
-        additional_team_ids: resolvedTeamIds.slice(1),
-      }).eq("id", userId);
-    }
+    // Additional teams already saved via team_ids array above
 
     // Generate recovery link
     const { data: linkData } = await adminClient.auth.admin.generateLink({
