@@ -259,7 +259,7 @@ async function findConversationByIdentity(
 
   let query = client
     .from("conversations")
-    .select("id, unread_count, status, dedicated_agent_id, dedicated_agent_name")
+    .select("id, unread_count, status")
     .eq("org_id", orgId)
     .eq("conversation_type", conversationType)
     .eq("customer_phone", identity);
@@ -267,10 +267,11 @@ async function findConversationByIdentity(
   if (channelId) query = query.eq("channel_id", channelId);
   query = status === "closed" ? query.eq("status", "closed") : query.neq("status", "closed");
 
-  const { data } = await query
+  const { data, error } = await query
     .order(status === "closed" ? "closed_at" : "updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) console.error("findConversation error:", error.message);
 
   return data;
 }
