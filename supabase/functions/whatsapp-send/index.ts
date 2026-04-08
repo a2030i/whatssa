@@ -673,7 +673,7 @@ serve(async (req) => {
       }
     }
 
-    return json({ success: true, message_id: waMessageId });
+    return json({ success: true, message_id: waMessageId, conversation_id: conversation?.id || null });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     await logToSystem(adminClient, "critical", `خطأ غير متوقع في إرسال رسالة واتساب`, {
