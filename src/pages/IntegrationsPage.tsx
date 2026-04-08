@@ -81,7 +81,7 @@ type OnboardingMode = "new" | "migrate_app" | "migrate_provider";
 type FlowStep = "idle" | "choose_type" | "checklist" | "migration_info" | "connecting" | "pick_phone" | "migration_prereqs" | "success" | "error" | "manual_token";
 
 const IntegrationsPage = () => {
-  const { orgId, isSuperAdmin, isImpersonating } = useAuth();
+  const { orgId, isSuperAdmin, isImpersonating, isLoading: authLoading } = useAuth();
   const [configs, setConfigs] = useState<WhatsAppConfig[]>([]);
   const [maxPhones, setMaxPhones] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -304,8 +304,8 @@ const IntegrationsPage = () => {
   }, [metaSettingsLoaded, metaAppId]);
 
   useEffect(() => {
-    if (orgId) loadConfigs();
-  }, [orgId]);
+    if (!authLoading && orgId) loadConfigs();
+  }, [orgId, authLoading]);
 
   // Smart recovery: when in "connecting" state, poll to detect popup closure
   // If FB.login callback never fired, try recovering the token or check DB
