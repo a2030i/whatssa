@@ -607,12 +607,29 @@ serve(async (req) => {
                   }
                 }
                 if (!smartReassigned) {
-                  // Normal: reset to unassigned
-                  reopenUpdate.assigned_to_id = null;
-                  reopenUpdate.assigned_to = null;
-                  reopenUpdate.assigned_team_id = null;
-                  reopenUpdate.assigned_team = null;
-                  reopenUpdate.assigned_at = null;
+                  // Re-apply channel routing if configured
+                  if (channelDefaultAgentId) {
+                    const { data: agentData } = await supabase.from("profiles").select("full_name").eq("id", channelDefaultAgentId).maybeSingle();
+                    reopenUpdate.assigned_to_id = channelDefaultAgentId;
+                    reopenUpdate.assigned_to = agentData?.full_name || null;
+                    reopenUpdate.assigned_at = new Date().toISOString();
+                    reopenUpdate.assigned_team_id = null;
+                    reopenUpdate.assigned_team = null;
+                  } else if (channelDefaultTeamId) {
+                    const { data: teamData } = await supabase.from("teams").select("name").eq("id", channelDefaultTeamId).maybeSingle();
+                    reopenUpdate.assigned_to_id = null;
+                    reopenUpdate.assigned_to = null;
+                    reopenUpdate.assigned_team_id = channelDefaultTeamId;
+                    reopenUpdate.assigned_team = teamData?.name || null;
+                    reopenUpdate.assigned_at = null;
+                  } else {
+                    // No routing: reset to unassigned
+                    reopenUpdate.assigned_to_id = null;
+                    reopenUpdate.assigned_to = null;
+                    reopenUpdate.assigned_team_id = null;
+                    reopenUpdate.assigned_team = null;
+                    reopenUpdate.assigned_at = null;
+                  }
                 }
               }
               if (channelConfigId) reopenUpdate.channel_id = channelConfigId;
