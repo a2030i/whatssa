@@ -320,11 +320,24 @@ serve(async (req) => {
       const mType = media_type || "image";
       let mediaId: string | null = null;
 
-      // If media_url is a storage path, download and upload to Meta
+      // If media_url is a storage path, download from the primary storage first,
+      // then fall back to legacy cloud storage if needed.
       if (media_url && media_url.startsWith("storage:chat-media/")) {
         const path = media_url.replace("storage:chat-media/", "");
-          const { data: fileData, error: dlError } = await storageClient.storage.from("chat-media").download(path);
-        if (dlError || !fileData) {
+        let fileData: Blob | null = null;
+
+        const { data: primaryFile } = await adminClient.storage.from("chat-media").download(path);
+        if (primaryFile) {
+          fileData = primaryFile;
+        } else {
+          const { data: legacyFile, error: dlError } = await storageClient.storage.from("chat-media").download(path);
+          if (legacyFile) fileData = legacyFile;
+          if (dlError && !legacyFile) {
+            console.error("Storage download error:", dlError);
+          }
+        }
+
+        if (!fileData) {
           return json({ error: "فشل تحميل الملف من التخزين" }, 400);
         }
         const bytes = new Uint8Array(await fileData.arrayBuffer());
@@ -524,6 +537,8 @@ serve(async (req) => {
       conversation = data;
     }
 
+    let outboundContent = message || caption || "";
+
     if (conversation) {
       let content = message || "";
       let msgType = "text";
@@ -606,6 +621,7 @@ serve(async (req) => {
         }
 
         await adminClient.from("messages").insert(msgInsert);
+        outboundContent = content;
 
         await adminClient
           .from("conversations")
@@ -626,7 +642,7 @@ serve(async (req) => {
         fetch(`${baseUrl}/functions/v1/dispatch-webhook`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${svcKey}` },
-          body: JSON.stringify({ org_id: orgId, event: "message.sent", data: { conversation_id: conversation_id, phone: to, content, message_id: waMessageId } }),
+          body: JSON.stringify({ org_id: orgId, event: "message.sent", data: { conversation_id: conversation_id, phone: to, content: outboundContent, message_id: waMessageId } }),
         }).catch(() => {});
       }
     }
