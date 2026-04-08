@@ -458,6 +458,48 @@ const KnowledgeBaseManager = () => {
                 </SelectContent>
               </Select>
             </div>
+            {/* Channel linking */}
+            {channels.length > 0 && (
+              <div>
+                <label className="text-xs font-medium mb-1 block flex items-center gap-1">
+                  <Phone className="w-3.5 h-3.5" />
+                  القنوات المرتبطة
+                </label>
+                <p className="text-[10px] text-muted-foreground mb-2">اختر القنوات التي يظهر فيها هذا المحتوى (اتركه فارغاً = كل القنوات)</p>
+                <div className="space-y-1.5 bg-muted/30 rounded-lg p-2">
+                  <div
+                    className="flex items-center gap-2 cursor-pointer"
+                    onClick={() => setForm(p => ({ ...p, channelIds: [] }))}
+                  >
+                    <Checkbox checked={form.channelIds.length === 0} onCheckedChange={() => setForm(p => ({ ...p, channelIds: [] }))} />
+                    <span className="text-xs flex items-center gap-1">
+                      <Globe className="w-3 h-3 text-primary" /> كل القنوات (عام)
+                    </span>
+                  </div>
+                  {channels.map(ch => (
+                    <div
+                      key={ch.id}
+                      className="flex items-center gap-2 cursor-pointer"
+                      onClick={() => {
+                        setForm(p => {
+                          const has = p.channelIds.includes(ch.id);
+                          return { ...p, channelIds: has ? p.channelIds.filter(id => id !== ch.id) : [...p.channelIds, ch.id] };
+                        });
+                      }}
+                    >
+                      <Checkbox checked={form.channelIds.includes(ch.id)} onCheckedChange={() => {
+                        setForm(p => {
+                          const has = p.channelIds.includes(ch.id);
+                          return { ...p, channelIds: has ? p.channelIds.filter(id => id !== ch.id) : [...p.channelIds, ch.id] };
+                        });
+                      }} />
+                      <span className="text-xs">{ch.label}</span>
+                      <Badge variant="secondary" className="text-[9px] px-1 py-0">{ch.channel_type === "evolution" ? "QR" : "Meta"}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <label className="text-xs font-medium mb-1 block">المحتوى</label>
               <Textarea
