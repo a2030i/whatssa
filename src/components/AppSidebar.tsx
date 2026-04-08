@@ -120,7 +120,7 @@ const roleLabels: Record<string, string> = {
 const AppSidebar = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, signOut } = useAuth();
+  const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, orgId, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const displayRole = userRole === "super_admin"
     ? "super_admin"
