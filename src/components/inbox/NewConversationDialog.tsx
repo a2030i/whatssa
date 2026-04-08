@@ -515,7 +515,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   };
 
   const handleSend = async () => {
-    if (!selectedChannel || !isValidNumber) return;
+    if (!selectedChannel || !isValidNumber || !orgId) return;
 
     setSending(true);
     try {
