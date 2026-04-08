@@ -3,7 +3,7 @@ import {
   MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X,
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
-  Database, Mail, Brain,
+  Database, Mail, Brain, Sparkles,
   Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock, ClipboardList,
   Workflow, Send, Warehouse, DollarSign, Package, ClipboardCheck, Ticket
 } from "lucide-react";
@@ -81,6 +81,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
     items: [
       { label: "التكاملات", icon: Plug, path: "/integrations", emoji: "🔗", minRole: "admin" },
       { label: "الذكاء الاصطناعي", icon: Brain, path: "/ai-settings", emoji: "🤖", minRole: "admin" },
+      { label: "استوديو AI", icon: Sparkles, path: "/ai-studio", emoji: "✨", minRole: "admin" },
       { label: "أدوات النمو", icon: Zap, path: "/growth-tools", emoji: "🚀", minRole: "admin" },
       { label: "الفريق والصلاحيات", icon: Users, path: "/team", emoji: "👤", minRole: "supervisor" },
       { label: "الإشعارات", icon: Bell, path: "/settings", emoji: "🔔", minRole: "admin" },

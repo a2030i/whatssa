@@ -559,6 +559,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       hasUnread ? "font-bold text-foreground" : "font-semibold text-foreground/80"
                     )} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "normal", overflowWrap: "normal" }}>
                       {conv.isPinned && <Pin className="w-2.5 h-2.5 text-primary/50 shrink-0 rotate-45" />}
+                      {conv.channelType === "meta_api" && <ShieldCheck className="w-3 h-3 text-primary shrink-0" />}
                       {conv.channelType === "email" && <Mail className="w-3 h-3 text-primary/60 shrink-0" />}
                       {conv.channelType === "evolution" && <Wifi className="w-3 h-3 text-warning/60 shrink-0" />}
                       <span className="truncate">{displayName}</span>
@@ -570,6 +571,9 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       {conv.lastMessage || (conv.conversationType === "group" ? "محادثة جماعية" : "لا توجد رسائل بعد")}
                     </p>
                     <div className="flex items-center gap-1 mt-1">
+                      {conv.channelType === "meta_api" && (
+                        <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded leading-none">Meta</span>
+                      )}
                       {conv.channelName && (
                         <span className="text-[9px] text-muted-foreground/50 truncate max-w-[80px]">
                           {conv.channelName}
@@ -577,7 +581,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       )}
                       {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
                         <>
-                          {conv.channelName && <span className="text-[9px] text-muted-foreground/30">•</span>}
+                          {(conv.channelName || conv.channelType === "meta_api") && <span className="text-[9px] text-muted-foreground/30">•</span>}
                           <span className="text-[10px] text-primary/60 leading-none truncate max-w-[80px] font-medium">
                             {conv.assignedTo.split(" ")[0]}
                           </span>
