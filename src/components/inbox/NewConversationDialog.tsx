@@ -460,31 +460,35 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setChecking24h(true);
       try {
         const twentyFourAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { data: recentConv } = await supabase
+        
+        // Search across all conversations for this phone (with or without channel_id)
+        const { data: recentConvs } = await supabase
           .from("conversations")
-          .select("id, last_message_at, last_message_sender")
+          .select("id, last_message_at, last_message_sender, channel_id")
           .eq("org_id", orgId)
           .eq("customer_phone", fullPhone)
-          .eq("channel_id", ch.id)
+          .eq("conversation_type", "private")
           .gte("last_message_at", twentyFourAgo)
           .order("last_message_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .limit(5);
 
-        if (recentConv) {
-          // Check if customer sent a message within 24h
-          const { data: incomingMsg } = await supabase
-            .from("messages")
-            .select("id")
-            .eq("conversation_id", recentConv.id)
-            .eq("sender", "customer")
-            .gte("created_at", twentyFourAgo)
-            .limit(1)
-            .maybeSingle();
+        if (recentConvs && recentConvs.length > 0) {
+          // Check if customer sent a message within 24h in ANY of these conversations
+          for (const conv of recentConvs) {
+            const { data: incomingMsg } = await supabase
+              .from("messages")
+              .select("id")
+              .eq("conversation_id", conv.id)
+              .eq("sender", "customer")
+              .gte("created_at", twentyFourAgo)
+              .limit(1)
+              .maybeSingle();
 
-          if (incomingMsg) {
-            setHas24hWindow(true);
-            setUseTemplateFallback(false);
+            if (incomingMsg) {
+              setHas24hWindow(true);
+              setUseTemplateFallback(false);
+              break;
+            }
           }
         }
       } catch {
@@ -539,7 +543,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       let conversationId = existingConv?.id;
 
       if (isMeta && selectedTemplate) {
-        const { data, error } = await invokeCloud("whatsapp-send", {
+        const result = await invokeCloud("whatsapp-send", {
           body: {
             to: cleanPhone,
             type: "template",
@@ -551,11 +555,13 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             customer_name: customerName || cleanPhone,
           },
         });
-        if (error || data?.error) throw new Error(data?.error || "فشل إرسال القالب");
+        const data = result?.data;
+        const error = result?.error;
+        if (error || data?.error) throw new Error(data?.error || error?.message || "فشل إرسال القالب");
         // Edge function may return conversation_id if it created one
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (!isMeta && messageText.trim()) {
-        const { data, error } = await invokeCloud("evolution-send", {
+        const result = await invokeCloud("evolution-send", {
           body: {
             to: cleanPhone,
             message: messageText,
@@ -564,6 +570,8 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             customer_name: customerName || cleanPhone,
           },
         });
+        const data = result?.data;
+        const error = result?.error;
         if (data?.safety_paused) {
           toast.warning("⛔ الإرسال متوقف مؤقتاً لحماية الرقم. الرسالة ستُعلّق ⏳ وترسل تلقائياً فور تجدد الحد.", {
             duration: 10000,
@@ -571,7 +579,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           });
           if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
         } else if (error || data?.error) {
-          throw new Error(data?.error || "فشل إرسال الرسالة");
+          throw new Error(data?.error || error?.message || "فشل إرسال الرسالة");
         } else {
           if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
         }
@@ -579,7 +587,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (isMeta && !useTemplateFallback && messageText.trim()) {
         // 24h window - send free-form text via whatsapp-send
-        const { data, error } = await invokeCloud("whatsapp-send", {
+        const result = await invokeCloud("whatsapp-send", {
           body: {
             to: cleanPhone,
             type: "text",
@@ -589,7 +597,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             customer_name: customerName || cleanPhone,
           },
         });
-        if (error || data?.error) throw new Error(data?.error || "فشل إرسال الرسالة");
+        const data = result?.data;
+        const error = result?.error;
+        if (error || data?.error) throw new Error(data?.error || error?.message || "فشل إرسال الرسالة");
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (isMeta && useTemplateFallback && !selectedTemplate) {
         toast.error("يجب اختيار قالب للقناة الرسمية");
