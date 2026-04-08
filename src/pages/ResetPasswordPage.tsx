@@ -7,8 +7,10 @@ import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, CheckCircle2, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import respondlyLogo from "@/assets/respondly-logo.png";
+import { useAuthReady, waitForAuthSession } from "@/hooks/useAuthReady";
 
 const ResetPasswordPage = () => {
+  const { isReady, session } = useAuthReady();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -19,24 +21,27 @@ const ResetPasswordPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Listen for the PASSWORD_RECOVERY event from the auth URL hash
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setIsValidSession(true);
-        setChecking(false);
-      }
-    });
+    let isMounted = true;
 
-    // Also check if user already has a valid session (came from recovery link)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setIsValidSession(true);
-      }
+    const syncRecoverySession = async () => {
+      if (!isReady) return;
+
+      const hash = window.location.hash;
+      const expectsRecoverySession = hash.includes("type=recovery") || hash.includes("access_token=");
+      const activeSession = session ?? (expectsRecoverySession ? await waitForAuthSession() : null);
+
+      if (!isMounted) return;
+
+      setIsValidSession(!!activeSession);
       setChecking(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
-  }, []);
+    syncRecoverySession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isReady, session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +55,11 @@ const ResetPasswordPage = () => {
     }
     setIsLoading(true);
     try {
+      const activeSession = session ?? (await waitForAuthSession());
+      if (!activeSession) {
+        throw new Error("جلسة إعادة التعيين غير جاهزة بعد، افتح الرابط مرة أخرى أو انتظر ثانية");
+      }
+
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setIsSuccess(true);
