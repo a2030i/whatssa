@@ -154,6 +154,7 @@ const TeamPage = () => {
       setFormRole("member");
     }
     setFormEmail("");
+    setFormShiftId(employeeShifts[profile.id] || "");
     setDialogOpen(true);
   };
 
