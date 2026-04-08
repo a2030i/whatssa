@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff, CheckSquare, Square, Mail, Send, UserCheck } from "lucide-react";
 import BulkActionsBar from "./BulkActionsBar";
@@ -85,6 +85,27 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const isMobile = useIsMobile();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const savedScrollRef = useRef(0);
+
+  // Save scroll position continuously
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const onScroll = () => { savedScrollRef.current = el.scrollTop; };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Restore scroll position after conversations update (polling)
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (el && savedScrollRef.current > 0) {
+      requestAnimationFrame(() => {
+        el.scrollTop = savedScrollRef.current;
+      });
+    }
+  }, [conversations]);
 
   const loadCustomInboxes = async () => {
     if (!orgId) return;
@@ -469,7 +490,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       )}
 
       {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto px-3 pt-1 pb-2 border-t border-primary/15">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 pt-1 pb-2 border-t border-primary/15">
         {activeQuickFilter === "groups" && filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center mb-3">
