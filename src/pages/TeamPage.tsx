@@ -891,10 +891,10 @@ const TeamPage = () => {
               <Label className="text-xs flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-primary" /> الشفت
               </Label>
-              <Select value={formShiftId} onValueChange={setFormShiftId}>
+              <Select value={formShiftId || "__none__"} onValueChange={(v) => setFormShiftId(v === "__none__" ? "" : v)}>
                 <SelectTrigger className="bg-secondary border-0 text-xs"><SelectValue placeholder="بدون شفت" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="" className="text-xs">بدون شفت</SelectItem>
+                  <SelectItem value="__none__" className="text-xs">بدون شفت</SelectItem>
                   {shiftTemplates.map(s => (
                     <SelectItem key={s.id} value={s.id} className="text-xs">
                       {s.name_ar} ({s.start_time?.slice(0, 5)} - {s.end_time?.slice(0, 5)})
