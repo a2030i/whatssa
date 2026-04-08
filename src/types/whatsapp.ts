@@ -32,6 +32,9 @@ export interface WhatsAppTemplate {
   headerVariableCount: number;
   bodyVariableCount: number;
   components?: WhatsAppTemplateComponent[];
+  channelId?: string;
+  channelPhone?: string;
+  channelName?: string;
 }
 
 const placeholderRegex = /\{\{\d+\}\}/g;
@@ -75,6 +78,9 @@ export const mapMetaTemplate = (template: any): WhatsAppTemplate => {
     headerVariableCount,
     bodyVariableCount,
     components,
+    channelId: template?.channel_id || undefined,
+    channelPhone: template?.channel_phone || undefined,
+    channelName: template?.channel_name || undefined,
   };
 };
 

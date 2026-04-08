@@ -325,6 +325,13 @@ const TemplateAnalytics = ({ isReviewMode }: { isReviewMode: boolean }) => {
   );
 };
 
+interface MetaChannel {
+  id: string;
+  display_phone: string;
+  business_name: string | null;
+  channel_label: string | null;
+}
+
 const TemplatesPage = () => {
   const { isSuperAdmin } = useAuth();
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
@@ -334,6 +341,7 @@ const TemplatesPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [channelFilter, setChannelFilter] = useState("all");
   const [previewTemplate, setPreviewTemplate] = useState<WhatsAppTemplate | null>(null);
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WhatsAppTemplate | null>(null);
@@ -347,6 +355,8 @@ const TemplatesPage = () => {
   const [testPhone, setTestPhone] = useState("");
   const [testVariables, setTestVariables] = useState<string[]>([]);
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [metaChannels, setMetaChannels] = useState<MetaChannel[]>([]);
+  const [selectedFormChannel, setSelectedFormChannel] = useState<string>("");
 
   useEffect(() => {
     setIsReviewMode(window.localStorage.getItem("meta-review-mode") === "1");
@@ -360,12 +370,20 @@ const TemplatesPage = () => {
     if (showRefreshState) setIsRefreshing(true);
     else setIsLoading(true);
 
-    const { data, error } = await invokeCloud("whatsapp-templates", {
-      body: { action: "list" },
-    });
+    // Load channels and templates in parallel
+    const [channelsRes, templatesRes] = await Promise.all([
+      invokeCloud("whatsapp-templates", { body: { action: "channels" } }),
+      invokeCloud("whatsapp-templates", { body: { action: "list_all" } }),
+    ]);
 
-    if (error || data?.error) {
-      const errMsg = data?.error || "";
+    // Process channels
+    if (!channelsRes.error && channelsRes.data?.channels) {
+      setMetaChannels(channelsRes.data.channels);
+    }
+
+    // Process templates
+    if (templatesRes.error || templatesRes.data?.error) {
+      const errMsg = templatesRes.data?.error || "";
       if (errMsg.toLowerCase().includes("whatsapp") || errMsg.includes("واتساب")) {
         setNoWhatsApp(true);
       } else {
@@ -374,7 +392,7 @@ const TemplatesPage = () => {
       setTemplates([]);
     } else {
       setNoWhatsApp(false);
-      setTemplates((data?.templates || []).map(mapMetaTemplate));
+      setTemplates((templatesRes.data?.templates || []).map(mapMetaTemplate));
     }
 
     setIsLoading(false);
@@ -391,19 +409,22 @@ const TemplatesPage = () => {
       if (query && !template.name.toLowerCase().includes(query) && !template.body.toLowerCase().includes(query)) return false;
       if (categoryFilter !== "all" && template.category !== categoryFilter) return false;
       if (statusFilter !== "all" && template.status !== statusFilter) return false;
+      if (channelFilter !== "all" && template.channelId !== channelFilter) return false;
       return true;
     });
-  }, [templates, searchQuery, categoryFilter, statusFilter]);
+  }, [templates, searchQuery, categoryFilter, statusFilter, channelFilter]);
 
   const openCreateDialog = () => {
     setEditingTemplate(null);
     setFormData(emptyForm);
     setShowSuggestions(false);
+    setSelectedFormChannel(metaChannels.length === 1 ? metaChannels[0].id : "");
     setShowFormDialog(true);
   };
 
   const openEditDialog = (template: WhatsAppTemplate) => {
     setEditingTemplate(template);
+    setSelectedFormChannel(template.channelId || metaChannels[0]?.id || "");
     setFormData({
       name: template.name,
       category: template.category,
@@ -432,12 +453,18 @@ const TemplatesPage = () => {
       return;
     }
 
+    if (metaChannels.length > 1 && !selectedFormChannel) {
+      toast.error(isReviewMode ? "Please select a WhatsApp number" : "يرجى اختيار الرقم الرسمي");
+      return;
+    }
+
     setIsSubmitting(true);
     const action = editingTemplate ? "edit" : "create";
 
     const { data, error } = await invokeCloud("whatsapp-templates", {
       body: {
         action,
+        channel_id: selectedFormChannel || undefined,
         name: formData.name.trim(),
         category: formData.category,
         header_type: formData.headerType,
@@ -478,7 +505,7 @@ const TemplatesPage = () => {
     setIsDeleting(true);
 
     const { data, error } = await invokeCloud("whatsapp-templates", {
-      body: { action: "delete", name: deleteTarget.name },
+      body: { action: "delete", name: deleteTarget.name, channel_id: deleteTarget.channelId || undefined },
     });
 
     if (error || data?.error) {
@@ -510,6 +537,7 @@ const TemplatesPage = () => {
         template_name: sendTarget.name,
         template_language: sendTarget.language,
         template_components: buildTemplateComponents(sendTarget, testVariables),
+        channel_id: sendTarget.channelId || undefined,
       },
     });
 
@@ -675,6 +703,21 @@ const TemplatesPage = () => {
                 <SelectItem value="rejected">{activeStatusLabels.rejected}</SelectItem>
               </SelectContent>
             </Select>
+            {metaChannels.length > 1 && (
+              <Select value={channelFilter} onValueChange={setChannelFilter}>
+                <SelectTrigger className="w-[200px] text-xs bg-secondary border-0">
+                  <SelectValue placeholder={isReviewMode ? "Channel" : "الرقم"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{isReviewMode ? "All numbers" : "كل الأرقام"}</SelectItem>
+                  {metaChannels.map((ch) => (
+                    <SelectItem key={ch.id} value={ch.id}>
+                      {ch.channel_label || ch.business_name || ch.display_phone}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -773,7 +816,9 @@ const TemplatesPage = () => {
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                         <Globe className="w-3 h-3" /> {template.language === "ar" ? (isReviewMode ? "Arabic" : "عربي") : template.language}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">Meta</span>
+                      <span className="text-[10px] text-muted-foreground truncate max-w-[50%]" dir="ltr">
+                        {template.channelName || "Meta"}
+                      </span>
                     </div>
                   </div>
                 );
@@ -842,6 +887,26 @@ const TemplatesPage = () => {
           )}
 
           <div className="space-y-4 mt-2">
+            {metaChannels.length > 1 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">{isReviewMode ? "WhatsApp number" : "الرقم الرسمي"}</Label>
+                <Select value={selectedFormChannel} onValueChange={setSelectedFormChannel}>
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder={isReviewMode ? "Select number..." : "اختر الرقم..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metaChannels.map((ch) => (
+                      <SelectItem key={ch.id} value={ch.id}>
+                        {ch.channel_label || ch.business_name || ch.display_phone}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  {isReviewMode ? "Select which WhatsApp Business Account to create the template in." : "اختر أي حساب واتساب رسمي ستُنشئ فيه القالب"}
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">{isReviewMode ? "Template name" : "اسم القالب"}</Label>

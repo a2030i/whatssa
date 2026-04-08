@@ -121,7 +121,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       }
 
       const { data, error } = await invokeCloud("whatsapp-templates", {
-        body: { action: "list" },
+        body: { action: "list_all" },
       });
 
       if (!error && !data?.error) {

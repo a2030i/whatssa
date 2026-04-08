@@ -18,7 +18,7 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-async function getUserContext(req: Request) {
+async function getUserContext(req: Request, body: Record<string, unknown>) {
   const authorization = req.headers.get("Authorization") || "";
   if (!authorization.startsWith("Bearer ")) return { error: json({ error: "Unauthorized" }, 401) };
 
@@ -38,19 +38,38 @@ async function getUserContext(req: Request) {
 
   if (!profile?.org_id) return { error: json({ error: "لا توجد مؤسسة مرتبطة بهذا الحساب" }, 400) };
 
-  const { data: config } = await adminClient
+  // If channel_id provided, use that specific channel
+  const channelId = body?.channel_id ? String(body.channel_id).trim() : null;
+
+  if (channelId) {
+    const { data: config } = await adminClient
+      .from("whatsapp_config")
+      .select("id, business_account_id, access_token, display_phone, business_name, channel_label")
+      .eq("id", channelId)
+      .eq("org_id", profile.org_id)
+      .eq("is_connected", true)
+      .eq("channel_type", "meta_api")
+      .maybeSingle();
+
+    if (!config) return { error: json({ error: "القناة المحددة غير متصلة أو غير موجودة" }, 400) };
+    return { adminClient, userId, orgId: profile.org_id, config };
+  }
+
+  // No channel_id: get all connected meta channels
+  const { data: configs } = await adminClient
     .from("whatsapp_config")
-    .select("business_account_id, access_token")
+    .select("id, business_account_id, access_token, display_phone, business_name, channel_label")
     .eq("org_id", profile.org_id)
     .eq("is_connected", true)
     .eq("channel_type", "meta_api")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: true });
 
-  if (!config) return { error: json({ error: "لا يوجد رقم واتساب مربوط عبر WhatsApp Cloud API. القوالب تتطلب ربط رقم عبر Meta API الرسمي", meta_configured: false, templates: [] }) };
+  if (!configs || configs.length === 0) {
+    return { error: json({ error: "لا يوجد رقم واتساب مربوط عبر WhatsApp Cloud API. القوالب تتطلب ربط رقم عبر Meta API الرسمي", meta_configured: false, templates: [] }) };
+  }
 
-  return { adminClient, userId, orgId: profile.org_id, config };
+  // Return first config as default, but also all configs
+  return { adminClient, userId, orgId: profile.org_id, config: configs[0], allConfigs: configs };
 }
 
 serve(async (req) => {
@@ -65,14 +84,55 @@ serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const action = body?.action;
 
-  if (!["list", "create", "edit", "delete", "get"].includes(action)) {
+  if (!["list", "list_all", "create", "edit", "delete", "get", "channels"].includes(action)) {
     return json({ error: "Invalid action" }, 400);
   }
 
-  const context = await getUserContext(req);
+  // Special action: list available meta channels
+  if (action === "channels") {
+    const context = await getUserContext(req, body);
+    if ("error" in context) return context.error;
+    const allConfigs = (context as any).allConfigs || [context.config];
+    return json({
+      channels: allConfigs.map((c: any) => ({
+        id: c.id,
+        display_phone: c.display_phone,
+        business_name: c.business_name,
+        channel_label: c.channel_label,
+      })),
+    });
+  }
+
+  const context = await getUserContext(req, body);
   if ("error" in context) return context.error;
 
   const { config } = context;
+
+  // ── List all templates across all channels ──
+  if (action === "list_all") {
+    const allConfigs = (context as any).allConfigs || [config];
+    const allTemplates: any[] = [];
+
+    for (const cfg of allConfigs) {
+      const response = await fetch(
+        `https://graph.facebook.com/v21.0/${cfg.business_account_id}/message_templates?fields=id,name,status,language,category,components&limit=250`,
+        { headers: { Authorization: `Bearer ${cfg.access_token}` } },
+      );
+      const result = await response.json();
+      if (response.ok && result.data) {
+        for (const t of result.data) {
+          allTemplates.push({
+            ...t,
+            channel_id: cfg.id,
+            channel_phone: cfg.display_phone,
+            channel_name: cfg.channel_label || cfg.business_name || cfg.display_phone,
+          });
+        }
+      }
+    }
+
+    return json({ templates: allTemplates });
+  }
 
   if (action === "list") {
     const response = await fetch(
@@ -87,7 +147,15 @@ serve(async (req) => {
       return json({ error: result?.error?.message || "تعذر جلب القوالب من Meta" }, response.status);
     }
 
-    return json({ templates: result.data || [] });
+    // Attach channel info to each template
+    const templates = (result.data || []).map((t: any) => ({
+      ...t,
+      channel_id: config.id,
+      channel_phone: config.display_phone,
+      channel_name: (config as any).channel_label || config.business_name || config.display_phone,
+    }));
+
+    return json({ templates });
   }
 
   // ── Get single template ──
@@ -189,6 +257,7 @@ serve(async (req) => {
     return json({ success: true, template: createResult });
   }
 
+  // ── Create template ──
   const name = String(body?.name || "").trim().toLowerCase();
   const category = String(body?.category || "UTILITY").trim().toUpperCase();
   const language = String(body?.language || "ar").trim();
