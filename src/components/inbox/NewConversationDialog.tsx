@@ -587,7 +587,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (isMeta && !useTemplateFallback && messageText.trim()) {
         // 24h window - send free-form text via whatsapp-send
-        const { data, error } = await invokeCloud("whatsapp-send", {
+        const result = await invokeCloud("whatsapp-send", {
           body: {
             to: cleanPhone,
             type: "text",
@@ -597,7 +597,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
             customer_name: customerName || cleanPhone,
           },
         });
-        if (error || data?.error) throw new Error(data?.error || "فشل إرسال الرسالة");
+        const data = result?.data;
+        const error = result?.error;
+        if (error || data?.error) throw new Error(data?.error || error?.message || "فشل إرسال الرسالة");
         if (!conversationId && data?.conversation_id) conversationId = data.conversation_id;
       } else if (isMeta && useTemplateFallback && !selectedTemplate) {
         toast.error("يجب اختيار قالب للقناة الرسمية");
