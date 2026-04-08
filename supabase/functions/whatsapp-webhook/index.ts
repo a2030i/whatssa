@@ -507,14 +507,15 @@ serve(async (req) => {
           if (incomingMessage.type === "text") {
             const ratingNum = parseInt(messageContent.trim());
             if (ratingNum >= 1 && ratingNum <= 5) {
-              const { data: pendingConv } = await supabase
+              let pendingQuery = supabase
                 .from("conversations")
                 .select("id, assigned_to")
                 .eq("customer_phone", customerPhone)
                 .eq("org_id", orgId)
                 .eq("status", "closed")
-                .eq("satisfaction_status", "pending")
-                ...(channelConfigId ? [{ filter: "channel_id", value: channelConfigId }] : [])
+                .eq("satisfaction_status", "pending");
+              if (channelConfigId) pendingQuery = pendingQuery.eq("channel_id", channelConfigId);
+              const { data: pendingConv } = await pendingQuery
                 .order("closed_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
