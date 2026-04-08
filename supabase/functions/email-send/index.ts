@@ -12,19 +12,44 @@ function getExternalClient() {
   return createClient(url, key);
 }
 
-async function getCallerProfile(authHeader: string | null) {
+async function getCallerContext(authHeader: string | null) {
   if (!authHeader) return null;
-  const url = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
-  const anonKey = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY")!;
-  const userClient = createClient(url, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: profile } = await userClient
-    .from("profiles")
-    .select("id, org_id, full_name")
-    .limit(1)
-    .maybeSingle();
-  return profile;
+
+  const admin = getExternalClient();
+  const token = authHeader.replace("Bearer ", "");
+  const { data: authData, error: authError } = await admin.auth.getUser(token);
+
+  if (authError || !authData.user?.id) {
+    console.error("[email-send] Auth validation failed:", authError?.message);
+    return null;
+  }
+
+  const userId = authData.user.id;
+  const [{ data: profile }, { data: rolesData }] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, org_id, full_name, team_id, team_ids, is_supervisor")
+      .eq("id", userId)
+      .maybeSingle(),
+    admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId),
+  ]);
+
+  if (!profile?.org_id) return null;
+
+  const roles = (rolesData || []).map((row: { role: string }) => row.role);
+  const teamIds = Array.from(new Set([
+    profile.team_id,
+    ...(Array.isArray(profile.team_ids) ? profile.team_ids : []),
+  ].filter(Boolean)));
+
+  return {
+    profile,
+    isAdmin: roles.includes("super_admin") || roles.includes("admin"),
+    teamIds,
+  };
 }
 
 /** Try to insert into email_message_details; silently skip if table doesn't exist */
@@ -41,7 +66,9 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    const profile = await getCallerProfile(authHeader);
+    const caller = await getCallerContext(authHeader);
+    const profile = caller?.profile;
+
     if (!profile?.org_id) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -62,12 +89,36 @@ Deno.serve(async (req) => {
 
     // Get email config
     let configQuery = admin.from("email_configs").select("*").eq("org_id", profile.org_id).eq("is_active", true);
+
+    if (!caller.isAdmin) {
+      const conditions = [
+        `dedicated_agent_id.eq.${profile.id}`,
+        ...caller.teamIds.map((teamId: string) => `dedicated_team_id.eq.${teamId}`),
+      ];
+
+      if (conditions.length === 0) {
+        return new Response(JSON.stringify({ error: "لا تملك صلاحية استخدام البريد الإلكتروني" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      configQuery = configQuery.or(conditions.join(","));
+    }
+
     if (config_id) {
       configQuery = configQuery.eq("id", config_id);
     }
-    const { data: configs, error: configError } = await configQuery.limit(1).single();
+    const { data: configs, error: configError } = await configQuery.limit(1).maybeSingle();
     
     if (configError || !configs) {
+      if (!caller.isAdmin || config_id) {
+        return new Response(JSON.stringify({ error: "لا تملك صلاحية استخدام هذا البريد" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Queue for later delivery when email is configured
       let convId = conversation_id || null;
       if (convId) {

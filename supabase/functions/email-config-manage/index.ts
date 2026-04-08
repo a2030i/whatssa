@@ -11,38 +11,64 @@ function getExternalClient() {
   return createClient(url, key);
 }
 
-async function getCallerOrgId(authHeader: string | null) {
+async function getCallerContext(authHeader: string | null) {
   if (!authHeader) {
     console.error("[email-config-manage] No auth header provided");
     return null;
   }
 
-  // Use a user-scoped client with the external anon key + user's JWT
-  // RLS on profiles table validates the JWT automatically
-  const url = Deno.env.get("EXTERNAL_SUPABASE_URL")!;
-  const anonKey = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY")!;
-  const userClient = createClient(url, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
+  const admin = getExternalClient();
+  const token = authHeader.replace("Bearer ", "");
+  const { data: authData, error: authError } = await admin.auth.getUser(token);
 
-  // Query profiles via RLS — this validates the JWT against the DB
-  const { data: profile, error: profileError } = await userClient
-    .from("profiles")
-    .select("org_id")
-    .limit(1)
-    .maybeSingle();
+  if (authError || !authData.user?.id) {
+    console.error("[email-config-manage] Auth validation failed:", authError?.message);
+    return null;
+  }
+
+  const userId = authData.user.id;
+  const [{ data: profile, error: profileError }, { data: rolesData, error: rolesError }] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, org_id, team_id, team_ids, is_supervisor")
+      .eq("id", userId)
+      .maybeSingle(),
+    admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId),
+  ]);
 
   if (profileError) {
     console.error("[email-config-manage] Profile query error:", profileError.message, profileError.code);
     return null;
   }
+
+  if (rolesError) {
+    console.error("[email-config-manage] Role query error:", rolesError.message, rolesError.code);
+    return null;
+  }
+
   if (!profile?.org_id) {
     console.error("[email-config-manage] No profile/org_id found");
     return null;
   }
 
-  console.log("[email-config-manage] Resolved org_id:", profile.org_id);
-  return profile.org_id;
+  const roles = (rolesData || []).map((row: { role: string }) => row.role);
+  const teamIds = Array.from(new Set([
+    profile.team_id,
+    ...(Array.isArray(profile.team_ids) ? profile.team_ids : []),
+  ].filter(Boolean)));
+
+  console.log("[email-config-manage] Resolved caller context for org:", profile.org_id);
+
+  return {
+    userId,
+    orgId: profile.org_id,
+    isSuperAdmin: roles.includes("super_admin"),
+    isAdmin: roles.includes("super_admin") || roles.includes("admin"),
+    teamIds,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -50,8 +76,8 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    const callerOrgId = await getCallerOrgId(authHeader);
-    if (!callerOrgId) {
+    const caller = await getCallerContext(authHeader);
+    if (!caller?.orgId) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -63,15 +89,9 @@ Deno.serve(async (req) => {
     const { action, org_id: overrideOrgId, ...body } = rawBody;
 
     // Allow super_admin to override org_id for impersonation
-    let orgId = callerOrgId;
-    if (overrideOrgId && overrideOrgId !== callerOrgId) {
-      const { data: roleRow } = await admin
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", (await admin.auth.getUser(authHeader!.replace("Bearer ", ""))).data.user?.id || "")
-        .eq("role", "super_admin")
-        .maybeSingle();
-      if (roleRow) {
+    let orgId = caller.orgId;
+    if (overrideOrgId && overrideOrgId !== caller.orgId) {
+      if (caller.isSuperAdmin) {
         orgId = overrideOrgId;
         console.log("[email-config-manage] super_admin impersonation, using org_id:", orgId);
       }
@@ -80,11 +100,28 @@ Deno.serve(async (req) => {
 
     // LIST
     if (action === "list") {
-      const { data, error } = await admin
+      let query = admin
         .from("email_configs")
         .select("*")
         .eq("org_id", orgId)
         .order("created_at", { ascending: false });
+
+      if (!caller.isAdmin && orgId === caller.orgId) {
+        const conditions = [
+          `dedicated_agent_id.eq.${caller.userId}`,
+          ...caller.teamIds.map((teamId: string) => `dedicated_team_id.eq.${teamId}`),
+        ];
+
+        if (conditions.length === 0) {
+          return new Response(JSON.stringify({ data: [] }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        query = query.or(conditions.join(","));
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return new Response(JSON.stringify({ data }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

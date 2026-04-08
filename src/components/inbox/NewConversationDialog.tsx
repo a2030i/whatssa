@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { cn, getPhoneSearchVariants, phoneNumbersMatch } from "@/lib/utils";
 import { supabase, invokeCloud } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -466,35 +466,41 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       setChecking24h(true);
       try {
         const twentyFourAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const phoneVariants = getPhoneSearchVariants(fullPhone);
+
+        if (phoneVariants.length === 0) return;
+        const phoneFilters = Array.from(new Set(phoneVariants.flatMap((variant) => [
+          `customer_phone.eq.${variant}`,
+          `customer_phone.like.%${variant}%`,
+        ])));
         
-        // Search across all conversations for this phone (with or without channel_id)
         const { data: recentConvs } = await supabase
           .from("conversations")
-          .select("id, last_message_at, last_message_sender, channel_id")
+          .select("id, customer_phone, last_message_at, last_message_sender, channel_id")
           .eq("org_id", orgId)
-          .eq("customer_phone", fullPhone)
           .eq("conversation_type", "private")
           .gte("last_message_at", twentyFourAgo)
+          .or(phoneFilters.join(","))
           .order("last_message_at", { ascending: false })
-          .limit(5);
+          .limit(20);
 
-        if (recentConvs && recentConvs.length > 0) {
-          // Check if customer sent a message within 24h in ANY of these conversations
-          for (const conv of recentConvs) {
-            const { data: incomingMsg } = await supabase
-              .from("messages")
-              .select("id")
-              .eq("conversation_id", conv.id)
-              .eq("sender", "customer")
-              .gte("created_at", twentyFourAgo)
-              .limit(1)
-              .maybeSingle();
+        const matchedConversationIds = (recentConvs || [])
+          .filter((conv: any) => phoneNumbersMatch(conv.customer_phone, fullPhone))
+          .map((conv: any) => conv.id);
 
-            if (incomingMsg) {
-              setHas24hWindow(true);
-              setUseTemplateFallback(false);
-              break;
-            }
+        if (matchedConversationIds.length > 0) {
+          const { data: incomingMsg } = await supabase
+            .from("messages")
+            .select("id")
+            .in("conversation_id", matchedConversationIds)
+            .eq("sender", "customer")
+            .gte("created_at", twentyFourAgo)
+            .limit(1)
+            .maybeSingle();
+
+          if (incomingMsg) {
+            setHas24hWindow(true);
+            setUseTemplateFallback(false);
           }
         }
       } catch {
@@ -536,15 +542,22 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       }
 
       // Find existing conversation (read-only, no RLS issue)
-      const { data: existingConv } = await supabase
+      const phoneVariants = getPhoneSearchVariants(cleanPhone);
+      const phoneFilters = Array.from(new Set(phoneVariants.flatMap((variant) => [
+        `customer_phone.eq.${variant}`,
+        `customer_phone.like.%${variant}%`,
+      ])));
+
+      const { data: existingConvs } = await supabase
         .from("conversations")
-        .select("id, status")
+        .select("id, status, customer_phone")
         .eq("org_id", orgId)
-        .eq("customer_phone", cleanPhone)
         .eq("channel_id", selectedChannel.id)
+        .or(phoneFilters.join(","))
         .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(10);
+
+      const existingConv = (existingConvs || []).find((conv: any) => phoneNumbersMatch(conv.customer_phone, cleanPhone));
 
       let conversationId = existingConv?.id;
 
