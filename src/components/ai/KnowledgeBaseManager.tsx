@@ -74,6 +74,23 @@ const KnowledgeBaseManager = () => {
     }
   }, [orgId]);
 
+  useEffect(() => {
+    if (orgId) {
+      supabase
+        .from("whatsapp_config")
+        .select("id, label, phone_number, channel_type, evolution_instance_name")
+        .eq("org_id", orgId)
+        .eq("is_connected", true)
+        .then(({ data }) => {
+          setChannels((data || []).map((c: any) => ({
+            id: c.id,
+            label: c.label || c.phone_number || c.evolution_instance_name || "قناة",
+            channel_type: c.channel_type,
+          })));
+        });
+    }
+  }, [orgId]);
+
   const loadEntries = async () => {
     setLoading(true);
     const { data } = await supabase
