@@ -523,6 +523,7 @@ serve(async (req) => {
           .select("id")
           .eq("customer_phone", phone)
           .eq("org_id", orgId)
+          .eq("channel_id", config.id)
           .neq("status", "closed")
           .limit(1)
           .maybeSingle();
@@ -789,6 +790,7 @@ serve(async (req) => {
             .eq("customer_phone", phone)
             .eq("org_id", orgId)
             .eq("conversation_type", conversationType)
+            .eq("channel_id", config.id)
             .neq("status", "closed")
             .limit(1)
             .maybeSingle();
@@ -952,22 +954,24 @@ serve(async (req) => {
           .eq("customer_phone", phone)
           .eq("org_id", orgId)
           .eq("conversation_type", conversationType)
+          .eq("channel_id", config.id)
           .neq("status", "closed")
           .limit(1)
           .maybeSingle();
 
         // If no open conversation, check for a closed one to reopen
         if (!conversation) {
-          const { data: closedConv } = await supabase
-            .from("conversations")
-            .select("id, status, dedicated_agent_id, dedicated_agent_name")
-            .eq("customer_phone", phone)
-            .eq("org_id", orgId)
-            .eq("conversation_type", conversationType)
-            .eq("status", "closed")
-            .order("closed_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            const { data: closedConv } = await supabase
+              .from("conversations")
+              .select("id, status, dedicated_agent_id, dedicated_agent_name")
+              .eq("customer_phone", phone)
+              .eq("org_id", orgId)
+              .eq("conversation_type", conversationType)
+              .eq("channel_id", config.id)
+              .eq("status", "closed")
+              .order("closed_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
 
           if (closedConv) {
             // Determine assignment: sticky (dedicated) or smart reassign or reset
