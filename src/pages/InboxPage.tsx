@@ -248,7 +248,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           conversationType: (conversation.conversation_type as "private" | "group" | "broadcast" | "email") || "private",
           channelType,
           channelId: conversation.channel_id || undefined,
-          channelName: channelConfig ? (channelConfig.display_phone || channelConfig.channel_label || channelConfig.business_name || channelConfig.evolution_instance_name || "") : undefined,
+          channelName: channelConfig ? (channelConfig.channel_label || channelConfig.business_name || channelConfig.display_phone || channelConfig.evolution_instance_name || "") : undefined,
           profilePic: conversation.customer_profile_pic || undefined,
           unreadMentionCount: conversation.unread_mention_count || 0,
           isPinned: conversation.is_pinned || false,
