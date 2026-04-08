@@ -936,6 +936,35 @@ const TemplatesPage = () => {
                     <SelectItem value="authentication">{activeCategoryLabels.authentication}</SelectItem>
                   </SelectContent>
                 </Select>
+                {formData.category === "utility" && (
+                  <div className="mt-2 p-3 rounded-xl bg-info/5 border border-info/20 space-y-2">
+                    <p className="text-[11px] font-bold text-info flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      {isReviewMode ? "Tips to keep it as Utility (not Marketing)" : "نصائح لضمان قبوله كخدمي وليس تسويقي"}
+                    </p>
+                    <ul className="text-[10px] text-muted-foreground space-y-1 list-none">
+                      {(isReviewMode ? [
+                        "✅ Must be a response to a customer action (order, booking, payment)",
+                        "🚫 No discounts, offers, or promo codes",
+                        "🚫 No promotional CTAs like \"Shop now\" or \"Order now\"",
+                        "🚫 No product recommendations or upselling",
+                        "🚫 No urgency language like \"Limited time\" or \"Don't miss\"",
+                        "💡 Use neutral, direct language without excessive emojis",
+                        "💡 Good buttons: \"Track shipment\", \"View details\"",
+                      ] : [
+                        "✅ يجب أن يكون رداً على إجراء من العميل (طلب، حجز، دفع)",
+                        "🚫 لا تضع خصومات أو عروض أو كوبونات",
+                        "🚫 لا تستخدم أزرار ترويجية مثل \"تسوق الآن\" أو \"اطلب الآن\"",
+                        "🚫 لا توصيات منتجات أو \"قد يعجبك أيضاً\"",
+                        "🚫 لا لغة إلحاحية مثل \"لفترة محدودة\" أو \"لا تفوّت\"",
+                        "💡 استخدم لغة محايدة ومباشرة بدون إيموجي مبالغ فيه",
+                        "💡 أزرار مسموحة: \"تتبع الشحنة\"، \"عرض التفاصيل\"",
+                      ]).map((tip, i) => (
+                        <li key={i}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
 
