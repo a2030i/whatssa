@@ -1442,14 +1442,46 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         })
     : teamMembers.filter((m) => (m.full_name || "").includes(mentionFilter));
 
+  // 24h window: query actual last INBOUND message across all org channels
+  const [realLastInbound, setRealLastInbound] = useState<string | undefined>(conversation.lastCustomerMessageAt);
+
+  useEffect(() => {
+    if (!isMetaChannel || !orgId || !conversation.customerPhone) {
+      setRealLastInbound(conversation.lastCustomerMessageAt);
+      return;
+    }
+    const fetchLastInbound = async () => {
+      const { data } = await supabase
+        .from("messages")
+        .select("created_at, conversation_id")
+        .eq("sender", "customer")
+        .in("conversation_id",
+          (await supabase
+            .from("conversations")
+            .select("id")
+            .eq("org_id", orgId)
+            .eq("customer_phone", conversation.customerPhone)
+          ).data?.map((c: any) => c.id) || [conversation.id]
+        )
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (data && data.length > 0) {
+        setRealLastInbound(data[0].created_at);
+      } else {
+        setRealLastInbound(undefined);
+      }
+    };
+    fetchLastInbound();
+  }, [conversation.id, conversation.customerPhone, orgId, isMetaChannel, messages.length]);
+
   // 24h window countdown - update every minute
   useEffect(() => {
-    setWindowInfo(getWindowRemaining(conversation.lastCustomerMessageAt));
+    setWindowInfo(getWindowRemaining(realLastInbound));
     const interval = setInterval(() => {
-      setWindowInfo(getWindowRemaining(conversation.lastCustomerMessageAt));
+      setWindowInfo(getWindowRemaining(realLastInbound));
     }, 60000);
     return () => clearInterval(interval);
-  }, [conversation.lastCustomerMessageAt]);
+  }, [realLastInbound]);
 
   // Load saved replies
   useEffect(() => {
