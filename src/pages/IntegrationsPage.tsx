@@ -2422,6 +2422,9 @@ const IntegrationsPage = () => {
               const isAlreadyConnected = phoneStatus === "CONNECTED";
               const isSelected = selectedPhoneId === phone.id;
               const statusLabel = isAlreadyConnected ? "متصل" : phoneStatus === "PENDING" ? "معلّق" : null;
+              // Check if this phone is already saved in our DB
+              const isAlreadySaved = configs.some((c) => c.phone_number_id === phone.id);
+              if (isAlreadySaved) return null;
               return (
                 <button
                   key={phone.id}
