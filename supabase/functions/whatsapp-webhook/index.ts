@@ -652,13 +652,14 @@ serve(async (req) => {
                 reopenUpdate.updated_at = new Date().toISOString();
                 await supabase.from("conversations").update(reopenUpdate).eq("id", closedConv.id);
                 conversation = { ...closedConv, status: "active", unread_count: 1 };
-                await supabase.from("messages").insert({
+                // Non-blocking: system message + log for reopen
+                supabase.from("messages").insert({
                   conversation_id: closedConv.id,
                   content: "تم إعادة فتح المحادثة تلقائياً بعد رسالة جديدة من العميل",
                   sender: "system",
                   message_type: "text",
-                });
-                await logToSystem(supabase, "info", `تم إعادة فتح محادثة مغلقة للعميل ${customerPhone}`, { conversation_id: closedConv.id }, orgId);
+                }).then(() => {}).catch(() => {});
+                logToSystem(supabase, "info", `تم إعادة فتح محادثة مغلقة للعميل ${customerPhone}`, { conversation_id: closedConv.id }, orgId);
                 
                 // Trigger auto-assign for reopened conversations with team routing
                 if (channelDefaultTeamId && !channelDefaultAgentId && !closedConv.dedicated_agent_id) {
