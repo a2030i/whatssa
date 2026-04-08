@@ -559,6 +559,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       hasUnread ? "font-bold text-foreground" : "font-semibold text-foreground/80"
                     )} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", wordBreak: "normal", overflowWrap: "normal" }}>
                       {conv.isPinned && <Pin className="w-2.5 h-2.5 text-primary/50 shrink-0 rotate-45" />}
+                      {conv.channelType === "meta_api" && <ShieldCheck className="w-3 h-3 text-primary shrink-0" />}
                       {conv.channelType === "email" && <Mail className="w-3 h-3 text-primary/60 shrink-0" />}
                       {conv.channelType === "evolution" && <Wifi className="w-3 h-3 text-warning/60 shrink-0" />}
                       <span className="truncate">{displayName}</span>
