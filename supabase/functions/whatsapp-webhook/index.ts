@@ -762,39 +762,39 @@ serve(async (req) => {
 
             if (!conversation) continue;
 
-            // Auto-save customer record
-            try {
-              const { data: existingCustomer } = await supabase
-                .from("customers")
-                .select("id, name")
-                .eq("org_id", orgId)
-                .eq("phone", customerPhone)
-                .maybeSingle();
+            // Auto-save customer record (fire-and-forget — non-critical)
+            (async () => {
+              try {
+                const { data: existingCustomer } = await supabase
+                  .from("customers")
+                  .select("id, name")
+                  .eq("org_id", orgId)
+                  .eq("phone", customerPhone)
+                  .maybeSingle();
 
-              if (!existingCustomer) {
-                await supabase.from("customers").insert({
-                  org_id: orgId,
-                  phone: customerPhone,
-                  name: contactName || null,
-                  source: "whatsapp",
-                });
-              } else if (contactName && (!existingCustomer.name || existingCustomer.name === customerPhone)) {
-                await supabase.from("customers").update({ name: contactName }).eq("id", existingCustomer.id);
-              }
+                if (!existingCustomer) {
+                  await supabase.from("customers").insert({
+                    org_id: orgId,
+                    phone: customerPhone,
+                    name: contactName || null,
+                    source: "whatsapp",
+                  });
+                } else if (contactName && (!existingCustomer.name || existingCustomer.name === customerPhone)) {
+                  await supabase.from("customers").update({ name: contactName }).eq("id", existingCustomer.id);
+                }
 
-              // Link customer to conversation if not linked
-              if (conversation) {
-                const { data: convCheck } = await supabase.from("conversations").select("customer_id").eq("id", conversation.id).single();
-                if (convCheck && !convCheck.customer_id) {
-                  const { data: cust } = await supabase.from("customers").select("id").eq("org_id", orgId).eq("phone", customerPhone).maybeSingle();
-                  if (cust) {
-                    await supabase.from("conversations").update({ customer_id: cust.id }).eq("id", conversation.id);
+                // Link customer to conversation if not linked
+                if (conversation) {
+                  const { data: convCheck } = await supabase.from("conversations").select("customer_id").eq("id", conversation.id).single();
+                  if (convCheck && !convCheck.customer_id) {
+                    const { data: cust } = await supabase.from("customers").select("id").eq("org_id", orgId).eq("phone", customerPhone).maybeSingle();
+                    if (cust) {
+                      await supabase.from("conversations").update({ customer_id: cust.id }).eq("id", conversation.id);
+                    }
                   }
                 }
-              }
-            } catch (custErr) {
-              // Non-critical — log and continue
-            }
+              } catch { /* non-critical */ }
+            })();
 
             let content = "";
             let messageType = incomingMessage.type || "text";
@@ -1029,7 +1029,7 @@ serve(async (req) => {
                 .limit(1)
                 .maybeSingle();
               if (existingMsg) {
-                await logToSystem(supabase, "info", `رسالة مكررة تم تجاهلها`, { wa_message_id: incomingMessage.id }, orgId);
+                logToSystem(supabase, "info", `رسالة مكررة تم تجاهلها`, { wa_message_id: incomingMessage.id }, orgId);
                 continue;
               }
             }
