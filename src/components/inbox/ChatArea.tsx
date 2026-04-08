@@ -6,7 +6,7 @@ import MessageSearch from "./MessageSearch";
 import ProductPicker from "./ProductPicker";
 import InternalProductPicker from "./InternalProductPicker";
 import { supabase, cloudSupabase, invokeCloud } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import { cn, getPhoneSearchVariants, phoneNumbersMatch } from "@/lib/utils";
 import { Conversation, Message } from "@/data/mockData";
 import type { WhatsAppTemplate } from "@/types/whatsapp";
 import { Input } from "@/components/ui/input";
@@ -1450,25 +1450,44 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [realLastInbound, setRealLastInbound] = useState<string | undefined>(conversation.lastCustomerMessageAt);
 
   useEffect(() => {
-    if (!isMetaChannel || !orgId || !conversation.customerPhone) {
+    const phoneVariants = getPhoneSearchVariants(conversation.customerPhone);
+
+    if (!isMetaChannel || !orgId || phoneVariants.length === 0) {
       setRealLastInbound(conversation.lastCustomerMessageAt);
       return;
     }
+
     const fetchLastInbound = async () => {
+      const phoneFilters = Array.from(new Set(phoneVariants.flatMap((variant) => [
+        `customer_phone.eq.${variant}`,
+        `customer_phone.like.%${variant}%`,
+      ])));
+
+      const { data: candidateConversations } = await supabase
+        .from("conversations")
+        .select("id, customer_phone")
+        .eq("org_id", orgId)
+        .eq("conversation_type", "private")
+        .or(phoneFilters.join(","))
+        .limit(25);
+
+      const matchedConversationIds = (candidateConversations || [])
+        .filter((candidate: any) => phoneNumbersMatch(candidate.customer_phone, conversation.customerPhone))
+        .map((candidate: any) => candidate.id);
+
+      if (matchedConversationIds.length === 0) {
+        setRealLastInbound(undefined);
+        return;
+      }
+
       const { data } = await supabase
         .from("messages")
         .select("created_at, conversation_id")
         .eq("sender", "customer")
-        .in("conversation_id",
-          (await supabase
-            .from("conversations")
-            .select("id")
-            .eq("org_id", orgId)
-            .eq("customer_phone", conversation.customerPhone)
-          ).data?.map((c: any) => c.id) || [conversation.id]
-        )
+        .in("conversation_id", matchedConversationIds)
         .order("created_at", { ascending: false })
         .limit(1);
+
       if (data && data.length > 0) {
         setRealLastInbound(data[0].created_at);
       } else {
@@ -1476,7 +1495,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       }
     };
     fetchLastInbound();
-  }, [conversation.id, conversation.customerPhone, orgId, isMetaChannel, messages.length]);
+  }, [conversation.id, conversation.customerPhone, conversation.lastCustomerMessageAt, orgId, isMetaChannel, messages.length]);
 
   // 24h window countdown - update every minute
   useEffect(() => {
