@@ -85,6 +85,22 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const isMobile = useIsMobile();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevConvKeysRef = useRef<string>("");
+
+  // Preserve scroll position when conversations update from polling
+  useEffect(() => {
+    const key = conversations.map(c => c.id).join(",");
+    if (prevConvKeysRef.current && prevConvKeysRef.current !== key && scrollContainerRef.current) {
+      const savedScroll = scrollContainerRef.current.scrollTop;
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = savedScroll;
+        }
+      });
+    }
+    prevConvKeysRef.current = key;
+  }, [conversations]);
 
   const loadCustomInboxes = async () => {
     if (!orgId) return;
