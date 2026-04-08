@@ -16,6 +16,20 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+function getUserIdFromAuthHeader(authHeader: string) {
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+    const decoded = JSON.parse(atob(padded));
+    return typeof decoded?.sub === "string" ? decoded.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 async function logToSystem(
   client: ReturnType<typeof createClient>,
   level: string,
@@ -49,30 +63,27 @@ serve(async (req) => {
 
   try {
     const authorization = req.headers.get("Authorization") || "";
-    if (!authorization) {
+    const userId = getUserIdFromAuthHeader(authorization);
+    if (!authorization || !userId) {
       logToSystem(adminClient, "warn", "طلب إرسال Evolution بدون توثيق");
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authorization } },
-    });
-
-    // Use RLS-scoped query instead of auth.getUser() to avoid session_not_found
     const [profileResult, body] = await Promise.all([
-      authClient.from("profiles").select("id, org_id, full_name").limit(1).maybeSingle(),
+      adminClient.from("profiles").select("id, org_id, full_name").eq("id", userId).limit(1).maybeSingle(),
       req.json(),
     ]);
     const profile = profileResult.data;
 
     if (profileResult.error || !profile?.org_id) {
-      logToSystem(adminClient, "warn", "فشل التحقق من المستخدم (Evolution Send)", { error: profileResult.error?.message });
+      logToSystem(adminClient, "warn", "فشل التحقق من المستخدم (Evolution Send)", { error: profileResult.error?.message, user_id: userId });
       return json({ error: "Unauthorized" }, 401);
     }
 
     const orgId = profile.org_id;
 
     const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id, action, group_name, members, sender_name, poll_name, poll_options } = body;
+    const normalizedPhone = String(to || "").replace(/\D/g, "");
 
     // ── Create Group (Evolution API) ──
     if (action === "create_group") {
@@ -347,11 +358,15 @@ serve(async (req) => {
     }
 
     // Parallel: fetch config + resolve conversation simultaneously
-    const [configResult, convResult] = await Promise.all([
+      const [configResult, convResult] = await Promise.all([
       adminClient.from("whatsapp_config").select("*").eq("org_id", orgId).eq("channel_type", "evolution").eq("is_connected", true).limit(1).maybeSingle(),
       conversation_id
         ? adminClient.from("conversations").select("id").eq("id", conversation_id).eq("org_id", orgId).maybeSingle()
-        : adminClient.from("conversations").select("id").eq("customer_phone", to).eq("org_id", orgId).neq("status", "closed").limit(1).maybeSingle(),
+          : (() => {
+              let query = adminClient.from("conversations").select("id").eq("customer_phone", normalizedPhone).eq("org_id", orgId).neq("status", "closed");
+              if (channel_id) query = query.eq("channel_id", channel_id);
+              return query.order("updated_at", { ascending: false }).limit(1).maybeSingle();
+            })(),
     ]);
 
     const config = configResult.data;
@@ -364,9 +379,11 @@ serve(async (req) => {
         const { data: openConv } = await adminClient
           .from("conversations")
           .select("id")
-          .eq("customer_phone", to)
+          .eq("customer_phone", normalizedPhone)
           .eq("org_id", orgId)
           .neq("status", "closed")
+          .eq("channel_id", channel_id)
+          .order("updated_at", { ascending: false })
           .limit(1)
           .maybeSingle();
 
@@ -376,8 +393,9 @@ serve(async (req) => {
           const { data: closedConv } = await adminClient
             .from("conversations")
             .select("id")
-            .eq("customer_phone", to)
+            .eq("customer_phone", normalizedPhone)
             .eq("org_id", orgId)
+            .eq("channel_id", channel_id)
             .eq("status", "closed")
             .order("closed_at", { ascending: false })
             .limit(1)
@@ -719,7 +737,7 @@ serve(async (req) => {
       const { data: closedConv } = await adminClient
         .from("conversations")
         .select("id")
-        .eq("customer_phone", to)
+        .eq("customer_phone", normalizedPhone)
         .eq("org_id", orgId)
         .eq("channel_id", channel_id || config.id)
         .eq("status", "closed")
@@ -737,7 +755,7 @@ serve(async (req) => {
         .from("conversations")
         .insert({
           org_id: orgId,
-          customer_phone: to,
+          customer_phone: normalizedPhone,
           customer_name: reqCustomerName || to,
           channel_id: channel_id || config.id,
           status: "active",

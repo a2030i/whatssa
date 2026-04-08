@@ -528,11 +528,11 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       // Find existing conversation (read-only, no RLS issue)
       const { data: existingConv } = await supabase
         .from("conversations")
-        .select("id")
+        .select("id, status")
         .eq("org_id", orgId)
         .eq("customer_phone", cleanPhone)
         .eq("channel_id", selectedChannel.id)
-        .neq("status", "closed")
+        .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 

@@ -792,8 +792,36 @@ serve(async (req) => {
             .eq("conversation_type", conversationType)
             .eq("channel_id", config.id)
             .neq("status", "closed")
+            .order("updated_at", { ascending: false })
             .limit(1)
             .maybeSingle();
+
+          if (!existingConv) {
+            const { data: closedConv } = await supabase
+              .from("conversations")
+              .select("id")
+              .eq("customer_phone", phone)
+              .eq("org_id", orgId)
+              .eq("conversation_type", conversationType)
+              .eq("channel_id", config.id)
+              .eq("status", "closed")
+              .order("closed_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (closedConv) {
+              await supabase.from("conversations").update({
+                status: "active",
+                closed_at: null,
+                closed_by: null,
+                closure_reason_id: null,
+                last_message: text || `[${messageType}]`,
+                last_message_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }).eq("id", closedConv.id);
+              existingConv = closedConv;
+            }
+          }
 
           // If no conversation exists, create one for the new contact
           if (!existingConv) {
@@ -958,6 +986,7 @@ serve(async (req) => {
           .eq("conversation_type", conversationType)
           .eq("channel_id", config.id)
           .neq("status", "closed")
+          .order("updated_at", { ascending: false })
           .limit(1)
           .maybeSingle();
 
