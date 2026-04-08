@@ -252,7 +252,14 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
   }, [orgId, open, searchQuery, localNumber]);
 
   const isMeta = selectedChannel?.channel_type === "meta_api";
-  const approvedTemplates = useMemo(() => templates.filter(t => t.status?.toUpperCase() === "APPROVED"), [templates]);
+  const approvedTemplates = useMemo(() => {
+    const approved = templates.filter(t => t.status?.toUpperCase() === "APPROVED");
+    if (selectedChannel?.channel_type === "meta_api" && selectedChannel?.id) {
+      const channelSpecific = approved.filter(t => t.channelId === selectedChannel.id);
+      if (channelSpecific.length > 0) return channelSpecific;
+    }
+    return approved;
+  }, [templates, selectedChannel]);
   const evolutionChannels = useMemo(() => channels.filter(c => c.channel_type === "evolution"), [channels]);
   const hasEvolution = evolutionChannels.length > 0;
   const hasEmailConfigs = emailConfigs.length > 0;
@@ -1189,9 +1196,9 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">
-                        {ch.business_name || ch.display_phone || ch.evolution_instance_name || "قناة"}
+                        {ch.business_name || ch.channel_label || ch.display_phone || ch.evolution_instance_name || "قناة"}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[10px] text-muted-foreground" dir="ltr">
                         {ch.display_phone || ch.evolution_instance_name}
                       </p>
                     </div>
