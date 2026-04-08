@@ -370,33 +370,39 @@ const TemplatesPage = () => {
     if (showRefreshState) setIsRefreshing(true);
     else setIsLoading(true);
 
-    // Load channels and templates in parallel
-    const [channelsRes, templatesRes] = await Promise.all([
-      invokeCloud("whatsapp-templates", { body: { action: "channels" } }),
-      invokeCloud("whatsapp-templates", { body: { action: "list_all" } }),
-    ]);
+    try {
+      // Load channels and templates in parallel
+      const [channelsRes, templatesRes] = await Promise.all([
+        invokeCloud("whatsapp-templates", { body: { action: "channels" } }),
+        invokeCloud("whatsapp-templates", { body: { action: "list_all" } }),
+      ]);
 
-    // Process channels
-    if (!channelsRes.error && channelsRes.data?.channels) {
-      setMetaChannels(channelsRes.data.channels);
-    }
-
-    // Process templates
-    if (templatesRes.error || templatesRes.data?.error) {
-      const errMsg = templatesRes.data?.error || "";
-      if (errMsg.toLowerCase().includes("whatsapp") || errMsg.includes("واتساب")) {
-        setNoWhatsApp(true);
-      } else {
-        toast.error(errMsg || (isReviewMode ? "Failed to load templates from Meta" : "تعذر جلب القوالب من Meta"));
+      // Process channels
+      if (!channelsRes.error && channelsRes.data?.channels) {
+        setMetaChannels(channelsRes.data.channels);
       }
-      setTemplates([]);
-    } else {
-      setNoWhatsApp(false);
-      setTemplates((templatesRes.data?.templates || []).map(mapMetaTemplate));
-    }
 
-    setIsLoading(false);
-    setIsRefreshing(false);
+      // Process templates
+      if (templatesRes.error || templatesRes.data?.error) {
+        const errMsg = templatesRes.data?.error || templatesRes.error?.message || "";
+        if (errMsg.toLowerCase().includes("whatsapp") || errMsg.includes("واتساب")) {
+          setNoWhatsApp(true);
+        } else {
+          toast.error(errMsg || (isReviewMode ? "Failed to load templates from Meta" : "تعذر جلب القوالب من Meta"));
+        }
+        setTemplates([]);
+      } else {
+        setNoWhatsApp(false);
+        setTemplates((templatesRes.data?.templates || []).map(mapMetaTemplate));
+      }
+    } catch (e: any) {
+      console.error("loadTemplates error:", e);
+      toast.error(isReviewMode ? "Failed to load templates" : "تعذر جلب القوالب");
+      setTemplates([]);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   }, [isReviewMode]);
 
   useEffect(() => {
