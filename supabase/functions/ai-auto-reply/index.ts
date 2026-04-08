@@ -41,7 +41,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if auto_reply is enabled in capabilities
     const capabilities = aiConfig.capabilities || {};
     if (!capabilities.auto_reply) {
       return new Response(JSON.stringify({ skip: true, reason: "auto_reply_disabled" }), {
@@ -62,7 +61,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3. Fetch recent feedback/corrections for learning
+    // 3. Fetch recent feedback/corrections
     const { data: recentFeedback } = await serviceClient
       .from("ai_reply_feedback")
       .select("ai_response, corrected_response, feedback_type")
@@ -71,7 +70,7 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    // 4. Fetch recent conversation messages for context
+    // 4. Fetch recent conversation messages
     const { data: recentMessages } = await serviceClient
       .from("messages")
       .select("content, sender, created_at")
@@ -100,16 +99,33 @@ Deno.serve(async (req) => {
         }).join("\n");
     }
 
-    // 7. Build system prompt
-    const systemPrompt = `أنت مساعد ذكي لخدمة العملاء تابع لمؤسسة. عليك الرد بناءً على قاعدة المعرفة فقط.
+    // 7. Build STRICT system prompt with JSON output requirement
+    const systemPrompt = `أنت مساعد ذكي لخدمة العملاء. يجب أن ترد **حصرياً** من قاعدة المعرفة المرفقة.
 
-قواعد صارمة:
-1. أجب فقط من المعلومات الموجودة في قاعدة المعرفة أدناه
-2. إذا لم تجد إجابة في قاعدة المعرفة، قل: "سأحول سؤالك لفريق الدعم المختص للمساعدة"
-3. كن مهنياً ومختصراً وودوداً
-4. استخدم اللغة العربية
-5. لا تخترع معلومات أو أسعار أو سياسات غير موجودة في قاعدة المعرفة
-6. إذا كان هناك تصحيحات سابقة من الفريق، تعلّم منها ولا تكرر نفس الأخطاء
+⛔ قواعد صارمة لا يمكن تجاوزها:
+1. أجب فقط وحصرياً من المعلومات الموجودة في قاعدة المعرفة أدناه
+2. لا تخترع أي معلومة أو سعر أو سياسة أو رقم هاتف أو رابط غير موجود حرفياً في قاعدة المعرفة
+3. لا تستنتج أو تخمّن إجابات — إذا المعلومة غير موجودة بالنص، فهي غير موجودة
+4. إذا لم تجد إجابة واضحة ومباشرة في قاعدة المعرفة، يجب أن تحدد found_in_knowledge = false
+5. كن مهنياً ومختصراً وودوداً واستخدم العربية
+6. تعلّم من التصحيحات السابقة ولا تكرر نفس الأخطاء
+
+⚠️ عندما لا تجد إجابة (found_in_knowledge = false):
+- اكتب رد مهذب للعميل تخبره أنك ستحول سؤاله للفريق المختص
+- اقترح 3-5 أسئلة واضحة ومحددة لمدير النظام ليجيب عليها حتى تُثري قاعدة المعرفة
+- الأسئلة يجب أن تكون عملية وقابلة للإجابة بنص قصير
+
+يجب أن ترد بصيغة JSON فقط بهذا الشكل:
+{
+  "reply": "الرد للعميل",
+  "found_in_knowledge": true/false,
+  "confidence": 0.0-1.0,
+  "suggested_questions": ["سؤال 1 للمدير", "سؤال 2", ...]
+}
+
+- found_in_knowledge = true فقط إذا الإجابة موجودة حرفياً أو مباشرة في قاعدة المعرفة
+- confidence = مدى ثقتك بدقة الإجابة (0.0 = لا أعرف، 1.0 = متأكد 100%)
+- suggested_questions = فارغة [] إذا وجدت الإجابة، أو 3-5 أسئلة للمدير إذا لم تجدها
 
 قاعدة المعرفة:
 ${knowledgeContext}
@@ -130,12 +146,9 @@ ${messagesContext}`;
 
     // Log usage for lovable_ai
     if (isLovable) {
-      await serviceClient.from("ai_usage_logs").insert({
-        org_id: org_id,
-        action: "auto_reply",
-        model: aiConfig.model,
-        tokens_used: 1,
-      });
+      serviceClient.from("ai_usage_logs").insert({
+        org_id, action: "auto_reply", model: aiConfig.model, tokens_used: 1,
+      }).then(() => {});
     }
 
     if (result.error) {
@@ -144,7 +157,65 @@ ${messagesContext}`;
       });
     }
 
-    return new Response(JSON.stringify({ reply: result.reply, auto: true }), {
+    // 9. Parse structured response
+    let parsed: any = null;
+    try {
+      // Try to extract JSON from the response
+      const raw = result.reply || "";
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      }
+    } catch {
+      // Fallback: treat entire reply as plain text with high confidence
+      parsed = {
+        reply: result.reply,
+        found_in_knowledge: true,
+        confidence: 0.7,
+        suggested_questions: [],
+      };
+    }
+
+    if (!parsed || !parsed.reply) {
+      parsed = {
+        reply: result.reply || "سأحول سؤالك لفريق الدعم المختص",
+        found_in_knowledge: false,
+        confidence: 0,
+        suggested_questions: [],
+      };
+    }
+
+    // 10. If NOT found in knowledge or low confidence → save pending question
+    const shouldEscalate = !parsed.found_in_knowledge || parsed.confidence < 0.5;
+
+    if (shouldEscalate && parsed.suggested_questions?.length > 0) {
+      // Get customer phone from conversation
+      const { data: conv } = await serviceClient
+        .from("conversations")
+        .select("customer_phone")
+        .eq("id", conversation_id)
+        .single();
+
+      serviceClient.from("ai_pending_questions").insert({
+        org_id,
+        conversation_id,
+        customer_phone: conv?.customer_phone || null,
+        customer_question: customer_message,
+        suggested_questions: parsed.suggested_questions,
+        status: "pending",
+      }).then(() => {});
+
+      console.log(`[ai-auto-reply] Question escalated to admin: "${customer_message.substring(0, 50)}..."`);
+    }
+
+    // 11. Return the reply (always respond to the customer)
+    return new Response(JSON.stringify({
+      reply: parsed.reply,
+      auto: true,
+      found_in_knowledge: parsed.found_in_knowledge,
+      confidence: parsed.confidence,
+      escalated: shouldEscalate,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
@@ -167,7 +238,7 @@ async function chatCompletion(
       const res = await fetch(`${LOVABLE_AI_BASE}/chat/completions`, {
         method: "POST",
         headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: model || "google/gemini-3-flash-preview", messages: fullMessages, max_tokens: 500, temperature: 0.3 }),
+        body: JSON.stringify({ model: model || "google/gemini-3-flash-preview", messages: fullMessages, max_tokens: 800, temperature: 0.1 }),
       });
       const data = await res.json();
       if (!res.ok) return { error: data?.error?.message || "فشل" };
@@ -177,7 +248,7 @@ async function chatCompletion(
       const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages: fullMessages, max_tokens: 500, temperature: 0.3 }),
+        body: JSON.stringify({ model, messages: fullMessages, max_tokens: 800, temperature: 0.1, response_format: { type: "json_object" } }),
       });
       const data = await res.json();
       if (!res.ok) return { error: data?.error?.message || "فشل" };
@@ -194,7 +265,7 @@ async function chatCompletion(
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents,
-          generationConfig: { maxOutputTokens: 500, temperature: 0.3 },
+          generationConfig: { maxOutputTokens: 800, temperature: 0.1, responseMimeType: "application/json" },
         }),
       });
       const data = await res.json();
@@ -205,7 +276,7 @@ async function chatCompletion(
       const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": "https://respondly.chat" },
-        body: JSON.stringify({ model, messages: fullMessages, max_tokens: 500, temperature: 0.3 }),
+        body: JSON.stringify({ model, messages: fullMessages, max_tokens: 800, temperature: 0.1 }),
       });
       const data = await res.json();
       if (!res.ok) return { error: data?.error?.message || "فشل" };
