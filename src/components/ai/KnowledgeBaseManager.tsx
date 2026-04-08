@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit2, BookOpen, Search, Save, X, FolderOpen, HelpCircle, CheckCircle, MessageCircle, Lightbulb, ArrowRight, XCircle } from "lucide-react";
+import { Plus, Trash2, Edit2, BookOpen, Search, Save, X, FolderOpen, HelpCircle, CheckCircle, MessageCircle, Lightbulb, ArrowRight, XCircle, Globe, Phone } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,6 +31,13 @@ interface KBEntry {
   category: string;
   is_active: boolean;
   created_at: string;
+  channel_ids: string[] | null;
+}
+
+interface ChannelOption {
+  id: string;
+  label: string;
+  channel_type: string;
 }
 
 interface PendingQuestion {
@@ -52,16 +60,34 @@ const KnowledgeBaseManager = () => {
   const [filterCat, setFilterCat] = useState("all");
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState<KBEntry | null>(null);
-  const [form, setForm] = useState({ title: "", content: "", category: "general" });
+  const [form, setForm] = useState({ title: "", content: "", category: "general", channelIds: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("knowledge");
   const [answerDialog, setAnswerDialog] = useState<PendingQuestion | null>(null);
   const [answerForm, setAnswerForm] = useState({ answers: {} as Record<string, string>, category: "faq" });
+  const [channels, setChannels] = useState<ChannelOption[]>([]);
 
   useEffect(() => {
     if (orgId) {
       loadEntries();
       loadPendingQuestions();
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    if (orgId) {
+      supabase
+        .from("whatsapp_config")
+        .select("id, label, phone_number, channel_type, evolution_instance_name")
+        .eq("org_id", orgId)
+        .eq("is_connected", true)
+        .then(({ data }) => {
+          setChannels((data || []).map((c: any) => ({
+            id: c.id,
+            label: c.label || c.phone_number || c.evolution_instance_name || "قناة",
+            channel_type: c.channel_type,
+          })));
+        });
     }
   }, [orgId]);
 
@@ -95,21 +121,21 @@ const KnowledgeBaseManager = () => {
     if (editing) {
       const { error } = await supabase
         .from("ai_knowledge_base" as any)
-        .update({ title: form.title, content: form.content, category: form.category, updated_at: new Date().toISOString() } as any)
+        .update({ title: form.title, content: form.content, category: form.category, channel_ids: form.channelIds.length > 0 ? form.channelIds : null, updated_at: new Date().toISOString() } as any)
         .eq("id", editing.id);
       if (error) toast.error("فشل التحديث");
       else toast.success("تم التحديث");
     } else {
       const { error } = await supabase
         .from("ai_knowledge_base" as any)
-        .insert({ org_id: orgId, title: form.title, content: form.content, category: form.category } as any);
+        .insert({ org_id: orgId, title: form.title, content: form.content, category: form.category, channel_ids: form.channelIds.length > 0 ? form.channelIds : null } as any);
       if (error) toast.error("فشل الإضافة");
       else toast.success("تمت الإضافة");
     }
     setSaving(false);
     setShowDialog(false);
     setEditing(null);
-    setForm({ title: "", content: "", category: "general" });
+    setForm({ title: "", content: "", category: "general", channelIds: [] });
     loadEntries();
   };
 
@@ -126,13 +152,13 @@ const KnowledgeBaseManager = () => {
 
   const openEdit = (entry: KBEntry) => {
     setEditing(entry);
-    setForm({ title: entry.title, content: entry.content, category: entry.category });
+    setForm({ title: entry.title, content: entry.content, category: entry.category, channelIds: entry.channel_ids || [] });
     setShowDialog(true);
   };
 
   const openNew = () => {
     setEditing(null);
-    setForm({ title: "", content: "", category: "general" });
+    setForm({ title: "", content: "", category: "general", channelIds: [] });
     setShowDialog(true);
   };
 
@@ -432,6 +458,48 @@ const KnowledgeBaseManager = () => {
                 </SelectContent>
               </Select>
             </div>
+            {/* Channel linking */}
+            {channels.length > 0 && (
+              <div>
+                <label className="text-xs font-medium mb-1 block flex items-center gap-1">
+                  <Phone className="w-3.5 h-3.5" />
+                  القنوات المرتبطة
+                </label>
+                <p className="text-[10px] text-muted-foreground mb-2">اختر القنوات التي يظهر فيها هذا المحتوى (اتركه فارغاً = كل القنوات)</p>
+                <div className="space-y-1.5 bg-muted/30 rounded-lg p-2">
+                  <div
+                    className="flex items-center gap-2 cursor-pointer"
+                    onClick={() => setForm(p => ({ ...p, channelIds: [] }))}
+                  >
+                    <Checkbox checked={form.channelIds.length === 0} onCheckedChange={() => setForm(p => ({ ...p, channelIds: [] }))} />
+                    <span className="text-xs flex items-center gap-1">
+                      <Globe className="w-3 h-3 text-primary" /> كل القنوات (عام)
+                    </span>
+                  </div>
+                  {channels.map(ch => (
+                    <div
+                      key={ch.id}
+                      className="flex items-center gap-2 cursor-pointer"
+                      onClick={() => {
+                        setForm(p => {
+                          const has = p.channelIds.includes(ch.id);
+                          return { ...p, channelIds: has ? p.channelIds.filter(id => id !== ch.id) : [...p.channelIds, ch.id] };
+                        });
+                      }}
+                    >
+                      <Checkbox checked={form.channelIds.includes(ch.id)} onCheckedChange={() => {
+                        setForm(p => {
+                          const has = p.channelIds.includes(ch.id);
+                          return { ...p, channelIds: has ? p.channelIds.filter(id => id !== ch.id) : [...p.channelIds, ch.id] };
+                        });
+                      }} />
+                      <span className="text-xs">{ch.label}</span>
+                      <Badge variant="secondary" className="text-[9px] px-1 py-0">{ch.channel_type === "evolution" ? "QR" : "Meta"}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <label className="text-xs font-medium mb-1 block">المحتوى</label>
               <Textarea

@@ -26,7 +26,109 @@ Deno.serve(async (req) => {
       Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // 1. Check org has AI config with auto_reply capability
+    // 1. Get conversation to find channel_id
+    const { data: conversation } = await serviceClient
+      .from("conversations")
+      .select("channel_id, customer_phone")
+      .eq("id", conversation_id)
+      .single();
+
+    if (!conversation) {
+      return new Response(JSON.stringify({ skip: true, reason: "conversation_not_found" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const channelId = conversation.channel_id;
+
+    // 2. Check channel-level AI settings
+    let channelAiSettings: any = null;
+    if (channelId) {
+      const { data: channelConfig } = await serviceClient
+        .from("whatsapp_config")
+        .select("ai_auto_reply_enabled, ai_max_attempts, ai_transfer_keywords, ai_welcome_message")
+        .eq("id", channelId)
+        .single();
+
+      channelAiSettings = channelConfig;
+
+      // If AI is explicitly disabled for this channel, skip
+      if (channelConfig && channelConfig.ai_auto_reply_enabled === false) {
+        return new Response(JSON.stringify({ skip: true, reason: "ai_disabled_for_channel" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // 3. Check transfer keywords — instant escalation
+    const transferKeywords = channelAiSettings?.ai_transfer_keywords || ["موظف", "بشري", "agent", "human"];
+    const msgLower = customer_message.trim().toLowerCase();
+    const isTransferRequest = transferKeywords.some((kw: string) =>
+      msgLower.includes(kw.toLowerCase())
+    );
+
+    if (isTransferRequest) {
+      // Log system message for audit trail
+      await serviceClient.from("messages").insert({
+        conversation_id,
+        content: "⚙️ العميل طلب التحويل لموظف — تم تجاوز AI",
+        sender: "system",
+        message_type: "system",
+      });
+
+      return new Response(JSON.stringify({
+        skip: true,
+        reason: "transfer_requested",
+        reply: null,
+        escalate: true,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 4. Check AI attempt count — max attempts limit
+    const maxAttempts = channelAiSettings?.ai_max_attempts || 3;
+
+    // Count recent AI replies in this conversation (within last 24h, no human reply in between)
+    const { data: recentMsgs } = await serviceClient
+      .from("messages")
+      .select("sender, content, message_type")
+      .eq("conversation_id", conversation_id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    let aiAttempts = 0;
+    if (recentMsgs) {
+      for (const msg of recentMsgs) {
+        if (msg.sender === "agent" && msg.message_type !== "system") {
+          // Human agent replied — reset counter
+          break;
+        }
+        if (msg.sender === "agent" && msg.content?.includes("[AI]")) {
+          aiAttempts++;
+        }
+      }
+    }
+
+    if (aiAttempts >= maxAttempts) {
+      await serviceClient.from("messages").insert({
+        conversation_id,
+        content: `⚙️ وصل AI للحد الأقصى (${maxAttempts} محاولات) — تحويل تلقائي لموظف`,
+        sender: "system",
+        message_type: "system",
+      });
+
+      return new Response(JSON.stringify({
+        skip: true,
+        reason: "max_attempts_reached",
+        escalate: true,
+        attempts: aiAttempts,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 5. Check org AI config
     const { data: aiConfig } = await serviceClient
       .from("ai_provider_configs")
       .select("*")
@@ -48,20 +150,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2. Fetch knowledge base
-    const { data: knowledgeEntries } = await serviceClient
+    // 6. Fetch knowledge base — filtered by channel + global
+    let knowledgeQuery = serviceClient
       .from("ai_knowledge_base")
-      .select("title, content, category")
+      .select("title, content, category, channel_ids")
       .eq("org_id", org_id)
       .eq("is_active", true);
 
-    if (!knowledgeEntries || knowledgeEntries.length === 0) {
+    const { data: allKnowledge } = await knowledgeQuery;
+
+    // Filter: entries with no channel_ids (global) OR matching this channel
+    const knowledgeEntries = (allKnowledge || []).filter((k: any) => {
+      if (!k.channel_ids || k.channel_ids.length === 0) return true; // Global
+      if (channelId && k.channel_ids.includes(channelId)) return true; // Channel-specific
+      return false;
+    });
+
+    if (knowledgeEntries.length === 0) {
       return new Response(JSON.stringify({ skip: true, reason: "no_knowledge_base" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 3. Fetch recent feedback/corrections
+    // 7. Fetch recent feedback
     const { data: recentFeedback } = await serviceClient
       .from("ai_reply_feedback")
       .select("ai_response, corrected_response, feedback_type")
@@ -70,24 +181,17 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    // 4. Fetch recent conversation messages
-    const { data: recentMessages } = await serviceClient
-      .from("messages")
-      .select("content, sender, created_at")
-      .eq("conversation_id", conversation_id)
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    const messagesContext = (recentMessages || []).reverse().map(
-      (m: any) => `${m.sender === "customer" ? "العميل" : "الموظف"}: ${m.content}`
+    // 8. Build conversation context
+    const messagesContext = (recentMsgs || []).slice(0, 10).reverse().map(
+      (m: any) => `${m.sender === "customer" ? "العميل" : m.sender === "system" ? "النظام" : "الموظف"}: ${m.content}`
     ).join("\n");
 
-    // 5. Build knowledge context
+    // 9. Build knowledge context
     const knowledgeContext = knowledgeEntries.map(
       (k: any) => `[${k.category}] ${k.title}:\n${k.content}`
     ).join("\n\n---\n\n");
 
-    // 6. Build corrections context
+    // 10. Build corrections context
     let correctionsContext = "";
     if (recentFeedback && recentFeedback.length > 0) {
       correctionsContext = "\n\n⚠️ تصحيحات سابقة من الفريق (تعلّم منها):\n" +
@@ -99,7 +203,7 @@ Deno.serve(async (req) => {
         }).join("\n");
     }
 
-    // 7. Build STRICT system prompt with JSON output requirement
+    // 11. Build STRICT system prompt
     const systemPrompt = `أنت مساعد ذكي لخدمة العملاء. يجب أن ترد **حصرياً** من قاعدة المعرفة المرفقة.
 
 ⛔ قواعد صارمة لا يمكن تجاوزها:
@@ -109,13 +213,13 @@ Deno.serve(async (req) => {
 4. إذا لم تجد إجابة واضحة ومباشرة في قاعدة المعرفة، يجب أن تحدد found_in_knowledge = false
 5. كن مهنياً ومختصراً وودوداً واستخدم العربية
 6. تعلّم من التصحيحات السابقة ولا تكرر نفس الأخطاء
+7. إذا طلب العميل التحدث مع موظف أو شخص حقيقي، وافق فوراً
 
 ⚠️ عندما لا تجد إجابة (found_in_knowledge = false):
 - اكتب رد مهذب للعميل تخبره أنك ستحول سؤاله للفريق المختص
 - اقترح 3-5 أسئلة واضحة ومحددة لمدير النظام ليجيب عليها حتى تُثري قاعدة المعرفة
-- الأسئلة يجب أن تكون عملية وقابلة للإجابة بنص قصير
 
-يجب أن ترد بصيغة JSON فقط بهذا الشكل:
+يجب أن ترد بصيغة JSON فقط:
 {
   "reply": "الرد للعميل",
   "found_in_knowledge": true/false,
@@ -123,18 +227,16 @@ Deno.serve(async (req) => {
   "suggested_questions": ["سؤال 1 للمدير", "سؤال 2", ...]
 }
 
-- found_in_knowledge = true فقط إذا الإجابة موجودة حرفياً أو مباشرة في قاعدة المعرفة
-- confidence = مدى ثقتك بدقة الإجابة (0.0 = لا أعرف، 1.0 = متأكد 100%)
-- suggested_questions = فارغة [] إذا وجدت الإجابة، أو 3-5 أسئلة للمدير إذا لم تجدها
-
 قاعدة المعرفة:
 ${knowledgeContext}
 ${correctionsContext}
 
 سياق المحادثة الأخيرة:
-${messagesContext}`;
+${messagesContext}
 
-    // 8. Call AI
+محاولة AI الحالية: ${aiAttempts + 1} من ${maxAttempts}`;
+
+    // 12. Call AI
     const isLovable = aiConfig.provider === "lovable_ai";
     const result = await chatCompletion(
       aiConfig.provider,
@@ -144,7 +246,6 @@ ${messagesContext}`;
       systemPrompt
     );
 
-    // Log usage for lovable_ai
     if (isLovable) {
       serviceClient.from("ai_usage_logs").insert({
         org_id, action: "auto_reply", model: aiConfig.model, tokens_used: 1,
@@ -157,64 +258,45 @@ ${messagesContext}`;
       });
     }
 
-    // 9. Parse structured response
+    // 13. Parse structured response
     let parsed: any = null;
     try {
-      // Try to extract JSON from the response
       const raw = result.reply || "";
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
-      }
+      if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
     } catch {
-      // Fallback: treat entire reply as plain text with high confidence
-      parsed = {
-        reply: result.reply,
-        found_in_knowledge: true,
-        confidence: 0.7,
-        suggested_questions: [],
-      };
+      parsed = { reply: result.reply, found_in_knowledge: true, confidence: 0.7, suggested_questions: [] };
     }
 
     if (!parsed || !parsed.reply) {
-      parsed = {
-        reply: result.reply || "سأحول سؤالك لفريق الدعم المختص",
-        found_in_knowledge: false,
-        confidence: 0,
-        suggested_questions: [],
-      };
+      parsed = { reply: result.reply || "سأحول سؤالك لفريق الدعم المختص", found_in_knowledge: false, confidence: 0, suggested_questions: [] };
     }
 
-    // 10. If NOT found in knowledge or low confidence → save pending question
+    // 14. Save pending question if not found
     const shouldEscalate = !parsed.found_in_knowledge || parsed.confidence < 0.5;
 
     if (shouldEscalate && parsed.suggested_questions?.length > 0) {
-      // Get customer phone from conversation
-      const { data: conv } = await serviceClient
-        .from("conversations")
-        .select("customer_phone")
-        .eq("id", conversation_id)
-        .single();
-
       serviceClient.from("ai_pending_questions").insert({
         org_id,
         conversation_id,
-        customer_phone: conv?.customer_phone || null,
+        customer_phone: conversation.customer_phone || null,
         customer_question: customer_message,
         suggested_questions: parsed.suggested_questions,
         status: "pending",
       }).then(() => {});
-
-      console.log(`[ai-auto-reply] Question escalated to admin: "${customer_message.substring(0, 50)}..."`);
     }
 
-    // 11. Return the reply (always respond to the customer)
+    // 15. Prefix reply with [AI] marker for tracking
+    const finalReply = `[AI] ${parsed.reply}`;
+
     return new Response(JSON.stringify({
-      reply: parsed.reply,
+      reply: finalReply,
       auto: true,
       found_in_knowledge: parsed.found_in_knowledge,
       confidence: parsed.confidence,
       escalated: shouldEscalate,
+      attempt: aiAttempts + 1,
+      max_attempts: maxAttempts,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
