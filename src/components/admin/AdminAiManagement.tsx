@@ -9,6 +9,18 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
+// التسعير: تكلفة الوحدة = 0.038 ريال (تكلفة فعلية)، سعر البيع = 0.05 ريال (مجاني حالياً)
+const COST_PER_TOKEN_SAR = 0.038; // تكلفة المزود
+const SELL_PRICE_PER_TOKEN_SAR = 0.05; // سعر البيع للعميل
+
+const formatSAR = (amount: number) => {
+  if (amount >= 1000) return amount.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ر.س";
+  return amount.toFixed(2) + " ر.س";
+};
+
+const tokensToSAR = (tokens: number) => tokens * SELL_PRICE_PER_TOKEN_SAR;
+const tokensToCostSAR = (tokens: number) => tokens * COST_PER_TOKEN_SAR;
+
 interface OrgAiStatus {
   org_id: string;
   org_name: string;
@@ -19,10 +31,10 @@ interface OrgAiStatus {
 }
 
 const RECHARGE_OPTIONS = [
-  { label: "10,000", value: 10000 },
-  { label: "50,000", value: 50000 },
-  { label: "100,000", value: 100000 },
-  { label: "500,000", value: 500000 },
+  { label: "500 ر.س", tokens: 10000 },
+  { label: "2,500 ر.س", tokens: 50000 },
+  { label: "5,000 ر.س", tokens: 100000 },
+  { label: "25,000 ر.س", tokens: 500000 },
 ];
 
 const AdminAiManagement = () => {
@@ -49,10 +61,8 @@ const AdminAiManagement = () => {
       supabase.from("system_settings").select("value").eq("key", "lovable_ai_balance").maybeSingle(),
     ]);
 
-    // Balance
     setAiBalance(Number(balanceRes.data?.value) || 0);
 
-    // Enabled map
     const enabledMap: Record<string, boolean> = {};
     (settingsRes.data || []).forEach((s: any) => {
       if (s.key.startsWith("lovable_ai_enabled_")) {
@@ -61,7 +71,6 @@ const AdminAiManagement = () => {
       }
     });
 
-    // Usage aggregation
     const usageCounts: Record<string, { count: number; tokens: number; last: string | null }> = {};
     let allTokens = 0;
     (usageRes.data || []).forEach((u: any) => {
@@ -107,9 +116,9 @@ const AdminAiManagement = () => {
     toast.success(enable ? "✨ تم تفعيل Lovable AI" : "تم إيقاف Lovable AI");
   };
 
-  const handleRecharge = async (amount: number) => {
-    if (amount <= 0) return;
-    const newBalance = aiBalance + amount;
+  const handleRecharge = async (tokens: number) => {
+    if (tokens <= 0) return;
+    const newBalance = aiBalance + tokens;
     const { data: existing } = await supabase
       .from("system_settings").select("key").eq("key", "lovable_ai_balance").maybeSingle();
 
@@ -122,7 +131,7 @@ const AdminAiManagement = () => {
     setAiBalance(newBalance);
     setRechargeOpen(false);
     setCustomRecharge("");
-    toast.success(`✅ تم شحن ${amount.toLocaleString()} وحدة`);
+    toast.success(`✅ تم شحن ${formatSAR(tokensToSAR(tokens))}`);
   };
 
   const filtered = orgs.filter(o => o.org_name.toLowerCase().includes(search.toLowerCase()));
@@ -130,7 +139,11 @@ const AdminAiManagement = () => {
   const usedPercent = aiBalance > 0 ? Math.min(100, (totalTokens / aiBalance) * 100) : 0;
   const remaining = Math.max(0, aiBalance - totalTokens);
 
-  // Top 5 consumers
+  const totalCostSAR = tokensToCostSAR(totalTokens);
+  const totalSellSAR = tokensToSAR(totalTokens);
+  const remainingSAR = tokensToSAR(remaining);
+  const balanceSAR = tokensToSAR(aiBalance);
+
   const topConsumers = [...orgs].filter(o => o.tokens_used > 0).sort((a, b) => b.tokens_used - a.tokens_used).slice(0, 5);
 
   return (
@@ -157,22 +170,32 @@ const AdminAiManagement = () => {
                 <DialogTitle>شحن رصيد Lovable AI</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-2">
+                <p className="text-xs text-muted-foreground">سعر الوحدة: {SELL_PRICE_PER_TOKEN_SAR} ر.س</p>
                 <div className="grid grid-cols-2 gap-2">
                   {RECHARGE_OPTIONS.map(opt => (
-                    <Button key={opt.value} variant="outline" className="h-12 text-sm"
-                      onClick={() => handleRecharge(opt.value)}>
-                      {opt.label} وحدة
+                    <Button key={opt.tokens} variant="outline" className="h-14 text-sm flex flex-col gap-0.5"
+                      onClick={() => handleRecharge(opt.tokens)}>
+                      <span className="font-bold">{opt.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{opt.tokens.toLocaleString()} وحدة</span>
                     </Button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Input type="number" placeholder="مبلغ مخصص..."
-                    value={customRecharge} onChange={e => setCustomRecharge(e.target.value)}
-                    className="h-9 text-sm" />
-                  <Button size="sm" disabled={!customRecharge || Number(customRecharge) <= 0}
-                    onClick={() => handleRecharge(Number(customRecharge))}>
-                    شحن
-                  </Button>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">مبلغ مخصص (بالريال)</label>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" placeholder="مثال: 1000"
+                      value={customRecharge} onChange={e => setCustomRecharge(e.target.value)}
+                      className="h-9 text-sm" />
+                    <Button size="sm" disabled={!customRecharge || Number(customRecharge) <= 0}
+                      onClick={() => handleRecharge(Math.floor(Number(customRecharge) / SELL_PRICE_PER_TOKEN_SAR))}>
+                      شحن
+                    </Button>
+                  </div>
+                  {customRecharge && Number(customRecharge) > 0 && (
+                    <p className="text-[10px] text-muted-foreground">
+                      = {Math.floor(Number(customRecharge) / SELL_PRICE_PER_TOKEN_SAR).toLocaleString()} وحدة
+                    </p>
+                  )}
                 </div>
               </div>
             </DialogContent>
@@ -180,16 +203,31 @@ const AdminAiManagement = () => {
         </div>
 
         <div className="flex items-baseline gap-3">
-          <span className="text-2xl font-bold">{remaining.toLocaleString()}</span>
-          <span className="text-xs text-muted-foreground">وحدة متبقية من {aiBalance.toLocaleString()}</span>
+          <span className="text-2xl font-bold">{formatSAR(remainingSAR)}</span>
+          <span className="text-xs text-muted-foreground">متبقي من {formatSAR(balanceSAR)}</span>
         </div>
 
         <div className="space-y-1">
           <Progress value={usedPercent} className="h-2" />
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>مستهلك: {totalTokens.toLocaleString()}</span>
+            <span>مستهلك: {formatSAR(totalSellSAR)}</span>
             <span>{usedPercent.toFixed(1)}%</span>
           </div>
+        </div>
+
+        {/* Cost vs Sell breakdown for super admin */}
+        <div className="flex items-center gap-4 text-[10px] pt-1 border-t border-border/50">
+          <span className="text-muted-foreground">
+            💰 التكلفة الفعلية: <span className="font-semibold text-foreground">{formatSAR(totalCostSAR)}</span>
+          </span>
+          <span className="text-muted-foreground">
+            📊 قيمة البيع: <span className="font-semibold text-foreground">{formatSAR(totalSellSAR)}</span>
+          </span>
+          {totalSellSAR > 0 && (
+            <span className="text-muted-foreground">
+              📈 الربح: <span className="font-semibold text-primary">{formatSAR(totalSellSAR - totalCostSAR)}</span>
+            </span>
+          )}
         </div>
 
         {remaining < aiBalance * 0.1 && aiBalance > 0 && (
@@ -213,8 +251,8 @@ const AdminAiManagement = () => {
         </div>
         <div className="bg-card rounded-xl shadow-card p-4 text-center">
           <TrendingUp className="w-5 h-5 mx-auto mb-1 text-primary" />
-          <p className="text-lg font-bold">{totalTokens.toLocaleString()}</p>
-          <p className="text-[10px] text-muted-foreground">وحدات مستهلكة</p>
+          <p className="text-lg font-bold">{formatSAR(totalSellSAR)}</p>
+          <p className="text-[10px] text-muted-foreground">إجمالي الاستهلاك</p>
         </div>
       </div>
 
@@ -227,15 +265,20 @@ const AdminAiManagement = () => {
           <div className="space-y-2">
             {topConsumers.map((org, i) => {
               const pct = totalTokens > 0 ? (org.tokens_used / totalTokens) * 100 : 0;
+              const orgCostSAR = tokensToSAR(org.tokens_used);
               return (
                 <div key={org.org_id} className="flex items-center gap-3">
                   <span className="text-xs font-bold text-muted-foreground w-5">#{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <p className="text-xs font-medium truncate">{org.org_name}</p>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{org.tokens_used.toLocaleString()} وحدة</span>
+                      <span className="text-[10px] font-semibold text-muted-foreground shrink-0">{formatSAR(orgCostSAR)}</span>
                     </div>
                     <Progress value={pct} className="h-1.5" />
+                    <div className="flex justify-between mt-0.5">
+                      <span className="text-[9px] text-muted-foreground">{org.total_calls} طلب</span>
+                      <span className="text-[9px] text-muted-foreground">{pct.toFixed(1)}% من الإجمالي</span>
+                    </div>
                   </div>
                 </div>
               );
@@ -271,7 +314,7 @@ const AdminAiManagement = () => {
                   <div className="flex items-center gap-2 mt-0.5">
                     {org.tokens_used > 0 && (
                       <Badge variant="secondary" className="text-[10px]">
-                        {org.tokens_used.toLocaleString()} وحدة
+                        {formatSAR(tokensToSAR(org.tokens_used))}
                       </Badge>
                     )}
                     {org.total_calls > 0 && (
@@ -293,12 +336,21 @@ const AdminAiManagement = () => {
         )}
       </div>
 
+      {/* Pricing Info */}
+      <div className="bg-muted/50 border rounded-lg p-3 space-y-1">
+        <p className="text-xs font-medium">💎 التسعير الحالي</p>
+        <div className="grid grid-cols-3 gap-2 text-[10px] text-muted-foreground">
+          <div>تكلفة الوحدة: <span className="font-semibold text-foreground">{COST_PER_TOKEN_SAR} ر.س</span></div>
+          <div>سعر البيع: <span className="font-semibold text-foreground">{SELL_PRICE_PER_TOKEN_SAR} ر.س</span></div>
+          <div>الحالة: <Badge variant="secondary" className="text-[9px]">مجاني حالياً</Badge></div>
+        </div>
+      </div>
+
       {/* Warning */}
       <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
         <p className="text-xs text-primary font-medium">⚠️ تنبيه مهم</p>
         <p className="text-[10px] text-muted-foreground mt-1">
-          تكاليف Lovable AI تُحسب على وحدات المنصة. لا يتم تشغيل أي ذكاء اصطناعي تلقائياً — يحتاج المستخدم الضغط على زر لاستهلاك الوحدات.
-          ميزة الرد التلقائي تعمل فقط إذا فعّلها المستخدم يدوياً.
+          الخدمة مجانية حالياً للمؤسسات. التكاليف تُحسب داخلياً فقط لمراقبة الاستهلاك. لا يتم تشغيل أي ذكاء اصطناعي تلقائياً — يحتاج المستخدم الضغط على زر لاستهلاك الوحدات.
         </p>
       </div>
     </div>
