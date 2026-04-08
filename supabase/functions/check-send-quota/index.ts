@@ -78,6 +78,8 @@ Deno.serve(async (req) => {
       .eq("id", channel_id)
       .maybeSingle();
 
+    let adminClient = primaryClient;
+
     if (!channel && extClient) {
       const { data: cloudChannel } = await cloudClient
         .from("whatsapp_config")
@@ -85,14 +87,12 @@ Deno.serve(async (req) => {
         .eq("id", channel_id)
         .maybeSingle();
       channel = cloudChannel;
+      if (channel) adminClient = cloudClient;
     }
 
     if (!channel) {
       return json({ error: "Channel not found" }, 404);
     }
-
-    // Use the client where the channel was found for subsequent queries
-    const adminClient = channel ? primaryClient : cloudClient;
 
     // Verify org ownership
     if (channel.org_id !== profile.org_id) {
