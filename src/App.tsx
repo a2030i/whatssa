@@ -20,7 +20,6 @@ import TemplatesPage from "./pages/TemplatesPage";
 import WalletPage from "./pages/WalletPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CustomersPage from "./pages/CustomersPage";
-import CustomPlanBuilderPage from "./pages/CustomPlanBuilderPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import OrdersPage from "./pages/OrdersPage";
 import AbandonedCartsPage from "./pages/AbandonedCartsPage";
