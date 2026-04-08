@@ -258,7 +258,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
       document.removeEventListener("visibilitychange", handleRefreshChannels);
       supabase.removeChannel(channelsChannel);
     };
-  }, [orgId, open]);
+  }, [orgId, open, userRole, isSuperAdmin, isSupervisor, profile?.id, profile?.team_id, profile?.team_ids, profile?.is_supervisor]);
 
   // Load email configs
   useEffect(() => {
