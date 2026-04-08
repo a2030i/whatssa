@@ -2402,6 +2402,8 @@ const IntegrationsPage = () => {
   // ============ PICK PHONE NUMBER ============
   if (flowStep === "pick_phone") {
     const isMigration = onboardingMode !== "new";
+    const newPhones = phoneNumbers.filter((p) => !configs.some((c) => c.phone_number_id === p.id));
+    const allAlreadySaved = newPhones.length === 0;
     return (
       <div className="p-3 md:p-6 max-w-[600px] mx-auto" dir={dir}>
         <div className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
@@ -2413,10 +2415,18 @@ const IntegrationsPage = () => {
               </h2>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              {t(`تم العثور على ${phoneNumbers.length} رقم — اختر الرقم الذي تريد ${isMigration ? "نقله" : "ربطه"}`, `Found ${phoneNumbers.length} number(s) — select the one you want to ${isMigration ? "migrate" : "connect"}`)}
+              {allAlreadySaved
+                ? t("جميع الأرقام مربوطة بالفعل في المنصة", "All numbers are already connected")
+                : t(`تم العثور على ${newPhones.length} رقم جديد — اختر الرقم الذي تريد ${isMigration ? "نقله" : "ربطه"}`, `Found ${newPhones.length} new number(s) — select the one you want to ${isMigration ? "migrate" : "connect"}`)}
             </p>
           </div>
           <div className="p-4 space-y-2">
+            {allAlreadySaved && (
+              <div className="text-center py-6 text-sm text-muted-foreground">
+                <CheckCircle2 className="w-10 h-10 text-success mx-auto mb-2" />
+                {t("كل الأرقام في حسابك مضافة بالفعل. يمكنك العودة للتكاملات.", "All numbers in your account are already added.")}
+              </div>
+            )}
             {phoneNumbers.map((phone) => {
               const phoneStatus = (phone as any).status;
               const isAlreadyConnected = phoneStatus === "CONNECTED";
