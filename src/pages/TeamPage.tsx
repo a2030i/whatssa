@@ -558,6 +558,9 @@ const TeamPage = () => {
                         <DropdownMenuItem onClick={() => openSchedule(profile)} className="gap-2 text-xs">
                           <Clock className="w-3.5 h-3.5" /> أوقات العمل
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setAttendanceDialog(profile)} className="gap-2 text-xs">
+                          <BarChart3 className="w-3.5 h-3.5" /> سجل الحضور
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDeleteMember(profile)} className="gap-2 text-xs text-destructive">
                           <Trash2 className="w-3.5 h-3.5" /> حذف الموظف
                         </DropdownMenuItem>
@@ -570,6 +573,13 @@ const TeamPage = () => {
           })}
         </div>
       </div>
+
+      {/* Shift Templates Management */}
+      {isAdmin && (
+        <div className="bg-card rounded-lg shadow-card p-4 md:p-5">
+          <ShiftManagement onShiftsLoaded={(s) => setShiftTemplates(s)} />
+        </div>
+      )}
 
       {/* Weekly Schedule View */}
       {profiles.length > 0 && (
