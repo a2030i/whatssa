@@ -96,17 +96,31 @@ interface AiConfig {
 }
 
 const AiProviderSettings = () => {
-  const { orgId } = useAuth();
+  const { orgId, isSuperAdmin } = useAuth();
   const [configs, setConfigs] = useState<AiConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [testing, setTesting] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newProvider, setNewProvider] = useState("openai");
+  const [lovableAiEnabled, setLovableAiEnabled] = useState(false);
 
   useEffect(() => {
-    if (orgId) loadConfigs();
+    if (orgId) {
+      loadConfigs();
+      checkLovableAiEnabled();
+    }
   }, [orgId]);
+
+  const checkLovableAiEnabled = async () => {
+    // Check if Lovable AI is enabled for this org
+    const { data } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", `lovable_ai_enabled_${orgId}`)
+      .maybeSingle();
+    setLovableAiEnabled(data?.value === true || data?.value === "true");
+  };
 
   const loadConfigs = async () => {
     setIsLoading(true);
