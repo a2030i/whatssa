@@ -535,6 +535,7 @@ serve(async (req) => {
               type: incomingMessage.type,
               wa_message_id: incomingMessage.id,
               contact_name: contactName,
+              trace_step: "1_received",
             }, orgId);
 
             // ── Check for satisfaction rating response ──
