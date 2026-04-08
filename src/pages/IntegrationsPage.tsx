@@ -818,14 +818,22 @@ const IntegrationsPage = () => {
         return;
       }
 
-      if (allPhones.length === 1) {
-        const selectedPhone = allPhones[0];
+      // Filter out phones already saved in our DB
+      const newPhones = allPhones.filter((p) => !configs.some((c) => c.phone_number_id === p.id));
+
+      if (newPhones.length === 1) {
+        const selectedPhone = newPhones[0];
         setSelectedPhoneId(selectedPhone.id);
         setBusinessAccountId(selectedPhone.waba_id || "");
         await selectPhone(selectedPhone, token, selectedPhone.waba_id);
-      } else if (allPhones.length > 0) {
+      } else if (newPhones.length > 0) {
         setSelectedPhoneId(null);
-        setBusinessAccountId(allPhones[0].waba_id || "");
+        setBusinessAccountId(newPhones[0].waba_id || "");
+        setPhoneNumbers(allPhones);
+        setFlowStep("pick_phone");
+        setIsLoading(false);
+      } else if (allPhones.length > 0) {
+        // All phones already saved
         setPhoneNumbers(allPhones);
         setFlowStep("pick_phone");
         setIsLoading(false);
