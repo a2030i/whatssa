@@ -573,6 +573,7 @@ serve(async (req) => {
             }
 
             let conversation = await findPrivateConversation(supabase, orgId, customerPhone, channelConfigId, "open");
+            logToSystem(supabase, "info", `[TRACE] findConv`, { wa_message_id: incomingMessage.id, found: !!conversation, conv_id: conversation?.id || null, trace_step: "2_find_conv" }, orgId);
 
             // If no open conversation, check for a closed one to reopen
             if (!conversation) {
