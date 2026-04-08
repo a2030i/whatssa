@@ -361,8 +361,29 @@ serve(async (req) => {
       // Queue for later delivery
       let convId = conversation_id || null;
       if (to && !convId) {
-        const { data: conv } = await adminClient.from("conversations").select("id").eq("customer_phone", to).eq("org_id", orgId).neq("status", "closed").limit(1).maybeSingle();
-        convId = conv?.id || null;
+        const { data: openConv } = await adminClient
+          .from("conversations")
+          .select("id")
+          .eq("customer_phone", to)
+          .eq("org_id", orgId)
+          .neq("status", "closed")
+          .limit(1)
+          .maybeSingle();
+
+        if (openConv?.id) {
+          convId = openConv.id;
+        } else {
+          const { data: closedConv } = await adminClient
+            .from("conversations")
+            .select("id")
+            .eq("customer_phone", to)
+            .eq("org_id", orgId)
+            .eq("status", "closed")
+            .order("closed_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          convId = closedConv?.id || null;
+        }
       }
       if (convId) {
         await adminClient.from("messages").insert({
@@ -665,6 +686,22 @@ serve(async (req) => {
     logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
       wa_message_id: waMessageId, type: sentMessageType,
     }, orgId, profile.id);
+
+    if (!conversation && !conversation_id) {
+      const { data: closedConv } = await adminClient
+        .from("conversations")
+        .select("id")
+        .eq("customer_phone", to)
+        .eq("org_id", orgId)
+        .eq("channel_id", channel_id || config.id)
+        .eq("status", "closed")
+        .order("closed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (closedConv) {
+        conversation = closedConv;
+      }
+    }
 
     // Create conversation if none exists
     if (!conversation) {
