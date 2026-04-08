@@ -47,7 +47,7 @@ const ResetPasswordInline = ({ userId }: { userId: string }) => {
       if (error && !data) throw new Error("فشل في إعادة تعيين كلمة المرور");
       const result = data || {};
       if (result.error) throw new Error(result.error);
-      toast.success("تم تعيين كلمة المرور الجديدة — سيُطلب من الموظف تغييرها عند الدخول");
+                        toast.success("تم تعيين كلمة المرور الجديدة — يقدر الموظف يدخل فيها مباشرة");
       setNewPass("");
     } catch (err: any) {
       toast.error(err.message || "حدث خطأ");
