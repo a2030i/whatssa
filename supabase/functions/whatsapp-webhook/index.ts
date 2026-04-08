@@ -507,14 +507,14 @@ serve(async (req) => {
           channelDefaultAgentId = config?.default_agent_id || null;
           channelExcludeSupervisors = !!(config as any)?.exclude_supervisors;
 
-          // Update last webhook activity timestamp
+          // Update last webhook activity timestamp (fire-and-forget)
           if (channelConfigId) {
-            await supabase.from("whatsapp_config").update({ last_webhook_at: new Date().toISOString() }).eq("id", channelConfigId);
+            supabase.from("whatsapp_config").update({ last_webhook_at: new Date().toISOString() }).eq("id", channelConfigId).then(() => {}).catch(() => {});
           }
         }
 
         if (!orgId) {
-          await logToSystem(supabase, "warn", "Webhook وارد بدون مؤسسة مطابقة", { phone_number_id: metadataPhoneId });
+          logToSystem(supabase, "warn", "Webhook وارد بدون مؤسسة مطابقة", { phone_number_id: metadataPhoneId });
           continue;
         }
 
@@ -530,7 +530,8 @@ serve(async (req) => {
             const contactName = value.contacts?.[0]?.profile?.name || customerPhone;
             const messageContent = incomingMessage.text?.body || `[${incomingMessage.type}]`;
 
-            await logToSystem(supabase, "info", `رسالة واردة من ${customerPhone}`, {
+            // Non-blocking log
+            logToSystem(supabase, "info", `رسالة واردة من ${customerPhone}`, {
               type: incomingMessage.type,
               wa_message_id: incomingMessage.id,
               contact_name: contactName,
@@ -651,13 +652,14 @@ serve(async (req) => {
                 reopenUpdate.updated_at = new Date().toISOString();
                 await supabase.from("conversations").update(reopenUpdate).eq("id", closedConv.id);
                 conversation = { ...closedConv, status: "active", unread_count: 1 };
-                await supabase.from("messages").insert({
+                // Non-blocking: system message + log for reopen
+                supabase.from("messages").insert({
                   conversation_id: closedConv.id,
                   content: "تم إعادة فتح المحادثة تلقائياً بعد رسالة جديدة من العميل",
                   sender: "system",
                   message_type: "text",
-                });
-                await logToSystem(supabase, "info", `تم إعادة فتح محادثة مغلقة للعميل ${customerPhone}`, { conversation_id: closedConv.id }, orgId);
+                }).then(() => {}).catch(() => {});
+                logToSystem(supabase, "info", `تم إعادة فتح محادثة مغلقة للعميل ${customerPhone}`, { conversation_id: closedConv.id }, orgId);
                 
                 // Trigger auto-assign for reopened conversations with team routing
                 if (channelDefaultTeamId && !channelDefaultAgentId && !closedConv.dedicated_agent_id) {
@@ -760,39 +762,39 @@ serve(async (req) => {
 
             if (!conversation) continue;
 
-            // Auto-save customer record
-            try {
-              const { data: existingCustomer } = await supabase
-                .from("customers")
-                .select("id, name")
-                .eq("org_id", orgId)
-                .eq("phone", customerPhone)
-                .maybeSingle();
+            // Auto-save customer record (fire-and-forget — non-critical)
+            (async () => {
+              try {
+                const { data: existingCustomer } = await supabase
+                  .from("customers")
+                  .select("id, name")
+                  .eq("org_id", orgId)
+                  .eq("phone", customerPhone)
+                  .maybeSingle();
 
-              if (!existingCustomer) {
-                await supabase.from("customers").insert({
-                  org_id: orgId,
-                  phone: customerPhone,
-                  name: contactName || null,
-                  source: "whatsapp",
-                });
-              } else if (contactName && (!existingCustomer.name || existingCustomer.name === customerPhone)) {
-                await supabase.from("customers").update({ name: contactName }).eq("id", existingCustomer.id);
-              }
+                if (!existingCustomer) {
+                  await supabase.from("customers").insert({
+                    org_id: orgId,
+                    phone: customerPhone,
+                    name: contactName || null,
+                    source: "whatsapp",
+                  });
+                } else if (contactName && (!existingCustomer.name || existingCustomer.name === customerPhone)) {
+                  await supabase.from("customers").update({ name: contactName }).eq("id", existingCustomer.id);
+                }
 
-              // Link customer to conversation if not linked
-              if (conversation) {
-                const { data: convCheck } = await supabase.from("conversations").select("customer_id").eq("id", conversation.id).single();
-                if (convCheck && !convCheck.customer_id) {
-                  const { data: cust } = await supabase.from("customers").select("id").eq("org_id", orgId).eq("phone", customerPhone).maybeSingle();
-                  if (cust) {
-                    await supabase.from("conversations").update({ customer_id: cust.id }).eq("id", conversation.id);
+                // Link customer to conversation if not linked
+                if (conversation) {
+                  const { data: convCheck } = await supabase.from("conversations").select("customer_id").eq("id", conversation.id).single();
+                  if (convCheck && !convCheck.customer_id) {
+                    const { data: cust } = await supabase.from("customers").select("id").eq("org_id", orgId).eq("phone", customerPhone).maybeSingle();
+                    if (cust) {
+                      await supabase.from("conversations").update({ customer_id: cust.id }).eq("id", conversation.id);
+                    }
                   }
                 }
-              }
-            } catch (custErr) {
-              // Non-critical — log and continue
-            }
+              } catch { /* non-critical */ }
+            })();
 
             let content = "";
             let messageType = incomingMessage.type || "text";
@@ -1027,7 +1029,7 @@ serve(async (req) => {
                 .limit(1)
                 .maybeSingle();
               if (existingMsg) {
-                await logToSystem(supabase, "info", `رسالة مكررة تم تجاهلها`, { wa_message_id: incomingMessage.id }, orgId);
+                logToSystem(supabase, "info", `رسالة مكررة تم تجاهلها`, { wa_message_id: incomingMessage.id }, orgId);
                 continue;
               }
             }
@@ -1048,7 +1050,7 @@ serve(async (req) => {
             const { error: msgError } = await supabase.from("messages").insert(msgInsert);
 
             if (msgError) {
-              await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
+              logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
                 error: msgError.message, wa_message_id: incomingMessage.id, conversation_id: conversation.id,
               }, orgId);
             } else {
@@ -1056,31 +1058,33 @@ serve(async (req) => {
               fireWebhook(orgId!, "message.received", { conversation_id: conversation.id, customer_phone: customerPhone, content, message_type: messageType });
             }
 
-            // ── Mark as read (send read receipt to Meta) ──
-            try {
-              let metaCfgQuery = supabase
-                .from("whatsapp_config")
-                .select("phone_number_id, access_token")
-                .eq("is_connected", true)
-                .eq("channel_type", "meta_api");
+            // ── Mark as read (fire-and-forget — non-critical) ──
+            if (metadataPhoneId && incomingMessage.id) {
+              (async () => {
+                try {
+                  let metaCfgQuery = supabase
+                    .from("whatsapp_config")
+                    .select("phone_number_id, access_token")
+                    .eq("is_connected", true)
+                    .eq("channel_type", "meta_api");
 
-              if (channelConfigId) {
-                metaCfgQuery = metaCfgQuery.eq("id", channelConfigId);
-              } else if (metadataPhoneId) {
-                metaCfgQuery = metaCfgQuery.eq("phone_number_id", metadataPhoneId);
-              } else {
-                metaCfgQuery = metaCfgQuery.eq("org_id", orgId).limit(1);
-              }
+                  if (channelConfigId) {
+                    metaCfgQuery = metaCfgQuery.eq("id", channelConfigId);
+                  } else {
+                    metaCfgQuery = metaCfgQuery.eq("phone_number_id", metadataPhoneId);
+                  }
 
-              const { data: metaCfg } = await metaCfgQuery.maybeSingle();
-              if (metaCfg) {
-                await fetch(`https://graph.facebook.com/v21.0/${metaCfg.phone_number_id}/messages`, {
-                  method: "POST",
-                  headers: { Authorization: `Bearer ${metaCfg.access_token}`, "Content-Type": "application/json" },
-                  body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: incomingMessage.id }),
-                });
-              }
-            } catch { /* non-critical */ }
+                  const { data: metaCfg } = await metaCfgQuery.maybeSingle();
+                  if (metaCfg) {
+                    fetch(`https://graph.facebook.com/v21.0/${metaCfg.phone_number_id}/messages`, {
+                      method: "POST",
+                      headers: { Authorization: `Bearer ${metaCfg.access_token}`, "Content-Type": "application/json" },
+                      body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: incomingMessage.id }),
+                    }).catch(() => {});
+                  }
+                } catch { /* non-critical */ }
+              })();
+            }
 
             // ── Out-of-hours check (per-channel first, then org fallback) ──
             if (incomingMessage.type === "text") {
