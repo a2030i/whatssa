@@ -172,9 +172,8 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       // Load channel configs for channel name mapping
       const { data: channelConfigs } = await supabase
         .from("whatsapp_config_safe")
-        .select("id, display_phone, business_name, channel_type, evolution_instance_name")
-        .eq("org_id", currentOrgId)
-        .eq("is_connected", true);
+        .select("id, display_phone, business_name, channel_label, channel_type, evolution_instance_name")
+        .eq("org_id", currentOrgId);
 
       const channelMap = new Map((channelConfigs || []).map((c: any) => [c.id, c]));
 
@@ -203,7 +202,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           conversationType: (conversation.conversation_type as "private" | "group" | "broadcast" | "email") || "private",
           channelType,
           channelId: conversation.channel_id || undefined,
-          channelName: channelConfig ? (channelConfig.display_phone || channelConfig.business_name || channelConfig.evolution_instance_name || "") : undefined,
+          channelName: channelConfig ? (channelConfig.display_phone || channelConfig.channel_label || channelConfig.business_name || channelConfig.evolution_instance_name || "") : undefined,
           profilePic: conversation.customer_profile_pic || undefined,
           unreadMentionCount: conversation.unread_mention_count || 0,
           isPinned: conversation.is_pinned || false,
