@@ -20,7 +20,6 @@ import TemplatesPage from "./pages/TemplatesPage";
 import WalletPage from "./pages/WalletPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CustomersPage from "./pages/CustomersPage";
-import PlanUpgradePage from "./pages/PlanUpgradePage";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import OrdersPage from "./pages/OrdersPage";
 import AbandonedCartsPage from "./pages/AbandonedCartsPage";
@@ -134,7 +133,7 @@ const AppRoutes = () => {
       <Route path="/automation" element={<ProtectedRoute minRole="admin"><AppLayout><AutomationPage /></AppLayout></ProtectedRoute>} />
       <Route path="/chatbot" element={<ProtectedRoute minRole="admin"><AppLayout><ChatbotPage /></AppLayout></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute minRole="supervisor"><AppLayout><TeamPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/plans" element={<ProtectedRoute minRole="admin"><AppLayout><PlanUpgradePage /></AppLayout></ProtectedRoute>} />
+      <Route path="/plans" element={<ProtectedRoute minRole="admin"><AppLayout><CustomPlanBuilderPage /></AppLayout></ProtectedRoute>} />
       <Route path="/integrations" element={<ProtectedRoute minRole="admin"><AppLayout><IntegrationsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute minRole="admin"><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/conversation-settings" element={<ProtectedRoute minRole="admin"><AppLayout><ConversationSettingsPage /></AppLayout></ProtectedRoute>} />
