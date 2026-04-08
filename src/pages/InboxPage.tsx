@@ -69,7 +69,7 @@ interface InboxPageProps {
 }
 
 const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
-  const { orgId, profile, userRole, teamId, isSupervisor, isSuperAdmin } = useAuth();
+  const { orgId, profile, userRole, teamId, isSupervisor, isSuperAdmin, isLoading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [allMessages, setAllMessages] = useState<Record<string, Message[]>>({});
@@ -100,7 +100,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   }, [selectedId]);
 
   useEffect(() => {
-    if (!orgId) {
+    if (authLoading || !orgId) {
       setTemplates([]);
       return;
     }
@@ -130,9 +130,10 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
     };
 
     loadTemplates();
-  }, [orgId]);
+  }, [orgId, authLoading]);
 
   useEffect(() => {
+    if (authLoading) return; // Wait for auth to fully settle before fetching
     if (!orgId) {
       setConversations([]);
       setAllMessages({});
@@ -292,7 +293,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [orgId, isMobile, userRole, teamId, isSupervisor, isSuperAdmin, profile?.id, inboxMode]);
+  }, [orgId, authLoading, inboxMode]);
 
   useEffect(() => {
     if (!selectedId) return;
