@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
     const { data: metaChannels, error: channelsError } = await db
       .from("whatsapp_config")
-      .select("id, org_id, label, business_name, display_phone, phone_number_id, is_connected, last_webhook_at, updated_at")
+      .select("id, org_id, business_name, display_phone, phone_number_id, is_connected, last_webhook_at, updated_at")
       .eq("channel_type", "meta_api")
       .order("created_at", { ascending: true });
 
@@ -53,19 +53,21 @@ Deno.serve(async (req) => {
       channelIds.length
         ? db
             .from("messages")
-            .select("id, conversation_id, sender, content, created_at, wa_message_id, conversations!inner(channel_id, customer_name, customer_phone)")
+            .select("id, conversation_id, sender, content, created_at, wa_message_id")
             .eq("sender", "customer")
-            .in("conversations.channel_id", channelIds)
             .gte("created_at", since24h)
             .order("created_at", { ascending: false })
-            .limit(20)
+            .limit(100)
         : Promise.resolve({ data: [], error: null }),
     ]);
 
     const webhookLogs = webhookLogsRes.data || [];
     const sendLogs = sendLogsRes.data || [];
     const conversations = conversationsRes.data || [];
-    const recentInbound = recentInboundRes.data || [];
+    const recentInboundRaw = recentInboundRes.data || [];
+    const recentInbound = recentInboundRaw.filter((msg: any) =>
+      conversations.some((conv: any) => conv.id === msg.conversation_id)
+    );
 
     const latestWebhookAt = (metaChannels || [])
       .map((c) => c.last_webhook_at)
@@ -78,11 +80,11 @@ Deno.serve(async (req) => {
     if (channelsError) warnings.push(`channels_error: ${channelsError.message}`);
     if ((metaChannels || []).length === 0) warnings.push("لا توجد أي قناة Meta API مسجلة في قاعدة البيانات الفعلية");
     if ((metaChannels || []).some((c) => !c.phone_number_id)) warnings.push("يوجد قناة Meta بدون phone_number_id وهذا يمنع ربط الرسائل الواردة بها");
-    if ((metaChannels || []).every((c) => !c.last_webhook_at)) warnings.push("لا يوجد last_webhook_at لأي قناة Meta — هذا يعني أن الويب هوك لم يضرب القنوات أو أن الربط بالـ phone_number_id لا يطابق");
+    if ((metaChannels || []).every((c) => !c.last_webhook_at)) warnings.push("لا يوجد last_webhook_at لأي قناة Meta — هذا يعني أن الويب هوك لا يضرب القنوات أو الربط الخارجي غير مطابق");
     if ((metaChannels || []).some((c) => c.last_webhook_at && c.last_webhook_at < since24h)) warnings.push("آخر نشاط webhook لبعض القنوات أقدم من 24 ساعة");
-    if (webhookLogs.some((log) => String(log.message || "").includes("Webhook وارد بدون مؤسسة مطابقة"))) warnings.push("تم العثور على ضربات Webhook لا تطابق أي org/channel — غالباً phone_number_id مختلف أو القناة غير معلمة كمتصلة");
-    if (sendLogs.length > 0 && webhookLogs.length === 0) warnings.push("يوجد إرسال حديث لكن لا توجد أي سجلات استقبال حديثة — المشكلة غالباً من Meta webhook أو الاشتراك الخارجي");
-    if (recentInbound.length === 0) warnings.push("لا توجد أي رسائل عميل واردة خلال آخر 24 ساعة على القنوات الرسمية المسجلة");
+    if (webhookLogs.some((log) => String(log.message || "").includes("Webhook وارد بدون مؤسسة مطابقة"))) warnings.push("تم العثور على ضربات Webhook لا تطابق أي مؤسسة/قناة — غالباً phone_number_id مختلف أو القناة غير مطابقة");
+    if (sendLogs.length > 0 && webhookLogs.length === 0) warnings.push("يوجد إرسال حديث لكن لا توجد سجلات استقبال حديثة — المشكلة غالباً خارجية في Webhook/Meta");
+    if (recentInbound.length === 0) warnings.push("لا توجد أي رسائل عميل واردة خلال آخر 24 ساعة على محادثات القنوات الرسمية");
 
     return new Response(JSON.stringify({
       summary: {
@@ -95,7 +97,7 @@ Deno.serve(async (req) => {
       meta_channels: (metaChannels || []).map((c) => ({
         id: c.id,
         org_id: c.org_id,
-        label: c.label || c.business_name || null,
+        label: c.business_name || null,
         display_phone: c.display_phone || null,
         phone_number_id: c.phone_number_id || null,
         is_connected: c.is_connected,
