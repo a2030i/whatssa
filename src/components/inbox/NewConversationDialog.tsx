@@ -41,7 +41,6 @@ interface NewConversationDialogProps {
 }
 
 type DialogMode = "private" | "group" | "email";
-type Step = "contact" | "channel" | "message";
 
 const COUNTRY_CODES = [
   { code: "966", flag: "🇸🇦", name: "السعودية", digits: 9 },
