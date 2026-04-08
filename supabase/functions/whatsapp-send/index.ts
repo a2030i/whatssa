@@ -169,7 +169,9 @@ serve(async (req) => {
       // Save message to conversation first so it appears in UI
       let convId = conversation_id || null;
       if (to && !convId) {
-        const { data: conv } = await adminClient.from("conversations").select("id").eq("customer_phone", to).eq("org_id", orgId).neq("status", "closed").limit(1).maybeSingle();
+        let convQuery = adminClient.from("conversations").select("id").eq("customer_phone", to).eq("org_id", orgId).neq("status", "closed");
+        if (requestedChannelId) convQuery = convQuery.eq("channel_id", requestedChannelId);
+        const { data: conv } = await convQuery.limit(1).maybeSingle();
         convId = conv?.id || null;
       }
       if (convId) {
@@ -507,14 +509,14 @@ serve(async (req) => {
     }
 
     if (!conversation) {
-      const { data } = await adminClient
+      let convLookup = adminClient
         .from("conversations")
         .select("id")
         .eq("customer_phone", to)
         .eq("org_id", orgId)
-        .neq("status", "closed")
-        .limit(1)
-        .maybeSingle();
+        .neq("status", "closed");
+      if (requestedChannelId) convLookup = convLookup.eq("channel_id", requestedChannelId);
+      const { data } = await convLookup.limit(1).maybeSingle();
       conversation = data;
     }
 

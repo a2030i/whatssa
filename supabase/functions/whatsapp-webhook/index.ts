@@ -507,13 +507,15 @@ serve(async (req) => {
           if (incomingMessage.type === "text") {
             const ratingNum = parseInt(messageContent.trim());
             if (ratingNum >= 1 && ratingNum <= 5) {
-              const { data: pendingConv } = await supabase
+              let pendingQuery = supabase
                 .from("conversations")
                 .select("id, assigned_to")
                 .eq("customer_phone", customerPhone)
                 .eq("org_id", orgId)
                 .eq("status", "closed")
-                .eq("satisfaction_status", "pending")
+                .eq("satisfaction_status", "pending");
+              if (channelConfigId) pendingQuery = pendingQuery.eq("channel_id", channelConfigId);
+              const { data: pendingConv } = await pendingQuery
                 .order("closed_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
@@ -534,23 +536,27 @@ serve(async (req) => {
             }
           }
 
-          let { data: conversation } = await supabase
+          let openQuery = supabase
             .from("conversations")
             .select("id, unread_count, status")
             .eq("customer_phone", customerPhone)
             .eq("org_id", orgId)
-            .neq("status", "closed")
+            .neq("status", "closed");
+          if (channelConfigId) openQuery = openQuery.eq("channel_id", channelConfigId);
+          let { data: conversation } = await openQuery
             .limit(1)
             .maybeSingle();
 
           // If no open conversation, check for a closed one to reopen
           if (!conversation) {
-            const { data: closedConv } = await supabase
+            let closedQuery = supabase
               .from("conversations")
               .select("id, unread_count, status, dedicated_agent_id, dedicated_agent_name")
               .eq("customer_phone", customerPhone)
               .eq("org_id", orgId)
-              .eq("status", "closed")
+              .eq("status", "closed");
+            if (channelConfigId) closedQuery = closedQuery.eq("channel_id", channelConfigId);
+            const { data: closedConv } = await closedQuery
               .order("closed_at", { ascending: false })
               .limit(1)
               .maybeSingle();
@@ -609,6 +615,7 @@ serve(async (req) => {
                   reopenUpdate.assigned_at = null;
                 }
               }
+              if (channelConfigId) reopenUpdate.channel_id = channelConfigId;
               await supabase.from("conversations").update(reopenUpdate).eq("id", closedConv.id);
               conversation = { ...closedConv, status: "active", unread_count: 1 };
               await supabase.from("messages").insert({
@@ -631,6 +638,7 @@ serve(async (req) => {
               last_message: messageContent,
               unread_count: 1,
               conversation_type: "meta_api",
+              channel_id: channelConfigId,
             };
             if (channelDefaultAgentId) {
               convInsert.assigned_to = channelDefaultAgentId;
