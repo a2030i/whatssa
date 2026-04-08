@@ -200,6 +200,22 @@ const TeamPage = () => {
       }
     }
 
+    // Save shift assignment
+    if (editingProfile && formShiftId) {
+      const today = new Date().toISOString().split("T")[0];
+      // Remove old assignments
+      await supabase.from("employee_shifts" as any).delete().eq("profile_id", editingProfile.id).eq("org_id", orgId);
+      // Add new
+      await supabase.from("employee_shifts" as any).insert({
+        org_id: orgId,
+        profile_id: editingProfile.id,
+        shift_id: formShiftId,
+        effective_from: today,
+      } as any);
+    } else if (editingProfile && !formShiftId) {
+      await supabase.from("employee_shifts" as any).delete().eq("profile_id", editingProfile.id).eq("org_id", orgId);
+    }
+
     toast.success("تم تحديث بيانات العضو");
     setDialogOpen(false);
     load();
