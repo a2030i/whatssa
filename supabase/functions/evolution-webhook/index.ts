@@ -1025,6 +1025,7 @@ serve(async (req) => {
                 reopenUpdate.assigned_at = null;
               }
             }
+            reopenUpdate.channel_id = config.id;
             await supabase.from("conversations").update(reopenUpdate).eq("id", closedConv.id);
             conversation = { ...closedConv, status: "active" };
             await supabase.from("messages").insert({
