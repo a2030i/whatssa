@@ -537,6 +537,32 @@ serve(async (req) => {
       conversation = data;
     }
 
+    // Create conversation if none exists (for new conversations from the dialog or first-time sends)
+    if (!conversation && type !== "reaction") {
+      const customerName = body.customer_name || to;
+      const { data: newConv, error: newConvErr } = await adminClient
+        .from("conversations")
+        .insert({
+          org_id: orgId,
+          customer_phone: to,
+          customer_name: customerName,
+          channel_id: requestedChannelId || config.id,
+          conversation_type: "private",
+          status: "active",
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (!newConvErr && newConv) {
+        conversation = newConv;
+        await logToSystem(adminClient, "info", `تم إنشاء محادثة جديدة مع ${to}`, { conversation_id: newConv.id }, orgId, requesterUserId);
+      } else {
+        console.error("Failed to create conversation:", newConvErr);
+      }
+    }
+
     let outboundContent = message || caption || "";
 
     if (conversation) {
@@ -647,7 +673,7 @@ serve(async (req) => {
       }
     }
 
-    return json({ success: true, message_id: waMessageId });
+    return json({ success: true, message_id: waMessageId, conversation_id: conversation?.id || null });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     await logToSystem(adminClient, "critical", `خطأ غير متوقع في إرسال رسالة واتساب`, {
