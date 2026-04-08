@@ -88,11 +88,15 @@ Deno.serve(async (req) => {
       const primaryTeamId = resolvedTeamIds.length > 0 ? resolvedTeamIds[0] : null;
 
       // Update profile
-      await adminClient.from("profiles").update({
+      const { error: profileError } = await adminClient.from("profiles").update({
         team_id: primaryTeamId,
         team_ids: resolvedTeamIds,
         is_supervisor: !!is_supervisor,
       }).eq("id", user_id);
+      if (profileError) {
+        console.error("Profile update error:", profileError);
+        return new Response(JSON.stringify({ error: "فشل تحديث الملف الشخصي: " + profileError.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
       // Update role: delete old, insert new
       const dbRole = role === "admin" ? "admin" : "member";
