@@ -46,13 +46,13 @@ Deno.serve(async (req) => {
     }
 
     // Use external DB if configured, otherwise Cloud
-    const adminClient = createClient(
-      EXT_URL || CLOUD_URL,
-      EXT_KEY || CLOUD_KEY,
-      { auth: { persistSession: false, autoRefreshToken: false } }
-    );
+    const extClient = EXT_URL && EXT_KEY
+      ? createClient(EXT_URL, EXT_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+      : null;
+    const cloudClient = createClient(CLOUD_URL, CLOUD_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    const primaryClient = extClient || cloudClient;
 
-    const { data: profile } = await adminClient
+    const { data: profile } = await primaryClient
       .from("profiles")
       .select("id, org_id")
       .eq("id", userId)
@@ -69,16 +69,30 @@ Deno.serve(async (req) => {
       return json({ error: "channel_id is required" }, 400);
     }
 
-    // Get channel config — use admin to bypass RLS, verify org ownership after
-    const { data: channel } = await adminClient
+    const channelSelect = "id, channel_type, safety_max_per_hour, safety_max_per_day, safety_max_unique_per_hour, safety_paused, safety_paused_at, safety_paused_reason, channel_age_days, org_id, safety_limits_enabled";
+
+    // Get channel config — try primary DB first, fallback to cloud
+    let { data: channel } = await primaryClient
       .from("whatsapp_config")
-      .select("id, channel_type, safety_max_per_hour, safety_max_per_day, safety_max_unique_per_hour, safety_paused, safety_paused_at, safety_paused_reason, channel_age_days, org_id, safety_limits_enabled")
+      .select(channelSelect)
       .eq("id", channel_id)
       .maybeSingle();
+
+    if (!channel && extClient) {
+      const { data: cloudChannel } = await cloudClient
+        .from("whatsapp_config")
+        .select(channelSelect)
+        .eq("id", channel_id)
+        .maybeSingle();
+      channel = cloudChannel;
+    }
 
     if (!channel) {
       return json({ error: "Channel not found" }, 404);
     }
+
+    // Use the client where the channel was found for subsequent queries
+    const adminClient = channel ? primaryClient : cloudClient;
 
     // Verify org ownership
     if (channel.org_id !== profile.org_id) {
