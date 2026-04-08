@@ -887,6 +887,26 @@ const TemplatesPage = () => {
           )}
 
           <div className="space-y-4 mt-2">
+            {metaChannels.length > 1 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">{isReviewMode ? "WhatsApp number" : "الرقم الرسمي"}</Label>
+                <Select value={selectedFormChannel} onValueChange={setSelectedFormChannel}>
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder={isReviewMode ? "Select number..." : "اختر الرقم..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metaChannels.map((ch) => (
+                      <SelectItem key={ch.id} value={ch.id}>
+                        {ch.channel_label || ch.business_name || ch.display_phone}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  {isReviewMode ? "Select which WhatsApp Business Account to create the template in." : "اختر أي حساب واتساب رسمي ستُنشئ فيه القالب"}
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">{isReviewMode ? "Template name" : "اسم القالب"}</Label>
