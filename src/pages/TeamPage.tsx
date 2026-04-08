@@ -51,6 +51,10 @@ const TeamPage = () => {
   const [workEnd2, setWorkEnd2] = useState("02:00");
   const [workDays2, setWorkDays2] = useState<number[]>([]);
   const [rolesRepaired, setRolesRepaired] = useState(false);
+  const [shiftTemplates, setShiftTemplates] = useState<any[]>([]);
+  const [employeeShifts, setEmployeeShifts] = useState<Record<string, string>>({});
+  const [attendanceDialog, setAttendanceDialog] = useState<any>(null);
+  const [formShiftId, setFormShiftId] = useState<string>("");
 
   // Assignment config dialog
   const [assignDialog, setAssignDialog] = useState<any>(null);
