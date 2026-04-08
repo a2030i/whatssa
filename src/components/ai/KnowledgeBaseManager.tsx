@@ -60,11 +60,12 @@ const KnowledgeBaseManager = () => {
   const [filterCat, setFilterCat] = useState("all");
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState<KBEntry | null>(null);
-  const [form, setForm] = useState({ title: "", content: "", category: "general" });
+  const [form, setForm] = useState({ title: "", content: "", category: "general", channelIds: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("knowledge");
   const [answerDialog, setAnswerDialog] = useState<PendingQuestion | null>(null);
   const [answerForm, setAnswerForm] = useState({ answers: {} as Record<string, string>, category: "faq" });
+  const [channels, setChannels] = useState<ChannelOption[]>([]);
 
   useEffect(() => {
     if (orgId) {
