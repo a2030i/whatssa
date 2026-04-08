@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
     if (new_password) {
       // Direct password reset
-      const { error: updateError } = await adminClient.auth.admin.updateUser(user_id, {
+      const { error: updateError } = await adminClient.auth.admin.updateUserById(user_id, {
         password: new_password,
         user_metadata: { must_change_password: false },
       });
