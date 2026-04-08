@@ -5166,6 +5166,7 @@ export type Database = {
         Args: { _partner_id: string; _user_id: string }
         Returns: boolean
       }
+      normalize_phone: { Args: { input: string }; Returns: string }
       validate_coupon: { Args: { _code: string }; Returns: Json }
     }
     Enums: {
