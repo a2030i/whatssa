@@ -1068,33 +1068,8 @@ serve(async (req) => {
               fireWebhook(orgId!, "message.received", { conversation_id: conversation.id, customer_phone: customerPhone, content, message_type: messageType });
             }
 
-            // ── Mark as read (fire-and-forget — non-critical) ──
-            if (metadataPhoneId && incomingMessage.id) {
-              (async () => {
-                try {
-                  let metaCfgQuery = supabase
-                    .from("whatsapp_config")
-                    .select("phone_number_id, access_token")
-                    .eq("is_connected", true)
-                    .eq("channel_type", "meta_api");
-
-                  if (channelConfigId) {
-                    metaCfgQuery = metaCfgQuery.eq("id", channelConfigId);
-                  } else {
-                    metaCfgQuery = metaCfgQuery.eq("phone_number_id", metadataPhoneId);
-                  }
-
-                  const { data: metaCfg } = await metaCfgQuery.maybeSingle();
-                  if (metaCfg) {
-                    fetch(`https://graph.facebook.com/v21.0/${metaCfg.phone_number_id}/messages`, {
-                      method: "POST",
-                      headers: { Authorization: `Bearer ${metaCfg.access_token}`, "Content-Type": "application/json" },
-                      body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: incomingMessage.id }),
-                    }).catch(() => {});
-                  }
-                } catch { /* non-critical */ }
-              })();
-            }
+            // ── Mark as read is handled client-side when agent opens the conversation ──
+            // (via whatsapp-catalog mark_read action)
 
             // ── Out-of-hours check (per-channel first, then org fallback) ──
             if (incomingMessage.type === "text") {
