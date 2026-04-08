@@ -1026,6 +1026,7 @@ serve(async (req) => {
             }
 
             // ── Duplicate check: skip if wa_message_id already exists ──
+            logToSystem(supabase, "info", `[TRACE] pre-dedup`, { wa_message_id: incomingMessage.id, conv_id: conversation.id, trace_step: "4_pre_dedup" }, orgId);
             if (incomingMessage.id) {
               const { data: existingMsg } = await supabase
                 .from("messages")
@@ -1034,7 +1035,7 @@ serve(async (req) => {
                 .limit(1)
                 .maybeSingle();
               if (existingMsg) {
-                logToSystem(supabase, "info", `رسالة مكررة تم تجاهلها`, { wa_message_id: incomingMessage.id }, orgId);
+                logToSystem(supabase, "info", `رسالة مكررة تم تجاهلها`, { wa_message_id: incomingMessage.id, trace_step: "4b_duplicate" }, orgId);
                 continue;
               }
             }
@@ -1052,13 +1053,15 @@ serve(async (req) => {
               msgInsert.metadata = messageMetadata;
             }
 
+            logToSystem(supabase, "info", `[TRACE] pre-insert`, { wa_message_id: incomingMessage.id, conv_id: conversation.id, trace_step: "5_pre_insert" }, orgId);
             const { error: msgError } = await supabase.from("messages").insert(msgInsert);
 
             if (msgError) {
-              logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
-                error: msgError.message, wa_message_id: incomingMessage.id, conversation_id: conversation.id,
+              await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة في قاعدة البيانات", {
+                error: msgError.message, wa_message_id: incomingMessage.id, conversation_id: conversation.id, trace_step: "5b_insert_fail",
               }, orgId);
             } else {
+              logToSystem(supabase, "info", `[TRACE] msg saved OK`, { wa_message_id: incomingMessage.id, conv_id: conversation.id, trace_step: "6_saved" }, orgId);
               // Fire outgoing webhook for message received
               fireWebhook(orgId!, "message.received", { conversation_id: conversation.id, customer_phone: customerPhone, content, message_type: messageType });
             }
