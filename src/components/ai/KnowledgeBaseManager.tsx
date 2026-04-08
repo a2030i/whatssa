@@ -135,7 +135,7 @@ const KnowledgeBaseManager = () => {
 
   const openEdit = (entry: KBEntry) => {
     setEditing(entry);
-    setForm({ title: entry.title, content: entry.content, category: entry.category });
+    setForm({ title: entry.title, content: entry.content, category: entry.category, channelIds: entry.channel_ids || [] });
     setShowDialog(true);
   };
 
