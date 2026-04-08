@@ -8,6 +8,7 @@ const corsHeaders = {
 const OPENAI_BASE = "https://api.openai.com/v1";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
+const LOVABLE_AI_BASE = "https://ai.gateway.lovable.dev/v1";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -45,6 +46,26 @@ async function getOrgAiConfig(
 
 async function callAi(config: AiConfig, systemPrompt: string, userMessage: string): Promise<string | null> {
   try {
+    if (config.provider === "lovable_ai") {
+      const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!lovableKey) return null;
+      const res = await fetch(`${LOVABLE_AI_BASE}/chat/completions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: config.model || "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
+      });
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content || null;
+    }
+
     if (config.provider === "openai") {
       const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
         method: "POST",
@@ -104,6 +125,22 @@ async function callAi(config: AiConfig, systemPrompt: string, userMessage: strin
     console.error("AI call error:", e);
     return null;
   }
+}
+
+async function logLovableAiUsage(
+  serviceClient: ReturnType<typeof createClient>,
+  orgId: string,
+  action: string,
+  model: string,
+  userId?: string
+) {
+  await serviceClient.from("ai_usage_logs").insert({
+    org_id: orgId,
+    action,
+    model,
+    tokens_used: 1, // count as 1 call
+    triggered_by: userId || null,
+  });
 }
 
 Deno.serve(async (req) => {
