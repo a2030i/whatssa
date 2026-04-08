@@ -379,6 +379,52 @@ serve(async (req) => {
       });
     }
 
+    // Retry with delay if phone not found (Meta permission propagation delay)
+    if (sessionPhoneId && !selectedPhone) {
+      log("step2_retry_waiting", { sessionPhoneId, waitMs: 3000 });
+      await new Promise((r) => setTimeout(r, 3000));
+
+      // Retry direct phone lookup
+      const retryPhoneDetails = await fetchPhoneDetails(sessionPhoneId, accessToken);
+      if (retryPhoneDetails.ok && !retryPhoneDetails.data?.error) {
+        const retryPhone = normalizeSelectedPhone(
+          retryPhoneDetails.data,
+          sessionWabaId || retryPhoneDetails.data?.waba_id || wabaIds[0] || "",
+          sessionPhoneId,
+        );
+        selectedPhone = retryPhone;
+        if (retryPhone.waba_id && !wabaIds.includes(retryPhone.waba_id)) {
+          wabaIds.push(retryPhone.waba_id);
+          results.push({ waba_id: retryPhone.waba_id, phone_numbers: [retryPhone] });
+        }
+        resolvedPhones.push(retryPhone);
+        log("step2_retry_success", { sessionPhoneId, wabaId: retryPhone.waba_id });
+      }
+
+      // Retry debug_token + WABA scan
+      if (!selectedPhone) {
+        const retryDebugRes = await fetch(
+          `https://graph.facebook.com/v22.0/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
+        );
+        const retryDebugData = await retryDebugRes.json();
+        const retryScopes = retryDebugData.data?.granular_scopes || [];
+        const retryWaScope = retryScopes.find((s: any) => s.scope === "whatsapp_business_management");
+        const retryWabaIds = [...new Set((retryWaScope?.target_ids || []).filter((id: string) => !wabaIds.includes(id)))];
+
+        for (const rWabaId of retryWabaIds) {
+          const phonesResult = await fetchPhoneNumbersForWaba(rWabaId, accessToken);
+          results.push({ waba_id: rWabaId, phone_numbers: phonesResult.phones });
+          resolvedPhones.push(...phonesResult.phones);
+        }
+
+        selectedPhone = resolvedPhones.find((p: any) => p.id === sessionPhoneId) || null;
+        if (selectedPhone?.waba_id && !wabaIds.includes(selectedPhone.waba_id)) {
+          wabaIds.push(selectedPhone.waba_id);
+        }
+        log("step2_retry_fallback", { sessionPhoneId, searchedWabas: retryWabaIds, found: !!selectedPhone });
+      }
+    }
+
     if (sessionPhoneId && !selectedPhone) {
       return error("تعذر مطابقة الرقم المختار مع حسابات واتساب المصرح بها", 400);
     }
