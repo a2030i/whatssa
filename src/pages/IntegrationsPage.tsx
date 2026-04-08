@@ -2591,7 +2591,7 @@ const IntegrationsPage = () => {
             </div>
 
             {/* Webhook Status */}
-            {webhookStatus?.auto_configured ? (
+            {webhookStatus?.auto_configured || !isSuperAdmin ? (
               <div className="bg-success/5 border border-success/20 rounded-xl p-4 flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
                 <div>
@@ -2599,7 +2599,7 @@ const IntegrationsPage = () => {
                   <p className="text-xs text-muted-foreground mt-1">{t("الرسائل الواردة ستصل مباشرة للمنصة.", "Incoming messages will be received automatically.")}</p>
                 </div>
               </div>
-            ) : webhookStatus ? (
+            ) : webhookStatus && !webhookStatus.auto_configured ? (
               <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
