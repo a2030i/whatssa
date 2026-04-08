@@ -14,7 +14,7 @@ import TeamPage from "./pages/TeamPage";
 import SettingsPage from "./pages/SettingsPage";
 import ConversationSettingsPage from "./pages/ConversationSettingsPage";
 import AiSettingsPage from "./pages/AiSettingsPage";
-import AiStudioPage from "./pages/AiStudioPage";
+// AiStudioPage removed - merged into AiSettingsPage
 import ApiTokensPage from "./pages/ApiTokensPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import WalletPage from "./pages/WalletPage";
@@ -138,7 +138,7 @@ const AppRoutes = () => {
       <Route path="/settings" element={<ProtectedRoute minRole="admin"><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/conversation-settings" element={<ProtectedRoute minRole="admin"><AppLayout><ConversationSettingsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/ai-settings" element={<ProtectedRoute minRole="admin"><AppLayout><AiSettingsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/ai-studio" element={<ProtectedRoute minRole="admin"><AppLayout><AiStudioPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/ai-studio" element={<Navigate to="/ai-settings" replace />} />
       <Route path="/api-tokens" element={<ProtectedRoute minRole="admin"><AppLayout><ApiTokensPage /></AppLayout></ProtectedRoute>} />
       <Route path="/templates" element={<MetaApiRoute><AppLayout><TemplatesPage /></AppLayout></MetaApiRoute>} />
       <Route path="/catalog" element={<MetaApiRoute><AppLayout><CatalogPage /></AppLayout></MetaApiRoute>} />

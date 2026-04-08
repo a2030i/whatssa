@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Bell, CreditCard, Shield, ChevronLeft, BellRing, Save, Timer, Ban, Webhook, FileText } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Building2, Bell, Timer, BellRing, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -8,13 +7,11 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 import usePushNotifications from "@/hooks/usePushNotifications";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BlacklistSection from "@/components/settings/BlacklistSection";
 import OutgoingWebhooksSection from "@/components/settings/OutgoingWebhooksSection";
 import AuditLogSection from "@/components/settings/AuditLogSection";
-import SavedRepliesSection from "@/components/settings/SavedRepliesSection";
 
 const PushNotificationSettings = () => {
   const { isSupported, isSubscribed, subscribe, unsubscribe } = usePushNotifications();
@@ -43,7 +40,6 @@ const PushNotificationSettings = () => {
 
 const SettingsPage = () => {
   const { orgId, profile } = useAuth();
-  const navigate = useNavigate();
   const [companyName, setCompanyName] = useState(profile?.full_name || "");
   const [companyPhone, setCompanyPhone] = useState(profile?.phone || "");
   const [autoCloseHours, setAutoCloseHours] = useState("0");
@@ -81,7 +77,7 @@ const SettingsPage = () => {
     <div className="p-3 md:p-6 space-y-5 max-w-[800px] mx-auto" dir="rtl">
       <div>
         <h1 className="text-xl font-bold">الإعدادات العامة</h1>
-        <p className="text-sm text-muted-foreground mt-1">بيانات الشركة والإشعارات والأمان</p>
+        <p className="text-sm text-muted-foreground mt-1">بيانات الشركة والإشعارات والأدوات العامة</p>
       </div>
 
       {/* Company Info */}
@@ -162,11 +158,6 @@ const SettingsPage = () => {
       {/* Push Notifications */}
       <PushNotificationSettings />
 
-      {/* Saved / Quick Replies */}
-      <div className="bg-card rounded-lg shadow-card p-5">
-        <SavedRepliesSection />
-      </div>
-
       {/* Blacklist */}
       <div className="bg-card rounded-lg shadow-card p-5">
         <BlacklistSection />
@@ -180,27 +171,6 @@ const SettingsPage = () => {
       {/* Audit Log */}
       <div className="bg-card rounded-lg shadow-card p-5">
         <AuditLogSection />
-      </div>
-
-      {/* Quick Links */}
-      <div className="bg-card rounded-lg shadow-card">
-        {[
-          { id: "integrations", icon: CreditCard, title: "الربط والتكامل", description: "إدارة قنوات التواصل وأرقام واتساب", onClick: () => navigate("/integrations") },
-          { id: "billing", icon: CreditCard, title: "الاشتراك والفواتير", description: "إدارة الاشتراك والدفع", onClick: () => navigate("/wallet") },
-          { id: "permissions", icon: Shield, title: "الصلاحيات والنسخ الاحتياطي", description: "تحكم بصلاحيات الأدوار وتصدير البيانات", onClick: () => navigate("/permissions") },
-          { id: "security", icon: Shield, title: "الأمان", description: "كلمة المرور والمصادقة", onClick: () => {} },
-        ].map((section, i, arr) => (
-          <button key={section.id} onClick={section.onClick} className={cn("w-full flex items-center justify-between p-5 hover:bg-secondary/30 transition-colors", i < arr.length - 1 && "border-b border-border")}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><section.icon className="w-4 h-4" /></div>
-              <div className="text-right">
-                <p className="text-sm font-medium">{section.title}</p>
-                <p className="text-xs text-muted-foreground">{section.description}</p>
-              </div>
-            </div>
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
-          </button>
-        ))}
       </div>
     </div>
   );

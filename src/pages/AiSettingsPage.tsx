@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import AiProviderSettings from "@/components/settings/AiProviderSettings";
 import KnowledgeBaseManager from "@/components/ai/KnowledgeBaseManager";
+import AiStudioTab from "@/components/ai/AiStudioTab";
 import { Languages, Sparkles, Brain, BarChart3, CheckCircle2, Lock, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,10 +31,10 @@ const AiSettingsPage = () => {
   }, [orgId]);
 
   return (
-    <div className="p-3 md:p-6 space-y-5 max-w-[800px] mx-auto" dir="rtl">
+    <div className="p-3 md:p-6 space-y-5 max-w-[900px] mx-auto" dir="rtl">
       <div>
         <h1 className="text-xl font-bold">الذكاء الاصطناعي</h1>
-        <p className="text-sm text-muted-foreground mt-1">إعداد مزود AI وقاعدة المعرفة للرد التلقائي</p>
+        <p className="text-sm text-muted-foreground mt-1">إعداد مزود AI، قاعدة المعرفة، وأدوات التحليل المتقدمة</p>
       </div>
 
       <Tabs defaultValue="provider" dir="rtl">
@@ -43,6 +44,9 @@ const AiSettingsPage = () => {
           </TabsTrigger>
           <TabsTrigger value="knowledge" className="flex-1 gap-1">
             <BookOpen className="w-4 h-4" /> قاعدة المعرفة
+          </TabsTrigger>
+          <TabsTrigger value="studio" className="flex-1 gap-1" disabled={!hasActiveAi}>
+            <Sparkles className="w-4 h-4" /> استوديو AI
           </TabsTrigger>
         </TabsList>
 
@@ -85,6 +89,18 @@ const AiSettingsPage = () => {
 
         <TabsContent value="knowledge" className="mt-4">
           <KnowledgeBaseManager />
+        </TabsContent>
+
+        <TabsContent value="studio" className="mt-4">
+          {hasActiveAi ? (
+            <AiStudioTab />
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Lock className="w-8 h-8 mx-auto mb-3 opacity-30" />
+              <p className="text-sm font-medium">فعّل مزود AI أولاً</p>
+              <p className="text-xs mt-1">اذهب لتبويب "مزود AI" وأضف مفتاح API لفتح أدوات الاستوديو</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

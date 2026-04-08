@@ -39,6 +39,7 @@ const MobileBottomNav = () => {
     ...(hasMetaApi || isSuperAdmin ? [{ label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", minRole: "admin" }] : []),
     { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡", minRole: "admin" },
     { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖", minRole: "admin" },
+    { label: "الذكاء الاصطناعي", icon: Bot, path: "/ai-settings", emoji: "🧠", minRole: "admin" },
     { label: "العملاء", icon: UserCircle, path: "/customers", emoji: "👥", minRole: "admin" },
     ...(isEcommerce || isSuperAdmin ? [
       { label: "الطلبات", icon: ShoppingCart, path: "/orders", emoji: "🛒", minRole: "admin" },
@@ -48,7 +49,8 @@ const MobileBottomNav = () => {
     { label: "التقارير", icon: BarChart3, path: "/analytics", emoji: "📈", minRole: "supervisor" },
     { label: "الربط والتكامل", icon: Plug, path: "/integrations", emoji: "🔌", minRole: "admin" },
     { label: "الفريق", icon: UsersIcon, path: "/team", emoji: "👨‍💼", minRole: "supervisor" },
-    { label: "الإعدادات", icon: Settings, path: "/settings", emoji: "⚙️", minRole: "admin" },
+    { label: "الإعدادات العامة", icon: Settings, path: "/settings", emoji: "⚙️", minRole: "admin" },
+    { label: "إعدادات المحادثات", icon: MessageSquare, path: "/conversation-settings", emoji: "💬", minRole: "admin" },
     { label: "الاشتراك والفواتير", icon: CreditCard, path: "/billing", emoji: "💳", minRole: "admin" },
     { label: "المحفظة", icon: Wallet, path: "/wallet", emoji: "💰", minRole: "admin" },
   ];
