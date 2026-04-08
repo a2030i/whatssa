@@ -68,15 +68,23 @@ const TeamPage = () => {
   const dayLabels = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
 
   const load = async () => {
-    const [t, p, r, conv] = await Promise.all([
+    const [t, p, r, conv, empShifts] = await Promise.all([
       supabase.from("teams").select("*").eq("org_id", orgId),
       supabase.from("profiles").select("*").eq("org_id", orgId),
       supabase.from("user_roles").select("*"),
       supabase.from("conversations").select("assigned_to, status").eq("org_id", orgId).eq("status", "active"),
+      supabase.from("employee_shifts" as any).select("profile_id, shift_id").eq("org_id", orgId),
     ]);
     setTeams(t.data || []);
     setProfiles(p.data || []);
     setRoles(r.data || []);
+
+    // Map employee -> shift
+    const shiftMap: Record<string, string> = {};
+    ((empShifts.data || []) as any[]).forEach((es: any) => {
+      shiftMap[es.profile_id] = es.shift_id;
+    });
+    setEmployeeShifts(shiftMap);
 
     const counts: Record<string, number> = {};
     (conv.data || []).forEach((c: any) => {
