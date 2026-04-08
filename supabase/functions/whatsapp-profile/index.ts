@@ -16,14 +16,23 @@ Deno.serve(async (req) => {
 
     // Auth
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    if (!authHeader) {
+      console.error("whatsapp-profile: No auth header");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    }
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-    if (authError || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    if (authError || !user) {
+      console.error("whatsapp-profile: Auth failed", authError?.message);
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    }
+    console.log("whatsapp-profile: user", user.id, "action requested");
 
     const body = await req.json();
     const { action, config_id } = body;
 
     if (!config_id) return new Response(JSON.stringify({ error: "config_id required" }), { status: 400, headers: corsHeaders });
+
+    console.log("whatsapp-profile: config_id=", config_id, "action=", action);
 
     // Get config
     const { data: config, error: cfgErr } = await supabase
@@ -32,7 +41,11 @@ Deno.serve(async (req) => {
       .eq("id", config_id)
       .maybeSingle();
 
-    if (cfgErr || !config) return new Response(JSON.stringify({ error: "Config not found" }), { status: 404, headers: corsHeaders });
+    if (cfgErr || !config) {
+      console.error("whatsapp-profile: Config not found", cfgErr?.message, "config_id=", config_id);
+      return new Response(JSON.stringify({ error: "Config not found" }), { status: 404, headers: corsHeaders });
+    }
+    console.log("whatsapp-profile: config found, channel_type=", config.channel_type, "phone_id=", config.phone_number_id);
 
     // Verify user belongs to same org
     const { data: profile } = await supabase.from("profiles").select("org_id").eq("id", user.id).maybeSingle();
@@ -52,7 +65,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "Unsupported channel type" }), { status: 400, headers: corsHeaders });
   } catch (e) {
     console.error("whatsapp-profile error:", e);
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: e.message, stack: e.stack }), { status: 500, headers: corsHeaders });
   }
 });
 
@@ -63,11 +76,13 @@ async function handleMetaProfile(config: any, action: string, body: any) {
   if (action === "get") {
     // Get business profile
     const fields = "about,address,description,email,profile_picture_url,websites,vertical";
+    console.log("whatsapp-profile META get: phoneId=", phoneId, "token length=", token?.length);
     const res = await fetch(
       `https://graph.facebook.com/v21.0/${phoneId}/whatsapp_business_profile?fields=${fields}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     const data = await res.json();
+    console.log("whatsapp-profile META get response:", JSON.stringify(data).slice(0, 500));
     if (data.error) return new Response(JSON.stringify({ error: data.error.message }), { status: 400, headers: corsHeaders });
 
     const profile = data.data?.[0] || {};
