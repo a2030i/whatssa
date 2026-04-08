@@ -308,108 +308,104 @@ const AppSidebar = () => {
               collapsed ? "justify-center" : "gap-3 px-3 py-2.5 bg-sidebar-accent/25 border border-sidebar-border/15"
             )}
           >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="relative focus:outline-none group">
-                  <div
-                    className={cn(
-                      "rounded-full bg-sidebar-primary/20 flex items-center justify-center text-xs font-bold text-sidebar-primary border-2 transition-all cursor-pointer",
-                      "w-9 h-9",
-                      profile?.is_online
-                        ? "border-success ring-2 ring-success/20"
-                        : "border-sidebar-border/30"
-                    )}
+            {displayRole === "member" ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="relative focus:outline-none group">
+                    <div
+                      className={cn(
+                        "rounded-full bg-sidebar-primary/20 flex items-center justify-center text-xs font-bold text-sidebar-primary border-2 transition-all cursor-pointer",
+                        "w-9 h-9",
+                        profile?.is_online
+                          ? "border-success ring-2 ring-success/20"
+                          : "border-sidebar-border/30"
+                      )}
+                    >
+                      {profile?.full_name?.slice(0, 2) || "؟"}
+                    </div>
+                    <span
+                      className={cn(
+                        "absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-sidebar-background transition-colors",
+                        profile?.is_online ? "bg-success" : "bg-muted-foreground/40"
+                      )}
+                    />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="start" className="min-w-[160px]">
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      if (!profile?.id || !orgId) return;
+                      const now = new Date().toISOString().split("T")[0];
+                      const { data: empShift } = await supabase
+                        .from("employee_shifts" as any)
+                        .select("shift_id, shift_templates!inner(start_time, end_time)")
+                        .eq("profile_id", profile.id)
+                        .lte("effective_from", now)
+                        .or(`effective_to.is.null,effective_to.gte.${now}`)
+                        .limit(1);
+                      const shift = (empShift as any)?.[0]?.shift_templates;
+                      const riyadhTime = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
+                      const classification = shift ? (riyadhTime > shift.start_time ? "late" : "on_time") : null;
+                      const shiftId = (empShift as any)?.[0]?.shift_id || null;
+                      await supabase.from("attendance_logs" as any).insert({
+                        org_id: orgId, profile_id: profile.id, event_type: "clock_in", shift_id: shiftId, classification,
+                      } as any);
+                      await supabase.from("profiles").update({ is_online: true } as any).eq("id", profile.id);
+                      toast.success("✅ متواجد الآن");
+                      if (classification === "late") toast.warning("⚠️ تسجيل متأخر");
+                    }}
+                    className="gap-2 cursor-pointer"
+                    disabled={profile?.is_online}
                   >
-                    {profile?.full_name?.slice(0, 2) || "؟"}
-                  </div>
-                  <span
-                    className={cn(
-                      "absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-sidebar-background transition-colors",
-                      profile?.is_online ? "bg-success" : "bg-muted-foreground/40"
-                    )}
-                  />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="start" className="min-w-[160px]">
-                <DropdownMenuItem
-                  onClick={async () => {
-                    if (!profile?.id || !orgId) return;
-                    const now = new Date().toISOString().split("T")[0];
-                    
-                    // Get shift classification
-                    const { data: empShift } = await supabase
-                      .from("employee_shifts" as any)
-                      .select("shift_id, shift_templates!inner(start_time, end_time)")
-                      .eq("profile_id", profile.id)
-                      .lte("effective_from", now)
-                      .or(`effective_to.is.null,effective_to.gte.${now}`)
-                      .limit(1);
-                    
-                    const shift = (empShift as any)?.[0]?.shift_templates;
-                    const riyadhTime = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
-                    const classification = shift ? (riyadhTime > shift.start_time ? "late" : "on_time") : null;
-                    const shiftId = (empShift as any)?.[0]?.shift_id || null;
-
-                    await supabase.from("attendance_logs" as any).insert({
-                      org_id: orgId,
-                      profile_id: profile.id,
-                      event_type: "clock_in",
-                      shift_id: shiftId,
-                      classification,
-                    } as any);
-
-                    await supabase.from("profiles").update({ is_online: true } as any).eq("id", profile.id);
-                    toast.success("✅ متواجد الآن");
-                    if (classification === "late") toast.warning("⚠️ تسجيل متأخر");
-                  }}
-                  className="gap-2 cursor-pointer"
-                  disabled={profile?.is_online}
+                    <span className="w-2.5 h-2.5 rounded-full bg-success" />
+                    <span>متواجد</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      if (!profile?.id || !orgId) return;
+                      const now = new Date().toISOString().split("T")[0];
+                      const { data: empShift } = await supabase
+                        .from("employee_shifts" as any)
+                        .select("shift_id, shift_templates!inner(end_time)")
+                        .eq("profile_id", profile.id)
+                        .lte("effective_from", now)
+                        .or(`effective_to.is.null,effective_to.gte.${now}`)
+                        .limit(1);
+                      const shift = (empShift as any)?.[0]?.shift_templates;
+                      const riyadhTime = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
+                      const classification = shift
+                        ? (riyadhTime < shift.end_time ? "early_leave" : riyadhTime > shift.end_time ? "overtime" : "on_time")
+                        : null;
+                      const shiftId = (empShift as any)?.[0]?.shift_id || null;
+                      await supabase.from("attendance_logs" as any).insert({
+                        org_id: orgId, profile_id: profile.id, event_type: "clock_out", shift_id: shiftId, classification,
+                      } as any);
+                      await supabase.from("profiles").update({ is_online: false } as any).eq("id", profile.id);
+                      if (classification === "early_leave") toast.warning("⚠️ خروج مبكر");
+                      else if (classification === "overtime") toast.success("🌟 جهد إضافي!");
+                      else toast.success("تم تسجيل الانصراف");
+                    }}
+                    className="gap-2 cursor-pointer"
+                    disabled={!profile?.is_online}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
+                    <span>غير متواجد</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="relative">
+                <div
+                  className={cn(
+                    "rounded-full bg-sidebar-primary/20 flex items-center justify-center text-xs font-bold text-sidebar-primary border border-sidebar-primary/15",
+                    "w-9 h-9"
+                  )}
                 >
-                  <span className="w-2.5 h-2.5 rounded-full bg-success" />
-                  <span>متواجد</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    if (!profile?.id || !orgId) return;
-                    const now = new Date().toISOString().split("T")[0];
-
-                    const { data: empShift } = await supabase
-                      .from("employee_shifts" as any)
-                      .select("shift_id, shift_templates!inner(end_time)")
-                      .eq("profile_id", profile.id)
-                      .lte("effective_from", now)
-                      .or(`effective_to.is.null,effective_to.gte.${now}`)
-                      .limit(1);
-
-                    const shift = (empShift as any)?.[0]?.shift_templates;
-                    const riyadhTime = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" });
-                    const classification = shift
-                      ? (riyadhTime < shift.end_time ? "early_leave" : riyadhTime > shift.end_time ? "overtime" : "on_time")
-                      : null;
-                    const shiftId = (empShift as any)?.[0]?.shift_id || null;
-
-                    await supabase.from("attendance_logs" as any).insert({
-                      org_id: orgId,
-                      profile_id: profile.id,
-                      event_type: "clock_out",
-                      shift_id: shiftId,
-                      classification,
-                    } as any);
-
-                    await supabase.from("profiles").update({ is_online: false } as any).eq("id", profile.id);
-                    
-                    if (classification === "early_leave") toast.warning("⚠️ خروج مبكر");
-                    else if (classification === "overtime") toast.success("🌟 جهد إضافي!");
-                    else toast.success("تم تسجيل الانصراف");
-                  }}
-                  className="gap-2 cursor-pointer"
-                  disabled={!profile?.is_online}
-                >
-                  <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
-                  <span>غير متواجد</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  {profile?.full_name?.slice(0, 2) || "؟"}
+                </div>
+                <span className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full bg-success border-2 border-sidebar-background" />
+              </div>
+            )}
             {!collapsed && (
               <>
                 <div className="flex-1 min-w-0">
