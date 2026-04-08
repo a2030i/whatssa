@@ -104,14 +104,14 @@ const KnowledgeBaseManager = () => {
     if (editing) {
       const { error } = await supabase
         .from("ai_knowledge_base" as any)
-        .update({ title: form.title, content: form.content, category: form.category, updated_at: new Date().toISOString() } as any)
+        .update({ title: form.title, content: form.content, category: form.category, channel_ids: form.channelIds.length > 0 ? form.channelIds : null, updated_at: new Date().toISOString() } as any)
         .eq("id", editing.id);
       if (error) toast.error("فشل التحديث");
       else toast.success("تم التحديث");
     } else {
       const { error } = await supabase
         .from("ai_knowledge_base" as any)
-        .insert({ org_id: orgId, title: form.title, content: form.content, category: form.category } as any);
+        .insert({ org_id: orgId, title: form.title, content: form.content, category: form.category, channel_ids: form.channelIds.length > 0 ? form.channelIds : null } as any);
       if (error) toast.error("فشل الإضافة");
       else toast.success("تمت الإضافة");
     }
