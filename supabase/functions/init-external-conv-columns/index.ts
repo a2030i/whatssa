@@ -15,6 +15,14 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Log connection info (masked) for debugging
+  try {
+    const u = new URL(dbUrl);
+    console.log("Connecting to:", u.hostname, "port:", u.port, "user:", u.username, "db:", u.pathname);
+  } catch (e) {
+    console.log("URL parse error:", (e as Error).message);
+  }
+
   // Use postgres connection to run DDL
   const { default: postgres } = await import("https://deno.land/x/postgresjs@v3.4.5/mod.js");
   const sql = postgres(dbUrl, { ssl: "prefer" });
