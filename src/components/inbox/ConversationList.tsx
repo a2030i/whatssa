@@ -86,20 +86,25 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const isMobile = useIsMobile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const prevConvKeysRef = useRef<string>("");
+  const savedScrollRef = useRef(0);
 
-  // Preserve scroll position when conversations update from polling
+  // Save scroll position continuously
   useEffect(() => {
-    const key = conversations.map(c => c.id).join(",");
-    if (prevConvKeysRef.current && prevConvKeysRef.current !== key && scrollContainerRef.current) {
-      const savedScroll = scrollContainerRef.current.scrollTop;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const onScroll = () => { savedScrollRef.current = el.scrollTop; };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Restore scroll position after conversations update (polling)
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (el && savedScrollRef.current > 0) {
       requestAnimationFrame(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = savedScroll;
-        }
+        el.scrollTop = savedScrollRef.current;
       });
     }
-    prevConvKeysRef.current = key;
   }, [conversations]);
 
   const loadCustomInboxes = async () => {
