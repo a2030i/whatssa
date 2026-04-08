@@ -841,7 +841,7 @@ const TeamPage = () => {
 
       {/* Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-sm" dir="rtl">
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle>تعديل {editingProfile?.full_name}</DialogTitle>
           </DialogHeader>
