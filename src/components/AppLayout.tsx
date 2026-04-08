@@ -49,7 +49,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
-      {isAdmin && <AppSidebar />}
+      <AppSidebar />
 
       {/* Impersonation Banner */}
       {isImpersonating && (
@@ -71,7 +71,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       )}
 
       {/* Top bar - clean */}
-      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 ${isAdmin ? "md:right-[250px]" : ""} h-12 bg-card/90 backdrop-blur-xl flex items-center justify-between px-4 z-30 transition-all`} style={{ boxShadow: 'var(--shadow-xs)' }}>
+      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:right-[250px] h-12 bg-card/90 backdrop-blur-xl flex items-center justify-between px-4 z-30 transition-all`} style={{ boxShadow: 'var(--shadow-xs)' }}>
         <div className="flex items-center gap-2">
           <GlobalSearch />
         </div>
@@ -91,7 +91,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           )}
         </div>
       </div>
-      <main className={`${isAdmin ? "md:mr-[250px]" : ""} min-h-screen ${isImpersonating ? "pt-[82px]" : "pt-12"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
+      <main className={`md:mr-[250px] min-h-screen ${isImpersonating ? "pt-[82px]" : "pt-12"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
         {children}
       </main>
 
