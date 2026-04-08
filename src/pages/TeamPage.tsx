@@ -37,7 +37,7 @@ const TeamPage = () => {
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [scheduleDialog, setScheduleDialog] = useState<any>(null);
   const [editingProfile, setEditingProfile] = useState<any>(null);
-  const [formTeam, setFormTeam] = useState("");
+  const [formTeams, setFormTeams] = useState<string[]>([]);
   const [formRole, setFormRole] = useState("member");
   const [newTeamName, setNewTeamName] = useState("");
   const [workStart, setWorkStart] = useState("09:00");
@@ -125,7 +125,11 @@ const TeamPage = () => {
 
   const openEditDialog = (profile: any) => {
     setEditingProfile(profile);
-    setFormTeam(profile.team_id || "");
+    // Use team_ids if available, fallback to team_id
+    const existingTeams = Array.isArray(profile.team_ids) && profile.team_ids.length > 0
+      ? profile.team_ids
+      : profile.team_id ? [profile.team_id] : [];
+    setFormTeams(existingTeams);
     const storedRole = getStoredRole(profile.id);
     if (storedRole === "admin" || storedRole === "super_admin") {
       setFormRole("admin");
@@ -157,7 +161,8 @@ const TeamPage = () => {
         user_id: editingProfile.id,
         role: targetDbRole,
         is_supervisor: isSupervisor,
-        team_id: formTeam || null,
+        team_id: formTeams.length > 0 ? formTeams[0] : null,
+        team_ids: formTeams.length > 0 ? formTeams : [],
       },
     });
 
@@ -371,7 +376,10 @@ const TeamPage = () => {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {teams.map((team) => {
-            const teamMembers = profiles.filter((m) => m.team_id === team.id);
+            const teamMembers = profiles.filter((m) => {
+              if (Array.isArray(m.team_ids) && m.team_ids.length > 0) return m.team_ids.includes(team.id);
+              return m.team_id === team.id;
+            });
             const onlineCount = teamMembers.filter((m) => m.is_online || (m.last_seen_at && Date.now() - new Date(m.last_seen_at).getTime() < 2.5 * 60 * 1000)).length;
             const sc = strategyConfig[team.assignment_strategy] || strategyConfig.round_robin;
             const StrategyIcon = sc.icon;
@@ -441,7 +449,8 @@ const TeamPage = () => {
         <div className="divide-y divide-border">
           {profiles.map((profile) => {
             const role = getDisplayRole(profile);
-            const team = teams.find((t) => t.id === profile.team_id);
+            const memberTeamIds = Array.isArray(profile.team_ids) && profile.team_ids.length > 0 ? profile.team_ids : profile.team_id ? [profile.team_id] : [];
+            const memberTeams = teams.filter((t) => memberTeamIds.includes(t.id));
             const rc = roleConfig[role] || roleConfig.member;
             const activeConvs = convCounts[profile.full_name] || 0;
             return (
@@ -474,7 +483,7 @@ const TeamPage = () => {
                             : "لم يسجل دخول بعد"
                         }
                       </span>
-                      {team && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{team.name}</span>}
+                      {memberTeams.map((t) => <span key={t.id} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t.name}</span>)}
                       {profile.is_supervisor && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">مشرف</span>}
                       {profile.work_start && (
                         <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
@@ -770,16 +779,28 @@ const TeamPage = () => {
               </p>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">الفريق</Label>
-              <Select value={formTeam || "none"} onValueChange={(v) => setFormTeam(v === "none" ? "" : v)}>
-                <SelectTrigger className="bg-secondary border-0"><SelectValue placeholder="بدون فريق" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">بدون فريق</SelectItem>
-                  {teams.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-xs">الفرق</Label>
+              <div className="space-y-1.5 max-h-32 overflow-y-auto bg-muted/30 rounded-lg p-2">
+                {teams.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground text-center py-2">لا توجد فرق — أنشئ فريق أولاً</p>
+                ) : teams.map((t) => (
+                  <label key={t.id} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted/50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formTeams.includes(t.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setFormTeams([...formTeams, t.id]);
+                        else setFormTeams(formTeams.filter((id) => id !== t.id));
+                      }}
+                      className="rounded border-border"
+                    />
+                    <span className="text-xs">{t.name}</span>
+                  </label>
+                ))}
+              </div>
+              {formTeams.length > 0 && (
+                <p className="text-[10px] text-muted-foreground">{formTeams.length} فريق محدد</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label className="text-xs">البريد الإلكتروني</Label>
