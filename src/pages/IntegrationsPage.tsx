@@ -2775,6 +2775,10 @@ const IntegrationsPage = () => {
               <RefreshCw className="w-4 h-4" />
               {t("إعادة المحاولة", "Try Again")}
             </Button>
+            <Button onClick={useRedirectFlow} variant="outline" className="w-full gap-2 text-primary">
+              <ExternalLink className="w-4 h-4" />
+              {t("جرّب الربط بدون نافذة منبثقة (توجيه مباشر)", "Try direct redirect (without popup)")}
+            </Button>
             <Button onClick={resetFlow} variant="ghost" className="w-full text-sm">
               {t("رجوع", "Back")}
             </Button>
