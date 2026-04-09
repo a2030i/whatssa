@@ -333,7 +333,116 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     }
   };
 
-  useEffect(() => {
+  // Export group members to Excel
+  const handleExportMembers = () => {
+    if (groupParticipants.length === 0) return;
+    try {
+      const XLSX = require("xlsx");
+      const data = groupParticipants.map((p) => ({
+        "الاسم": p.name || "",
+        "رقم الهاتف": p.phone ? `+${p.phone}` : "",
+        "مشرف": p.admin ? "نعم" : "لا",
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "الأعضاء");
+      XLSX.writeFile(wb, `أعضاء_${conversation.customerName || "قروب"}.xlsx`);
+      toast.success(`✅ تم تصدير ${groupParticipants.length} عضو`);
+    } catch {
+      // Fallback to CSV
+      const csv = ["الاسم,رقم الهاتف,مشرف", ...groupParticipants.map((p) => `${p.name || ""},+${p.phone || ""},${p.admin ? "نعم" : "لا"}`)].join("\n");
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `أعضاء_${conversation.customerName || "قروب"}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`✅ تم تصدير ${groupParticipants.length} عضو`);
+    }
+  };
+
+  // Save selected/all members as customers
+  const handleSaveAsCustomers = async () => {
+    const members = selectedMembers.size > 0
+      ? groupParticipants.filter((p) => selectedMembers.has(p.id))
+      : groupParticipants.filter((p) => p.phone && !p.isLid);
+    
+    if (members.length === 0) {
+      toast.error("لا يوجد أعضاء بأرقام هواتف صالحة");
+      return;
+    }
+    setSavingMembers(true);
+    try {
+      const groupTag = conversation.customerName || "قروب";
+      let saved = 0;
+      for (const m of members) {
+        if (!m.phone) continue;
+        const { error } = await supabase.from("customers").upsert(
+          { org_id: orgId!, phone: m.phone, name: m.name || null, tags: [groupTag], source: "group_import" },
+          { onConflict: "org_id,phone" }
+        );
+        if (!error) saved++;
+      }
+      toast.success(`✅ تم حفظ ${saved} عميل بتاق "${groupTag}"`);
+      setSelectedMembers(new Set());
+    } catch (e: any) {
+      toast.error("فشل في الحفظ: " + (e.message || ""));
+    } finally {
+      setSavingMembers(false);
+    }
+  };
+
+  // Send broadcast to selected members
+  const handleSendBroadcast = async () => {
+    const members = selectedMembers.size > 0
+      ? groupParticipants.filter((p) => selectedMembers.has(p.id) && p.phone)
+      : [];
+    if (members.length === 0 || !broadcastMessage.trim()) {
+      toast.error("اختر أعضاء واكتب رسالة");
+      return;
+    }
+    setSendingBroadcast(true);
+    try {
+      let sent = 0;
+      for (const m of members) {
+        const { error } = await invokeCloud("whatsapp-send", {
+          body: {
+            to: m.phone,
+            message: broadcastMessage.trim(),
+            channel_id: conversation.channelId,
+          },
+        });
+        if (!error) sent++;
+      }
+      toast.success(`✅ تم إرسال الرسالة لـ ${sent} عضو`);
+      setShowBroadcastDialog(false);
+      setBroadcastMessage("");
+      setSelectedMembers(new Set());
+    } catch (e: any) {
+      toast.error("فشل الإرسال: " + (e.message || ""));
+    } finally {
+      setSendingBroadcast(false);
+    }
+  };
+
+  const toggleMemberSelection = (id: string) => {
+    setSelectedMembers((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedMembers.size === groupParticipants.length) {
+      setSelectedMembers(new Set());
+    } else {
+      setSelectedMembers(new Set(groupParticipants.map((p) => p.id)));
+    }
+  };
+
     setNotes(conversation.notes || "");
     setGroupPicture(conversation.profilePic || null);
     loadCustomer();
