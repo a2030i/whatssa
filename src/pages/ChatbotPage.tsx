@@ -316,9 +316,13 @@ const ChatbotPage = () => {
   };
 
   // ─── Chat Preview ───
-  const ChatPreview = () => {
+  const ChatPreview = ({ forceChannel }: { forceChannel?: "meta_api" | "evolution" }) => {
     const [curId, setCurId] = useState<string | null>(nodes[0]?.id || null);
     const [history, setHistory] = useState<{ sender: string; text: string }[]>([]);
+    const [listOpen, setListOpen] = useState(false);
+
+    const effectiveChannelType = forceChannel || selectedChannelType;
+    const isMeta = effectiveChannelType === "meta_api" || effectiveChannelType === "mixed";
 
     const resetPreview = useCallback(() => {
       const msgs: { sender: string; text: string }[] = [];
@@ -326,6 +330,7 @@ const ChatbotPage = () => {
       if (nodes[0]?.content) msgs.push({ sender: "bot", text: nodes[0].content });
       setHistory(msgs);
       setCurId(nodes[0]?.id || null);
+      setListOpen(false);
     }, []);
 
     useEffect(() => {
@@ -347,44 +352,60 @@ const ChatbotPage = () => {
         setHistory(h);
         setCurId(null);
       }
+      setListOpen(false);
     };
 
     const visibleBtns = curNode?.buttons.filter(b => b.label) || [];
-    const isMeta = selectedChannelType === "meta_api" || selectedChannelType === "mixed";
     const btnMode = isMeta ? metaMode(visibleBtns.length) : "text";
 
+    const modeLabel = isMeta 
+      ? (btnMode === "reply_buttons" ? "أزرار تفاعلية" : btnMode === "list" ? "قائمة تفاعلية" : "نص مرقّم")
+      : "نص مرقّم";
+
     return (
-      <div className="bg-muted/30 rounded-xl border max-w-sm mx-auto overflow-hidden">
-        <div className="bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold flex items-center justify-between">
+      <div className="bg-[#e5ddd5] dark:bg-[#0b141a] rounded-xl border max-w-sm mx-auto overflow-hidden shadow-lg">
+        {/* WhatsApp-style header */}
+        <div className="bg-[#075e54] dark:bg-[#1f2c34] text-white px-4 py-2.5 text-sm font-semibold flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bot className="w-4 h-4" />
-            معاينة المحادثة
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+              <Bot className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">الشات بوت</p>
+              <p className="text-[10px] opacity-70">{effectiveChannelType === "meta_api" ? "واتساب رسمي" : effectiveChannelType === "evolution" ? "واتساب ويب" : "مختلط"}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-[9px] bg-primary-foreground/20">
-              {isMeta ? (btnMode === "reply_buttons" ? "أزرار تفاعلية" : btnMode === "list" ? "قائمة تفاعلية" : "نص") : "نص مرقّم"}
+            <Badge className="text-[9px] bg-white/20 border-0 text-white">
+              {modeLabel}
             </Badge>
-            <button onClick={resetPreview} className="hover:bg-primary-foreground/20 rounded-full p-1 transition-colors" title="إعادة المعاينة">
+            <button onClick={resetPreview} className="hover:bg-white/20 rounded-full p-1 transition-colors" title="إعادة المعاينة">
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
-        <div className="p-3 space-y-2 min-h-[200px] max-h-[300px] overflow-y-auto">
+
+        {/* Chat area */}
+        <div className="p-3 space-y-2 min-h-[220px] max-h-[320px] overflow-y-auto">
           {history.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-8">أضف نص رسالة في الخطوات لتظهر المعاينة</p>
+            <p className="text-xs text-muted-foreground text-center py-8 bg-white/60 dark:bg-white/10 rounded-lg">أضف نص رسالة في الخطوات لتظهر المعاينة</p>
           )}
           {history.map((msg, i) => (
             <div key={i} className={cn("flex", msg.sender === "user" ? "justify-start" : "justify-end")}>
               <div className={cn(
-                "rounded-xl px-3 py-1.5 text-sm max-w-[80%] whitespace-pre-wrap",
-                msg.sender === "user" ? "bg-primary text-primary-foreground" : "bg-card border"
+                "rounded-lg px-3 py-1.5 text-sm max-w-[80%] whitespace-pre-wrap shadow-sm",
+                msg.sender === "user" 
+                  ? "bg-[#dcf8c6] dark:bg-[#005c4b] text-foreground rounded-bl-none" 
+                  : "bg-white dark:bg-[#1f2c34] text-foreground rounded-br-none border dark:border-white/10"
               )}>
                 {msg.text}
               </div>
             </div>
           ))}
           {ended && history.length > 0 && (
-            <p className="text-[10px] text-muted-foreground text-center pt-2">— انتهى التدفق — اضغط ↻ للإعادة</p>
+            <div className="flex justify-center">
+              <span className="text-[10px] text-muted-foreground bg-white/80 dark:bg-white/10 rounded-full px-3 py-1">— انتهى التدفق — اضغط ↻ للإعادة</span>
+            </div>
           )}
         </div>
         
@@ -393,40 +414,13 @@ const ChatbotPage = () => {
           <>
             {/* Meta Reply Buttons (≤3) */}
             {isMeta && btnMode === "reply_buttons" && (
-              <div className="px-3 pb-3 flex flex-wrap gap-1.5">
-                {visibleBtns.map(btn => (
-                  <button
-                    key={btn.id}
-                    onClick={() => clickBtn(btn)}
-                    className="text-xs border border-primary text-primary rounded-full px-3 py-1.5 hover:bg-primary hover:text-primary-foreground transition-colors font-medium"
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Meta List (4-10) */}
-            {isMeta && btnMode === "list" && (
-              <div className="border-t">
-                <button
-                  onClick={() => {
-                    const listEl = document.getElementById("preview-list");
-                    if (listEl) listEl.classList.toggle("hidden");
-                  }}
-                  className="w-full py-2.5 text-xs font-semibold text-primary hover:bg-primary/5 transition-colors"
-                >
-                  📋 عرض القائمة ({visibleBtns.length} خيار)
-                </button>
-                <div id="preview-list" className="hidden border-t max-h-[200px] overflow-y-auto">
+              <div className="bg-white dark:bg-[#1f2c34] border-t dark:border-white/10">
+                <div className="px-3 py-2 space-y-1.5">
                   {visibleBtns.map(btn => (
                     <button
                       key={btn.id}
-                      onClick={() => {
-                        clickBtn(btn);
-                        document.getElementById("preview-list")?.classList.add("hidden");
-                      }}
-                      className="w-full text-right px-4 py-3 text-sm hover:bg-accent/50 transition-colors border-b last:border-b-0"
+                      onClick={() => clickBtn(btn)}
+                      className="w-full text-center text-sm text-[#00a884] dark:text-[#00a884] font-medium py-2 border border-[#00a884]/30 rounded-lg hover:bg-[#00a884]/5 transition-colors"
                     >
                       {btn.label}
                     </button>
@@ -435,21 +429,49 @@ const ChatbotPage = () => {
               </div>
             )}
 
+            {/* Meta List (4-10) */}
+            {isMeta && btnMode === "list" && (
+              <div className="bg-white dark:bg-[#1f2c34] border-t dark:border-white/10">
+                <button
+                  onClick={() => setListOpen(!listOpen)}
+                  className="w-full py-3 text-sm font-medium text-[#00a884] hover:bg-[#00a884]/5 transition-colors flex items-center justify-center gap-2"
+                >
+                  <ListOrdered className="w-4 h-4" />
+                  عرض الخيارات ({visibleBtns.length})
+                </button>
+                {listOpen && (
+                  <div className="border-t dark:border-white/10 max-h-[200px] overflow-y-auto">
+                    {visibleBtns.map((btn, i) => (
+                      <button
+                        key={btn.id}
+                        onClick={() => clickBtn(btn)}
+                        className="w-full text-right px-4 py-3 text-sm hover:bg-accent/50 transition-colors border-b dark:border-white/10 last:border-b-0 flex items-center gap-3"
+                      >
+                        <span className="w-5 h-5 rounded-full bg-[#00a884]/10 text-[#00a884] text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Text-based (Evolution / fallback) */}
             {!isMeta && (
-              <div className="px-3 pb-3">
-                <div className="bg-card border rounded-lg p-2.5 space-y-1">
+              <div className="p-3">
+                <div className="bg-white dark:bg-[#1f2c34] border dark:border-white/10 rounded-lg p-2.5 space-y-1 shadow-sm">
                   {visibleBtns.map((btn, i) => (
                     <button
                       key={btn.id}
                       onClick={() => clickBtn(btn)}
-                      className="w-full text-right text-xs hover:bg-accent/50 rounded px-2 py-1.5 transition-colors"
+                      className="w-full text-right text-sm hover:bg-accent/50 rounded px-2.5 py-2 transition-colors flex items-center gap-2"
                     >
-                      {i + 1}. {btn.label}
+                      <span className="w-5 h-5 rounded bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                      {btn.label}
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1 text-center">العميل يكتب رقم الخيار</p>
+                <p className="text-[10px] text-muted-foreground mt-1.5 text-center">💬 العميل يرد برقم الخيار</p>
               </div>
             )}
           </>
