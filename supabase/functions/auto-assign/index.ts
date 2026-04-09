@@ -338,7 +338,7 @@ Deno.serve(async (req) => {
     }
 
     // Fallback: anyone online regardless of shift hours
-    const onlineOnly = members.filter((m) => m.is_online);
+    const onlineOnly = members.filter((m) => m.is_online && !m.is_on_break);
     if (onlineOnly.length > 0 && available.length === 0) {
       await insertSystemMessage(supabase, conversation_id, `⚙️ الإسناد التلقائي: لا يوجد موظف في الوردية — محاولة مع ${onlineOnly.length} موظف متصل`);
       const result = await pickAgent(onlineOnly, true);
