@@ -128,6 +128,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
     return () => window.removeEventListener("navigate-conversation", handler);
   }, []);
 
+  useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
 
