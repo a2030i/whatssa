@@ -17,6 +17,7 @@ import AdminLogs from "@/components/admin/AdminLogs";
 import AdminEmergency from "@/components/admin/AdminEmergency";
 import AdminAiManagement from "@/components/admin/AdminAiManagement";
 import AdminPricingManager from "@/components/admin/AdminPricingManager";
+import AdminBotTemplates from "@/components/admin/AdminBotTemplates";
 
 const tabs = [
   { id: "overview", label: "نظرة عامة" },
@@ -29,6 +30,7 @@ const tabs = [
   { id: "ai", label: "✨ AI" },
   { id: "meta", label: "ربط ميتا" },
   { id: "baileys", label: "سيرفر QR" },
+  { id: "bot_templates", label: "🤖 قوالب البوت" },
   { id: "logs", label: "السجلات" },
   { id: "settings", label: "إعدادات النظام" },
   { id: "emergency", label: "🚨 الطوارئ" },
@@ -51,6 +53,7 @@ const AdminDashboard = () => {
       case "ai": return <AdminAiManagement />;
       case "meta": return <AdminMeta />;
       case "baileys": return <AdminBaileys />;
+      case "bot_templates": return <AdminBotTemplates />;
       case "logs": return <AdminLogs />;
       case "settings": return <AdminSettings />;
       case "emergency": return <AdminEmergency />;
