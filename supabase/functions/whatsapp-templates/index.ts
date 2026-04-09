@@ -26,11 +26,15 @@ async function getUserContext(req: Request, body: Record<string, unknown>) {
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
-  if (userError || !user) return { error: json({ error: "Unauthorized" }, 401) };
+  if (userError || !user) {
+    console.error("[whatsapp-templates] getUser failed:", userError?.message);
+    return { error: json({ error: "Unauthorized" }, 401) };
+  }
 
   const userId = user.id;
+  console.log("[whatsapp-templates] userId:", userId, "email:", user.email);
 
-  const [{ data: profile }, { data: superAdminRole }] = await Promise.all([
+  const [{ data: profile, error: profileError }, { data: superAdminRole }] = await Promise.all([
     adminClient
       .from("profiles")
       .select("org_id")
@@ -43,6 +47,8 @@ async function getUserContext(req: Request, body: Record<string, unknown>) {
       .eq("role", "super_admin")
       .maybeSingle(),
   ]);
+
+  console.log("[whatsapp-templates] profile:", JSON.stringify(profile), "profileError:", profileError?.message, "superAdminRole:", JSON.stringify(superAdminRole));
 
   if (!profile?.org_id) return { error: json({ error: "لا توجد مؤسسة مرتبطة بهذا الحساب" }, 400) };
 
