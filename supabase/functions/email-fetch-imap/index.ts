@@ -441,11 +441,12 @@ async function findOrCreateConversation(
     }
   }
 
-   // Strategy 2: Match by normalized subject in notes or last_message
+   // Strategy 2: Match by normalized subject AND same sender email in notes
   if (normSubject.length > 0) {
     const { data: convs } = await admin
-      .from("conversations").select("id, notes, last_message")
+      .from("conversations").select("id, notes, last_message, customer_phone")
       .eq("org_id", orgId).eq("conversation_type", "email")
+      .eq("customer_phone", senderEmail)
       .neq("status", "closed")
       .order("created_at", { ascending: false }).limit(50);
 

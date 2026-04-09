@@ -305,19 +305,36 @@ Deno.serve(async (req) => {
     // Create or update conversation for this email
     let convId = conversation_id;
     if (!convId) {
-      const { data: existing } = await admin
+      // Match by recipient email AND normalized subject to keep different subjects separate
+      const normSubject = threadSubject
+        .replace(/^(re|fwd|fw)\s*:\s*/gi, "")
+        .replace(/^\[.*?\]\s*/g, "")
+        .trim()
+        .toLowerCase();
+
+      const { data: candidates } = await admin
         .from("conversations")
-        .select("id")
+        .select("id, notes")
         .eq("org_id", profile.org_id)
         .eq("customer_phone", to)
         .eq("conversation_type", "email")
         .neq("status", "closed")
-        .limit(1)
-        .maybeSingle();
+        .order("created_at", { ascending: false })
+        .limit(50);
 
-      if (existing) {
-        convId = existing.id;
-      } else {
+      let matched = false;
+      if (candidates && normSubject.length > 0) {
+        for (const c of candidates) {
+          const convSubject = (c.notes || "").replace(/^📧\s*/, "").trim().toLowerCase();
+          if (convSubject === normSubject) {
+            convId = c.id;
+            matched = true;
+            break;
+          }
+        }
+      }
+
+      if (!matched) {
         const { data: newConv, error: convError } = await admin
           .from("conversations")
           .insert({
