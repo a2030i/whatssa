@@ -209,7 +209,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
     return <img src={resolvedUrl} alt="ملصق" className="max-w-[140px] max-h-[140px] object-contain mb-1" />;
   }
   if (isImage) {
-    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-xl max-w-[260px] max-h-[220px] object-cover mb-1.5 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => onImageClick?.(resolvedUrl)} />;
+    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-xl max-w-[min(82vw,420px)] max-h-[320px] object-cover mb-1.5 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => onImageClick?.(resolvedUrl)} />;
   }
   if (type === "audio") {
     return <AudioPlayer src={resolvedUrl} isAgent={isAgent} className="mb-1" />;
@@ -1015,6 +1015,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showEmailFields, setShowEmailFields] = useState(false);
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isUserNearBottomRef = useRef(true);
+  const prevConvIdRef = useRef(conversation.id);
   const tagInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1520,9 +1523,25 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     loadReplies();
   }, [orgId]);
 
+  // Track if user is near bottom of scroll
+  const handleMessagesScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const threshold = 150;
+    isUserNearBottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  }, []);
+
+  // Only auto-scroll to bottom if user is near bottom or conversation changed
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const convChanged = prevConvIdRef.current !== conversation.id;
+    if (convChanged) {
+      prevConvIdRef.current = conversation.id;
+      isUserNearBottomRef.current = true;
+    }
+    if (isUserNearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: convChanged ? "auto" : "smooth" });
+    }
+  }, [messages, conversation.id]);
 
   // Load all unique tags from org conversations for suggestions
   useEffect(() => {
@@ -2339,7 +2358,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-8 md:py-6 space-y-0.5 md:space-y-1 bg-background">
+      <div ref={messagesContainerRef} onScroll={handleMessagesScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-8 md:py-6 space-y-0.5 md:space-y-1 bg-background">
         {messages.map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";
