@@ -257,11 +257,12 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       if (inboxMode === "email") {
         // Email inbox filters
         switch (activeQuickFilter) {
-          case "mine": if (conv.assignedToId !== myId) return false; break;
-          case "unread": if (conv.unread <= 0) return false; break;
-          case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
+          case "inbox": if (conv.lastMessageSender !== "customer") return false; break;
           case "sent": if (conv.lastMessageSender !== "agent") return false; break;
-          case "waitingReply": if (conv.lastMessageSender !== "customer") return false; break;
+          case "unread": if (conv.unread <= 0) return false; break;
+          case "read": if (conv.unread > 0) return false; break;
+          case "mine": if (conv.assignedToId !== myId) return false; break;
+          case "unassigned": if (conv.assignedTo && conv.assignedTo !== "غير معيّن") return false; break;
           case "closed": if (conv.status !== "closed") return false; break;
           case "archived": if (!conv.isArchived) return false; break;
         }
