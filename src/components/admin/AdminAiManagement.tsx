@@ -107,9 +107,11 @@ const AdminAiManagement = () => {
       .from("system_settings").select("key").eq("key", key).maybeSingle();
 
     if (existing) {
-      await supabase.from("system_settings").update({ value: enable, updated_at: new Date().toISOString() }).eq("key", key);
+      const { error } = await supabase.from("system_settings").update({ value: enable, updated_at: new Date().toISOString() } as any).eq("key", key);
+      if (error) { console.error("toggle AI error:", error); toast.error("فشل الحفظ"); return; }
     } else {
-      await supabase.from("system_settings").insert({ key, value: enable, description: "Lovable AI enabled for org" });
+      const { error } = await supabase.from("system_settings").insert({ key, value: enable, description: "Lovable AI enabled for org" } as any);
+      if (error) { console.error("toggle AI error:", error); toast.error("فشل الحفظ"); return; }
     }
 
     setOrgs(prev => prev.map(o => o.org_id === orgId ? { ...o, enabled: enable } : o));

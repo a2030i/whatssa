@@ -119,7 +119,8 @@ const AiProviderSettings = () => {
       .select("value")
       .eq("key", `lovable_ai_enabled_${orgId}`)
       .maybeSingle();
-    setLovableAiEnabled(data?.value === true || data?.value === "true");
+    const val = data?.value;
+    setLovableAiEnabled(val === true || val === "true" || val === 1);
   };
 
   const loadConfigs = async () => {
@@ -236,7 +237,7 @@ const AiProviderSettings = () => {
   const usedProviders = configs.map(c => c.provider);
   const availableProviders = providers.filter(p => {
     if (usedProviders.includes(p.key)) return false;
-    // Lovable AI only available if super admin enabled it for this org
+    // Lovable AI available if: super admin enabled it for this org, OR user is super admin
     if (p.key === "lovable_ai" && !lovableAiEnabled && !isSuperAdmin) return false;
     return true;
   });
