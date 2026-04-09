@@ -320,6 +320,31 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     clearFilters();
   };
 
+  const [fetchingEmails, setFetchingEmails] = useState(false);
+  const handleFetchEmails = async () => {
+    if (!orgId || fetchingEmails) return;
+    setFetchingEmails(true);
+    try {
+      const { data: configs } = await supabase
+        .from("email_configs")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("is_active", true);
+      if (!configs?.length) {
+        toast.error("لا يوجد بريد مفعّل");
+        return;
+      }
+      await Promise.all(configs.map(c =>
+        supabase.functions.invoke("email-fetch-imap", { body: { config_id: c.id } })
+      ));
+      toast.success("تم جلب الوارد بنجاح");
+    } catch {
+      toast.error("فشل جلب الوارد");
+    } finally {
+      setFetchingEmails(false);
+    }
+  };
+
   return (
     <div className={cn(
       "flex flex-col bg-card border-l border-border/40",
