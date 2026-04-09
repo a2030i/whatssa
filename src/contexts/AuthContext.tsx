@@ -92,9 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (roleRes.data && roleRes.data.length > 0) {
       const roles = roleRes.data.map((r: any) => r.role);
       if (roles.includes("super_admin")) setUserRole("super_admin");
-      else if (roles.includes("admin") && !roles.includes("member")) setUserRole("admin");
-      else if (roles.includes("member")) setUserRole("member");
       else if (roles.includes("admin")) setUserRole("admin");
+      else if (roles.includes("member")) setUserRole("member");
       else setUserRole(roles[0]);
     } else {
       setUserRole("member");
