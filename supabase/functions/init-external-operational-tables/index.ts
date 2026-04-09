@@ -18,18 +18,24 @@ Deno.serve(async (req) => {
     let dbUrl = Deno.env.get("EXTERNAL_SUPABASE_DB_URL");
     if (!dbUrl) return json({ error: "EXTERNAL_SUPABASE_DB_URL not set" }, 500);
 
-    // Extract project ref from EXTERNAL_SUPABASE_URL for direct connection
-    const projectRef = Deno.env.get("EXTERNAL_SUPABASE_URL")?.match(/https:\/\/([^.]+)\./)?.[1];
-
-    // Force direct connection for DDL (pooler doesn't support DDL)
-    if (projectRef && (dbUrl.includes("pooler") || dbUrl.includes(":6543"))) {
-      const passMatch = dbUrl.match(/:([^@]+)@/);
-      const password = passMatch ? passMatch[1] : "";
-      dbUrl = `postgresql://postgres:${password}@db.${projectRef}.supabase.co:5432/postgres`;
-      console.log("Using direct connection for project:", projectRef);
+    // If using pooler, switch to direct connection for DDL
+    if (dbUrl.includes("pooler.supabase.com")) {
+      const match = dbUrl.match(/postgres\.([a-z]+):(.*?)@/);
+      if (match) {
+        const ref = match[1];
+        const pass = match[2];
+        dbUrl = `postgresql://postgres:${pass}@db.${ref}.supabase.co:5432/postgres`;
+        console.log("Switched to direct connection:", `db.${ref}.supabase.co:5432`);
+      }
     }
 
-    console.log("Connecting to external DB for DDL...");
+    // Log connection info (masked)
+    try {
+      const u = new URL(dbUrl);
+      console.log("Connecting to:", u.hostname, "port:", u.port, "user:", u.username);
+    } catch (e) {
+      console.log("URL parse failed");
+    }
 
     const { default: postgres } = await import("https://deno.land/x/postgresjs@v3.4.5/mod.js");
     const sql = postgres(dbUrl, { ssl: { rejectUnauthorized: false } });
