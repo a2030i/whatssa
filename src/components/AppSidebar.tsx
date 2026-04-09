@@ -434,7 +434,7 @@ const AppSidebar = () => {
                       await supabase.from("attendance_logs" as any).insert({
                         org_id: orgId, profile_id: profile.id, event_type: "clock_out", shift_id: shiftId, classification,
                       } as any);
-                      await supabase.from("profiles").update({ is_online: false } as any).eq("id", profile.id);
+                      await supabase.from("profiles").update({ is_online: false, is_on_break: false, break_started_at: null } as any).eq("id", profile.id);
                       if (classification === "early_leave") toast.warning("⚠️ خروج مبكر");
                       else if (classification === "overtime") toast.success("🌟 جهد إضافي!");
                       else toast.success("تم تسجيل الانصراف");
