@@ -100,9 +100,17 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   useEffect(() => {
     const current = searchParams.get("conversation");
     if (selectedId && selectedId !== current) {
-      setSearchParams({ conversation: selectedId }, { replace: true });
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.set("conversation", selectedId);
+        return next;
+      }, { replace: true });
     } else if (!selectedId && current) {
-      setSearchParams({}, { replace: true });
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.delete("conversation");
+        return next;
+      }, { replace: true });
     }
   }, [selectedId]);
 
