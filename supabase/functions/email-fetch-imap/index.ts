@@ -441,10 +441,10 @@ async function findOrCreateConversation(
     }
   }
 
-  // Strategy 2: Match by normalized subject
+   // Strategy 2: Match by normalized subject in notes or last_message
   if (normSubject.length > 0) {
     const { data: convs } = await admin
-      .from("conversations").select("id, notes")
+      .from("conversations").select("id, notes, last_message")
       .eq("org_id", orgId).eq("conversation_type", "email")
       .neq("status", "closed")
       .order("created_at", { ascending: false }).limit(50);
@@ -452,7 +452,10 @@ async function findOrCreateConversation(
     if (convs) {
       for (const conv of convs) {
         const convSubject = (conv.notes || "").replace(/^📧\s*/, "").trim();
-        if (normalizeSubject(convSubject) === normSubject) return conv.id;
+        if (convSubject && normalizeSubject(convSubject) === normSubject) return conv.id;
+        // Also check last_message for conversations created by email-send (legacy without notes)
+        const lmSubject = (conv.last_message || "").replace(/^📧\s*/, "").trim();
+        if (lmSubject && normalizeSubject(lmSubject) === normSubject) return conv.id;
       }
     }
   }
