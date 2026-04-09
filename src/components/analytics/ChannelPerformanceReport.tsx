@@ -122,7 +122,7 @@ const ChannelPerformanceReport = ({ period }: { period: string }) => {
     (configs || []).forEach(cfg => {
       metricsMap.set(cfg.id, {
         channelId: cfg.id,
-        channelName: (cfg as any).label || cfg.business_name || cfg.display_phone || "قناة",
+        channelName: cfg.business_name || cfg.display_phone || "قناة",
         channelType: cfg.channel_type === "meta_api" ? "meta" : "evolution",
         displayPhone: cfg.display_phone,
         totalConversations: 0,
