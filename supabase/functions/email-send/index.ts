@@ -333,6 +333,7 @@ Deno.serve(async (req) => {
             assigned_to_id: profile.id,
             assigned_at: new Date().toISOString(),
             channel_id: null,
+            notes: `📧 ${threadSubject.replace(/^(re|fwd|fw)\s*:\s*/gi, "").replace(/^\[.*?\]\s*/g, "").trim()}`,
           })
           .select("id")
           .single();

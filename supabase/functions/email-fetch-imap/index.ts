@@ -441,10 +441,10 @@ async function findOrCreateConversation(
     }
   }
 
-  // Strategy 2: Match by normalized subject
+   // Strategy 2: Match by normalized subject in notes or last_message
   if (normSubject.length > 0) {
     const { data: convs } = await admin
-      .from("conversations").select("id, notes")
+      .from("conversations").select("id, notes, last_message")
       .eq("org_id", orgId).eq("conversation_type", "email")
       .neq("status", "closed")
       .order("created_at", { ascending: false }).limit(50);
@@ -452,7 +452,10 @@ async function findOrCreateConversation(
     if (convs) {
       for (const conv of convs) {
         const convSubject = (conv.notes || "").replace(/^📧\s*/, "").trim();
-        if (normalizeSubject(convSubject) === normSubject) return conv.id;
+        if (convSubject && normalizeSubject(convSubject) === normSubject) return conv.id;
+        // Also check last_message for conversations created by email-send (legacy without notes)
+        const lmSubject = (conv.last_message || "").replace(/^📧\s*/, "").trim();
+        if (lmSubject && normalizeSubject(lmSubject) === normSubject) return conv.id;
       }
     }
   }
@@ -554,12 +557,11 @@ function extractAndDecodeBody(rawBody: string, headers: Record<string, string>):
     body = decodeBase64Body(body, charset);
   } else if (cte === "quoted-printable") {
     body = decodeQuotedPrintable(body);
-    if (charset.toLowerCase() !== "utf-8") {
-      try {
-        const bytes = new Uint8Array([...body].map(c => c.charCodeAt(0)));
-        body = new TextDecoder(charset).decode(bytes);
-      } catch {}
-    }
+    // Always re-decode bytes through TextDecoder for proper multi-byte UTF-8 handling
+    try {
+      const bytes = new Uint8Array([...body].map(c => c.charCodeAt(0)));
+      body = new TextDecoder(charset).decode(bytes);
+    } catch {}
   }
 
   // If HTML, convert to text
@@ -600,13 +602,12 @@ function extractFromMultipart(raw: string, boundary: string): string {
       decoded = decodeBase64Body(partBody, charsetM ? charsetM[1] : "utf-8");
     } else if (partHeaders.includes("quoted-printable")) {
       decoded = decodeQuotedPrintable(partBody);
+      // Always re-decode bytes through TextDecoder for proper multi-byte handling
       const charsetM = partHeaders.match(/charset=["']?([^;"'\s]+)/i);
-      if (charsetM && charsetM[1].toLowerCase() !== "utf-8") {
-        try {
-          const bytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
-          decoded = new TextDecoder(charsetM[1]).decode(bytes);
-        } catch {}
-      }
+      try {
+        const bytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
+        decoded = new TextDecoder(charsetM ? charsetM[1] : "utf-8").decode(bytes);
+      } catch {}
     }
 
     if (partHeaders.includes("text/plain")) {
