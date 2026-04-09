@@ -331,7 +331,6 @@ Deno.serve(async (req) => {
         console.error("[email-send] Failed to create conversation:", convError);
       } else {
         convId = newConv.id;
-        }
       }
     }
 
