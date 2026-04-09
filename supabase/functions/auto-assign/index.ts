@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
     // Always exclude supervisors and admins from auto-assign — only regular members
     let membersQuery = supabase
       .from("profiles")
-      .select("id, full_name, is_online, is_supervisor, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2, team_id, team_ids")
+      .select("id, full_name, is_online, is_supervisor, is_on_break, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2, team_id, team_ids")
       .eq("org_id", org_id)
       .eq("is_active", true)
       .eq("is_supervisor", false);
@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
     }
 
     // Filter available agents: online AND within work shift
-    const available = members.filter((m) => m.is_online && isAgentInShift(m, currentTime, currentDay));
+    const available = members.filter((m) => m.is_online && !m.is_on_break && isAgentInShift(m, currentTime, currentDay));
 
     // Get conversation loads for available agents
     const getAgentLoads = async (pool: typeof members) => {
@@ -338,7 +338,7 @@ Deno.serve(async (req) => {
     }
 
     // Fallback: anyone online regardless of shift hours
-    const onlineOnly = members.filter((m) => m.is_online);
+    const onlineOnly = members.filter((m) => m.is_online && !m.is_on_break);
     if (onlineOnly.length > 0 && available.length === 0) {
       await insertSystemMessage(supabase, conversation_id, `⚙️ الإسناد التلقائي: لا يوجد موظف في الوردية — محاولة مع ${onlineOnly.length} موظف متصل`);
       const result = await pickAgent(onlineOnly, true);

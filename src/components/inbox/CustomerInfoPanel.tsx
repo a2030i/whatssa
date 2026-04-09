@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Tag, Clock, Mail, Phone, StickyNote, MessageSquare, User, Users, Building2, ChevronDown, ChevronUp, Edit3, Plus, X, ExternalLink, Copy, Package, CreditCard, MapPin, Truck, ShoppingBag, UserPlus, UserMinus, LogOut, Link2, Crown, Shield, Pin, Archive, Lock, Unlock, MoreVertical, ShieldCheck, ShieldOff, BarChart3, Ticket } from "lucide-react";
+import { Tag, Clock, Mail, Phone, StickyNote, MessageSquare, User, Users, Building2, ChevronDown, ChevronUp, Edit3, Plus, X, ExternalLink, Copy, Package, CreditCard, MapPin, Truck, ShoppingBag, UserPlus, UserMinus, LogOut, Link2, Crown, Shield, Pin, Archive, Lock, Unlock, MoreVertical, ShieldCheck, ShieldOff, BarChart3, Ticket, Download, Save, Send, CheckSquare, Square as SquareIcon, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Conversation } from "@/data/mockData";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -98,6 +99,12 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   const [addMemberPhone, setAddMemberPhone] = useState("");
   const [addingMember, setAddingMember] = useState(false);
   const [isGroupAdmin, setIsGroupAdmin] = useState(false);
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+  const [savingMembers, setSavingMembers] = useState(false);
+  const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+  const [linkedConversations, setLinkedConversations] = useState<Array<{ id: string; channel_id: string; status: string; last_message_at: string; channel_type?: string; channel_name?: string }>>([]);
   const isGroup = conversation.conversationType === "group";
 
   const loadGroupInfo = async () => {
@@ -328,6 +335,116 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     }
   };
 
+  // Export group members to Excel
+  const handleExportMembers = async () => {
+    if (groupParticipants.length === 0) return;
+    try {
+      const XLSX = await import("xlsx");
+      const data = groupParticipants.map((p) => ({
+        "الاسم": p.name || "",
+        "رقم الهاتف": p.phone ? `+${p.phone}` : "",
+        "مشرف": p.admin ? "نعم" : "لا",
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "الأعضاء");
+      XLSX.writeFile(wb, `أعضاء_${conversation.customerName || "قروب"}.xlsx`);
+      toast.success(`✅ تم تصدير ${groupParticipants.length} عضو`);
+    } catch {
+      // Fallback to CSV
+      const csv = ["الاسم,رقم الهاتف,مشرف", ...groupParticipants.map((p) => `${p.name || ""},+${p.phone || ""},${p.admin ? "نعم" : "لا"}`)].join("\n");
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `أعضاء_${conversation.customerName || "قروب"}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`✅ تم تصدير ${groupParticipants.length} عضو`);
+    }
+  };
+
+  // Save selected/all members as customers
+  const handleSaveAsCustomers = async () => {
+    const members = selectedMembers.size > 0
+      ? groupParticipants.filter((p) => selectedMembers.has(p.id))
+      : groupParticipants.filter((p) => p.phone && !p.isLid);
+    
+    if (members.length === 0) {
+      toast.error("لا يوجد أعضاء بأرقام هواتف صالحة");
+      return;
+    }
+    setSavingMembers(true);
+    try {
+      const groupTag = conversation.customerName || "قروب";
+      let saved = 0;
+      for (const m of members) {
+        if (!m.phone) continue;
+        const { error } = await supabase.from("customers").upsert(
+          { org_id: orgId!, phone: m.phone, name: m.name || null, tags: [groupTag], source: "group_import" },
+          { onConflict: "org_id,phone" }
+        );
+        if (!error) saved++;
+      }
+      toast.success(`✅ تم حفظ ${saved} عميل بتاق "${groupTag}"`);
+      setSelectedMembers(new Set());
+    } catch (e: any) {
+      toast.error("فشل في الحفظ: " + (e.message || ""));
+    } finally {
+      setSavingMembers(false);
+    }
+  };
+
+  // Send broadcast to selected members
+  const handleSendBroadcast = async () => {
+    const members = selectedMembers.size > 0
+      ? groupParticipants.filter((p) => selectedMembers.has(p.id) && p.phone)
+      : [];
+    if (members.length === 0 || !broadcastMessage.trim()) {
+      toast.error("اختر أعضاء واكتب رسالة");
+      return;
+    }
+    setSendingBroadcast(true);
+    try {
+      let sent = 0;
+      for (const m of members) {
+        const { error } = await invokeCloud("whatsapp-send", {
+          body: {
+            to: m.phone,
+            message: broadcastMessage.trim(),
+            channel_id: conversation.channelId,
+          },
+        });
+        if (!error) sent++;
+      }
+      toast.success(`✅ تم إرسال الرسالة لـ ${sent} عضو`);
+      setShowBroadcastDialog(false);
+      setBroadcastMessage("");
+      setSelectedMembers(new Set());
+    } catch (e: any) {
+      toast.error("فشل الإرسال: " + (e.message || ""));
+    } finally {
+      setSendingBroadcast(false);
+    }
+  };
+
+  const toggleMemberSelection = (id: string) => {
+    setSelectedMembers((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedMembers.size === groupParticipants.length) {
+      setSelectedMembers(new Set());
+    } else {
+      setSelectedMembers(new Set(groupParticipants.map((p) => p.id)));
+    }
+  };
+
   useEffect(() => {
     setNotes(conversation.notes || "");
     setGroupPicture(conversation.profilePic || null);
@@ -335,6 +452,37 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     loadOrders();
     if (isGroup && conversation.channelType === "evolution") {
       loadGroupInfo();
+    }
+    // Load linked conversations for same customer across channels
+    if (!isGroup && orgId && conversation.customerPhone) {
+      const normalizedPhone = conversation.customerPhone.replace(/\D/g, "");
+      const loadLinked = async () => {
+        const { data: convs } = await supabase
+          .from("conversations")
+          .select("id, channel_id, status, last_message_at")
+          .eq("org_id", orgId)
+          .neq("id", conversation.id)
+          .or(`customer_phone.eq.${normalizedPhone},customer_phone.eq.${conversation.customerPhone}`)
+          .order("last_message_at", { ascending: false })
+          .limit(10);
+        if (convs && convs.length > 0) {
+          // Fetch channel info for each
+          const channelIds = [...new Set(convs.map((c: any) => c.channel_id).filter(Boolean))];
+          const { data: channels } = channelIds.length > 0
+            ? await supabase.from("whatsapp_config_safe").select("id, channel_type, display_phone, business_name").in("id", channelIds)
+            : { data: [] };
+          const channelMap = new Map((channels || []).map((ch: any) => [ch.id, ch]));
+          setLinkedConversations(convs.map((c: any) => {
+            const ch = channelMap.get(c.channel_id);
+            return { ...c, channel_type: ch?.channel_type, channel_name: ch?.business_name || ch?.display_phone || "قناة" };
+          }));
+        } else {
+          setLinkedConversations([]);
+        }
+      };
+      loadLinked();
+    } else {
+      setLinkedConversations([]);
     }
   }, [conversation.id]);
 
@@ -501,8 +649,31 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
             </div>
 
             <div className="p-3">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-muted-foreground">الأعضاء ({groupParticipants.length})</span>
+              {/* Action buttons */}
+              <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={handleExportMembers}>
+                  <Download className="w-3 h-3" /> تصدير Excel
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={handleSaveAsCustomers} disabled={savingMembers}>
+                  <Save className="w-3 h-3" /> {savingMembers ? "جاري الحفظ..." : selectedMembers.size > 0 ? `حفظ ${selectedMembers.size} كعملاء` : "حفظ الكل كعملاء"}
+                </Button>
+                {selectedMembers.size > 0 && (
+                  <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={() => setShowBroadcastDialog(true)}>
+                    <Send className="w-3 h-3" /> رسالة لـ {selectedMembers.size}
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground">الأعضاء ({groupParticipants.length})</span>
+                  {groupParticipants.length > 0 && (
+                    <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5 gap-0.5" onClick={toggleSelectAll}>
+                      {selectedMembers.size === groupParticipants.length ? <CheckSquare className="w-3 h-3" /> : <SquareIcon className="w-3 h-3" />}
+                      {selectedMembers.size === groupParticipants.length ? "إلغاء الكل" : "تحديد الكل"}
+                    </Button>
+                  )}
+                </div>
                 {isGroupAdmin && (
                   <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAddMemberDialog(true)}>
                     <UserPlus className="w-3.5 h-3.5" /> إضافة
@@ -510,9 +681,14 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                 )}
               </div>
               <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
-                {groupParticipants.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors group">
+                {groupParticipants.map((p) => {
+                  const isSelected = selectedMembers.has(p.id);
+                  return (
+                  <div key={p.id} className={cn("flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors group cursor-pointer", isSelected && "bg-primary/5 border border-primary/20")} onClick={() => toggleMemberSelection(p.id)}>
                     <div className="flex items-center gap-2 min-w-0">
+                      <div className={cn("w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors", isSelected ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
+                        {isSelected && <Check className="w-3 h-3" />}
+                      </div>
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
                         {(p.name || p.phone || "ع").slice(0, 2)}
                       </div>
@@ -528,7 +704,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                     {isGroupAdmin && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                             <MoreVertical className="w-3 h-3" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -550,7 +726,8 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                       </DropdownMenu>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Group Settings */}
@@ -572,6 +749,29 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                 </Button>
               </div>
             </div>
+
+            {/* Broadcast Dialog */}
+            <Dialog open={showBroadcastDialog} onOpenChange={setShowBroadcastDialog}>
+              <DialogContent className="max-w-sm" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle className="text-sm">إرسال رسالة خاصة لـ {selectedMembers.size} عضو</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <p className="text-[11px] text-muted-foreground">سيتم إرسال رسالة خاصة (ليس في القروب) لكل عضو محدد</p>
+                  <Textarea
+                    placeholder="اكتب رسالتك هنا..."
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
+                    rows={4}
+                    className="text-sm"
+                  />
+                  <Button onClick={handleSendBroadcast} disabled={sendingBroadcast || !broadcastMessage.trim()} className="w-full gap-2">
+                    <Send className="w-4 h-4" />
+                    {sendingBroadcast ? "جاري الإرسال..." : `إرسال لـ ${selectedMembers.size} عضو`}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Add Member Dialog */}
             <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
@@ -636,6 +836,41 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
             {(customer?.email || conversation.email) && (
               <CopyField label="عنوان الايميل" value={customer?.email || conversation.email || "N/A"} />
             )}
+          </div>
+        )}
+
+        {/* Linked Conversations */}
+        {!isGroup && linkedConversations.length > 0 && (
+          <div className="pb-3 border-b border-border">
+            <div className="flex items-center gap-1.5 py-2">
+              <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground">محادثات أخرى</span>
+              <Badge variant="secondary" className="text-[9px] h-4 px-1">{linkedConversations.length}</Badge>
+            </div>
+            <div className="space-y-1">
+              {linkedConversations.map((lc) => (
+                <button
+                  key={lc.id}
+                  onClick={() => {
+                    // Navigate to the linked conversation
+                    window.dispatchEvent(new CustomEvent("navigate-conversation", { detail: { conversationId: lc.id } }));
+                  }}
+                  className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/70 transition-colors text-right"
+                >
+                  <div className={cn("w-2 h-2 rounded-full shrink-0", lc.status === "active" ? "bg-success" : lc.status === "waiting" ? "bg-warning" : "bg-muted-foreground/40")} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium truncate">{lc.channel_name}</p>
+                    <p className="text-[9px] text-muted-foreground">
+                      {lc.status === "active" ? "مفتوحة" : lc.status === "waiting" ? "بانتظار الرد" : "مغلقة"}
+                      {lc.last_message_at && ` · ${new Date(lc.last_message_at).toLocaleDateString("ar-SA-u-ca-gregory")}`}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[8px] shrink-0">
+                    {lc.channel_type === "meta_api" ? "رسمي" : "ويب"}
+                  </Badge>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

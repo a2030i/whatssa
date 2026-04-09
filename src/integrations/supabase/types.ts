@@ -3215,10 +3215,12 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          break_started_at: string | null
           created_at: string | null
           full_name: string | null
           id: string
           is_active: boolean
+          is_on_break: boolean
           is_online: boolean | null
           is_supervisor: boolean
           last_seen_at: string | null
@@ -3237,10 +3239,12 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          break_started_at?: string | null
           created_at?: string | null
           full_name?: string | null
           id: string
           is_active?: boolean
+          is_on_break?: boolean
           is_online?: boolean | null
           is_supervisor?: boolean
           last_seen_at?: string | null
@@ -3259,10 +3263,12 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          break_started_at?: string | null
           created_at?: string | null
           full_name?: string | null
           id?: string
           is_active?: boolean
+          is_on_break?: boolean
           is_online?: boolean | null
           is_supervisor?: boolean
           last_seen_at?: string | null

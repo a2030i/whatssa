@@ -364,7 +364,7 @@ const AppSidebar = () => {
                     <span
                       className={cn(
                         "absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-sidebar-background transition-colors",
-                        profile?.is_online ? "bg-success" : "bg-muted-foreground/40"
+                        (profile as any)?.is_on_break ? "bg-warning" : profile?.is_online ? "bg-success" : "bg-muted-foreground/40"
                       )}
                     />
                   </button>
@@ -400,6 +400,22 @@ const AppSidebar = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={async () => {
+                      if (!profile?.id) return;
+                      const isCurrentlyOnBreak = (profile as any)?.is_on_break;
+                      await supabase.from("profiles").update({
+                        is_on_break: !isCurrentlyOnBreak,
+                        break_started_at: !isCurrentlyOnBreak ? new Date().toISOString() : null,
+                      } as any).eq("id", profile.id);
+                      toast.success(isCurrentlyOnBreak ? "✅ تم إنهاء الاستراحة" : "☕ أنت في استراحة — لن يتم إسنادك تلقائياً");
+                    }}
+                    className="gap-2 cursor-pointer"
+                    disabled={!profile?.is_online}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-warning" />
+                    <span>{(profile as any)?.is_on_break ? "إنهاء الاستراحة" : "استراحة ☕"}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
                       if (!profile?.id || !orgId) return;
                       const now = new Date().toISOString().split("T")[0];
                       const { data: empShift } = await supabase
@@ -418,7 +434,7 @@ const AppSidebar = () => {
                       await supabase.from("attendance_logs" as any).insert({
                         org_id: orgId, profile_id: profile.id, event_type: "clock_out", shift_id: shiftId, classification,
                       } as any);
-                      await supabase.from("profiles").update({ is_online: false } as any).eq("id", profile.id);
+                      await supabase.from("profiles").update({ is_online: false, is_on_break: false, break_started_at: null } as any).eq("id", profile.id);
                       if (classification === "early_leave") toast.warning("⚠️ خروج مبكر");
                       else if (classification === "overtime") toast.success("🌟 جهد إضافي!");
                       else toast.success("تم تسجيل الانصراف");
