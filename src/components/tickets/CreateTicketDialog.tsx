@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { TICKET_CATEGORIES, TICKET_PRIORITIES } from "@/pages/TicketsPage";
+import { TICKET_CATEGORIES, TICKET_PRIORITIES } from "@/components/tickets/ticketConstants";
 
 interface Props {
   open: boolean;
