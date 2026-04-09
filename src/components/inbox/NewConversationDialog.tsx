@@ -748,7 +748,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                     if (e.key === "Backspace" && !emailToInput && emailToList.length > 0) setEmailToList(prev => prev.slice(0, -1));
                   }}
                   onBlur={() => addEmailTo()}
-                  className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
+                  className="flex-1 min-w-[120px] text-base bg-transparent outline-none border-0 h-7"
                 />
               </div>
             </div>
@@ -773,7 +773,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                       if (e.key === "Backspace" && !emailCcInput && emailCcList.length > 0) setEmailCcList(prev => prev.slice(0, -1));
                     }}
                     onBlur={() => addEmailCc()}
-                    className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
+                    className="flex-1 min-w-[120px] text-base bg-transparent outline-none border-0 h-7"
                   />
                 </div>
               </div>
@@ -799,7 +799,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                       if (e.key === "Backspace" && !emailBccInput && emailBccList.length > 0) setEmailBccList(prev => prev.slice(0, -1));
                     }}
                     onBlur={() => addEmailBcc()}
-                    className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
+                    className="flex-1 min-w-[120px] text-base bg-transparent outline-none border-0 h-7"
                   />
                 </div>
               </div>
@@ -807,12 +807,12 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">📝 الموضوع</Label>
-              <Input placeholder="موضوع الإيميل..." value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="h-10 text-sm bg-background" />
+              <Input placeholder="موضوع الإيميل..." value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="h-10 text-base bg-background" />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">✉️ نص الرسالة</Label>
-              <Textarea placeholder="اكتب نص الإيميل هنا..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)} className="min-h-[120px] text-sm resize-none bg-background" />
+              <Textarea placeholder="اكتب نص الإيميل هنا..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)} className="min-h-[120px] text-base resize-none bg-background" />
             </div>
 
             <Button className="w-full h-11 gap-2" disabled={emailToList.length === 0 || !emailSubject || !emailBody || sendingEmail} onClick={handleSendEmail}>
