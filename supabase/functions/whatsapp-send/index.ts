@@ -602,6 +602,7 @@ serve(async (req) => {
           conversation_type: "private",
           status: "active",
           last_message_at: new Date().toISOString(),
+          last_message_sender: "agent",
           updated_at: new Date().toISOString(),
         })
         .select("id")
@@ -709,6 +710,7 @@ serve(async (req) => {
           .update({
             last_message: content,
             last_message_at: new Date().toISOString(),
+            last_message_sender: "agent",
             updated_at: new Date().toISOString(),
           })
           .eq("id", conversation.id);
