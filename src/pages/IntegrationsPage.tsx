@@ -986,6 +986,15 @@ const IntegrationsPage = () => {
     setErrorMessage(msg);
     setFlowStep("error");
     setIsLoading(false);
+    // Log failed signup attempt for debugging
+    if (orgId) {
+      supabase.from("activity_logs").insert({
+        org_id: orgId,
+        action: "meta_signup_error",
+        actor_type: "system",
+        metadata: { error: msg, user_agent: navigator.userAgent, timestamp: new Date().toISOString() },
+      }).then(() => {}).catch(() => {});
+    }
   };
 
   // Keep refs in sync with latest function versions (for postMessage listener)
