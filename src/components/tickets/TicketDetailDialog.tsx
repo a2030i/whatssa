@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
-import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUS_CONFIG, type TicketRow } from "@/pages/TicketsPage";
+import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUS_CONFIG, type TicketRow } from "@/components/tickets/ticketConstants";
 import { Clock, User, MessageSquare, Link2 } from "lucide-react";
 
 interface Props {
