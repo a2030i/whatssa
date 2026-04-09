@@ -32,11 +32,19 @@ async function getUserContext(req: Request, body: Record<string, unknown>) {
 
   const { data: profile } = await adminClient
     .from("profiles")
-    .select("org_id")
+    .select("org_id, role")
     .eq("id", userId)
     .maybeSingle();
 
   if (!profile?.org_id) return { error: json({ error: "لا توجد مؤسسة مرتبطة بهذا الحساب" }, 400) };
+
+  // Allow super_admin to override org_id for impersonation
+  let effectiveOrgId = profile.org_id;
+  const overrideOrgId = body?.org_id ? String(body.org_id).trim() : null;
+  if (overrideOrgId && overrideOrgId !== profile.org_id && profile.role === "super_admin") {
+    effectiveOrgId = overrideOrgId;
+    console.log("[whatsapp-templates] super_admin impersonation, using org_id:", effectiveOrgId);
+  }
 
   // If channel_id provided, use that specific channel
   const channelId = body?.channel_id ? String(body.channel_id).trim() : null;

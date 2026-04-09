@@ -333,7 +333,7 @@ interface MetaChannel {
 }
 
 const TemplatesPage = () => {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, impersonatedOrgId } = useAuth();
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
