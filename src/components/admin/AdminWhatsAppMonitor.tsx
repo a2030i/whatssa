@@ -53,7 +53,6 @@ const AdminWhatsAppMonitor = () => {
   const load = async () => {
     setLoading(true);
     try {
-      // Fetch channels + orgs
       const [chRes, orgRes] = await Promise.all([
         supabase.from("whatsapp_config_safe").select("*"),
         supabase.from("organizations").select("id, name"),
@@ -63,89 +62,56 @@ const AdminWhatsAppMonitor = () => {
       (orgRes.data || []).forEach((o: any) => { orgsMap[o.id] = o.name; });
 
       const channelList = chRes.data || [];
-
-      // Fetch message stats for each channel
       const channelIds = channelList.map((c: any) => c.id).filter(Boolean);
 
-      // Get conversation counts per channel
+      // Get conversations grouped by channel with last_message_at
       const convRes = await supabase
         .from("conversations")
-        .select("channel_id")
-        .in("channel_id", channelIds);
+        .select("channel_id, last_message_at")
+        .in("channel_id", channelIds.length ? channelIds : ["__none__"]);
 
       const convCounts: Record<string, number> = {};
+      const lastActivity: Record<string, string | null> = {};
       (convRes.data || []).forEach((c: any) => {
         convCounts[c.channel_id] = (convCounts[c.channel_id] || 0) + 1;
-      });
-
-      // Get message counts - join through conversations
-      const msgStatsPromises = channelIds.map(async (chId: string) => {
-        const [sent, received, lastMsg] = await Promise.all([
-          supabase
-            .from("messages")
-            .select("id", { count: "exact", head: true })
-            .eq("sender", "agent")
-            .in("conversation_id",
-              (convRes.data || []).filter((c: any) => c.channel_id === chId).map((c: any) => c.id) || ["__none__"]
-            ),
-          supabase
-            .from("messages")
-            .select("id", { count: "exact", head: true })
-            .eq("sender", "customer")
-            .in("conversation_id",
-              (convRes.data || []).filter((c: any) => c.channel_id === chId).map((c: any) => c.id) || ["__none__"]
-            ),
-          supabase
-            .from("conversations")
-            .select("last_message_at")
-            .eq("channel_id", chId)
-            .order("last_message_at", { ascending: false })
-            .limit(1),
-        ]);
-        return {
-          channelId: chId,
-          sent: sent.count || 0,
-          received: received.count || 0,
-          lastMessageAt: lastMsg.data?.[0]?.last_message_at || null,
-        };
-      });
-
-      // We'll do a simpler approach - get counts from conversations table directly
-      const enriched: ChannelWithStats[] = channelList.map((ch: any) => {
-        return {
-          id: ch.id,
-          org_id: ch.org_id,
-          org_name: orgsMap[ch.org_id] || "غير معروف",
-          display_phone: ch.display_phone,
-          business_name: ch.business_name,
-          channel_label: ch.channel_label,
-          channel_type: ch.channel_type || "evolution",
-          is_connected: ch.is_connected ?? false,
-          evolution_instance_name: ch.evolution_instance_name,
-          evolution_instance_status: ch.evolution_instance_status,
-          quality_rating: ch.quality_rating,
-          messaging_limit_tier: ch.messaging_limit_tier,
-          created_at: ch.created_at,
-          updated_at: ch.updated_at,
-          onboarding_type: ch.onboarding_type,
-          health_status: ch.health_status,
-          sent_count: 0,
-          received_count: 0,
-          conversations_count: convCounts[ch.id] || 0,
-          last_message_at: null,
-        };
-      });
-
-      // Now fetch message stats in parallel (limit to avoid overload)
-      const statsResults = await Promise.all(msgStatsPromises);
-      statsResults.forEach((s) => {
-        const ch = enriched.find((c) => c.id === s.channelId);
-        if (ch) {
-          ch.sent_count = s.sent;
-          ch.received_count = s.received;
-          ch.last_message_at = s.lastMessageAt;
+        if (c.last_message_at && (!lastActivity[c.channel_id] || c.last_message_at > lastActivity[c.channel_id]!)) {
+          lastActivity[c.channel_id] = c.last_message_at;
         }
       });
+
+      // Get send log counts per channel (last 30 days)
+      const sendLogRes = await supabase
+        .from("channel_send_log")
+        .select("channel_id, message_type")
+        .in("channel_id", channelIds.length ? channelIds : ["__none__"]);
+
+      const sentCounts: Record<string, number> = {};
+      (sendLogRes.data || []).forEach((s: any) => {
+        sentCounts[s.channel_id] = (sentCounts[s.channel_id] || 0) + 1;
+      });
+
+      const enriched: ChannelWithStats[] = channelList.map((ch: any) => ({
+        id: ch.id,
+        org_id: ch.org_id,
+        org_name: orgsMap[ch.org_id] || "غير معروف",
+        display_phone: ch.display_phone,
+        business_name: ch.business_name,
+        channel_label: ch.channel_label,
+        channel_type: ch.channel_type || "evolution",
+        is_connected: ch.is_connected ?? false,
+        evolution_instance_name: ch.evolution_instance_name,
+        evolution_instance_status: ch.evolution_instance_status,
+        quality_rating: ch.quality_rating,
+        messaging_limit_tier: ch.messaging_limit_tier,
+        created_at: ch.created_at,
+        updated_at: ch.updated_at,
+        onboarding_type: ch.onboarding_type,
+        health_status: ch.health_status,
+        sent_count: sentCounts[ch.id] || 0,
+        received_count: 0,
+        conversations_count: convCounts[ch.id] || 0,
+        last_message_at: lastActivity[ch.id] || null,
+      }));
 
       setChannels(enriched);
     } catch (err) {
