@@ -1403,9 +1403,13 @@ serve(async (req) => {
             quotedMessage.extendedTextMessage?.text ||
             quotedMessage.imageMessage?.caption ||
             quotedMessage.videoMessage?.caption ||
-            quotedMessage.audioMessage ? "[مقطع صوتي]" :
             quotedMessage.documentMessage?.caption ||
-            "[مرفق]";
+            (quotedMessage.audioMessage ? "[مقطع صوتي]" : null) ||
+            (quotedMessage.stickerMessage ? "[ملصق]" : null) ||
+            (quotedMessage.imageMessage ? "[صورة]" : null) ||
+            (quotedMessage.videoMessage ? "[فيديو]" : null) ||
+            (quotedMessage.documentMessage ? "[مستند]" : null) ||
+            "[رسالة]";
         }
 
         const metadata: Record<string, unknown> = { ...extraMetadata };

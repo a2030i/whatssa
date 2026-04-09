@@ -541,7 +541,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         );
 
         // Quoted message element
-        const quotedEl = msg.quoted && msg.quoted.text && (
+        const quotedEl = msg.quoted && (msg.quoted.text || msg.quoted.stanza_id || msg.quoted.message_id) && (
           <div
             onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
             className="rounded-lg px-3 py-2 mb-1.5 border-r-3 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity bg-secondary/60 border-primary/30"
@@ -549,7 +549,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             {msg.quoted.sender_name && (
               <p className="text-[11px] font-bold mb-0.5 text-primary">{msg.quoted.sender_name}</p>
             )}
-            <p className="line-clamp-2 text-muted-foreground">{msg.quoted.text}</p>
+            <p className="line-clamp-2 text-muted-foreground">{msg.quoted.text || "[رسالة]"}</p>
           </div>
         );
 
@@ -883,7 +883,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 {msg.quoted?.sender_name && (
                   <p className="text-[11px] font-bold mb-0.5 text-white/90">{msg.quoted.sender_name}</p>
                 )}
-                <p className="line-clamp-2 text-white/70">{msg.quoted?.text}</p>
+                <p className="line-clamp-2 text-white/70">{msg.quoted?.text || "[رسالة]"}</p>
               </div>
             )}
             {quotedEl && msg.sender === "agent" && (
@@ -894,7 +894,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 {msg.quoted?.sender_name && (
                   <p className="text-[11px] font-bold mb-0.5 text-primary">{msg.quoted.sender_name}</p>
                 )}
-                <p className="line-clamp-2 text-muted-foreground">{msg.quoted?.text}</p>
+                <p className="line-clamp-2 text-muted-foreground">{msg.quoted?.text || "[رسالة]"}</p>
               </div>
             )}
             {msg.type === "template" && (
