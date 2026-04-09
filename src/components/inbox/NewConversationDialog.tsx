@@ -37,6 +37,7 @@ interface NewConversationDialogProps {
   onOpenChange: (open: boolean) => void;
   templates: WhatsAppTemplate[];
   onConversationCreated: (convId: string) => void;
+  defaultMode?: "whatsapp" | "email";
 }
 
 type DialogMode = "private" | "group" | "email";
@@ -65,7 +66,7 @@ const COUNTRY_CODES = [
   { code: "1", flag: "🇺🇸", name: "أمريكا", digits: 10 },
 ];
 
-const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCreated }: NewConversationDialogProps) => {
+const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCreated, defaultMode }: NewConversationDialogProps) => {
   const { orgId, profile, userRole, isSuperAdmin, isSupervisor } = useAuth();
   const [dialogMode, setDialogMode] = useState<DialogMode>("private");
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -159,17 +160,21 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
     }
   }, [open]);
 
-  // Auto-select default mode based on available channels
+  // Auto-select default mode based on inbox context
   useEffect(() => {
     if (!open) return;
-    if (channels.length > 0) {
+    if (defaultMode === "email" && emailConfigs.length > 0) {
+      setDialogMode("email");
+    } else if (defaultMode === "whatsapp" && channels.length > 0) {
+      setDialogMode("private");
+    } else if (channels.length > 0) {
       setDialogMode("private");
     } else if (emailConfigs.length > 0) {
       setDialogMode("email");
     } else {
       setDialogMode("private");
     }
-  }, [open, channels.length, emailConfigs.length]);
+  }, [open, channels.length, emailConfigs.length, defaultMode]);
 
   // Load channels (filtered by routing for non-admin members)
   useEffect(() => {
@@ -494,7 +499,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
           {/* Mode toggle */}
           {(hasWhatsApp || hasEvolution || hasEmailConfigs) ? (
             <div className="flex items-center gap-1 mt-3 bg-muted rounded-lg p-1">
-              {hasWhatsApp && (
+              {hasWhatsApp && defaultMode !== "email" && (
                 <button
                   onClick={() => setDialogMode("private")}
                   className={cn(
@@ -505,7 +510,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   <MessageSquare className="w-3.5 h-3.5" /> واتساب
                 </button>
               )}
-              {hasEvolution && (
+              {hasEvolution && defaultMode !== "email" && (
                 <button
                   onClick={() => setDialogMode("group")}
                   className={cn(
@@ -516,7 +521,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                   <Users className="w-3.5 h-3.5" /> قروب
                 </button>
               )}
-              {hasEmailConfigs && (
+              {hasEmailConfigs && defaultMode !== "whatsapp" && (
                 <button
                   onClick={() => setDialogMode("email")}
                   className={cn(
@@ -743,7 +748,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                     if (e.key === "Backspace" && !emailToInput && emailToList.length > 0) setEmailToList(prev => prev.slice(0, -1));
                   }}
                   onBlur={() => addEmailTo()}
-                  className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
+                  className="flex-1 min-w-[120px] text-base bg-transparent outline-none border-0 h-7"
                 />
               </div>
             </div>
@@ -768,7 +773,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                       if (e.key === "Backspace" && !emailCcInput && emailCcList.length > 0) setEmailCcList(prev => prev.slice(0, -1));
                     }}
                     onBlur={() => addEmailCc()}
-                    className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
+                    className="flex-1 min-w-[120px] text-base bg-transparent outline-none border-0 h-7"
                   />
                 </div>
               </div>
@@ -794,7 +799,7 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
                       if (e.key === "Backspace" && !emailBccInput && emailBccList.length > 0) setEmailBccList(prev => prev.slice(0, -1));
                     }}
                     onBlur={() => addEmailBcc()}
-                    className="flex-1 min-w-[120px] text-sm bg-transparent outline-none border-0 h-7"
+                    className="flex-1 min-w-[120px] text-base bg-transparent outline-none border-0 h-7"
                   />
                 </div>
               </div>
@@ -802,12 +807,12 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">📝 الموضوع</Label>
-              <Input placeholder="موضوع الإيميل..." value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="h-10 text-sm bg-background" />
+              <Input placeholder="موضوع الإيميل..." value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="h-10 text-base bg-background" />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">✉️ نص الرسالة</Label>
-              <Textarea placeholder="اكتب نص الإيميل هنا..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)} className="min-h-[120px] text-sm resize-none bg-background" />
+              <Textarea placeholder="اكتب نص الإيميل هنا..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)} className="min-h-[120px] text-base resize-none bg-background" />
             </div>
 
             <Button className="w-full h-11 gap-2" disabled={emailToList.length === 0 || !emailSubject || !emailBody || sendingEmail} onClick={handleSendEmail}>

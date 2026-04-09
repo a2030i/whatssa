@@ -236,7 +236,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   // Always-visible filters (shown even when count is 0)
   const hasAnyGroup = conversations.some(c => c.conversationType === "group");
   console.log("[ConvList] hasAnyGroup:", hasAnyGroup, "groupCount:", (counts as any).groups, "total convs:", conversations.length, "groups in data:", conversations.filter(c => c.conversationType === "group").length);
-  const alwaysVisible = new Set(["mine", "all", ...(hasAnyGroup ? ["groups"] : [])]);
+  const alwaysVisible = new Set(inboxMode === "email" ? ["all", "inbox", "sent"] : ["mine", "all", ...(hasAnyGroup ? ["groups"] : [])]);
   const quickFilters = allQuickFilters.filter(f => {
     if (f.minRole && userLevel < (roleHierarchy[f.minRole] ?? 0)) return false;
     // Hide filters with 0 count (except always-visible ones)
