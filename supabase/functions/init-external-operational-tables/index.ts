@@ -15,8 +15,20 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const dbUrl = Deno.env.get("EXTERNAL_SUPABASE_DB_URL");
+    let dbUrl = Deno.env.get("EXTERNAL_SUPABASE_DB_URL");
     if (!dbUrl) return json({ error: "EXTERNAL_SUPABASE_DB_URL not set" }, 500);
+
+    // Force direct connection (port 5432) instead of pooler (port 6543) for DDL
+    dbUrl = dbUrl
+      .replace(/pooler\.supabase\.com/, (m) => m.replace("pooler.", ""))
+      .replace(/:6543\//, ":5432/")
+      .replace(/aws-0-[^.]+\.pooler\.supabase\.com/, (m) => {
+        // Extract project ref from pooler hostname pattern
+        const refMatch = dbUrl!.match(/\/([^:@]+)\./);
+        return refMatch ? `db.${refMatch[1]}.supabase.co` : m;
+      });
+
+    console.log("Connecting with direct URL (masked):", dbUrl.replace(/:[^@]+@/, ":***@"));
 
     const { default: postgres } = await import("https://deno.land/x/postgresjs@v3.4.5/mod.js");
     const sql = postgres(dbUrl, { ssl: { rejectUnauthorized: false } });
