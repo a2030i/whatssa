@@ -372,9 +372,10 @@ const TemplatesPage = () => {
 
     try {
       // Load channels and templates in parallel
+      const extraBody = impersonatedOrgId ? { org_id: impersonatedOrgId } : {};
       const [channelsRes, templatesRes] = await Promise.all([
-        invokeCloud("whatsapp-templates", { body: { action: "channels" } }),
-        invokeCloud("whatsapp-templates", { body: { action: "list_all" } }),
+        invokeCloud("whatsapp-templates", { body: { action: "channels", ...extraBody } }),
+        invokeCloud("whatsapp-templates", { body: { action: "list_all", ...extraBody } }),
       ]);
 
       // Process channels
@@ -403,7 +404,7 @@ const TemplatesPage = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [isReviewMode]);
+  }, [isReviewMode, impersonatedOrgId]);
 
   useEffect(() => {
     loadTemplates();
@@ -471,6 +472,7 @@ const TemplatesPage = () => {
       body: {
         action,
         channel_id: selectedFormChannel || undefined,
+        ...(impersonatedOrgId ? { org_id: impersonatedOrgId } : {}),
         name: formData.name.trim(),
         category: formData.category,
         header_type: formData.headerType,
@@ -511,7 +513,7 @@ const TemplatesPage = () => {
     setIsDeleting(true);
 
     const { data, error } = await invokeCloud("whatsapp-templates", {
-      body: { action: "delete", name: deleteTarget.name, channel_id: deleteTarget.channelId || undefined },
+      body: { action: "delete", name: deleteTarget.name, channel_id: deleteTarget.channelId || undefined, ...(impersonatedOrgId ? { org_id: impersonatedOrgId } : {}) },
     });
 
     if (error || data?.error) {
