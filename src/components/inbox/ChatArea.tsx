@@ -209,7 +209,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
     return <img src={resolvedUrl} alt="ملصق" className="max-w-[140px] max-h-[140px] object-contain mb-1" />;
   }
   if (isImage) {
-    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-xl max-w-[min(82vw,420px)] max-h-[320px] object-cover mb-1.5 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => onImageClick?.(resolvedUrl)} />;
+    return <img src={resolvedUrl} alt="صورة مرفقة" className="rounded-xl w-full max-w-[min(88vw,420px)] md:max-w-[min(82vw,420px)] max-h-[460px] object-cover mb-1.5 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => onImageClick?.(resolvedUrl)} />;
   }
   if (type === "audio") {
     return <AudioPlayer src={resolvedUrl} isAgent={isAgent} className="mb-1" />;
@@ -427,7 +427,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       {hasAnyAction && (
         <div className={cn(
           "absolute top-1 z-10 md:hidden",
-          msg.sender === "agent" ? "-right-1" : "-left-1"
+          msg.sender === "agent" ? "-right-8" : "-left-8"
         )}>
           <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <DropdownMenuTrigger asChild>
