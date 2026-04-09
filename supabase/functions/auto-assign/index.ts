@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
     // Always exclude supervisors and admins from auto-assign — only regular members
     let membersQuery = supabase
       .from("profiles")
-      .select("id, full_name, is_online, is_supervisor, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2, team_id, team_ids")
+      .select("id, full_name, is_online, is_supervisor, is_on_break, work_start, work_end, work_days, work_start_2, work_end_2, work_days_2, team_id, team_ids")
       .eq("org_id", org_id)
       .eq("is_active", true)
       .eq("is_supervisor", false);
