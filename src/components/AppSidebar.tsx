@@ -400,6 +400,22 @@ const AppSidebar = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={async () => {
+                      if (!profile?.id) return;
+                      const isCurrentlyOnBreak = (profile as any)?.is_on_break;
+                      await supabase.from("profiles").update({
+                        is_on_break: !isCurrentlyOnBreak,
+                        break_started_at: !isCurrentlyOnBreak ? new Date().toISOString() : null,
+                      } as any).eq("id", profile.id);
+                      toast.success(isCurrentlyOnBreak ? "✅ تم إنهاء الاستراحة" : "☕ أنت في استراحة — لن يتم إسنادك تلقائياً");
+                    }}
+                    className="gap-2 cursor-pointer"
+                    disabled={!profile?.is_online}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-warning" />
+                    <span>{(profile as any)?.is_on_break ? "إنهاء الاستراحة" : "استراحة ☕"}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
                       if (!profile?.id || !orgId) return;
                       const now = new Date().toISOString().split("T")[0];
                       const { data: empShift } = await supabase
