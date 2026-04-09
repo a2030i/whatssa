@@ -51,7 +51,14 @@ function decodeBase64Body(text: string, charset = "utf-8"): string {
 }
 
 function htmlToText(html: string): string {
-  return html
+  let text = html
+    // Remove <style> and <head> blocks entirely
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, "")
+    // Remove images with cid: src (inline embedded images)
+    .replace(/<img[^>]*src=["']cid:[^"']*["'][^>]*>/gi, "")
+    // Remove all other images (signature logos, tracking pixels, etc.)
+    .replace(/<img[^>]*>/gi, "")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n\n")
     .replace(/<\/div>/gi, "\n")
@@ -64,8 +71,26 @@ function htmlToText(html: string): string {
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+    .replace(/&#\d+;/gi, "");
+
+  // Clean up artifacts that appear after HTML stripping
+  text = text
+    // Remove cid: image references (e.g. [cid:image001.png@01DCC807.CA254A40])
+    .replace(/\[?cid:[^\]\s]+\]?/gi, "")
+    // Remove [Description: ...] alt-text placeholders from stripped images
+    .replace(/\[Description:\s*[^\]]*\]/gi, "")
+    // Clean URLs in angle brackets: "text<http://url>" → "text http://url"
+    .replace(/<(https?:\/\/[^>]+)>/gi, " $1")
+    // Remove orphaned angle bracket pairs
+    .replace(/<([^>]{0,3})>/g, "$1")
+    // Remove "P " or "🌿 " environment notice lines
+    .replace(/^[P🌿🌱]\s*Please consider the environment.*/gim, "")
+    // Collapse multiple spaces
+    .replace(/[ \t]{2,}/g, " ")
+    // Collapse multiple newlines
+    .replace(/\n{3,}/g, "\n\n");
+
+  return text.trim();
 }
 
 function normalizeSubject(subject: string): string {
@@ -120,7 +145,29 @@ function cleanQuotedContent(body: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  return cleaned || body.replace(/\n{3,}/g, "\n\n").trim();
+  const result = cleaned || body.replace(/\n{3,}/g, "\n\n").trim();
+  return postCleanEmailBody(result);
+}
+
+/** Final cleanup pass to remove leftover artifacts from plain-text conversion */
+function postCleanEmailBody(text: string): string {
+  return text
+    // Remove cid: references that survived
+    .replace(/\[?cid:[^\]\s]+\]?/gi, "")
+    // Remove [Description: ...] image alt-text placeholders
+    .replace(/\[Description:\s*[^\]]*\]/gi, "")
+    // Remove [image: ...] or [Image: ...]
+    .replace(/\[image:\s*[^\]]*\]/gi, "")
+    // Clean URLs in angle brackets
+    .replace(/<(https?:\/\/[^>]+)>/gi, "$1")
+    // Remove "The content of this email is confidential..." disclaimer blocks
+    .replace(/The content of this email is confidential[\s\S]{0,500}$/i, "")
+    // Remove "Please consider the environment" lines
+    .replace(/^.*(?:Please consider the environment|يرجى مراعاة البيئة).*$/gim, "")
+    // Collapse multiple spaces and newlines
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /* ─── Raw IMAP client over TLS ─── */
