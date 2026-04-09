@@ -131,6 +131,7 @@ const ChatbotPage = () => {
   const MAX_BUTTONS = getMaxButtons(selectedChannelType);
   const metaMode = (count: number) => getMetaButtonMode(count);
   const [quickTexts, setQuickTexts] = useState<Record<string, string>>({});
+  const [previewChannel, setPreviewChannel] = useState<"meta_api" | "evolution">("meta_api");
 
   // ─── Fetch ───
   const fetchFlows = useCallback(async () => {
