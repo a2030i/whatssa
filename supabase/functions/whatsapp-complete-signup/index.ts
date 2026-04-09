@@ -426,7 +426,28 @@ serve(async (req) => {
     }
 
     if (sessionPhoneId && !selectedPhone) {
-      return error("تعذر مطابقة الرقم المختار مع حسابات واتساب المصرح بها", 400);
+      // Instead of hard error, return available phones so frontend can show picker
+      if (resolvedPhones.length > 0) {
+        log("step2_phone_mismatch_fallback", { sessionPhoneId, availableCount: resolvedPhones.length });
+        return new Response(JSON.stringify({
+          needs_phone_selection: true,
+          available_phones: resolvedPhones.map((p: any) => ({
+            id: p.id,
+            display_phone_number: p.display_phone_number || "",
+            verified_name: p.verified_name || "",
+            quality_rating: p.quality_rating || "",
+            waba_id: p.waba_id || "",
+          })),
+          access_token: accessToken,
+          message: "لم يتم التعرف على الرقم المختار. اختر رقمًا من القائمة أدناه.",
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // No phones at all — check if the token has no whatsapp scopes
+      log("step2_no_phones_at_all", { sessionPhoneId, wabaIds });
+      return error("لم يتم العثور على أرقام واتساب مصرح بها. تأكد من منح جميع الصلاحيات في نافذة ميتا ثم أعد المحاولة.", 400);
     }
 
     // ── Step 3: Save config with full metadata ──
