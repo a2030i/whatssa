@@ -129,7 +129,9 @@ const GlobalSearch = () => {
   const handleSelect = (item: SearchResult) => {
     setOpen(false);
     setQuery("");
-    if (item.type === "conversation" || item.type === "email") {
+    if (item.type === "email") {
+      navigate(`/emails?conv=${item.id}`);
+    } else if (item.type === "conversation") {
       navigate(`/inbox?conv=${item.id}`);
     } else {
       navigate(`/customers?q=${encodeURIComponent(item.phone || item.title)}`);

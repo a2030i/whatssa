@@ -305,61 +305,32 @@ Deno.serve(async (req) => {
     // Create or update conversation for this email
     let convId = conversation_id;
     if (!convId) {
-      // Match by recipient email AND normalized subject to keep different subjects separate
-      const normSubject = threadSubject
-        .replace(/^(re|fwd|fw)\s*:\s*/gi, "")
-        .replace(/^\[.*?\]\s*/g, "")
-        .trim()
-        .toLowerCase();
-
-      const { data: candidates } = await admin
+      // No conversation_id = user composing a NEW email → always create a new conversation
+      // This prevents merging unrelated emails that happen to share the same subject
+      const { data: newConv, error: convError } = await admin
         .from("conversations")
-        .select("id, notes")
-        .eq("org_id", profile.org_id)
-        .eq("customer_phone", to)
-        .eq("conversation_type", "email")
-        .neq("status", "closed")
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .insert({
+          org_id: profile.org_id,
+          customer_phone: to,
+          customer_name: to,
+          conversation_type: "email",
+          status: "active",
+          last_message: `📧 ${threadSubject}`,
+          last_message_at: new Date().toISOString(),
+          last_message_sender: "agent",
+          assigned_to: profile.full_name,
+          assigned_to_id: profile.id,
+          assigned_at: new Date().toISOString(),
+          channel_id: null,
+          notes: `📧 ${threadSubject.replace(/^(re|fwd|fw)\s*:\s*/gi, "").replace(/^\[.*?\]\s*/g, "").trim()}`,
+        })
+        .select("id")
+        .single();
 
-      let matched = false;
-      if (candidates && normSubject.length > 0) {
-        for (const c of candidates) {
-          const convSubject = (c.notes || "").replace(/^📧\s*/, "").trim().toLowerCase();
-          if (convSubject === normSubject) {
-            convId = c.id;
-            matched = true;
-            break;
-          }
-        }
-      }
-
-      if (!matched) {
-        const { data: newConv, error: convError } = await admin
-          .from("conversations")
-          .insert({
-            org_id: profile.org_id,
-            customer_phone: to,
-            customer_name: to,
-            conversation_type: "email",
-            status: "active",
-            last_message: `📧 ${threadSubject}`,
-            last_message_at: new Date().toISOString(),
-            last_message_sender: "agent",
-            assigned_to: profile.full_name,
-            assigned_to_id: profile.id,
-            assigned_at: new Date().toISOString(),
-            channel_id: null,
-            notes: `📧 ${threadSubject.replace(/^(re|fwd|fw)\s*:\s*/gi, "").replace(/^\[.*?\]\s*/g, "").trim()}`,
-          })
-          .select("id")
-          .single();
-
-        if (convError) {
-          console.error("[email-send] Failed to create conversation:", convError);
-        } else {
-          convId = newConv.id;
-        }
+      if (convError) {
+        console.error("[email-send] Failed to create conversation:", convError);
+      } else {
+        convId = newConv.id;
       }
     }
 

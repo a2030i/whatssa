@@ -441,8 +441,10 @@ async function findOrCreateConversation(
     }
   }
 
-   // Strategy 2: Match by normalized subject AND same sender email in notes
-  if (normSubject.length > 0) {
+   // Strategy 2: Match by normalized subject AND same sender email
+  // ONLY if the email has In-Reply-To or References headers (indicates it's a reply)
+  // New emails without threading headers always create new conversations
+  if (normSubject.length > 0 && (inReplyTo || references)) {
     const { data: convs } = await admin
       .from("conversations").select("id, notes, last_message, customer_phone")
       .eq("org_id", orgId).eq("conversation_type", "email")
@@ -454,7 +456,6 @@ async function findOrCreateConversation(
       for (const conv of convs) {
         const convSubject = (conv.notes || "").replace(/^📧\s*/, "").trim();
         if (convSubject && normalizeSubject(convSubject) === normSubject) return conv.id;
-        // Also check last_message for conversations created by email-send (legacy without notes)
         const lmSubject = (conv.last_message || "").replace(/^📧\s*/, "").trim();
         if (lmSubject && normalizeSubject(lmSubject) === normSubject) return conv.id;
       }
