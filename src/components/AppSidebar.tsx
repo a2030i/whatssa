@@ -364,7 +364,7 @@ const AppSidebar = () => {
                     <span
                       className={cn(
                         "absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-sidebar-background transition-colors",
-                        profile?.is_online ? "bg-success" : "bg-muted-foreground/40"
+                        (profile as any)?.is_on_break ? "bg-warning" : profile?.is_online ? "bg-success" : "bg-muted-foreground/40"
                       )}
                     />
                   </button>
