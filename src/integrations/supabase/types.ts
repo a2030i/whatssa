@@ -2928,6 +2928,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "organizations_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "white_label_partners_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "organizations_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
@@ -3285,6 +3292,13 @@ export type Database = {
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "white_label_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "white_label_partners_public"
             referencedColumns: ["id"]
           },
           {
@@ -5036,6 +5050,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      white_label_partners_public: {
+        Row: {
+          accent_color: string | null
+          background_color: string | null
+          favicon_url: string | null
+          foreground_color: string | null
+          id: string | null
+          is_active: boolean | null
+          is_default: boolean | null
+          logo_url: string | null
+          metadata: Json | null
+          name: string | null
+          primary_color: string | null
+          privacy_policy_url: string | null
+          secondary_color: string | null
+          slug: string | null
+          terms_url: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          background_color?: string | null
+          favicon_url?: string | null
+          foreground_color?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          logo_url?: string | null
+          metadata?: Json | null
+          name?: string | null
+          primary_color?: string | null
+          privacy_policy_url?: string | null
+          secondary_color?: string | null
+          slug?: string | null
+          terms_url?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          background_color?: string | null
+          favicon_url?: string | null
+          foreground_color?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          logo_url?: string | null
+          metadata?: Json | null
+          name?: string | null
+          primary_color?: string | null
+          privacy_policy_url?: string | null
+          secondary_color?: string | null
+          slug?: string | null
+          terms_url?: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
