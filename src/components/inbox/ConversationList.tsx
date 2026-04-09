@@ -180,13 +180,16 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const myId = profile?.id;
   const counts = useMemo(() => {
     if (inboxMode === "email") {
+      const active = conversations.filter(c => c.status !== "closed" && !c.isArchived);
       return {
-        all: conversations.filter(c => c.status !== "closed" && !c.isArchived).length,
-        mine: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.assignedToId === myId).length,
-        unread: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.unread > 0).length,
-        unassigned: conversations.filter(c => c.status !== "closed" && !c.isArchived && (!c.assignedTo || c.assignedTo === "غير معيّن")).length,
-        sent: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.lastMessageSender === "agent").length,
-        waitingReply: conversations.filter(c => c.status !== "closed" && !c.isArchived && c.lastMessageSender === "customer").length,
+        all: active.length,
+        inbox: active.filter(c => c.lastMessageSender === "customer").length,
+        sent: active.filter(c => c.lastMessageSender === "agent").length,
+        unread: active.filter(c => c.unread > 0).length,
+        read: active.filter(c => c.unread === 0).length,
+        mine: active.filter(c => c.assignedToId === myId).length,
+        unassigned: active.filter(c => !c.assignedTo || c.assignedTo === "غير معيّن").length,
+        waitingReply: active.filter(c => c.lastMessageSender === "customer").length,
         closed: conversations.filter(c => c.status === "closed" && !c.isArchived).length,
         archived: conversations.filter(c => c.isArchived).length,
       };
@@ -207,11 +210,12 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   const allQuickFilters: (QuickFilter & { minRole?: string })[] = inboxMode === "email" ? [
     { id: "all", label: "الكل", icon: Mail, count: counts.all },
+    { id: "inbox", label: "وارد", icon: Inbox, count: (counts as any).inbox },
+    { id: "sent", label: "صادر", icon: Send, count: (counts as any).sent },
+    { id: "unread", label: "غير مقروء", icon: Eye, count: counts.unread },
+    { id: "read", label: "مقروء", icon: CheckCircle, count: (counts as any).read },
     { id: "mine", label: "بريدي", icon: User, count: counts.mine },
-    { id: "unread", label: "غير مقروءة", icon: Eye, count: counts.unread },
     { id: "unassigned", label: "غير معينة", icon: UserX, count: counts.unassigned },
-    { id: "sent", label: "مرسلة", icon: Send, count: (counts as any).sent },
-    { id: "waitingReply", label: "بانتظار الرد", icon: Clock, count: (counts as any).waitingReply },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed, minRole: "supervisor" },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived, minRole: "supervisor" },
   ] : [
