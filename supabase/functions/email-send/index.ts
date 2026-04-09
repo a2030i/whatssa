@@ -244,20 +244,28 @@ Deno.serve(async (req) => {
     const isPlainText = !emailBody.includes("<") || !emailBody.includes(">");
     const bodyHtml = isPlainText ? emailBody.replace(/\n/g, "<br>") : emailBody;
 
-    let finalBody = emailBody;
     let finalHtml = bodyHtml;
     if (signature) {
       const sigHtml = `<br><br><div style="border-top:1px solid #ccc;padding-top:8px;margin-top:16px;color:#666;font-size:13px;white-space:pre-line">${signature.replace(/\n/g, "<br>")}</div>`;
-      finalBody = emailBody + "\n\n--\n" + signature;
       finalHtml = bodyHtml + sigHtml;
     }
+
+    // Wrap in proper HTML with UTF-8 charset to ensure Arabic renders correctly
+    const wrappedHtml = `<!DOCTYPE html><html dir="auto"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;font-size:14px;line-height:1.6">${finalHtml}</body></html>`;
+
+    // Encode subject for non-ASCII (RFC 2047 Base64)
+    const encoder = new TextEncoder();
+    const subjectBytes = encoder.encode(threadSubject);
+    const hasNonAscii = subjectBytes.some((b) => b > 127);
+    const encodedSubject = hasNonAscii
+      ? `=?UTF-8?B?${btoa(String.fromCharCode(...subjectBytes))}?=`
+      : threadSubject;
 
     const sendOptions: any = {
       from: config.email_address,
       to,
-      subject: threadSubject,
-      content: finalBody,
-      html: finalHtml,
+      subject: encodedSubject,
+      html: wrappedHtml,
       headers: customHeaders,
     };
     if (cc) sendOptions.cc = cc;
