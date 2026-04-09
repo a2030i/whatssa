@@ -44,7 +44,7 @@ interface ChatbotFlow {
 
 interface Channel {
   id: string;
-  display_phone_number: string;
+  display_phone: string;
   channel_type: string;
   evolution_instance_name: string | null;
   business_name: string | null;
@@ -157,8 +157,8 @@ const ChatbotPage = () => {
   const fetchChannels = useCallback(async () => {
     if (!orgId) return;
     const { data } = await supabase
-      .from("whatsapp_config" as any)
-      .select("id, display_phone_number, channel_type, evolution_instance_name, business_name")
+      .from("whatsapp_config_safe")
+      .select("id, display_phone, channel_type, evolution_instance_name, business_name")
       .eq("org_id", orgId)
       .eq("is_connected", true)
       .order("created_at");
@@ -657,10 +657,10 @@ const ChatbotPage = () => {
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">
-                                  {ch.business_name || ch.display_phone_number || ch.evolution_instance_name || "قناة"}
+                                  {ch.business_name || ch.display_phone || ch.evolution_instance_name || "قناة"}
                                 </p>
                                 <p className="text-[11px] text-muted-foreground">
-                                  {ch.display_phone_number || ch.evolution_instance_name}
+                                  {ch.display_phone || ch.evolution_instance_name}
                                 </p>
                               </div>
                               <Badge variant={isMeta ? "default" : "secondary"} className="text-[10px] shrink-0">
