@@ -104,6 +104,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
+  const [linkedConversations, setLinkedConversations] = useState<Array<{ id: string; channel_id: string; status: string; last_message_at: string; channel_type?: string; channel_name?: string }>>([]);
   const isGroup = conversation.conversationType === "group";
 
   const loadGroupInfo = async () => {
