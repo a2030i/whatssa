@@ -281,7 +281,7 @@ const CustomersPage = () => {
         </div>
 
         <TabsContent value="list" className="space-y-4">
-          <div className="flex flex-col sm:flex-row-reverse sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <Button size="sm" className="text-xs gap-1.5 rounded-xl gradient-primary text-primary-foreground shadow-glow" onClick={() => { setEditCustomer(null); resetForm(); setShowAdd(true); }}>
                 <UserPlus className="w-3.5 h-3.5" /> إضافة عميل
