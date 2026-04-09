@@ -740,6 +740,18 @@ const IntegrationsPage = () => {
     );
   }, [clearEmbeddedSignupSelection, metaConfigId, metaAppId, onboardingMode, previousProvider, isMobileDevice]);
 
+
+  // Desktop redirect fallback (when popup fails)
+  const useRedirectFlow = useCallback(() => {
+    sessionStorage.setItem("wa_onboarding_mode", onboardingMode);
+    if (previousProvider) sessionStorage.setItem("wa_previous_provider", previousProvider);
+    const redirectUri = `${window.location.origin}/integrations`;
+    const scopes = "whatsapp_business_management,whatsapp_business_messaging,business_management";
+    const oauthUrl = `https://www.facebook.com/v22.0/dialog/oauth?client_id=${metaAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&config_id=${metaConfigId}&response_type=code&override_default_response_type=true&scope=${encodeURIComponent(scopes)}`;
+    console.log("[Embedded Signup] Fallback: redirecting to OAuth URL (desktop redirect)");
+    window.location.href = oauthUrl;
+  }, [metaAppId, metaConfigId, onboardingMode, previousProvider]);
+
   const handleCodeExchange = async (code: string) => {
     try {
       console.log("[Embedded Signup] Exchanging code for token...");
@@ -974,6 +986,15 @@ const IntegrationsPage = () => {
     setErrorMessage(msg);
     setFlowStep("error");
     setIsLoading(false);
+    // Log failed signup attempt for debugging
+    if (orgId) {
+      supabase.from("activity_logs").insert({
+        org_id: orgId,
+        action: "meta_signup_error",
+        actor_type: "system",
+        metadata: { error: msg, user_agent: navigator.userAgent, timestamp: new Date().toISOString() },
+      }).then();
+    }
   };
 
   // Keep refs in sync with latest function versions (for postMessage listener)
@@ -2762,6 +2783,10 @@ const IntegrationsPage = () => {
             <Button onClick={() => { resetFlow(); startConnect(); }} className="w-full gap-2">
               <RefreshCw className="w-4 h-4" />
               {t("إعادة المحاولة", "Try Again")}
+            </Button>
+            <Button onClick={useRedirectFlow} variant="outline" className="w-full gap-2 text-primary">
+              <ExternalLink className="w-4 h-4" />
+              {t("جرّب الربط بدون نافذة منبثقة (توجيه مباشر)", "Try direct redirect (without popup)")}
             </Button>
             <Button onClick={resetFlow} variant="ghost" className="w-full text-sm">
               {t("رجوع", "Back")}
