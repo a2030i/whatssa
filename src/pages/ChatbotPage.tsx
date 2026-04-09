@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageSquare, ArrowRight, Copy, ToggleLeft, GitBranch, ChevronDown, ChevronUp, HelpCircle, Eye, ListOrdered, Globe, Zap, ArrowLeft, Hash, Tag, RotateCcw, Network, FileText, TicketCheck } from "lucide-react";
+import { Bot, Plus, Trash2, Edit, Save, Loader2, MessageSquare, ArrowRight, Copy, ToggleLeft, GitBranch, ChevronDown, ChevronUp, HelpCircle, Eye, ListOrdered, Globe, Zap, ArrowLeft, Hash, Tag, RotateCcw, Network, TicketCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
