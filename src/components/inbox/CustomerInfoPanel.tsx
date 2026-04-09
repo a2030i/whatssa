@@ -337,7 +337,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   const handleExportMembers = () => {
     if (groupParticipants.length === 0) return;
     try {
-      const XLSX = require("xlsx");
+      const XLSX = await import("xlsx");
       const data = groupParticipants.map((p) => ({
         "الاسم": p.name || "",
         "رقم الهاتف": p.phone ? `+${p.phone}` : "",
