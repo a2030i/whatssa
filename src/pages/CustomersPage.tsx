@@ -281,23 +281,23 @@ const CustomersPage = () => {
         </div>
 
         <TabsContent value="list" className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row-reverse sm:items-center gap-3">
             <div className="flex items-center gap-2 flex-wrap">
-          <Button size="sm" variant="outline" className="text-xs gap-1.5 rounded-xl border-border/50 hover:bg-secondary/60" onClick={handleExport}>
-              <Download className="w-3.5 h-3.5" /> تصدير
-            </Button>
-            <Button size="sm" variant="outline" className="text-xs gap-1.5 rounded-xl border-border/50 hover:bg-secondary/60" onClick={() => fileRef.current?.click()}>
-              <Upload className="w-3.5 h-3.5" /> استيراد
-            </Button>
-            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
-            <Button size="sm" className="text-xs gap-1.5 rounded-xl gradient-primary text-primary-foreground shadow-glow" onClick={() => { setEditCustomer(null); resetForm(); setShowAdd(true); }}>
-              <UserPlus className="w-3.5 h-3.5" /> إضافة عميل
-            </Button>
-          </div>
-          <div className="relative max-w-sm">
-            <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="بحث بالاسم أو الرقم..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm bg-card/70 backdrop-blur-sm border-border/40 rounded-xl" />
-          </div>
+              <Button size="sm" className="text-xs gap-1.5 rounded-xl gradient-primary text-primary-foreground shadow-glow" onClick={() => { setEditCustomer(null); resetForm(); setShowAdd(true); }}>
+                <UserPlus className="w-3.5 h-3.5" /> إضافة عميل
+              </Button>
+              <Button size="sm" variant="outline" className="text-xs gap-1.5 rounded-xl border-border/50 hover:bg-secondary/60" onClick={() => fileRef.current?.click()}>
+                <Upload className="w-3.5 h-3.5" /> استيراد
+              </Button>
+              <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
+              <Button size="sm" variant="outline" className="text-xs gap-1.5 rounded-xl border-border/50 hover:bg-secondary/60" onClick={handleExport}>
+                <Download className="w-3.5 h-3.5" /> تصدير
+              </Button>
+            </div>
+            <div className="relative max-w-sm flex-1">
+              <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="بحث بالاسم أو الرقم..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-9 text-sm bg-card/70 backdrop-blur-sm border-border/40 rounded-xl" />
+            </div>
         </div>
 
       <div className="bg-card/70 backdrop-blur-sm rounded-2xl shadow-card border border-border/40 overflow-x-auto">
