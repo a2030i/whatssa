@@ -41,6 +41,18 @@ const get24hCountdown = (lastCustomerMessageAt?: string): { text: string; color:
   return { text, color };
 };
 
+/** Calculate customer wait time when last message is from customer and conv is open */
+const getWaitTime = (conv: Conversation): { text: string; urgency: "normal" | "warning" | "critical" } | null => {
+  if (conv.status === "closed" || conv.lastMessageSender !== "customer" || !conv.lastCustomerMessageAt) return null;
+  const elapsed = Date.now() - new Date(conv.lastCustomerMessageAt).getTime();
+  if (elapsed < 60000) return null; // less than 1 min, skip
+  const mins = Math.floor(elapsed / 60000);
+  const hours = Math.floor(mins / 60);
+  const urgency = mins >= 30 ? "critical" : mins >= 10 ? "warning" : "normal";
+  const text = hours > 0 ? `${hours}س ${mins % 60}د` : `${mins}د`;
+  return { text, urgency };
+};
+
 interface QuickFilter {
   id: string;
   label: string;
@@ -579,6 +591,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             const displayName = getConversationDisplayName(conv);
             const hasUnread = conv.unread > 0;
             const hasMention = (conv.unreadMentionCount || 0) > 0;
+            const waitTime = getWaitTime(conv);
             return (
               <button
                 key={conv.id}
@@ -725,6 +738,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       {conv.timestamp}
                     </span>
                     <div className="flex items-center gap-1">
+                      {waitTime && (
+                        <span className={cn(
+                          "text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 leading-none",
+                          waitTime.urgency === "critical" ? "bg-destructive/15 text-destructive" :
+                          waitTime.urgency === "warning" ? "bg-warning/15 text-warning" :
+                          "bg-muted text-muted-foreground"
+                        )} title="وقت انتظار العميل">
+                          <Clock className="w-2.5 h-2.5" />
+                          {waitTime.text}
+                        </span>
+                      )}
                       {conv.sentiment === "negative" && (
                         <span className="w-[20px] h-[20px] rounded-full bg-destructive/15 text-destructive text-[10px] flex items-center justify-center" title="عميل غير راضٍ">😠</span>
                       )}

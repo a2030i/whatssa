@@ -1238,6 +1238,29 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       .then(({ data }) => setHasAiConfig(!!(data && data.length > 0)));
   }, [orgId]);
 
+  // Auto-suggest AI replies when opening a conversation with pending customer message
+  const autoSuggestDoneRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hasAiConfig || !conversation.id || autoSuggestDoneRef.current === conversation.id) return;
+    if (conversation.lastMessageSender !== "customer" || conversation.status === "closed") return;
+    const customerMsgs = messages.filter(m => m.sender === "customer" && m.type === "text");
+    if (customerMsgs.length === 0) return;
+    autoSuggestDoneRef.current = conversation.id;
+    (async () => {
+      setAiLoading(true);
+      try {
+        const { data } = await invokeCloud("ai-features", {
+          body: {
+            action: "suggest_replies",
+            conversation_messages: messages.slice(-5).map(m => ({ sender: m.sender, content: m.text })),
+            customer_name: conversation.customerName,
+          },
+        });
+        if (data?.suggestions?.length > 0) setAiSuggestions(data.suggestions);
+      } catch { /* silent */ }
+      setAiLoading(false);
+    })();
+  }, [hasAiConfig, conversation.id, conversation.lastMessageSender, messages.length]);
   // Auto-translate incoming customer messages
   useEffect(() => {
     if (!autoTranslate || !hasAiConfig) return;

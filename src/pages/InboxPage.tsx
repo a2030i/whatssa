@@ -93,6 +93,35 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const deepLinkApplied = useRef(false);
   const fetchConversationsRef = useRef<(() => Promise<void>) | null>(null);
   const conversationsRef = useRef<Conversation[]>([]);
+  const lateAlertShownRef = useRef<Set<string>>(new Set());
+
+  // Late response alert — check every 60s for conversations waiting > 10 min
+  useEffect(() => {
+    const LATE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+    const checkLateResponses = () => {
+      const now = Date.now();
+      conversationsRef.current.forEach(conv => {
+        if (conv.status === "closed" || conv.lastMessageSender !== "customer" || !conv.lastCustomerMessageAt) return;
+        const elapsed = now - new Date(conv.lastCustomerMessageAt).getTime();
+        if (elapsed >= LATE_THRESHOLD_MS && !lateAlertShownRef.current.has(conv.id)) {
+          lateAlertShownRef.current.add(conv.id);
+          const mins = Math.floor(elapsed / 60000);
+          toast.warning(`⏱️ ${conv.customerName || conv.customerPhone} ينتظر رد منذ ${mins} دقيقة`, {
+            duration: 8000,
+            action: {
+              label: "فتح",
+              onClick: () => setSelectedId(conv.id),
+            },
+          });
+        }
+      });
+    };
+    // Reset shown alerts when conversations change significantly
+    const interval = setInterval(checkLateResponses, 60000);
+    // Initial check after 5s
+    const timeout = setTimeout(checkLateResponses, 5000);
+    return () => { clearInterval(interval); clearTimeout(timeout); };
+  }, []);
 
   const isMobile = useIsMobile();
 
