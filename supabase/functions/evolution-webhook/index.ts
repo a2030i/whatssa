@@ -207,7 +207,7 @@ async function sendBotMessage(
         });
         if (resp.ok) {
           await client.from("messages").insert({ conversation_id: conversationId, sender: "agent", message_type: "text", content: text, status: "sent" });
-          await client.from("conversations").update({ last_message: text, last_message_at: new Date().toISOString() }).eq("id", conversationId);
+          await client.from("conversations").update({ last_message: text, last_message_at: new Date().toISOString(), last_message_sender: "agent" }).eq("id", conversationId);
         }
       } catch (e) {
         await log(client, "error", "فشل إرسال رسالة البوت (Evolution)", { error: (e as Error).message }, orgId);
@@ -228,7 +228,7 @@ async function sendBotMessage(
       const result = await resp.json();
       if (resp.ok) {
         await client.from("messages").insert({ conversation_id: conversationId, wa_message_id: result.messages?.[0]?.id || null, sender: "agent", message_type: "text", content: text, status: "sent" });
-        await client.from("conversations").update({ last_message: text, last_message_at: new Date().toISOString() }).eq("id", conversationId);
+        await client.from("conversations").update({ last_message: text, last_message_at: new Date().toISOString(), last_message_sender: "agent" }).eq("id", conversationId);
       } else {
         await log(client, "error", "فشل إرسال رسالة البوت (Meta)", { error: result?.error?.message }, orgId);
       }
@@ -847,6 +847,7 @@ serve(async (req) => {
                 closure_reason_id: null,
                 last_message: text || `[${messageType}]`,
                 last_message_at: new Date().toISOString(),
+                last_message_sender: "customer",
                 updated_at: new Date().toISOString(),
               }).eq("id", closedConv.id);
               existingConv = closedConv;
@@ -899,6 +900,7 @@ serve(async (req) => {
                 conversation_type: conversationType,
                 last_message: text || `[${messageType}]`,
                 last_message_at: new Date().toISOString(),
+                last_message_sender: "customer",
                 channel_id: config.id,
                 customer_profile_pic: outProfilePic,
               })
@@ -960,6 +962,7 @@ serve(async (req) => {
             await supabase.from("conversations").update({
               last_message: text || `[${messageType}]`,
               last_message_at: new Date().toISOString(),
+              last_message_sender: "customer",
             }).eq("id", existingConv.id);
 
             // Also update channel_id if missing
@@ -1029,6 +1032,7 @@ serve(async (req) => {
               unread_count: 1,
               last_message: text || `[${messageType}]`,
               last_message_at: new Date().toISOString(),
+              last_message_sender: "customer",
             };
             if (closedConv.dedicated_agent_id) {
               reopenUpdate.assigned_to_id = closedConv.dedicated_agent_id;
@@ -1172,6 +1176,7 @@ serve(async (req) => {
               conversation_type: conversationType,
               last_message: text || `[${messageType}]`,
               last_message_at: new Date().toISOString(),
+              last_message_sender: "customer",
               channel_id: config.id,
               customer_profile_pic: profilePicUrl,
             };
@@ -1543,6 +1548,7 @@ serve(async (req) => {
           .update({
             last_message: content,
             last_message_at: new Date().toISOString(),
+            last_message_sender: "customer",
             updated_at: new Date().toISOString(),
             channel_id: config.id, // Ensure channel_id is always set
           })
@@ -1658,7 +1664,7 @@ serve(async (req) => {
                       conversation_id: conversation.id, sender: "agent", message_type: "text", content: matchedRule.reply_text, status: "sent",
                     });
                     await supabase.from("conversations").update({
-                      last_message: matchedRule.reply_text, last_message_at: new Date().toISOString(),
+                      last_message: matchedRule.reply_text, last_message_at: new Date().toISOString(), last_message_sender: "agent",
                     }).eq("id", conversation.id);
                   }
                 } catch (e) {
@@ -1692,7 +1698,7 @@ serve(async (req) => {
                       metadata: { ai_generated: true },
                     });
                     await supabase.from("conversations").update({
-                      last_message: aiData.reply, last_message_at: new Date().toISOString(),
+                      last_message: aiData.reply, last_message_at: new Date().toISOString(), last_message_sender: "agent",
                     }).eq("id", conversation.id);
                     await logToSystem(supabase, "info", "رد AI تلقائي مرسل", {
                       conversation_id: conversation.id, reply_length: aiData.reply.length,

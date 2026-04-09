@@ -772,6 +772,7 @@ serve(async (req) => {
           status: "active",
           last_message: sentContent,
           last_message_at: new Date().toISOString(),
+          last_message_sender: "agent",
           updated_at: new Date().toISOString(),
         })
         .select("id")
@@ -822,6 +823,7 @@ serve(async (req) => {
         adminClient.from("conversations").update({
           last_message: sentContent,
           last_message_at: new Date().toISOString(),
+          last_message_sender: "agent",
           updated_at: new Date().toISOString(),
         }).eq("id", conversation.id),
       ]);
