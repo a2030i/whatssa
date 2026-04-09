@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { Download, Loader2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff, CheckSquare, Square, Mail, Send, UserCheck } from "lucide-react";
 import BulkActionsBar from "./BulkActionsBar";
@@ -319,6 +320,31 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     clearFilters();
   };
 
+  const [fetchingEmails, setFetchingEmails] = useState(false);
+  const handleFetchEmails = async () => {
+    if (!orgId || fetchingEmails) return;
+    setFetchingEmails(true);
+    try {
+      const { data: configs } = await supabase
+        .from("email_configs")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("is_active", true);
+      if (!configs?.length) {
+        toast.error("لا يوجد بريد مفعّل");
+        return;
+      }
+      await Promise.all(configs.map(c =>
+        supabase.functions.invoke("email-fetch-imap", { body: { config_id: c.id } })
+      ));
+      toast.success("تم جلب الوارد بنجاح");
+    } catch {
+      toast.error("فشل جلب الوارد");
+    } finally {
+      setFetchingEmails(false);
+    }
+  };
+
   return (
     <div className={cn(
       "flex flex-col bg-card border-l border-border/40",
@@ -331,6 +357,16 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             {activeInbox ? activeInbox.name : inboxMode === "email" ? "صندوق الإيميل" : "صندوق الواتساب"}
           </h1>
           <div className="flex items-center gap-0.5">
+            {inboxMode === "email" && (
+              <button
+                onClick={handleFetchEmails}
+                disabled={fetchingEmails}
+                className="w-9 h-9 rounded-xl border border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground transition-all flex items-center justify-center disabled:opacity-50"
+                title="جلب الوارد"
+              >
+                {fetchingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              </button>
+            )}
             {onNewConversation && (
               <button
                 onClick={onNewConversation}
