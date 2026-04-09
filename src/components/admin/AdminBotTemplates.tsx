@@ -4,10 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Bot, Search, RefreshCw, Plus, CheckCircle2, XCircle } from "lucide-react";
+import { Bot, Search, RefreshCw, Plus, CheckCircle2, XCircle, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Trash2, Eye } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const generateId = () => crypto.randomUUID().slice(0, 8);
+
+interface BotFlow {
+  id: string;
+  name: string;
+  is_active: boolean;
+  trigger_type: string;
+  nodes: any[];
+  created_at: string;
+}
 
 interface OrgBotStatus {
   org_id: string;
@@ -15,6 +26,7 @@ interface OrgBotStatus {
   has_bot: boolean;
   bot_count: number;
   has_template: boolean;
+  flows: BotFlow[];
 }
 
 const TEMPLATES = [
@@ -47,62 +59,13 @@ function buildCustomerServiceNodes() {
         { id: generateId(), label: "👤 تحدث مع موظف", next_node_id: agentId },
       ],
     },
-    {
-      id: inquiryId,
-      name: "استفسار عن طلب",
-      type: "message",
-      content: "أرسل لنا رقم طلبك وسيتواصل معك الفريق قريباً 📋",
-      buttons: [{ id: generateId(), label: "تم الإرسال ✅", next_node_id: ticketInquiryId }],
-    },
-    {
-      id: ticketInquiryId,
-      name: "تذكرة استفسار",
-      type: "action",
-      content: "استفسار عن طلب",
-      buttons: [],
-      action_type: "close_with_ticket",
-      action_value: "استفسار",
-    },
-    {
-      id: addressId,
-      name: "تعديل عنوان",
-      type: "message",
-      content: "أرسل لنا رقم الطلب والعنوان الجديد وسنعدّله لك 🔄",
-      buttons: [{ id: generateId(), label: "تم الإرسال ✅", next_node_id: ticketAddressId }],
-    },
-    {
-      id: ticketAddressId,
-      name: "تذكرة تعديل عنوان",
-      type: "action",
-      content: "تعديل عنوان شحنة",
-      buttons: [],
-      action_type: "close_with_ticket",
-      action_value: "تعديل عنوان",
-    },
-    {
-      id: complaintId,
-      name: "شكوى",
-      type: "message",
-      content: "نأسف لأي إزعاج! اكتب تفاصيل شكواك وسنتابعها فوراً 🙏",
-      buttons: [{ id: generateId(), label: "تم الإرسال ✅", next_node_id: ticketComplaintId }],
-    },
-    {
-      id: ticketComplaintId,
-      name: "تذكرة شكوى",
-      type: "action",
-      content: "شكوى عميل",
-      buttons: [],
-      action_type: "close_with_ticket",
-      action_value: "شكوى",
-    },
-    {
-      id: agentId,
-      name: "تحويل لموظف",
-      type: "action",
-      content: "جاري تحويلك لأحد الموظفين...",
-      buttons: [],
-      action_type: "transfer_agent",
-    },
+    { id: inquiryId, name: "استفسار عن طلب", type: "message", content: "أرسل لنا رقم طلبك وسيتواصل معك الفريق قريباً 📋", buttons: [{ id: generateId(), label: "تم الإرسال ✅", next_node_id: ticketInquiryId }] },
+    { id: ticketInquiryId, name: "تذكرة استفسار", type: "action", content: "استفسار عن طلب", buttons: [], action_type: "close_with_ticket", action_value: "استفسار" },
+    { id: addressId, name: "تعديل عنوان", type: "message", content: "أرسل لنا رقم الطلب والعنوان الجديد وسنعدّله لك 🔄", buttons: [{ id: generateId(), label: "تم الإرسال ✅", next_node_id: ticketAddressId }] },
+    { id: ticketAddressId, name: "تذكرة تعديل عنوان", type: "action", content: "تعديل عنوان شحنة", buttons: [], action_type: "close_with_ticket", action_value: "تعديل عنوان" },
+    { id: complaintId, name: "شكوى", type: "message", content: "نأسف لأي إزعاج! اكتب تفاصيل شكواك وسنتابعها فوراً 🙏", buttons: [{ id: generateId(), label: "تم الإرسال ✅", next_node_id: ticketComplaintId }] },
+    { id: ticketComplaintId, name: "تذكرة شكوى", type: "action", content: "شكوى عميل", buttons: [], action_type: "close_with_ticket", action_value: "شكوى" },
+    { id: agentId, name: "تحويل لموظف", type: "action", content: "جاري تحويلك لأحد الموظفين...", buttons: [], action_type: "transfer_agent" },
   ];
 }
 
@@ -113,6 +76,8 @@ const AdminBotTemplates = () => {
   const [selectedOrg, setSelectedOrg] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("customer_service");
   const [deploying, setDeploying] = useState(false);
+  const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
+  const [togglingFlow, setTogglingFlow] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -120,23 +85,33 @@ const AdminBotTemplates = () => {
     setLoading(true);
     const [orgRes, flowsRes] = await Promise.all([
       supabase.from("organizations").select("id, name").eq("is_active", true).order("name"),
-      supabase.from("chatbot_flows").select("id, org_id, name, is_active"),
+      supabase.from("chatbot_flows").select("id, org_id, name, is_active, trigger_type, nodes, created_at").order("created_at", { ascending: false }),
     ]);
 
-    const flowsByOrg: Record<string, { count: number; hasTemplate: boolean }> = {};
+    const flowsByOrg: Record<string, BotFlow[]> = {};
     (flowsRes.data || []).forEach((f: any) => {
-      if (!flowsByOrg[f.org_id]) flowsByOrg[f.org_id] = { count: 0, hasTemplate: false };
-      flowsByOrg[f.org_id].count++;
-      if (f.name?.includes("قالب جاهز")) flowsByOrg[f.org_id].hasTemplate = true;
+      if (!flowsByOrg[f.org_id]) flowsByOrg[f.org_id] = [];
+      flowsByOrg[f.org_id].push({
+        id: f.id,
+        name: f.name,
+        is_active: f.is_active,
+        trigger_type: f.trigger_type,
+        nodes: (f.nodes as any[]) || [],
+        created_at: f.created_at,
+      });
     });
 
-    setOrgs((orgRes.data || []).map((o: any) => ({
-      org_id: o.id,
-      org_name: o.name,
-      has_bot: (flowsByOrg[o.id]?.count || 0) > 0,
-      bot_count: flowsByOrg[o.id]?.count || 0,
-      has_template: flowsByOrg[o.id]?.hasTemplate || false,
-    })));
+    setOrgs((orgRes.data || []).map((o: any) => {
+      const flows = flowsByOrg[o.id] || [];
+      return {
+        org_id: o.id,
+        org_name: o.name,
+        has_bot: flows.length > 0,
+        bot_count: flows.length,
+        has_template: flows.some(f => f.name?.includes("قالب جاهز")),
+        flows,
+      };
+    }));
     setLoading(false);
   };
 
@@ -163,10 +138,45 @@ const AdminBotTemplates = () => {
     if (error) {
       toast.error("فشل إنشاء البوت: " + error.message);
     } else {
-      toast.success("✅ تم إنشاء البوت للمنظمة — سيحتاج التفعيل من المنظمة");
+      toast.success("✅ تم إنشاء البوت للمنظمة");
       loadData();
     }
     setDeploying(false);
+  };
+
+  const toggleFlow = async (flowId: string, currentState: boolean) => {
+    setTogglingFlow(flowId);
+    const { error } = await supabase
+      .from("chatbot_flows")
+      .update({ is_active: !currentState } as any)
+      .eq("id", flowId);
+    if (error) {
+      toast.error("فشل التحديث");
+    } else {
+      setOrgs(prev => prev.map(o => ({
+        ...o,
+        flows: o.flows.map(f => f.id === flowId ? { ...f, is_active: !currentState } : f),
+      })));
+    }
+    setTogglingFlow(null);
+  };
+
+  const deleteFlow = async (flowId: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا البوت؟")) return;
+    const { error } = await supabase.from("chatbot_flows").delete().eq("id", flowId);
+    if (error) {
+      toast.error("فشل الحذف");
+    } else {
+      toast.success("تم الحذف");
+      loadData();
+    }
+  };
+
+  const getNodesSummary = (nodes: any[]) => {
+    const messageNodes = nodes.filter(n => n.type === "message");
+    const actionNodes = nodes.filter(n => n.type === "action");
+    const totalButtons = nodes.reduce((sum, n) => sum + (n.buttons?.length || 0), 0);
+    return `${messageNodes.length} رسالة · ${actionNodes.length} إجراء · ${totalButtons} زر`;
   };
 
   const filtered = orgs.filter(o => o.org_name.toLowerCase().includes(search.toLowerCase()));
@@ -249,38 +259,99 @@ const AdminBotTemplates = () => {
           <div className="p-8 text-center text-muted-foreground text-sm">لا توجد منظمات</div>
         ) : (
           filtered.map(org => (
-            <div key={org.org_id} className="p-3 flex items-center justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{org.org_name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {org.has_bot ? (
-                    <Badge variant="default" className="text-[10px] gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> {org.bot_count} بوت
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-[10px] gap-1">
-                      <XCircle className="w-3 h-3" /> بدون بوت
-                    </Badge>
+            <Collapsible
+              key={org.org_id}
+              open={expandedOrg === org.org_id}
+              onOpenChange={(open) => setExpandedOrg(open ? org.org_id : null)}
+            >
+              <div className="p-3 flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{org.org_name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {org.has_bot ? (
+                      <Badge variant="default" className="text-[10px] gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> {org.bot_count} بوت
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px] gap-1">
+                        <XCircle className="w-3 h-3" /> بدون بوت
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!org.has_template && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedOrg(org.org_id);
+                      }}
+                    >
+                      <Plus className="w-3 h-3" /> إنشاء قالب
+                    </Button>
                   )}
-                  {org.has_template && (
-                    <Badge variant="outline" className="text-[10px]">قالب مُنشأ</Badge>
+                  {org.has_bot && (
+                    <CollapsibleTrigger asChild>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                        {expandedOrg === org.org_id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </Button>
+                    </CollapsibleTrigger>
                   )}
                 </div>
               </div>
-              {!org.has_template && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs gap-1"
-                  onClick={() => {
-                    setSelectedOrg(org.org_id);
-                    deployTemplate();
-                  }}
-                >
-                  <Plus className="w-3 h-3" /> إنشاء قالب
-                </Button>
+
+              {org.has_bot && (
+                <CollapsibleContent>
+                  <div className="px-3 pb-3 space-y-2">
+                    {org.flows.map(flow => (
+                      <div key={flow.id} className="bg-muted/50 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium truncate">{flow.name}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {getNodesSummary(flow.nodes)} · {flow.trigger_type === "first_message" ? "أول رسالة" : flow.trigger_type === "keyword" ? "كلمة مفتاحية" : flow.trigger_type}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-muted-foreground">{flow.is_active ? "مفعّل" : "معطّل"}</span>
+                              <Switch
+                                checked={flow.is_active}
+                                onCheckedChange={() => toggleFlow(flow.id, flow.is_active)}
+                                disabled={togglingFlow === flow.id}
+                                className="scale-75"
+                              />
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                              onClick={() => deleteFlow(flow.id)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                        {/* Node preview */}
+                        <div className="flex flex-wrap gap-1">
+                          {flow.nodes.slice(0, 6).map((node: any, i: number) => (
+                            <Badge key={i} variant="outline" className="text-[9px] font-normal">
+                              {node.type === "action" ? "⚡" : "💬"} {node.name || node.content?.slice(0, 15) || "عقدة"}
+                            </Badge>
+                          ))}
+                          {flow.nodes.length > 6 && (
+                            <Badge variant="outline" className="text-[9px] font-normal">+{flow.nodes.length - 6}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
               )}
-            </div>
+            </Collapsible>
           ))
         )}
       </div>
