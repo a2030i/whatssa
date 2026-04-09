@@ -947,6 +947,17 @@ const IntegrationsPage = () => {
     const { data, error } = await invokeCloud("whatsapp-complete-signup", { body: migrationBody });
 
     if (error || data?.error) { handleError(friendlyError(data?.error || "فشل في إكمال الربط")); return null; }
+
+    // Handle case where phone wasn't matched but other phones are available
+    if (data?.needs_phone_selection && data?.available_phones?.length > 0) {
+      setAccessToken(data.access_token || token);
+      setPhoneNumbers(data.available_phones);
+      setFlowStep("pick_phone");
+      setIsLoading(false);
+      toast.info(data.message || "اختر الرقم المطلوب من القائمة");
+      return null;
+    }
+
     if (!data?.selected_phone || !data?.saved_config) { handleError("تعذر تسجيل الرقم — حاول مرة أخرى"); return null; }
 
     // Check registration result
