@@ -181,10 +181,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
   const counts = useMemo(() => {
     if (inboxMode === "email") {
       const active = conversations.filter(c => c.status !== "closed" && !c.isArchived);
+      // "sent" = conversations where agent has replied at least once (assigned)
+      // "inbox" = new inbound conversations with no agent reply yet
+      const hasAgentReply = (c: any) => c.assignedTo && c.assignedTo !== "غير معيّن";
       return {
         all: active.length,
-        inbox: active.filter(c => c.lastMessageSender === "customer").length,
-        sent: active.filter(c => c.lastMessageSender === "agent").length,
+        inbox: active.filter(c => !hasAgentReply(c) || c.lastMessageSender === "customer").length,
+        sent: active.filter(c => hasAgentReply(c)).length,
         unread: active.filter(c => c.unread > 0).length,
         read: active.filter(c => c.unread === 0).length,
         mine: active.filter(c => c.assignedToId === myId).length,
