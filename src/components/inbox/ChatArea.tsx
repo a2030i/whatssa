@@ -883,7 +883,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 {msg.quoted?.sender_name && (
                   <p className="text-[11px] font-bold mb-0.5 text-white/90">{msg.quoted.sender_name}</p>
                 )}
-                <p className="line-clamp-2 text-white/70">{msg.quoted?.text}</p>
+                <p className="line-clamp-2 text-white/70">{msg.quoted?.text || "[رسالة]"}</p>
               </div>
             )}
             {quotedEl && msg.sender === "agent" && (
@@ -894,7 +894,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 {msg.quoted?.sender_name && (
                   <p className="text-[11px] font-bold mb-0.5 text-primary">{msg.quoted.sender_name}</p>
                 )}
-                <p className="line-clamp-2 text-muted-foreground">{msg.quoted?.text}</p>
+                <p className="line-clamp-2 text-muted-foreground">{msg.quoted?.text || "[رسالة]"}</p>
               </div>
             )}
             {msg.type === "template" && (
