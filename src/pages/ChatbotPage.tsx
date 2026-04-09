@@ -978,9 +978,11 @@ const ChatbotPage = () => {
                         >
                           <SelectTrigger className="h-8 text-sm mt-1"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="transfer_agent">تحويل المحادثة لموظف</SelectItem>
-                            <SelectItem value="close">إغلاق المحادثة تلقائياً</SelectItem>
-                            <SelectItem value="add_tag">إضافة وسم للمحادثة</SelectItem>
+                             <SelectItem value="transfer_agent">تحويل المحادثة لموظف</SelectItem>
+                             <SelectItem value="close">إغلاق المحادثة تلقائياً</SelectItem>
+                             <SelectItem value="add_tag">إضافة وسم للمحادثة</SelectItem>
+                             <SelectItem value="create_ticket">📋 إنشاء تذكرة</SelectItem>
+                             <SelectItem value="close_with_ticket">📋 تذكرة + إغلاق</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
