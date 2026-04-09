@@ -389,7 +389,7 @@ async function sendBotMessage(
           sender: "agent", message_type: msgType, content: text, status: "sent",
         });
         await client.from("conversations").update({
-          last_message: text, last_message_at: new Date().toISOString(),
+          last_message: text, last_message_at: new Date().toISOString(), last_message_sender: "agent",
         }).eq("id", conversationId);
       } else {
         await log(client, "error", "فشل إرسال رسالة البوت (Meta)", { error: result?.error?.message, payload_type: messagePayload.type }, orgId);
@@ -426,7 +426,7 @@ async function sendBotMessage(
             conversation_id: conversationId, sender: "agent", message_type: "text", content: fullText, status: "sent",
           });
           await client.from("conversations").update({
-            last_message: fullText, last_message_at: new Date().toISOString(),
+            last_message: fullText, last_message_at: new Date().toISOString(), last_message_sender: "agent",
           }).eq("id", conversationId);
         }
       } catch (e) {
@@ -636,6 +636,7 @@ serve(async (req) => {
                   unread_count: 1,
                   last_message: messageContent,
                   last_message_at: new Date().toISOString(),
+                  last_message_sender: "customer",
                 };
                 if (closedConv.dedicated_agent_id) {
                   // Sticky assignment: reassign to dedicated agent
@@ -734,6 +735,7 @@ serve(async (req) => {
                 org_id: orgId,
                 status: "active",
                 last_message: messageContent,
+                last_message_sender: "customer",
                 unread_count: 1,
                 conversation_type: "private",
                 channel_id: channelConfigId,
@@ -802,6 +804,7 @@ serve(async (req) => {
                 .update({
                   last_message: messageContent,
                   last_message_at: new Date().toISOString(),
+                  last_message_sender: "customer",
                   unread_count: (conversation.unread_count || 0) + 1,
                   updated_at: new Date().toISOString(),
                   customer_name: contactName,
@@ -1292,6 +1295,7 @@ serve(async (req) => {
                           .update({
                             last_message: matchedRule.reply_text,
                             last_message_at: new Date().toISOString(),
+                            last_message_sender: "agent",
                             updated_at: new Date().toISOString(),
                           })
                           .eq("id", conversation.id);
@@ -1354,6 +1358,7 @@ serve(async (req) => {
                           await supabase.from("conversations").update({
                             last_message: aiData.reply,
                             last_message_at: new Date().toISOString(),
+                            last_message_sender: "agent",
                           }).eq("id", conversation.id);
                           await logToSystem(supabase, "info", "رد AI تلقائي مرسل (Meta)", {
                             conversation_id: conversation.id,
