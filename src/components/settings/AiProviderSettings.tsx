@@ -119,7 +119,8 @@ const AiProviderSettings = () => {
       .select("value")
       .eq("key", `lovable_ai_enabled_${orgId}`)
       .maybeSingle();
-    setLovableAiEnabled(data?.value === true || data?.value === "true");
+    const val = data?.value;
+    setLovableAiEnabled(val === true || val === "true" || val === 1);
   };
 
   const loadConfigs = async () => {
