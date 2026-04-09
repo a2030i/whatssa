@@ -745,6 +745,20 @@ const IntegrationsPage = () => {
   // Desktop redirect fallback (when popup fails)
 @@
     try {
+@@
+  // Desktop redirect fallback (when popup fails)
+  const useRedirectFlow = useCallback(() => {
+    sessionStorage.setItem("wa_onboarding_mode", onboardingMode);
+    if (previousProvider) sessionStorage.setItem("wa_previous_provider", previousProvider);
+    const redirectUri = `${window.location.origin}/integrations`;
+    const scopes = "whatsapp_business_management,whatsapp_business_messaging,business_management";
+    const oauthUrl = `https://www.facebook.com/v22.0/dialog/oauth?client_id=${metaAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&config_id=${metaConfigId}&response_type=code&override_default_response_type=true&scope=${encodeURIComponent(scopes)}`;
+    console.log("[Embedded Signup] Fallback: redirecting to OAuth URL (desktop redirect)");
+    window.location.href = oauthUrl;
+  }, [metaAppId, metaConfigId, onboardingMode, previousProvider]);
+
+  const handleCodeExchange = async (code: string) => {
+    try {
       console.log("[Embedded Signup] Exchanging code for token...");
       const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { code } });
       console.log("[Embedded Signup] Exchange result:", { data: data ? "received" : "null", error });
