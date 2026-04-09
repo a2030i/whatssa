@@ -443,6 +443,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     }
   };
 
+  useEffect(() => {
     setNotes(conversation.notes || "");
     setGroupPicture(conversation.profilePic || null);
     loadCustomer();
