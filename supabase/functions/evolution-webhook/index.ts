@@ -207,7 +207,7 @@ async function sendBotMessage(
         });
         if (resp.ok) {
           await client.from("messages").insert({ conversation_id: conversationId, sender: "agent", message_type: "text", content: text, status: "sent" });
-          await client.from("conversations").update({ last_message: text, last_message_at: new Date().toISOString() }).eq("id", conversationId);
+          await client.from("conversations").update({ last_message: text, last_message_at: new Date().toISOString(), last_message_sender: "agent" }).eq("id", conversationId);
         }
       } catch (e) {
         await log(client, "error", "فشل إرسال رسالة البوت (Evolution)", { error: (e as Error).message }, orgId);
@@ -228,7 +228,7 @@ async function sendBotMessage(
       const result = await resp.json();
       if (resp.ok) {
         await client.from("messages").insert({ conversation_id: conversationId, wa_message_id: result.messages?.[0]?.id || null, sender: "agent", message_type: "text", content: text, status: "sent" });
-        await client.from("conversations").update({ last_message: text, last_message_at: new Date().toISOString() }).eq("id", conversationId);
+        await client.from("conversations").update({ last_message: text, last_message_at: new Date().toISOString(), last_message_sender: "agent" }).eq("id", conversationId);
       } else {
         await log(client, "error", "فشل إرسال رسالة البوت (Meta)", { error: result?.error?.message }, orgId);
       }
