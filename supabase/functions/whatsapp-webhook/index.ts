@@ -256,6 +256,51 @@ async function handleBotAction(
         await client.from("conversations").update({ tags: [...tags, tag] }).eq("id", conversationId);
       }
     }
+  } else if (actionType === "create_ticket" || actionType === "close_with_ticket") {
+    // Create a ticket linked to this conversation
+    const ticketTitle = node.content || "طلب من العميل";
+    const ticketCategory = node.action_value || "عام";
+    
+    const { data: ticket } = await client.from("tickets").insert({
+      org_id: orgId,
+      conversation_id: conversationId,
+      customer_phone: customerPhone,
+      title: ticketTitle,
+      category: ticketCategory,
+      status: "open",
+      priority: "medium",
+      created_at: new Date().toISOString(),
+    }).select("id").single();
+
+    const ticketNum = ticket?.id ? ticket.id.slice(0, 6).toUpperCase() : "---";
+    const confirmMsg = `✅ تم تسجيل طلبك برقم #${ticketNum}\nسيتابعه الفريق المختص في أقرب وقت.`;
+    await sendBotMessage(client, orgId, conversationId, customerPhone, confirmMsg, channel, log);
+
+    // Log as system message
+    await client.from("messages").insert({
+      conversation_id: conversationId, 
+      content: `📋 تم إنشاء تذكرة: ${ticketTitle} (${ticketCategory}) — #${ticketNum}`, 
+      sender: "system", 
+      message_type: "text",
+    });
+
+    // If close_with_ticket, also close the conversation
+    if (actionType === "close_with_ticket") {
+      await client.from("conversations").update({ 
+        status: "closed", 
+        closed_at: new Date().toISOString() 
+      }).eq("id", conversationId);
+      await client.from("messages").insert({
+        conversation_id: conversationId, 
+        content: "تم إغلاق المحادثة تلقائياً بواسطة البوت (تذكرة مفتوحة)", 
+        sender: "system", 
+        message_type: "text",
+      });
+    }
+
+    await log(client, "info", `بوت: تذكرة جديدة #${ticketNum} — ${ticketTitle}`, {
+      ticket_id: ticket?.id, action: actionType, category: ticketCategory,
+    }, orgId);
   }
 }
 
