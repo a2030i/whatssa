@@ -993,7 +993,7 @@ const IntegrationsPage = () => {
         action: "meta_signup_error",
         actor_type: "system",
         metadata: { error: msg, user_agent: navigator.userAgent, timestamp: new Date().toISOString() },
-      }).then(() => {}).catch(() => {});
+      }).then();
     }
   };
 
