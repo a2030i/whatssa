@@ -261,9 +261,15 @@ Deno.serve(async (req) => {
     const encoder = new TextEncoder();
     const subjectBytes = encoder.encode(threadSubject);
     const hasNonAscii = subjectBytes.some((b) => b > 127);
-    const encodedSubject = hasNonAscii
-      ? `=?UTF-8?B?${btoa(String.fromCharCode(...subjectBytes))}?=`
-      : threadSubject;
+    let encodedSubject = threadSubject;
+    if (hasNonAscii) {
+      // Build binary string in chunks to avoid call-stack overflow on large subjects
+      let binaryStr = "";
+      for (let i = 0; i < subjectBytes.length; i++) {
+        binaryStr += String.fromCharCode(subjectBytes[i]);
+      }
+      encodedSubject = `=?UTF-8?B?${btoa(binaryStr)}?=`;
+    }
 
     const sendOptions: any = {
       from: config.email_address,
