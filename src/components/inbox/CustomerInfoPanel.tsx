@@ -839,6 +839,41 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           </div>
         )}
 
+        {/* Linked Conversations */}
+        {!isGroup && linkedConversations.length > 0 && (
+          <div className="pb-3 border-b border-border">
+            <div className="flex items-center gap-1.5 py-2">
+              <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground">محادثات أخرى</span>
+              <Badge variant="secondary" className="text-[9px] h-4 px-1">{linkedConversations.length}</Badge>
+            </div>
+            <div className="space-y-1">
+              {linkedConversations.map((lc) => (
+                <button
+                  key={lc.id}
+                  onClick={() => {
+                    // Navigate to the linked conversation
+                    window.dispatchEvent(new CustomEvent("navigate-conversation", { detail: { conversationId: lc.id } }));
+                  }}
+                  className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/70 transition-colors text-right"
+                >
+                  <div className={cn("w-2 h-2 rounded-full shrink-0", lc.status === "active" ? "bg-success" : lc.status === "waiting" ? "bg-warning" : "bg-muted-foreground/40")} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium truncate">{lc.channel_name}</p>
+                    <p className="text-[9px] text-muted-foreground">
+                      {lc.status === "active" ? "مفتوحة" : lc.status === "waiting" ? "بانتظار الرد" : "مغلقة"}
+                      {lc.last_message_at && ` · ${new Date(lc.last_message_at).toLocaleDateString("ar-SA-u-ca-gregory")}`}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[8px] shrink-0">
+                    {lc.channel_type === "meta_api" ? "رسمي" : "ويب"}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Assignment */}
         <SectionHeader title="تعيين المحادثة" icon={User} sectionKey="assignment" />
         {sections.assignment && (
