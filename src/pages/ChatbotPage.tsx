@@ -1046,8 +1046,54 @@ const ChatbotPage = () => {
 
           {/* ── Tab: Preview ── */}
           <TabsContent value="preview" className="space-y-4 mt-4">
+            {/* Display mode explanation */}
+            <Card className="bg-accent/30 border-accent/50">
+              <CardContent className="p-3">
+                <p className="text-xs font-semibold mb-2">📱 كيف تظهر الخيارات للعميل؟</p>
+                <div className="grid grid-cols-1 gap-2 text-[11px]">
+                  <div className="flex items-start gap-2">
+                    <Badge variant="outline" className="text-[9px] shrink-0 mt-0.5">1-3 أزرار</Badge>
+                    <span className="text-muted-foreground"><strong className="text-foreground">أزرار تفاعلية</strong> — تظهر كأزرار قابلة للنقر أسفل الرسالة (الرسمي فقط)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Badge variant="outline" className="text-[9px] shrink-0 mt-0.5">4-10 أزرار</Badge>
+                    <span className="text-muted-foreground"><strong className="text-foreground">قائمة تفاعلية</strong> — زر "عرض الخيارات" يفتح قائمة منسدلة (الرسمي فقط)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Badge variant="outline" className="text-[9px] shrink-0 mt-0.5">ويب / +10</Badge>
+                    <span className="text-muted-foreground"><strong className="text-foreground">نص مرقّم</strong> — ترسل كأرقام (1، 2، 3...) والعميل يكتب الرقم</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Channel preview switcher for mixed */}
+            {selectedChannelType === "mixed" && (
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-xs text-muted-foreground">معاينة كـ:</p>
+                <div className="flex gap-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-[11px] h-7 gap-1"
+                    onClick={() => setPreviewChannel("meta_api")}
+                  >
+                    {previewChannel === "meta_api" && "✓ "}واتساب رسمي
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-[11px] h-7 gap-1"
+                    onClick={() => setPreviewChannel("evolution")}
+                  >
+                    {previewChannel === "evolution" && "✓ "}واتساب ويب
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground text-center">اضغط على الأزرار لتجربة التدفق كما سيراه العميل في واتساب</p>
-            <ChatPreview />
+            <ChatPreview forceChannel={selectedChannelType === "mixed" ? previewChannel : undefined} />
             <div className="flex justify-start">
               <Button variant="outline" size="sm" onClick={() => setActiveTab("map")} className="gap-1 text-xs">
                 <ArrowLeft className="w-3.5 h-3.5" /> الخريطة
