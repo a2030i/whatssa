@@ -367,6 +367,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                 {fetchingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               </button>
             )}
+            {onNewConversation && (
               <button
                 onClick={onNewConversation}
                 className="w-9 h-9 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-[0_2px_6px_hsl(var(--primary)/0.25)]"
