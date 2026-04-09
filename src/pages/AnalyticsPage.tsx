@@ -510,48 +510,7 @@ const AnalyticsPage = () => {
 
         {/* Channels Tab */}
         <TabsContent value="channels" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">توزيع القنوات</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {channelData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie data={channelData} cx="50%" cy="50%" outerRadius={70} paddingAngle={3} dataKey="count" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
-                        {channelData.map((_, i) => (
-                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-10">لا توجد بيانات</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">الرسائل الواردة vs الصادرة</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={[{ name: "الرسائل", inbound: messageStats.inbound, outbound: messageStats.outbound }]}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 91%)" />
-                    <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={10} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="inbound" fill="hsl(142 64% 42%)" radius={[4, 4, 0, 0]} name="واردة" />
-                    <Bar dataKey="outbound" fill="hsl(217 91% 60%)" radius={[4, 4, 0, 0]} name="صادرة" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
+          <ChannelPerformanceReport period={period} />
         </TabsContent>
         {/* Heatmap Tab */}
         <TabsContent value="heatmap">
