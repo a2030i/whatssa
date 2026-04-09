@@ -230,7 +230,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
     { id: "assigned", label: "معيّنة", icon: UserCheck, count: (counts as any).assigned, minRole: "supervisor" },
     { id: "mentions", label: "إشارات", icon: AtSign, count: (counts as any).mentions, minRole: "supervisor" },
     { id: "groups", label: "المجموعات", icon: Users, count: (counts as any).groups },
-    { id: "all", label: "الكل", icon: MessageSquare, count: counts.all },
+    { id: "all", label: "المفتوحة", icon: MessageSquare, count: counts.all },
     { id: "closed", label: "مغلقة", icon: XCircle, count: counts.closed },
     { id: "archived", label: "مؤرشفة", icon: Archive, count: counts.archived, minRole: "supervisor" },
   ];
