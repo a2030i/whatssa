@@ -118,7 +118,16 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
 
+  // Listen for linked conversation navigation
   useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.conversationId) setSelectedId(detail.conversationId);
+    };
+    window.addEventListener("navigate-conversation", handler);
+    return () => window.removeEventListener("navigate-conversation", handler);
+  }, []);
+
     conversationsRef.current = conversations;
   }, [conversations]);
 
