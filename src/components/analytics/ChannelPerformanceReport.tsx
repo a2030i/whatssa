@@ -72,7 +72,7 @@ const ChannelPerformanceReport = ({ period }: { period: string }) => {
     // Fetch all channels config
     const { data: configs } = await supabase
       .from("whatsapp_config")
-      .select("id, channel_type, business_name, display_phone, label")
+      .select("id, channel_type, business_name, display_phone")
       .eq("org_id", orgId!);
 
     // Also check email configs
