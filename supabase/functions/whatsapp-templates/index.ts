@@ -54,20 +54,20 @@ async function getUserContext(req: Request, body: Record<string, unknown>) {
       .from("whatsapp_config")
       .select("id, business_account_id, access_token, display_phone, business_name, channel_label")
       .eq("id", channelId)
-      .eq("org_id", profile.org_id)
+      .eq("org_id", effectiveOrgId)
       .eq("is_connected", true)
       .eq("channel_type", "meta_api")
       .maybeSingle();
 
     if (!config) return { error: json({ error: "القناة المحددة غير متصلة أو غير موجودة" }, 400) };
-    return { adminClient, userId, orgId: profile.org_id, config };
+    return { adminClient, userId, orgId: effectiveOrgId, config };
   }
 
   // No channel_id: get all connected meta channels
   const { data: configs } = await adminClient
     .from("whatsapp_config")
     .select("id, business_account_id, access_token, display_phone, business_name, channel_label")
-    .eq("org_id", profile.org_id)
+    .eq("org_id", effectiveOrgId)
     .eq("is_connected", true)
     .eq("channel_type", "meta_api")
     .order("created_at", { ascending: true });
@@ -77,7 +77,7 @@ async function getUserContext(req: Request, body: Record<string, unknown>) {
   }
 
   // Return first config as default, but also all configs
-  return { adminClient, userId, orgId: profile.org_id, config: configs[0], allConfigs: configs };
+  return { adminClient, userId, orgId: effectiveOrgId, config: configs[0], allConfigs: configs };
 }
 
 serve(async (req) => {
