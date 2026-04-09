@@ -27,7 +27,7 @@ interface ChatbotNode {
   type: "message" | "action";
   content: string;
   buttons: ChatbotButton[];
-  action_type?: "transfer_agent" | "close" | "add_tag";
+  action_type?: "transfer_agent" | "close" | "add_tag" | "create_ticket" | "close_with_ticket";
   action_value?: string;
 }
 
@@ -87,6 +87,8 @@ const ACTION_LABELS: Record<string, string> = {
   transfer_agent: "تحويل لموظف",
   close: "إغلاق المحادثة",
   add_tag: "إضافة وسم",
+  create_ticket: "إنشاء تذكرة",
+  close_with_ticket: "تذكرة + إغلاق",
 };
 
 // ─── Main Component ───
