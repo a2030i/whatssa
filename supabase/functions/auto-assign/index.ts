@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
     }
 
     // Filter available agents: online AND within work shift
-    const available = members.filter((m) => m.is_online && isAgentInShift(m, currentTime, currentDay));
+    const available = members.filter((m) => m.is_online && !m.is_on_break && isAgentInShift(m, currentTime, currentDay));
 
     // Get conversation loads for available agents
     const getAgentLoads = async (pool: typeof members) => {
