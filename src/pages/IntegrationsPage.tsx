@@ -794,9 +794,9 @@ const IntegrationsPage = () => {
         console.log("[Embedded Signup] Re-checked selection after API call:", embeddedSelection?.phoneNumberId || "still empty");
       }
 
-      // If still no selection and multiple phones, wait briefly for the postMessage to arrive
+      // If still no selection and multiple phones, wait for the postMessage to arrive
       if (!embeddedSelection?.phoneNumberId && allPhones.length > 1) {
-        console.log("[Embedded Signup] Multiple phones & no selection yet — waiting 3s for Meta postMessage...");
+        console.log("[Embedded Signup] Multiple phones & no selection yet — waiting 5s for Meta postMessage...");
         await new Promise<void>((resolve) => {
           let resolved = false;
           const checkInterval = setInterval(() => {
@@ -805,14 +805,24 @@ const IntegrationsPage = () => {
               clearInterval(checkInterval);
               if (!resolved) { resolved = true; resolve(); }
             }
-          }, 300);
+          }, 200);
           setTimeout(() => {
             clearInterval(checkInterval);
             if (!resolved) { resolved = true; resolve(); }
-          }, 3000);
+          }, 5000);
         });
         embeddedSelection = embeddedSignupSelectionRef.current;
         console.log("[Embedded Signup] After wait, selection:", embeddedSelection?.phoneNumberId || "none");
+      }
+
+      // If still no selection and only one phone (including already-saved), auto-select it
+      if (!embeddedSelection?.phoneNumberId && allPhones.length === 1) {
+        const onlyPhone = allPhones[0];
+        console.log("[Embedded Signup] Only 1 phone total, auto-selecting:", onlyPhone.id);
+        setSelectedPhoneId(onlyPhone.id);
+        setBusinessAccountId(onlyPhone.waba_id || "");
+        await selectPhone(onlyPhone, token, onlyPhone.waba_id);
+        return;
       }
 
       // Try to auto-select from embedded selection
