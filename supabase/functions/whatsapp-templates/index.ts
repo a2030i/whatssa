@@ -30,18 +30,26 @@ async function getUserContext(req: Request, body: Record<string, unknown>) {
 
   const userId = user.id;
 
-  const { data: profile } = await adminClient
-    .from("profiles")
-    .select("org_id, role")
-    .eq("id", userId)
-    .maybeSingle();
+  const [{ data: profile }, { data: superAdminRole }] = await Promise.all([
+    adminClient
+      .from("profiles")
+      .select("org_id")
+      .eq("id", userId)
+      .maybeSingle(),
+    adminClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "super_admin")
+      .maybeSingle(),
+  ]);
 
   if (!profile?.org_id) return { error: json({ error: "لا توجد مؤسسة مرتبطة بهذا الحساب" }, 400) };
 
   // Allow super_admin to override org_id for impersonation
   let effectiveOrgId = profile.org_id;
   const overrideOrgId = body?.org_id ? String(body.org_id).trim() : null;
-  if (overrideOrgId && overrideOrgId !== profile.org_id && profile.role === "super_admin") {
+  if (overrideOrgId && overrideOrgId !== profile.org_id && !!superAdminRole) {
     effectiveOrgId = overrideOrgId;
     console.log("[whatsapp-templates] super_admin impersonation, using org_id:", effectiveOrgId);
   }
