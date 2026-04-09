@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     }
 
     const { default: postgres } = await import("https://deno.land/x/postgresjs@v3.4.5/mod.js");
-    const sql = postgres(dbUrl, { ssl: { rejectUnauthorized: false } });
+    const sql = postgres(dbUrl, { ssl: "prefer" });
 
     const results: string[] = [];
 
