@@ -1050,110 +1050,7 @@ const ChatbotPage = () => {
 
   // ═══════════════════════════════════════
   //  LIST VIEW
-  // ═══════════════════════════════════════
-  // ─── Customer Service Template Generator ───
-  const createCustomerServiceTemplate = async () => {
-    if (!orgId) return;
-    
-    const inquiryId = generateId();
-    const addressId = generateId();
-    const complaintId = generateId();
-    const agentId = generateId();
-    const ticketInquiryId = generateId();
-    const ticketAddressId = generateId();
-    const ticketComplaintId = generateId();
-    const transferId = generateId();
-
-    const templateNodes: ChatbotNode[] = [
-      {
-        id: generateId(),
-        name: "القائمة الرئيسية",
-        type: "message",
-        content: "أهلاً وسهلاً! 👋\nكيف نقدر نساعدك؟",
-        buttons: [
-          { id: generateId(), label: "📦 استفسار عن طلب", next_node_id: inquiryId },
-          { id: generateId(), label: "🔄 تعديل عنوان", next_node_id: addressId },
-          { id: generateId(), label: "📝 شكوى", next_node_id: complaintId },
-          { id: generateId(), label: "👤 تحدث مع موظف", next_node_id: agentId },
-        ],
-      },
-      {
-        id: inquiryId,
-        name: "استفسار عن طلب",
-        type: "message",
-        content: "أرسل لنا رقم طلبك وسيتواصل معك الفريق قريباً 📋",
-        buttons: [{ id: generateId(), label: "تم الإرسال ✅", next_node_id: ticketInquiryId }],
-      },
-      {
-        id: ticketInquiryId,
-        name: "تذكرة استفسار",
-        type: "action",
-        content: "استفسار عن طلب",
-        buttons: [],
-        action_type: "close_with_ticket",
-        action_value: "استفسار",
-      },
-      {
-        id: addressId,
-        name: "تعديل عنوان",
-        type: "message",
-        content: "أرسل لنا رقم الطلب والعنوان الجديد وسنعدّله لك 🔄",
-        buttons: [{ id: generateId(), label: "تم الإرسال ✅", next_node_id: ticketAddressId }],
-      },
-      {
-        id: ticketAddressId,
-        name: "تذكرة تعديل عنوان",
-        type: "action",
-        content: "تعديل عنوان شحنة",
-        buttons: [],
-        action_type: "close_with_ticket",
-        action_value: "تعديل عنوان",
-      },
-      {
-        id: complaintId,
-        name: "شكوى",
-        type: "message",
-        content: "نأسف لأي إزعاج! اكتب تفاصيل شكواك وسنتابعها فوراً 🙏",
-        buttons: [{ id: generateId(), label: "تم الإرسال ✅", next_node_id: ticketComplaintId }],
-      },
-      {
-        id: ticketComplaintId,
-        name: "تذكرة شكوى",
-        type: "action",
-        content: "شكوى عميل",
-        buttons: [],
-        action_type: "close_with_ticket",
-        action_value: "شكوى",
-      },
-      {
-        id: agentId,
-        name: "تحويل لموظف",
-        type: "action",
-        content: "جاري تحويلك لأحد الموظفين...",
-        buttons: [],
-        action_type: "transfer_agent",
-      },
-    ];
-
-    const payload = {
-      name: "🎯 خدمة عملاء (قالب جاهز)",
-      org_id: orgId,
-      trigger_type: "first_message",
-      trigger_keywords: [],
-      welcome_message: null,
-      nodes: templateNodes as any,
-      channel_ids: [],
-      is_active: false,
-    } as any;
-
-    const { error } = await supabase.from("chatbot_flows").insert(payload);
-    if (error) {
-      toast({ title: "فشل إنشاء القالب", variant: "destructive" });
-    } else {
-      toast({ title: "✅ تم إنشاء قالب خدمة العملاء — عدّله وفعّله" });
-      fetchFlows();
-    }
-  };
+  // Template creation is handled by Super Admin only via AdminBotTemplates
 
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-5" dir="rtl">
@@ -1168,10 +1065,6 @@ const ChatbotPage = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={createCustomerServiceTemplate} size="sm" variant="outline" className="gap-1.5 text-xs">
-            <FileText className="w-4 h-4" />
-            قالب خدمة عملاء
-          </Button>
           <Button onClick={openCreate} size="sm" className="gap-1.5">
             <Plus className="w-4 h-4" />
             تدفق جديد
