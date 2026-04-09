@@ -334,7 +334,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   };
 
   // Export group members to Excel
-  const handleExportMembers = () => {
+  const handleExportMembers = async () => {
     if (groupParticipants.length === 0) return;
     try {
       const XLSX = await import("xlsx");
