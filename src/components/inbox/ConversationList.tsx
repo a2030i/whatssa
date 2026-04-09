@@ -591,6 +591,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             const displayName = getConversationDisplayName(conv);
             const hasUnread = conv.unread > 0;
             const hasMention = (conv.unreadMentionCount || 0) > 0;
+            const waitTime = getWaitTime(conv);
             return (
               <button
                 key={conv.id}
@@ -737,6 +738,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       {conv.timestamp}
                     </span>
                     <div className="flex items-center gap-1">
+                      {waitTime && (
+                        <span className={cn(
+                          "text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 leading-none",
+                          waitTime.urgency === "critical" ? "bg-destructive/15 text-destructive" :
+                          waitTime.urgency === "warning" ? "bg-warning/15 text-warning" :
+                          "bg-muted text-muted-foreground"
+                        )} title="وقت انتظار العميل">
+                          <Clock className="w-2.5 h-2.5" />
+                          {waitTime.text}
+                        </span>
+                      )}
                       {conv.sentiment === "negative" && (
                         <span className="w-[20px] h-[20px] rounded-full bg-destructive/15 text-destructive text-[10px] flex items-center justify-center" title="عميل غير راضٍ">😠</span>
                       )}
