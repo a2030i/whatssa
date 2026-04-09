@@ -71,7 +71,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       )}
 
       {/* Top bar - clean */}
-      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:left-0 md:right-[250px] h-12 bg-card/90 backdrop-blur-xl flex flex-row-reverse items-center justify-between px-4 z-30 transition-all`} style={{ boxShadow: 'var(--shadow-xs)' }}>
+      <div className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 md:left-0 md:right-[250px] h-12 bg-card/90 backdrop-blur-xl flex items-center justify-between px-4 z-30 transition-all`} style={{ boxShadow: 'var(--shadow-xs)' }}>
         <div className="flex items-center gap-2 mr-12 md:mr-0">
           <GlobalSearch />
         </div>
