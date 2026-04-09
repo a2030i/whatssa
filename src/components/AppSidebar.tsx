@@ -495,7 +495,7 @@ const AppSidebar = () => {
         <button
           onClick={() => setMobileOpen(true)}
           className={cn(
-            "md:hidden fixed left-3 z-[60] w-10 h-10 rounded-xl bg-card shadow-card flex items-center justify-center border border-border/50",
+            "md:hidden fixed right-3 z-[60] w-10 h-10 rounded-xl bg-card shadow-card flex items-center justify-center border border-border/50",
             isImpersonating ? "top-14" : "top-3"
           )}
         >
@@ -515,7 +515,7 @@ const AppSidebar = () => {
           >
             <button
               onClick={() => setMobileOpen(false)}
-              className="absolute left-3 top-4 text-sidebar-foreground/40 hover:text-sidebar-accent-foreground transition-colors p-1 rounded-lg hover:bg-sidebar-accent"
+              className="absolute left-3 top-4 text-sidebar-foreground/40 hover:text-sidebar-accent-foreground transition-colors p-1 rounded-lg hover:bg-sidebar-accent z-10"
             >
               <X className="w-5 h-5" />
             </button>
