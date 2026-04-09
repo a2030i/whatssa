@@ -145,7 +145,29 @@ function cleanQuotedContent(body: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  return cleaned || body.replace(/\n{3,}/g, "\n\n").trim();
+  const result = cleaned || body.replace(/\n{3,}/g, "\n\n").trim();
+  return postCleanEmailBody(result);
+}
+
+/** Final cleanup pass to remove leftover artifacts from plain-text conversion */
+function postCleanEmailBody(text: string): string {
+  return text
+    // Remove cid: references that survived
+    .replace(/\[?cid:[^\]\s]+\]?/gi, "")
+    // Remove [Description: ...] image alt-text placeholders
+    .replace(/\[Description:\s*[^\]]*\]/gi, "")
+    // Remove [image: ...] or [Image: ...]
+    .replace(/\[image:\s*[^\]]*\]/gi, "")
+    // Clean URLs in angle brackets
+    .replace(/<(https?:\/\/[^>]+)>/gi, "$1")
+    // Remove "The content of this email is confidential..." disclaimer blocks
+    .replace(/The content of this email is confidential[\s\S]{0,500}$/i, "")
+    // Remove "Please consider the environment" lines
+    .replace(/^.*(?:Please consider the environment|يرجى مراعاة البيئة).*$/gim, "")
+    // Collapse multiple spaces and newlines
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /* ─── Raw IMAP client over TLS ─── */
