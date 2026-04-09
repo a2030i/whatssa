@@ -15,11 +15,30 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const dbUrl = Deno.env.get("EXTERNAL_SUPABASE_DB_URL");
+    let dbUrl = Deno.env.get("EXTERNAL_SUPABASE_DB_URL");
     if (!dbUrl) return json({ error: "EXTERNAL_SUPABASE_DB_URL not set" }, 500);
 
+    // If using pooler, switch to direct connection for DDL
+    if (dbUrl.includes("pooler.supabase.com")) {
+      const match = dbUrl.match(/postgres\.([a-z]+):(.*?)@/);
+      if (match) {
+        const ref = match[1];
+        const pass = match[2];
+        dbUrl = `postgresql://postgres:${pass}@db.${ref}.supabase.co:5432/postgres`;
+        console.log("Switched to direct connection:", `db.${ref}.supabase.co:5432`);
+      }
+    }
+
+    // Log connection info (masked)
+    try {
+      const u = new URL(dbUrl);
+      console.log("Connecting to:", u.hostname, "port:", u.port, "user:", u.username);
+    } catch (e) {
+      console.log("URL parse failed");
+    }
+
     const { default: postgres } = await import("https://deno.land/x/postgresjs@v3.4.5/mod.js");
-    const sql = postgres(dbUrl, { ssl: { rejectUnauthorized: false } });
+    const sql = postgres(dbUrl, { ssl: "prefer" });
 
     const results: string[] = [];
 
@@ -264,6 +283,6 @@ Deno.serve(async (req) => {
     return json({ success: true, tables: results });
   } catch (err) {
     console.error("Init external operational tables error:", err);
-    return json({ error: err.message }, 500);
+    return json({ error: err.message, stack: err.stack?.split("\n").slice(0, 3) }, 500);
   }
 });
