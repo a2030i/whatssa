@@ -453,6 +453,37 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     if (isGroup && conversation.channelType === "evolution") {
       loadGroupInfo();
     }
+    // Load linked conversations for same customer across channels
+    if (!isGroup && orgId && conversation.customerPhone) {
+      const normalizedPhone = conversation.customerPhone.replace(/\D/g, "");
+      const loadLinked = async () => {
+        const { data: convs } = await supabase
+          .from("conversations")
+          .select("id, channel_id, status, last_message_at")
+          .eq("org_id", orgId)
+          .neq("id", conversation.id)
+          .or(`customer_phone.eq.${normalizedPhone},customer_phone.eq.${conversation.customerPhone}`)
+          .order("last_message_at", { ascending: false })
+          .limit(10);
+        if (convs && convs.length > 0) {
+          // Fetch channel info for each
+          const channelIds = [...new Set(convs.map((c: any) => c.channel_id).filter(Boolean))];
+          const { data: channels } = channelIds.length > 0
+            ? await supabase.from("whatsapp_config_safe").select("id, channel_type, display_phone, business_name").in("id", channelIds)
+            : { data: [] };
+          const channelMap = new Map((channels || []).map((ch: any) => [ch.id, ch]));
+          setLinkedConversations(convs.map((c: any) => {
+            const ch = channelMap.get(c.channel_id);
+            return { ...c, channel_type: ch?.channel_type, channel_name: ch?.business_name || ch?.display_phone || "قناة" };
+          }));
+        } else {
+          setLinkedConversations([]);
+        }
+      };
+      loadLinked();
+    } else {
+      setLinkedConversations([]);
+    }
   }, [conversation.id]);
 
   useEffect(() => {
