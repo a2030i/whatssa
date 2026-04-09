@@ -616,8 +616,31 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
             </div>
 
             <div className="p-3">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-muted-foreground">الأعضاء ({groupParticipants.length})</span>
+              {/* Action buttons */}
+              <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={handleExportMembers}>
+                  <Download className="w-3 h-3" /> تصدير Excel
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={handleSaveAsCustomers} disabled={savingMembers}>
+                  <Save className="w-3 h-3" /> {savingMembers ? "جاري الحفظ..." : selectedMembers.size > 0 ? `حفظ ${selectedMembers.size} كعملاء` : "حفظ الكل كعملاء"}
+                </Button>
+                {selectedMembers.size > 0 && (
+                  <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={() => setShowBroadcastDialog(true)}>
+                    <Send className="w-3 h-3" /> رسالة لـ {selectedMembers.size}
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground">الأعضاء ({groupParticipants.length})</span>
+                  {groupParticipants.length > 0 && (
+                    <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5 gap-0.5" onClick={toggleSelectAll}>
+                      {selectedMembers.size === groupParticipants.length ? <CheckSquare className="w-3 h-3" /> : <SquareIcon className="w-3 h-3" />}
+                      {selectedMembers.size === groupParticipants.length ? "إلغاء الكل" : "تحديد الكل"}
+                    </Button>
+                  )}
+                </div>
                 {isGroupAdmin && (
                   <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowAddMemberDialog(true)}>
                     <UserPlus className="w-3.5 h-3.5" /> إضافة
@@ -625,9 +648,14 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                 )}
               </div>
               <div className="space-y-0.5 max-h-[300px] overflow-y-auto">
-                {groupParticipants.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors group">
+                {groupParticipants.map((p) => {
+                  const isSelected = selectedMembers.has(p.id);
+                  return (
+                  <div key={p.id} className={cn("flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors group cursor-pointer", isSelected && "bg-primary/5 border border-primary/20")} onClick={() => toggleMemberSelection(p.id)}>
                     <div className="flex items-center gap-2 min-w-0">
+                      <div className={cn("w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors", isSelected ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
+                        {isSelected && <Check className="w-3 h-3" />}
+                      </div>
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
                         {(p.name || p.phone || "ع").slice(0, 2)}
                       </div>
@@ -643,7 +671,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                     {isGroupAdmin && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                             <MoreVertical className="w-3 h-3" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -665,7 +693,8 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                       </DropdownMenu>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Group Settings */}
@@ -687,6 +716,29 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
                 </Button>
               </div>
             </div>
+
+            {/* Broadcast Dialog */}
+            <Dialog open={showBroadcastDialog} onOpenChange={setShowBroadcastDialog}>
+              <DialogContent className="max-w-sm" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle className="text-sm">إرسال رسالة خاصة لـ {selectedMembers.size} عضو</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <p className="text-[11px] text-muted-foreground">سيتم إرسال رسالة خاصة (ليس في القروب) لكل عضو محدد</p>
+                  <Textarea
+                    placeholder="اكتب رسالتك هنا..."
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
+                    rows={4}
+                    className="text-sm"
+                  />
+                  <Button onClick={handleSendBroadcast} disabled={sendingBroadcast || !broadcastMessage.trim()} className="w-full gap-2">
+                    <Send className="w-4 h-4" />
+                    {sendingBroadcast ? "جاري الإرسال..." : `إرسال لـ ${selectedMembers.size} عضو`}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Add Member Dialog */}
             <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
