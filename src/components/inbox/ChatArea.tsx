@@ -3535,9 +3535,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           const priceText = `${product.price.toFixed(2)} ${product.currency || "SAR"}`;
           const caption = `🛍️ *${displayName}*\n💰 ${priceText}${product.description ? `\n📝 ${product.description}` : ""}${product.sku ? `\n🔖 SKU: ${product.sku}` : ""}`;
 
+          const sendFn = conversation.channelType === "meta_api" ? "whatsapp-send" : "evolution-send";
           if (sendMode === "image" && product.image_url) {
-            await invokeCloud("evolution-send", {
-              body: {
+            await invokeCloud(sendFn, {
+              body: conversation.channelType === "meta_api" ? {
+                to: conversation.customerPhone,
+                type: "media",
+                media_url: product.image_url,
+                media_type: "image",
+                caption,
+                conversation_id: conversation.id,
+                channel_id: conversation.channelId,
+              } : {
                 to: conversation.customerPhone,
                 conversation_id: conversation.id,
                 message: caption,
@@ -3547,8 +3556,13 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               },
             });
           } else {
-            await invokeCloud("evolution-send", {
-              body: {
+            await invokeCloud(sendFn, {
+              body: conversation.channelType === "meta_api" ? {
+                to: conversation.customerPhone,
+                message: caption,
+                conversation_id: conversation.id,
+                channel_id: conversation.channelId,
+              } : {
                 to: conversation.customerPhone,
                 conversation_id: conversation.id,
                 message: caption,
