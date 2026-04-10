@@ -680,7 +680,7 @@ serve(async (req) => {
     ] }, 404);
   } catch (err: any) {
     console.error("Public API error:", err);
-    await logToSystem(admin, "error", "خطأ غير متوقع في Public API", { request_id: requestId, error: err.message, stack: err.stack });
-    return json({ error: err.message }, 500);
+    await logToSystem(admin, "error", "خطأ غير متوقع في Public API", { request_id: requestId, error: (err as Error).message, stack: (err as Error).stack });
+    return json({ error: (err as Error).message }, 500);
   }
 });

@@ -261,7 +261,7 @@ serve(async (req) => {
     return json({ error: "Invalid action" }, 400);
   } catch (error) {
     console.error("Flow endpoint error:", error);
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? (error as Error).message : String(error);
     return json({ error: errMsg }, 500);
   }
 });

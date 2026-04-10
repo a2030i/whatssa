@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
           await supabase.from("org_webhooks").update(update).eq("id", webhook.id);
         }
       } catch (err: any) {
-        error = err.message || "Connection failed";
+        error = (err as Error).message || "Connection failed";
         const newFailureCount = (webhook.failure_count || 0) + 1;
         const update: any = { failure_count: newFailureCount };
         if (newFailureCount >= 10) update.is_active = false;

@@ -146,6 +146,6 @@ Deno.serve(async (req) => {
     return json({ processed: dueReminders.length, notified, auto_sent: autoSent });
   } catch (err: any) {
     console.error("Follow-up processor error:", err);
-    return json({ error: err.message }, 500);
+    return json({ error: (err as Error).message }, 500);
   }
 });

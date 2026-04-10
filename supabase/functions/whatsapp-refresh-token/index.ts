@@ -92,11 +92,11 @@ Deno.serve(async (req) => {
         results.push({ id: config.id, phone: config.display_phone, status: "refreshed", expires_at: expiresAt });
       } catch (e: any) {
         await adminClient.from("whatsapp_config").update({
-          token_refresh_error: e.message || "خطأ غير متوقع",
+          token_refresh_error: (e as Error).message || "خطأ غير متوقع",
           updated_at: new Date().toISOString(),
         }).eq("id", config.id);
 
-        results.push({ id: config.id, phone: config.display_phone, status: "error", error: e.message });
+        results.push({ id: config.id, phone: config.display_phone, status: "error", error: (e as Error).message });
       }
     }
 
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
       headers: corsHeaders,
     });

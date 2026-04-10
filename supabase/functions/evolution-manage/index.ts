@@ -290,7 +290,7 @@ serve(async (req) => {
         }
       } catch (e) {
         await logToSystem(adminClient, "warn", "فشل التحقق من حالة الجلسة", {
-          error: e instanceof Error ? e.message : String(e), instance: instanceName,
+          error: e instanceof Error ? (e as Error).message : String(e), instance: instanceName,
         }, orgId, userId);
       }
 
@@ -883,7 +883,7 @@ serve(async (req) => {
         }
       } catch (err) {
         await logToSystem(adminClient, "warn", "خطأ في إرسال إشعار قراءة", {
-          error: err instanceof Error ? err.message : String(err),
+          error: err instanceof Error ? (err as Error).message : String(err),
         }, orgId, userId);
       }
 
@@ -1760,10 +1760,10 @@ serve(async (req) => {
     return json({ error: "إجراء غير معروف" }, 400);
   } catch (err: any) {
     await logToSystem(adminClient, "critical", "خطأ غير متوقع في إدارة Evolution", {
-      error: err.message,
+      error: (err as Error).message,
     });
     console.error("Evolution manage error:", err);
-    return json({ error: err.message }, 500);
+    return json({ error: (err as Error).message }, 500);
   }
 });
 
@@ -1805,7 +1805,7 @@ async function setWebhook(
     }
   } catch (e) {
     await logToSystem(adminClient, "error", "خطأ في تعيين Webhook لجلسة Evolution", {
-      error: e instanceof Error ? e.message : String(e), instance: instanceName,
+      error: e instanceof Error ? (e as Error).message : String(e), instance: instanceName,
     }, orgId);
   }
 }

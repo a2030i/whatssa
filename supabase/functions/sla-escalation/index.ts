@@ -194,6 +194,6 @@ Deno.serve(async (req) => {
     return json({ escalated: totalEscalated });
   } catch (err) {
     console.error("SLA Escalation Error:", err);
-    return json({ error: err.message }, 500);
+    return json({ error: (err as Error).message }, 500);
   }
 });

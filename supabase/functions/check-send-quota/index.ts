@@ -233,6 +233,6 @@ Deno.serve(async (req) => {
 
     return json({ channel_type: channel.channel_type, paused: false, remaining: 999999, limits: {}, reset_at: null });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "Unexpected error" }, 500);
+    return json({ error: error instanceof Error ? (error as Error).message : "Unexpected error" }, 500);
   }
 });

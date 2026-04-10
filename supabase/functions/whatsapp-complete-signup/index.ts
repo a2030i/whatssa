@@ -192,9 +192,9 @@ async function registerPhone(phoneId: string, accessToken: string, retries = 2, 
         return { success: false, error: errMsg, details: errDetails };
       }
     } catch (err: any) {
-      log("register_error", { attempt, error: err.message });
+      log("register_error", { attempt, error: (err as Error).message });
       if (attempt >= retries) {
-        return { success: false, error: err.message };
+        return { success: false, error: (err as Error).message };
       }
       await new Promise((r) => setTimeout(r, 2000 * attempt));
     }
@@ -663,7 +663,7 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
-    log("fatal_error", { error: err.message, stack: err.stack });
+    log("fatal_error", { error: (err as Error).message, stack: (err as Error).stack });
     return error("Internal error", 500);
   }
 });

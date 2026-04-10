@@ -61,7 +61,7 @@ async function testSmtp(host: string, port: number, encryption: string): Promise
     }
     return { ok: false, message: "لم يتم استقبال رد من السيرفر", latency_ms: latency };
   } catch (e: any) {
-    return { ok: false, message: `فشل الاتصال: ${e.message}`, latency_ms: Date.now() - start };
+    return { ok: false, message: `فشل الاتصال: ${(e as Error).message}`, latency_ms: Date.now() - start };
   }
 }
 
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

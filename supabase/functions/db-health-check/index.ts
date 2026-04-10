@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     results.db_reachable = res.ok;
     results.db_status_code = res.status;
   } catch (e: any) {
-    results.errors.push(`DB: ${e.message}`);
+    results.errors.push(`DB: ${(e as Error).message}`);
   }
 
   // Check external Auth
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     clearTimeout(timeout);
     results.auth_reachable = res.ok;
   } catch (e: any) {
-    results.errors.push(`Auth: ${e.message}`);
+    results.errors.push(`Auth: ${(e as Error).message}`);
   }
 
   results.latency_ms = Date.now() - start;
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
         }
       } catch (e: any) {
         results.alert_sent = false;
-        results.alert_error = e.message;
+        results.alert_error = (e as Error).message;
       }
     }
   }

@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("[cleanup-old-media] Fatal error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

@@ -162,7 +162,7 @@ async function processChunk(
       sentCount++;
       batchCounter++;
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = err instanceof Error ? (err as Error).message : String(err);
       await supabase.from("campaign_recipients").update({
         status: "failed",
         failed_at: new Date().toISOString(),

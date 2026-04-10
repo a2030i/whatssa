@@ -368,7 +368,7 @@ Deno.serve(async (req) => {
     await logToSystem(supabase, "warn", "لا يوجد وكلاء متاحين للتوزيع", { conversation_id, total_members: members.length, pending_reconnect: autoAssignOnReconnect }, org_id);
     return json({ assigned: false, reason: "no_available_agents", pending_reconnect: autoAssignOnReconnect });
   } catch (err) {
-    await logToSystem(supabase, "error", "خطأ في التوزيع التلقائي", { error: err.message, stack: err.stack });
-    return json({ error: err.message }, 500);
+    await logToSystem(supabase, "error", "خطأ في التوزيع التلقائي", { error: (err as Error).message, stack: (err as Error).stack });
+    return json({ error: (err as Error).message }, 500);
   }
 });

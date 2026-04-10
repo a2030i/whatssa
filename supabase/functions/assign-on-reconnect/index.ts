@@ -113,6 +113,6 @@ Deno.serve(async (req) => {
 
     return json({ processed: assignedCount, total_pending: pending.length });
   } catch (err) {
-    return json({ error: err.message }, 500);
+    return json({ error: (err as Error).message }, 500);
   }
 });

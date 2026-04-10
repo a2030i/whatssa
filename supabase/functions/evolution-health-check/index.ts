@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
         }
       } catch (err: any) {
         console.error(`[evolution-health] Error checking ${instanceName}:`, err);
-        results.push({ instance: instanceName, status: "error", error: err.message });
+        results.push({ instance: instanceName, status: "error", error: (err as Error).message });
       }
 
       // Small delay between checks to avoid rate limiting

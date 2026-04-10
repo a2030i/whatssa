@@ -256,7 +256,7 @@ Deno.serve(async (req) => {
         results.push({
           order_id: order.id,
           status: "failed",
-          error: err.message || "Connection error",
+          error: (err as Error).message || "Connection error",
         });
       }
 

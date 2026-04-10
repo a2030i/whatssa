@@ -147,7 +147,7 @@ serve(async (req) => {
         // Small delay between orgs to avoid Meta rate limits
         await new Promise((r) => setTimeout(r, 1000));
       } catch (err: any) {
-        log("org_error", { org_id: config.org_id, error: err.message });
+        log("org_error", { org_id: config.org_id, error: (err as Error).message });
       }
     }
 
@@ -158,7 +158,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
-    log("fatal", { error: err.message });
+    log("fatal", { error: (err as Error).message });
     return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

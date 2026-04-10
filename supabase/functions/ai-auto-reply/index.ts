@@ -366,6 +366,6 @@ async function chatCompletion(
     }
     return { error: "مزود غير مدعوم" };
   } catch (err) {
-    return { error: `خطأ: ${err.message}` };
+    return { error: `خطأ: ${(err as Error).message}` };
   }
 }
