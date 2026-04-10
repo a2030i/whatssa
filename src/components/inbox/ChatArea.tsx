@@ -319,6 +319,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         console.log("[Reaction] Evolution result:", result);
         if (result.error) throw result.error;
         if (result.data?.error) throw new Error(result.data.error);
+        // Check for success: false pattern (edge function returns 200 with error in body)
+        if (result.data?.success === false) throw new Error(result.data?.error || "فشل إرسال التفاعل");
       } else {
         // Meta API reaction
         const result = await invokeCloud("whatsapp-send", {
@@ -337,6 +339,10 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       toast.success("تم إرسال التفاعل");
     } catch (err: any) {
       console.error("[Reaction] Error:", err);
+      // Rollback optimistic reaction
+      window.dispatchEvent(new CustomEvent("optimistic-reaction-rollback", {
+        detail: { messageId: msg.id },
+      }));
       toast.error(err?.message || "فشل إرسال التفاعل");
     }
   };
