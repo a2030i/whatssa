@@ -173,7 +173,7 @@ const AppRoutes = () => {
       <Route path="/permissions" element={<ProtectedRoute minRole="admin"><AppLayout><PermissionsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/install" element={<InstallPage />} />
       <Route path="/tracking" element={<TrackingPage />} />
-      <Route path="/emergency-admin" element={<EmergencyAdminPage />} />
+      <Route path="/emergency-admin" element={<ProtectedRoute minRole="admin"><EmergencyAdminPage /></ProtectedRoute>} />
       
       <Route path="*" element={<NotFound />} />
       <Route path="*" element={<NotFound />} />
