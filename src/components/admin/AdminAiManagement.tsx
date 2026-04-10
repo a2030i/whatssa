@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 // التسعير: تكلفة الوحدة = 0.038 ريال (تكلفة فعلية)، سعر البيع = 0.05 ريال (مجاني حالياً)
 const COST_PER_TOKEN_SAR = 0.038; // تكلفة المزود
@@ -28,6 +29,7 @@ interface OrgAiStatus {
   total_calls: number;
   tokens_used: number;
   last_used: string | null;
+  spending_cap_sar: number | null; // 0 or null = no cap
 }
 
 const RECHARGE_OPTIONS = [
@@ -61,6 +63,14 @@ const AdminAiManagement = () => {
       supabase.from("system_settings").select("value").eq("key", "lovable_ai_balance").maybeSingle(),
     ]);
 
+    const capMap: Record<string, number | null> = {};
+    (settingsRes.data || []).forEach((s: any) => {
+      if (s.key.startsWith("lovable_ai_cap_")) {
+        const orgId = s.key.replace("lovable_ai_cap_", "");
+        capMap[orgId] = Number(s.value) || null;
+      }
+    });
+
     setAiBalance(Number(balanceRes.data?.value) || 0);
 
     const enabledMap: Record<string, boolean> = {};
@@ -88,6 +98,7 @@ const AdminAiManagement = () => {
       total_calls: usageCounts[o.id]?.count || 0,
       tokens_used: usageCounts[o.id]?.tokens || 0,
       last_used: usageCounts[o.id]?.last || null,
+      spending_cap_sar: capMap[o.id] ?? null,
     }));
 
     orgStatuses.sort((a, b) => {
@@ -134,6 +145,19 @@ const AdminAiManagement = () => {
     setRechargeOpen(false);
     setCustomRecharge("");
     toast.success(`✅ تم شحن ${formatSAR(tokensToSAR(tokens))}`);
+  };
+
+  const saveSpendingCap = async (orgId: string, capSar: string) => {
+    const key = `lovable_ai_cap_${orgId}`;
+    const value = capSar.trim() === "" || Number(capSar) <= 0 ? null : Number(capSar);
+    const { data: existing } = await supabase.from("system_settings").select("key").eq("key", key).maybeSingle();
+    if (existing) {
+      await supabase.from("system_settings").update({ value, updated_at: new Date().toISOString() } as any).eq("key", key);
+    } else if (value !== null) {
+      await supabase.from("system_settings").insert({ key, value, description: "AI spending cap SAR per org" } as any);
+    }
+    setOrgs(prev => prev.map(o => o.org_id === orgId ? { ...o, spending_cap_sar: value } : o));
+    toast.success(value ? `تم تحديد الحد: ${value} ر.س` : "تم إزالة حد الإنفاق");
   };
 
   const filtered = orgs.filter(o => o.org_name.toLowerCase().includes(search.toLowerCase()));
@@ -308,33 +332,66 @@ const AdminAiManagement = () => {
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground text-sm">لا توجد مؤسسات</div>
         ) : (
-          filtered.map(org => (
-            <div key={org.org_id} className="p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{org.org_name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {org.tokens_used > 0 && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        {formatSAR(tokensToSAR(org.tokens_used))}
-                      </Badge>
-                    )}
-                    {org.total_calls > 0 && (
-                      <Badge variant="outline" className="text-[10px]">
-                        {org.total_calls} طلب
-                      </Badge>
-                    )}
-                    {org.last_used && (
-                      <span className="text-[10px] text-muted-foreground">
-                        آخر: {new Date(org.last_used).toLocaleDateString("ar-SA")}
-                      </span>
-                    )}
+          filtered.map(org => {
+            const spentSar = tokensToSAR(org.tokens_used);
+            const cap = org.spending_cap_sar;
+            const overCap = cap !== null && cap > 0 && spentSar >= cap;
+            const nearCap = cap !== null && cap > 0 && spentSar >= cap * 0.8 && !overCap;
+            return (
+              <div key={org.org_id} className={cn("p-3", overCap && "bg-destructive/5")}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">{org.org_name}</p>
+                        {overCap && <span className="text-[9px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full shrink-0">تجاوز الحد</span>}
+                        {nearCap && <span className="text-[9px] bg-yellow-500/10 text-yellow-700 px-1.5 py-0.5 rounded-full shrink-0">قريب من الحد</span>}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {org.tokens_used > 0 && (
+                          <Badge variant="secondary" className={cn("text-[10px]", overCap && "bg-destructive/10 text-destructive")}>
+                            {formatSAR(spentSar)}
+                          </Badge>
+                        )}
+                        {org.total_calls > 0 && (
+                          <Badge variant="outline" className="text-[10px]">{org.total_calls} طلب</Badge>
+                        )}
+                        {org.last_used && (
+                          <span className="text-[10px] text-muted-foreground">
+                            آخر: {new Date(org.last_used).toLocaleDateString("ar-SA")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
+                  <Switch checked={org.enabled} onCheckedChange={v => toggleOrgAi(org.org_id, v)} />
+                </div>
+                {/* Spending cap row */}
+                <div className="flex items-center gap-2 mt-2 mr-1">
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">حد الإنفاق (ر.س):</span>
+                  <input
+                    type="number"
+                    min="0"
+                    defaultValue={cap ?? ""}
+                    placeholder="بلا حد"
+                    onBlur={e => saveSpendingCap(org.org_id, e.target.value)}
+                    className="h-6 w-24 text-[10px] bg-secondary rounded px-2 border-0 focus:outline-none focus:ring-1 focus:ring-primary"
+                    dir="ltr"
+                  />
+                  {cap !== null && cap > 0 && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {formatSAR(spentSar)} / {formatSAR(cap)}
+                      {cap > 0 && (
+                        <span className={cn("mr-1", overCap ? "text-destructive" : nearCap ? "text-yellow-600" : "text-primary")}>
+                          ({((spentSar / cap) * 100).toFixed(0)}%)
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </div>
               </div>
-              <Switch checked={org.enabled} onCheckedChange={v => toggleOrgAi(org.org_id, v)} />
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
