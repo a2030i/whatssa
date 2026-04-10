@@ -7,14 +7,15 @@ const SUPABASE_URL = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPA
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 // ── Chatbot Flow Processor ──
+// deno-lint-ignore no-explicit-any
 async function processChatbotFlow(
-  client: ReturnType<typeof createClient>,
+  client: any,
   orgId: string,
   conversationId: string,
   customerPhone: string,
   messageText: string,
   channel: "meta" | "evolution",
-  log: typeof logToSystem,
+  log: any,
   channelConfigId?: string | null,
 ): Promise<boolean> {
   const normalizedText = messageText.trim().toLowerCase();
@@ -167,9 +168,10 @@ async function processChatbotFlow(
   return true;
 }
 
+// deno-lint-ignore no-explicit-any
 async function handleBotAction(
-  client: ReturnType<typeof createClient>, orgId: string, conversationId: string,
-  customerPhone: string, node: any, channel: "meta" | "evolution", log: typeof logToSystem,
+  client: any, orgId: string, conversationId: string,
+  customerPhone: string, node: any, channel: "meta" | "evolution", log: any,
 ) {
   const actionType = node.action_type || "transfer_agent";
   if (actionType === "transfer_agent") {
@@ -180,16 +182,17 @@ async function handleBotAction(
     await client.from("messages").insert({ conversation_id: conversationId, content: "تم إغلاق المحادثة تلقائياً بواسطة البوت", sender: "system", message_type: "text" });
   } else if (actionType === "add_tag" && node.content) {
     const { data: conv } = await client.from("conversations").select("tags").eq("id", conversationId).single();
-    const tags: string[] = conv?.tags || [];
+    const tags: string[] = (conv?.tags as string[]) || [];
     if (!tags.includes(node.content)) {
       await client.from("conversations").update({ tags: [...tags, node.content] }).eq("id", conversationId);
     }
   }
 }
 
+// deno-lint-ignore no-explicit-any
 async function sendBotMessage(
-  client: ReturnType<typeof createClient>, orgId: string, conversationId: string,
-  customerPhone: string, text: string, channel: "meta" | "evolution", log: typeof logToSystem,
+  client: any, orgId: string, conversationId: string,
+  customerPhone: string, text: string, channel: "meta" | "evolution", log: any,
 ) {
   if (!text) return;
   if (channel === "evolution") {
@@ -246,8 +249,9 @@ const normalizePhone = (value: string | null | undefined) => String(value || "")
 const normalizeConversationIdentity = (customerPhone: string | null | undefined, conversationType: string) =>
   conversationType === "private" ? normalizePhone(customerPhone) : String(customerPhone || "");
 
+// deno-lint-ignore no-explicit-any
 async function findConversationByIdentity(
-  client: ReturnType<typeof createClient>,
+  client: any,
   orgId: string,
   customerPhone: string,
   channelId: string | null,
@@ -276,23 +280,24 @@ async function findConversationByIdentity(
   return data;
 }
 
-async function logToSystem(
-  client: ReturnType<typeof createClient>,
+// deno-lint-ignore no-explicit-any
+function logToSystem(
+  client: any,
   level: string,
   message: string,
   metadata: Record<string, unknown> = {},
   orgId?: string | null,
 ) {
   try {
-    // Fire-and-forget: don't block webhook processing
-    client.from("system_logs").insert({
+    // deno-lint-ignore no-explicit-any
+    Promise.resolve(client.from("system_logs").insert({
       level,
       source: "edge_function",
       function_name: "evolution-webhook",
       message,
       metadata,
       org_id: orgId || null,
-    }).then(() => {}).catch((e) => console.error("Log write failed:", e));
+    })).then(() => {}).catch((e: any) => console.error("Log write failed:", e));
   } catch (e) {
     console.error("Failed to write system log:", e);
   }
@@ -2002,7 +2007,7 @@ async function uploadMediaFromEvolution(params: {
   key: Record<string, unknown>;
   conversationId: string;
   messageType: string;
-  supabase: ReturnType<typeof createClient>;
+  supabase: any;
   orgId: string;
 }) {
   const { instanceName, key, conversationId, messageType, supabase, orgId } = params;

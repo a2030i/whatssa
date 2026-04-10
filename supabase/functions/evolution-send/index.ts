@@ -524,7 +524,8 @@ serve(async (req) => {
         const { data: orgMembers } = await adminClient.from("profiles")
           .select("id").eq("org_id", orgId).eq("role", "owner").limit(1).maybeSingle();
         if (orgMembers) {
-          adminClient.from("notifications").insert({
+          // deno-lint-ignore no-explicit-any
+          Promise.resolve(adminClient.from("notifications").insert({
             org_id: orgId,
             user_id: orgMembers.id,
             title: "⚠️ تم إيقاف الإرسال مؤقتاً",
@@ -532,7 +533,7 @@ serve(async (req) => {
             type: "safety",
             reference_type: "channel",
             reference_id: config.id,
-          }).then(() => {}).catch(() => {});
+           })).then(() => {}).catch((_e: any) => {});
         }
 
         const resetAt = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
@@ -741,12 +742,13 @@ serve(async (req) => {
     }
 
     // Log send for rate limiting
-    adminClient.from("channel_send_log").insert({
+    // deno-lint-ignore no-explicit-any
+    Promise.resolve(adminClient.from("channel_send_log").insert({
       channel_id: config.id,
       org_id: orgId,
       recipient_phone: to.replace(/\D/g, "").replace(/@.*/, ""),
       message_type: sentMessageType,
-    }).then(() => {}).catch(() => {});
+    })).then(() => {}).catch((_e: any) => {});
 
     logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
       wa_message_id: waMessageId, type: sentMessageType,
