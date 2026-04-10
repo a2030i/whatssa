@@ -893,7 +893,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const selected = conversations.find((conversation) => conversation.id === selectedId) || null;
   const currentMessages = selectedId ? allMessages[selectedId] || [] : [];
 
-  const handleSendMessage = useCallback(async (convId: string, text: string, type: "text" | "note" = "text", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }) => {
+  const handleSendMessage = useCallback(async (convId: string, text: string, type: "text" | "note" = "text", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }, mentionedJids?: string[]) => {
     const agentDisplayName = profile?.full_name || "النظام";
     if (type === "note") {
       const { error } = await supabase.from("messages").insert({
@@ -964,6 +964,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           channel_id: conversation.channelId,
           sender_name: agentDisplayName,
           reply_to: replyTo ? { wa_message_id: replyTo.waMessageId, sender_name: replyTo.senderName, text: replyTo.text, message_id: replyTo.id } : undefined,
+          mentioned_jids: mentionedJids?.length ? mentionedJids : undefined,
         };
 
     const { data, error } = await invokeCloud(sendFunction, { body });

@@ -39,7 +39,7 @@ interface ChatAreaProps {
   messages: Message[];
   templates: WhatsAppTemplate[];
   onBack: () => void;
-  onSendMessage: (convId: string, text: string, type?: "text" | "note", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }) => void;
+  onSendMessage: (convId: string, text: string, type?: "text" | "note", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }, mentionedJids?: string[]) => void;
   onSendTemplate: (convId: string, template: WhatsAppTemplate, variables: string[]) => void;
   onStatusChange: (convId: string, status: "active" | "waiting" | "closed") => void;
   onTransfer: (convId: string, agent: string) => void;
@@ -1076,6 +1076,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const groupPicInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Track @lid mention JIDs that can't be extracted from message text by phone regex
+  const mentionedJidsRef = useRef<string[]>([]);
   const isGroup = conversation.conversationType === "group";
   const isEvolutionChannel = conversation.channelType === "evolution";
   const isMetaChannel = conversation.channelType === "meta_api";
@@ -1721,7 +1723,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         }
       }));
     }
-    onSendMessage(conversation.id, inputText.trim(), "text", replyData);
+    const lidJids = mentionedJidsRef.current;
+    mentionedJidsRef.current = [];
+    onSendMessage(conversation.id, inputText.trim(), "text", replyData, lidJids.length > 0 ? lidJids : undefined);
     setInputText("");
     setReplyTo(null);
     broadcastTyping(false);
@@ -1805,12 +1809,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     !savedReplyFilter || r.shortcut.toLowerCase().includes(savedReplyFilter) || r.title.toLowerCase().includes(savedReplyFilter)
   );
 
-  const insertMention = (displayName: string, phone?: string) => {
+  const insertMention = (displayName: string, phone?: string, rawId?: string) => {
     const lastAtIndex = inputText.lastIndexOf("@");
     // For group participants, use @phone format so Evolution API can resolve mentions
     const mentionText = isGroupMentionMode && phone ? `@${phone}` : `@${displayName}`;
     const newText = inputText.slice(0, lastAtIndex) + `${mentionText} `;
     setInputText(newText);
+    // Track @lid JIDs — these can't be extracted from text by phone regex
+    if (isGroupMentionMode && !phone && rawId && rawId.includes("@lid")) {
+      mentionedJidsRef.current = [...mentionedJidsRef.current, rawId];
+    }
     setShowMentions(false);
     inputRef.current?.focus();
   };
@@ -2736,16 +2744,21 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               const isPhoneOnly = !a.full_name && (!a.name || a.name === a.phone);
               const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2);
               return (
-                <button key={a.id} onClick={() => insertMention(displayName, a.phone)} className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-secondary hover:bg-accent transition-colors text-right">
+                <button key={a.id} onClick={() => insertMention(displayName, a.phone, a.id)} className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-secondary hover:bg-accent transition-colors text-right">
                   <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{initials}</div>
                   <div className="flex flex-col items-start min-w-0">
                     <span className="font-medium truncate flex items-center gap-1">{displayName}{isGroupMentionMode && a.admin && <Crown className="w-3 h-3 shrink-0 text-primary" />}</span>
                     {isGroupMentionMode && a.phone && (
                       <span className="text-[10px] text-muted-foreground" dir="ltr">+{a.phone}</span>
                     )}
+                    {isGroupMentionMode && !a.phone && a.id?.includes("@lid") && (
+                      <span className="text-[10px] text-muted-foreground">بدون رقم (LID)</span>
+                    )}
                   </div>
-                  {!isPhoneOnly && isGroupMentionMode && (
-                    <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 mr-auto shrink-0">جهة اتصال</Badge>
+                  {isGroupMentionMode && (
+                    a.phone
+                      ? (!isPhoneOnly && <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 mr-auto shrink-0">جهة اتصال</Badge>)
+                      : a.id?.includes("@lid") && <Badge variant="secondary" className="text-[8px] px-1 py-0 h-4 mr-auto shrink-0">LID</Badge>
                   )}
                 </button>
               );
