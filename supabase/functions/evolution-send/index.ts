@@ -48,7 +48,8 @@ async function logToSystem(
       metadata,
       org_id: orgId || null,
       user_id: userId || null,
-    }).then(() => {}).catch((e) => console.error("Log write failed:", e));
+    // deno-lint-ignore no-explicit-any
+    }).then(() => {}).catch((e: any) => console.error("Log write failed:", e));
   } catch (e) {
     console.error("Failed to write system log:", e);
   }
@@ -57,7 +58,7 @@ async function logToSystem(
 const normalizePhone = (value: string | null | undefined) => String(value || "").replace(/\D/g, "");
 
 async function findPrivateConversation(
-  client: ReturnType<typeof createClient>,
+  client: any,
   orgId: string,
   customerPhone: string,
   channelId?: string | null,
