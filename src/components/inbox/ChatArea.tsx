@@ -2762,6 +2762,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           {/* Email To/CC Fields with Chips */}
           {isEmailChannel && !isNoteMode && (
             <div className="mx-3 mt-2 space-y-1">
+              {/* Email Subject */}
+              <div className="flex items-center gap-2 bg-secondary/40 rounded-lg px-2 py-1.5 border border-border/30">
+                <span className="text-[11px] text-muted-foreground font-medium shrink-0">📧</span>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="الموضوع..."
+                  className="flex-1 text-[13px] font-medium bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground/50"
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowEmailFields(!showEmailFields)}
