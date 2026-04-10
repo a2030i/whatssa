@@ -424,7 +424,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
         {/* Custom Inbox Chips */}
         {customInboxes.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto scrollbar-none">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
             {customInboxes.map((inbox) => (
               <div key={inbox.id} className="flex items-center gap-0.5 group">
                 <button
@@ -433,13 +433,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                     else { setActiveCustomInbox(inbox.id); setActiveQuickFilter("all"); }
                   }}
                   className={cn(
-                    "text-[11px] px-3.5 py-1.5 rounded-xl whitespace-nowrap font-semibold transition-all flex items-center gap-1.5 border",
+                    "text-[11px] px-3 py-1.5 rounded-full whitespace-nowrap font-medium transition-all flex items-center gap-1.5",
                     activeCustomInbox === inbox.id
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-muted-foreground border-border/50 hover:border-primary/30 hover:text-foreground"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/70 text-muted-foreground hover:bg-secondary hover:text-foreground"
                   )}
                 >
-                  <Inbox className="w-3 h-3" />
+                  <Sparkles className="w-3 h-3" />
                   {inbox.name}
                 </button>
                 <button

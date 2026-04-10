@@ -602,9 +602,9 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   );
 
   return (
-    <div className={isMobileSheet ? "flex flex-col overflow-y-auto bg-card" : "w-[280px] h-full border-r border-border bg-card hidden xl:flex flex-col overflow-y-auto"}>
+    <div className={isMobileSheet ? "flex flex-col overflow-y-auto bg-card" : "w-[300px] h-full bg-card/80 backdrop-blur-sm hidden xl:flex flex-col overflow-y-auto scrollbar-thin"}>
       <Tabs defaultValue={isGroup ? "members" : "info"} className="flex flex-col">
-        <TabsList className={`mx-2 mt-2 mb-0 grid shrink-0 ${isGroup ? (isEcommerce ? "grid-cols-5" : "grid-cols-4") : (isEcommerce ? "grid-cols-4" : "grid-cols-3")}`}>
+        <TabsList className={`mx-3 mt-3 mb-0 grid shrink-0 rounded-full bg-secondary/60 ${isGroup ? (isEcommerce ? "grid-cols-5" : "grid-cols-4") : (isEcommerce ? "grid-cols-4" : "grid-cols-3")}`}>
           <TabsTrigger value="info" className="text-xs">معلومات</TabsTrigger>
           {isGroup && (
             <TabsTrigger value="members" className="text-xs gap-1">
