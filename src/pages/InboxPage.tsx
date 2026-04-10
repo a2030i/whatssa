@@ -1370,7 +1370,12 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
 
     // Background: call the edge function
     const conv = conversations.find(c => c.customerPhone === convPhone);
-    const func = getSendFunction(conv?.channelType);
+    let func = getSendFunction(conv?.channelType);
+    if (!func && conv?.channelId) {
+      const resolved = await resolveChannelType(conv.channelId);
+      if (resolved) func = getSendFunction(resolved);
+    }
+    if (!func) { toast.error("تعذر تحديد نوع القناة"); return; }
     invokeCloud(func, {
       body: { to: convPhone, delete_message_id: waMessageId, channel_id: conv?.channelId },
     }).then(({ data, error }) => {
