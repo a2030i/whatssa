@@ -19,7 +19,33 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, provider, api_key, model, messages, system_prompt } = body;
 
-    // Test connection
+    // Auth required for all actions
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "غير مصرح" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("EXTERNAL_SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_ANON_KEY")!;
+    const authCheckClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: authProfile, error: authProfileError } = await authCheckClient
+      .from("profiles")
+      .select("id, org_id")
+      .limit(1)
+      .maybeSingle();
+    if (authProfileError || !authProfile?.id) {
+      return new Response(JSON.stringify({ error: "غير مصرح" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Test connection (now requires auth)
     if (action === "test") {
       const result = await testConnection(provider, api_key, model);
       return new Response(JSON.stringify(result), {
@@ -29,7 +55,6 @@ Deno.serve(async (req) => {
 
     // Chat completion
     if (action === "chat") {
-      const authHeader = req.headers.get("Authorization");
       if (!authHeader) {
         return new Response(JSON.stringify({ error: "غير مصرح" }), {
           status: 401,
