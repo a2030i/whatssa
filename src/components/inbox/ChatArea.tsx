@@ -1079,6 +1079,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Track @lid mention JIDs that can't be extracted from message text by phone regex
   const mentionedJidsRef = useRef<string[]>([]);
+  const [customerLastSeen, setCustomerLastSeen] = useState<string | null>(null);
   const isGroup = conversation.conversationType === "group";
   const isEvolutionChannel = conversation.channelType === "evolution";
   const isMetaChannel = conversation.channelType === "meta_api";
