@@ -249,6 +249,59 @@ const normalizePhone = (value: string | null | undefined) => String(value || "")
 const normalizeConversationIdentity = (customerPhone: string | null | undefined, conversationType: string) =>
   conversationType === "private" ? normalizePhone(customerPhone) : String(customerPhone || "");
 
+const normalizeReactionText = (value: unknown) =>
+  typeof value === "string" ? value.trim() : "";
+
+// deno-lint-ignore no-explicit-any
+function extractReactionTargetFromContext(contextInfo: Record<string, any> | undefined): string | null {
+  if (!contextInfo) return null;
+  return contextInfo.stanzaId
+    || contextInfo.quotedMessageId
+    || contextInfo.quotedMessage?.reactionMessage?.key?.id
+    || contextInfo.quotedMessage?.key?.id
+    || null;
+}
+
+// deno-lint-ignore no-explicit-any
+function extractEvolutionReactionPayload(msg: Record<string, any>, messageContent: Record<string, any>) {
+  const directReaction = messageContent?.reactionMessage || msg?.reactionMessage || msg?.reaction;
+  const extendedText = messageContent?.extendedTextMessage;
+  const contextInfo = extendedText?.contextInfo || messageContent?.contextInfo;
+  const fallbackText = normalizeReactionText(
+    messageContent?.conversation ||
+    extendedText?.text ||
+    msg?.text ||
+    msg?.body,
+  );
+  const hintedType = String(
+    msg?.messageType ||
+    msg?.messageTypeName ||
+    msg?.type ||
+    msg?.message_type ||
+    "",
+  ).toLowerCase();
+
+  const hasDirectReactionData = Boolean(
+    messageContent?.reactionMessage ||
+    directReaction?.emoji ||
+    directReaction?.text ||
+    directReaction?.reaction,
+  );
+  const isReactionPlaceholder = fallbackText.toLowerCase() === "[reaction]" || hintedType === "reaction";
+
+  if (!hasDirectReactionData && !isReactionPlaceholder) return null;
+
+  return {
+    targetWaId:
+      directReaction?.key?.id ||
+      directReaction?.messageId ||
+      directReaction?.message_id ||
+      extractReactionTargetFromContext(contextInfo),
+    emoji: normalizeReactionText(directReaction?.text || directReaction?.emoji || directReaction?.reaction),
+    placeholder: !messageContent?.reactionMessage,
+  };
+}
+
 // deno-lint-ignore no-explicit-any
 async function findConversationByIdentity(
   client: any,
@@ -634,11 +687,11 @@ serve(async (req) => {
         }
         if (!phone || phone.includes("status")) continue;
 
-        // ── Handle reactionMessage inside MESSAGES_UPSERT (v2.3.7 has no separate event) ──
-        if (messageContent.reactionMessage) {
-          const reactionKey = messageContent.reactionMessage.key || {};
-          const targetWaId = reactionKey.id;
-          const emoji = messageContent.reactionMessage.text || "";
+        // ── Handle reactions inside MESSAGES_UPSERT (including placeholder payloads) ──
+        const reactionPayload = extractEvolutionReactionPayload(msg, messageContent);
+        if (reactionPayload) {
+          const targetWaId = reactionPayload.targetWaId;
+          const emoji = reactionPayload.emoji;
           const reactionFromMe = !!isFromMe;
           const reactionParticipant = (key.participant || "").replace("@s.whatsapp.net", "").replace("@lid", "");
           const reactionParticipantName = msg.pushName || "";
@@ -686,7 +739,11 @@ serve(async (req) => {
               }).eq("id", targetMsg.id);
 
               await logToSystem(supabase, "info", `تفاعل ${emoji || '(إزالة)'} على رسالة`, {
-                wa_message_id: targetWaId, fromMe: reactionFromMe, participant: reactionParticipant,
+                wa_message_id: targetWaId,
+                fromMe: reactionFromMe,
+                participant: reactionParticipant,
+                placeholder: reactionPayload.placeholder,
+                raw_type: msg?.messageType || msg?.type || null,
               }, orgId);
             }
           }
@@ -1951,9 +2008,9 @@ serve(async (req) => {
     // ── Handle Reactions (v2.3.7: reactions come inside MESSAGES_UPSERT, no separate event) ──
     if (event === "MESSAGES_REACTION" || event === "messages.reaction") {
       const reactionData = body.data || body;
-      const reactionKey = reactionData?.key || {};
-      const waMessageId = reactionKey?.id || reactionData?.messageId;
       const reaction = reactionData?.reaction || reactionData;
+      const reactionKey = reactionData?.key || {};
+      const waMessageId = reaction?.messageId || reaction?.message_id || reactionKey?.id || reactionData?.messageId;
       const emoji = reaction?.text || reaction?.emoji || "";
       const fromMe = !!reactionKey?.fromMe;
 

@@ -26,6 +26,11 @@ const sortMessagesByCreatedAt = (messages: Message[]) =>
     return aTime - bTime;
   });
 
+const isReactionPlaceholderMessage = (message: Pick<Message, "type" | "text">) => {
+  const normalizedText = typeof message.text === "string" ? message.text.trim().toLowerCase() : "";
+  return message.type === "reaction" || normalizedText === "[reaction]";
+};
+
 const triggerSentimentAnalysis = async (conversationId: string, orgId: string) => {
   const count = (sentimentCounters.get(conversationId) || 0) + 1;
   sentimentCounters.set(conversationId, count);
@@ -552,7 +557,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
             direction: detail?.direction || (message.sender === "customer" ? "inbound" : "outbound"),
           } : undefined,
         };
-      }).filter((m) => m.type !== "reaction");
+      }).filter((m) => !isReactionPlaceholderMessage(m));
 
       setAllMessages((prev) => {
         const existing = prev[currentConversationId] || [];
@@ -622,8 +627,8 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
             direction: message.sender === "customer" ? "inbound" : "outbound",
           } : undefined,
         };
-        // Skip reaction-type messages — they're shown as badges on the original message
-        if (newMessage.type === "reaction") return;
+        // Skip reaction placeholder rows — reactions are shown as badges on the original message
+        if (isReactionPlaceholderMessage(newMessage)) return;
         setAllMessages((prev) => ({
           ...prev,
           [currentConversationId]: (prev[currentConversationId] || []).some((m) => m.id === newMessage.id)
@@ -906,7 +911,9 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   }, [selectedId, allMessages, conversations, orgId]);
 
   const selected = conversations.find((conversation) => conversation.id === selectedId) || null;
-  const currentMessages = selectedId ? allMessages[selectedId] || [] : [];
+  const currentMessages = selectedId
+    ? (allMessages[selectedId] || []).filter((message) => !isReactionPlaceholderMessage(message))
+    : [];
 
   const handleSendMessage = useCallback(async (convId: string, text: string, type: "text" | "note" = "text", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }, mentionedJids?: string[]) => {
     const agentDisplayName = profile?.full_name || "النظام";
