@@ -1503,6 +1503,7 @@ serve(async (req) => {
           metadata,
         });
 
+        console.log(`[evolution-webhook] TRACE: message insert error=${messageInsertError?.message || "none"}`);
         if (messageInsertError) {
           await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة (Evolution)", {
             error: messageInsertError.message, wa_message_id: key.id, conversation_id: conversation.id,
