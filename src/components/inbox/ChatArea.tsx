@@ -1097,7 +1097,46 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
   }, [scrollToMessageId, messages.length]);
 
-  const copyConversationLink = useCallback(() => {
+  // Fetch customer last seen for evolution channels
+  useEffect(() => {
+    if (isGroup || !isEvolutionChannel || !conversation.customerPhone || !conversation.channelId) return;
+    setCustomerLastSeen(null);
+    invokeCloud("evolution-manage", {
+      body: {
+        action: "fetch_presence",
+        phone: conversation.customerPhone,
+        channel_id: conversation.channelId,
+      },
+    }).then(({ data }) => {
+      if (data?.last_seen) {
+        const ts = typeof data.last_seen === "number"
+          ? new Date(data.last_seen * 1000)
+          : new Date(data.last_seen);
+        if (!isNaN(ts.getTime())) {
+          const diff = Date.now() - ts.getTime();
+          const mins = Math.floor(diff / 60000);
+          if (mins < 2) {
+            setCustomerLastSeen("متصل الآن");
+          } else if (mins < 60) {
+            setCustomerLastSeen(`آخر ظهور: منذ ${mins} دقيقة`);
+          } else {
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) {
+              setCustomerLastSeen(`آخر ظهور: منذ ${hours} ساعة`);
+            } else {
+              setCustomerLastSeen(`آخر ظهور: ${ts.toLocaleDateString("ar-SA")}`);
+            }
+          }
+        }
+      } else if (data?.status === "composing") {
+        setCustomerLastSeen("يكتب...");
+      } else if (data?.status === "available" || data?.status === "online") {
+        setCustomerLastSeen("متصل الآن");
+      }
+    }).catch(() => {});
+  }, [conversation.id, conversation.customerPhone, conversation.channelId, isEvolutionChannel, isGroup]);
+
+
     const url = `${window.location.origin}/inbox?conversation=${conversation.id}`;
     navigator.clipboard.writeText(url).then(() => toast.success("تم نسخ رابط المحادثة"));
   }, [conversation.id]);
