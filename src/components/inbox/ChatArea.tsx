@@ -29,6 +29,7 @@ import PollCreatorDialog from "./PollCreatorDialog";
 import ContactCardDialog from "./ContactCardDialog";
 import CreateTicketDialog from "@/components/tickets/CreateTicketDialog";
 import SendQuotaBanner from "./SendQuotaBanner";
+import EmailTemplatePicker from "./EmailTemplatePicker";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
@@ -1064,6 +1065,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [emailSubject, setEmailSubject] = useState("");
   const [emailSignature, setEmailSignature] = useState("");
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
+  const [showEmailTemplatePicker, setShowEmailTemplatePicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isUserNearBottomRef = useRef(true);
@@ -1125,12 +1127,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
   }, [conversation.id, conversation.isBlocked, conversation.profilePic]);
 
-  // Fetch email signature for preview
+  // Fetch email signature for preview (per-employee takes priority over org-level)
   useEffect(() => {
     if (!isEmailChannel || !orgId) return;
     (async () => {
-      const { data } = await supabase.from("email_configs").select("email_signature").eq("org_id", orgId).eq("is_active", true).limit(1).maybeSingle();
-      setEmailSignature(data?.email_signature || "");
+      const [{ data: profileData }, { data: configData }] = await Promise.all([
+        supabase.from("profiles").select("email_signature").eq("id", user?.id || "").maybeSingle(),
+        supabase.from("email_configs").select("email_signature").eq("org_id", orgId).eq("is_active", true).limit(1).maybeSingle(),
+      ]);
+      setEmailSignature(profileData?.email_signature || configData?.email_signature || "");
     })();
   }, [isEmailChannel, orgId]);
 
@@ -3094,6 +3099,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     <Contact className="w-4 h-4" />
                   </button>
                 )}
+                {!isNoteMode && isEmailChannel && (
+                  <button onClick={() => setShowEmailTemplatePicker(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="قوالب البريد">
+                    <FileText className="w-4 h-4" />
+                  </button>
+                )}
                 {!isNoteMode && !windowExpired && !isEmailChannel && (
                   <button onClick={() => setIsRecording(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="تسجيل صوتي">
                     <Mic className="w-4 h-4" />
@@ -3679,6 +3689,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         messageIds={Array.from(selectedMsgIds)}
         messagePreviews={messages.filter(m => selectedMsgIds.has(m.id)).map(m => ({ sender: m.sender, text: m.text, timestamp: m.timestamp }))}
         defaultDescription={selectedMsgIds.size > 0 ? `تذكرة من محادثة: ${conversation.customerName}` : undefined}
+      />
+      {/* Email Template Picker */}
+      <EmailTemplatePicker
+        open={showEmailTemplatePicker}
+        onOpenChange={setShowEmailTemplatePicker}
+        onSelect={(subject, body) => {
+          setEmailSubject(subject);
+          setInputText(body);
+          inputRef.current?.focus();
+        }}
       />
     </div>
   );

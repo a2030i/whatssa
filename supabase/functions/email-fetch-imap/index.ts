@@ -7,37 +7,72 @@ const corsHeaders = {
 
 /* ─── MIME / Decode helpers ─── */
 
+function decodeSingleMimeWord(charset: string, encoding: string, encoded: string): string {
+  try {
+    if (encoding.toUpperCase() === "B") {
+      // Fix padding if missing
+      const padded = encoded + "=".repeat((4 - (encoded.length % 4)) % 4);
+      const bytes = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+      return new TextDecoder(charset).decode(bytes);
+    } else {
+      const qpDecoded = encoded
+        .replace(/_/g, " ")
+        .replace(/=([0-9A-Fa-f]{2})/g, (_: string, hex: string) =>
+          String.fromCharCode(parseInt(hex, 16))
+        );
+      const bytes = new Uint8Array([...qpDecoded].map((c) => c.charCodeAt(0)));
+      return new TextDecoder(charset).decode(bytes);
+    }
+  } catch {
+    return encoded;
+  }
+}
+
 function decodeMimeWords(text: string | null | undefined): string {
   if (!text) return "";
-  return text.replace(
-    /=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g,
-    (_match, charset, encoding, encoded) => {
-      try {
-        if (encoding.toUpperCase() === "B") {
-          const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
-          return new TextDecoder(charset).decode(bytes);
-        } else {
-          const qpDecoded = encoded
-            .replace(/_/g, " ")
-            .replace(/=([0-9A-Fa-f]{2})/g, (_: string, hex: string) =>
-              String.fromCharCode(parseInt(hex, 16))
-            );
-          const bytes = new Uint8Array([...qpDecoded].map((c) => c.charCodeAt(0)));
-          return new TextDecoder(charset).decode(bytes);
-        }
-      } catch {
-        return encoded;
+  // First, join adjacent encoded words (RFC 2047: whitespace between them should be ignored)
+  let result = text.replace(
+    /=\?([^?]+)\?([BbQq])\?([^?]*)\?=\s*=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g,
+    (_match, cs1, enc1, data1, cs2, enc2, data2) => {
+      // If same charset and encoding, combine the encoded data
+      if (cs1.toLowerCase() === cs2.toLowerCase() && enc1.toUpperCase() === enc2.toUpperCase()) {
+        return `=?${cs1}?${enc1}?${data1}${data2}?=`;
       }
+      return decodeSingleMimeWord(cs1, enc1, data1) + decodeSingleMimeWord(cs2, enc2, data2);
     }
   );
+  // Repeat to handle 3+ adjacent words
+  result = result.replace(
+    /=\?([^?]+)\?([BbQq])\?([^?]*)\?=\s*=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g,
+    (_match, cs1, enc1, data1, cs2, enc2, data2) => {
+      if (cs1.toLowerCase() === cs2.toLowerCase() && enc1.toUpperCase() === enc2.toUpperCase()) {
+        return `=?${cs1}?${enc1}?${data1}${data2}?=`;
+      }
+      return decodeSingleMimeWord(cs1, enc1, data1) + decodeSingleMimeWord(cs2, enc2, data2);
+    }
+  );
+  // Now decode remaining individual encoded words
+  result = result.replace(
+    /=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g,
+    (_match, charset, encoding, encoded) => decodeSingleMimeWord(charset, encoding, encoded)
+  );
+  return result;
 }
 
 function decodeQuotedPrintable(text: string): string {
-  return text
-    .replace(/=\r?\n/g, "")
-    .replace(/=([0-9A-Fa-f]{2})/g, (_, hex) =>
-      String.fromCharCode(parseInt(hex, 16))
-    );
+  // Remove soft line breaks first
+  let decoded = text.replace(/=\r?\n/g, "");
+  // Decode hex pairs to raw bytes
+  decoded = decoded.replace(/=([0-9A-Fa-f]{2})/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16))
+  );
+  // Always try UTF-8 decode for the raw bytes (handles Arabic, etc.)
+  try {
+    const bytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
+    return new TextDecoder("utf-8").decode(bytes);
+  } catch {
+    return decoded;
+  }
 }
 
 function decodeBase64Body(text: string, charset = "utf-8"): string {
@@ -616,10 +651,7 @@ function extractAndDecodeBody(rawBody: string, headers: Record<string, string>):
       body = decodeBase64Body(body, charset);
     } else if (cte === "quoted-printable") {
       body = decodeQuotedPrintable(body);
-      try {
-        const bytes = new Uint8Array([...body].map(c => c.charCodeAt(0)));
-        body = new TextDecoder(charset).decode(bytes);
-      } catch {}
+      // decodeQuotedPrintable already handles UTF-8 decoding internally
     }
 
     // If HTML, convert to text
@@ -684,11 +716,7 @@ function extractFromMultipart(raw: string, boundary: string): { text: string; at
       decoded = decodeBase64Body(partBody, charsetM ? charsetM[1] : "utf-8");
     } else if (partHeadersLower.includes("quoted-printable")) {
       decoded = decodeQuotedPrintable(partBody);
-      const charsetM = partHeadersLower.match(/charset=["']?([^;"'\s]+)/i);
-      try {
-        const bytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
-        decoded = new TextDecoder(charsetM ? charsetM[1] : "utf-8").decode(bytes);
-      } catch {}
+      // decodeQuotedPrintable already handles UTF-8 decoding internally
     }
 
     if (partCt.includes("text/plain") || partHeadersLower.includes("text/plain")) {
