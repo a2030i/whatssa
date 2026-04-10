@@ -1342,7 +1342,11 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
 
   const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
     const conv = conversations.find(c => c.customerPhone === convPhone);
-    const isEvolution = conv?.channelType === "evolution" || !conv?.channelType;
+    let effectiveChannelType = conv?.channelType;
+    if (!effectiveChannelType && conv?.channelId) {
+      effectiveChannelType = (await resolveChannelType(conv.channelId)) as any;
+    }
+    const isEvolution = effectiveChannelType === "evolution";
 
     const { data, error } = await invokeCloud(isEvolution ? "evolution-manage" : "whatsapp-send", {
       body: isEvolution
