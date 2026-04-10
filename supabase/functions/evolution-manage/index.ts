@@ -1758,6 +1758,70 @@ serve(async (req) => {
       return json({ success: true, results, sent: successCount, total: phones.length });
     }
 
+    // ── FETCH PRESENCE (last seen) ──
+    if (action === "fetch_presence") {
+      const presencePhone = asString(payload.phone);
+      if (!presencePhone) return json({ error: "رقم الهاتف مطلوب" }, 400);
+
+      let targetInstance = instanceName;
+      if (!targetInstance && channel_id) {
+        const { data: chConf } = await adminClient
+          .from("whatsapp_config")
+          .select("evolution_instance_name")
+          .eq("id", channel_id)
+          .eq("org_id", orgId)
+          .eq("channel_type", "evolution")
+          .maybeSingle();
+        targetInstance = chConf?.evolution_instance_name || undefined;
+      }
+
+      if (!targetInstance) return json({ error: "لا توجد قناة مرتبطة" }, 400);
+
+      const jid = `${presencePhone.replace(/\D/g, "")}@s.whatsapp.net`;
+
+      // Try multiple endpoints for presence/last seen
+      const endpoints = [
+        { url: `${EVOLUTION_URL}/chat/fetchPresence/${targetInstance}`, method: "POST", body: { number: jid } },
+        { url: `${EVOLUTION_URL}/chat/findContacts/${targetInstance}`, method: "POST", body: { where: { id: jid } } },
+      ];
+
+      let lastSeen: string | null = null;
+      let status: string | null = null;
+
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(ep.url, {
+            method: ep.method,
+            headers: evoHeaders,
+            body: JSON.stringify(ep.body),
+          });
+          if (!res.ok) continue;
+          const data = await res.json().catch(() => null);
+          if (!data) continue;
+
+          // fetchPresence response
+          if (data.status || data.lastSeen || data.last) {
+            status = data.status || null;
+            lastSeen = data.lastSeen || data.last || null;
+            break;
+          }
+
+          // findContacts response — array of contacts
+          const contacts = Array.isArray(data) ? data : data?.data ? (Array.isArray(data.data) ? data.data : [data.data]) : [];
+          const contact = contacts[0];
+          if (contact) {
+            lastSeen = contact.lastSeen || contact.last || contact.presenceData?.lastSeen || null;
+            status = contact.status || contact.presenceData?.status || null;
+            break;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      return json({ success: true, last_seen: lastSeen, status });
+    }
+
     return json({ error: "إجراء غير معروف" }, 400);
   } catch (err: any) {
     await logToSystem(adminClient, "critical", "خطأ غير متوقع في إدارة Evolution", {
