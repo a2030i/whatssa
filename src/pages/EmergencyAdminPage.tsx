@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Shield, RefreshCw, Database, AlertTriangle, CheckCircle, XCircle, Clock, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-
-const EMERGENCY_PIN = "admin2024"; // Change this to a secure PIN
+import { invokeCloud } from "@/lib/supabase";
 
 interface HealthLog {
   checked_at: string;
@@ -16,28 +14,12 @@ interface HealthLog {
 }
 
 const EmergencyAdminPage = () => {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [pin, setPin] = useState("");
   const [dbStatus, setDbStatus] = useState<"checking" | "online" | "offline">("checking");
   const [authStatus, setAuthStatus] = useState<"checking" | "online" | "offline">("checking");
   const [latency, setLatency] = useState<number | null>(null);
   const [healthLogs, setHealthLogs] = useState<HealthLog[]>([]);
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
-
-  const EXTERNAL_URL = "https://ovbrrumnqfvtgmqsscat.supabase.co";
-  const EXTERNAL_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92YnJydW1ucWZ2dGdtcXNzY2F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzc4ODQsImV4cCI6MjA5MDY1Mzg4NH0.-ed8-nrAbfO1lMm9Rc5bjwsIzmonunVKkcwRY586SrQ";
-  const CLOUD_URL = import.meta.env.VITE_SUPABASE_URL;
-  const CLOUD_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-  const handleLogin = () => {
-    if (pin === EMERGENCY_PIN) {
-      setAuthenticated(true);
-      toast.success("تم الدخول للوحة الطوارئ");
-    } else {
-      toast.error("رمز الطوارئ غير صحيح");
-    }
-  };
 
   const checkExternalDB = async () => {
     setIsChecking(true);
@@ -46,110 +28,58 @@ const EmergencyAdminPage = () => {
 
     const start = Date.now();
 
-    // Check DB
-    let dbOk = false;
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(`${EXTERNAL_URL}/rest/v1/`, {
-        signal: controller.signal,
-        headers: { apikey: EXTERNAL_KEY, Authorization: `Bearer ${EXTERNAL_KEY}` },
-      });
-      clearTimeout(timeout);
-      dbOk = res.ok || res.status === 401 || res.status === 406;
+      const result = await invokeCloud("db-health-check", { manual: true });
+      const ms = Date.now() - start;
+
+      const dbOk = result?.db_status === "online";
+      const authOk = result?.auth_status === "online";
+
       setDbStatus(dbOk ? "online" : "offline");
-    } catch {
-      setDbStatus("offline");
-    }
-
-    // Check Auth
-    let authOk = false;
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(`${EXTERNAL_URL}/auth/v1/settings`, {
-        signal: controller.signal,
-        headers: { apikey: EXTERNAL_KEY },
-      });
-      clearTimeout(timeout);
-      authOk = res.ok;
       setAuthStatus(authOk ? "online" : "offline");
+      setLatency(ms);
+      setLastCheck(new Date());
+
+      const log: HealthLog = {
+        checked_at: new Date().toISOString(),
+        db_status: dbOk ? "online" : "offline",
+        auth_status: authOk ? "online" : "offline",
+        latency_ms: ms,
+      };
+      setHealthLogs(prev => [log, ...prev].slice(0, 50));
     } catch {
+      const ms = Date.now() - start;
+      setDbStatus("offline");
       setAuthStatus("offline");
+      setLatency(ms);
+      setLastCheck(new Date());
+      toast.error("تعذّر الاتصال بخدمة الفحص");
+
+      const log: HealthLog = {
+        checked_at: new Date().toISOString(),
+        db_status: "offline",
+        auth_status: "offline",
+        latency_ms: ms,
+      };
+      setHealthLogs(prev => [log, ...prev].slice(0, 50));
+    } finally {
+      setIsChecking(false);
     }
-
-    const ms = Date.now() - start;
-    setLatency(ms);
-    setLastCheck(new Date());
-
-    // Save to health logs
-    const log: HealthLog = {
-      checked_at: new Date().toISOString(),
-      db_status: dbOk ? "online" : "offline",
-      auth_status: authOk ? "online" : "offline",
-      latency_ms: ms,
-    };
-    setHealthLogs(prev => [log, ...prev].slice(0, 50));
-
-    // Also log to Lovable Cloud
-    try {
-      await fetch(`${CLOUD_URL}/functions/v1/db-health-check`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${CLOUD_KEY}`,
-        },
-        body: JSON.stringify({ manual: true }),
-      });
-    } catch {
-      // Cloud might also be down, ignore
-    }
-
-    setIsChecking(false);
   };
 
   useEffect(() => {
-    if (authenticated) {
-      checkExternalDB();
-      const interval = setInterval(() => {
-        if (!document.hidden) checkExternalDB();
-      }, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [authenticated]);
+    checkExternalDB();
+    const interval = setInterval(() => {
+      if (!document.hidden) checkExternalDB();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const statusIcon = (s: string) => {
     if (s === "online") return <CheckCircle className="w-5 h-5 text-green-500" />;
     if (s === "offline") return <XCircle className="w-5 h-5 text-red-500" />;
     return <Clock className="w-5 h-5 text-muted-foreground animate-spin" />;
   };
-
-  if (!authenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4" dir="rtl">
-        <Card className="w-full max-w-sm">
-          <CardHeader className="text-center">
-            <Shield className="w-12 h-12 mx-auto text-red-500 mb-2" />
-            <CardTitle>لوحة الطوارئ</CardTitle>
-            <p className="text-sm text-muted-foreground">أدخل رمز الطوارئ للدخول</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              type="password"
-              placeholder="رمز الطوارئ"
-              value={pin}
-              onChange={e => setPin(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleLogin()}
-              className="text-center text-lg"
-            />
-            <Button className="w-full" onClick={handleLogin}>
-              دخول
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8" dir="rtl">
@@ -254,7 +184,7 @@ const EmergencyAdminPage = () => {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          {lastCheck ? `آخر فحص: ${lastCheck.toLocaleTimeString("ar-SA-u-ca-gregory")} — يتم الفحص تلقائياً كل 30 ثانية` : "جارٍ الفحص..."}
+          {lastCheck ? `آخر فحص: ${lastCheck.toLocaleTimeString("ar-SA-u-ca-gregory")} — يتم الفحص تلقائياً كل دقيقة` : "جارٍ الفحص..."}
         </p>
       </div>
     </div>
