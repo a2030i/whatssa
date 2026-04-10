@@ -277,9 +277,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
     threshold: 60,
   });
 
-  // Can edit agent text messages within 15 minutes (not for email — emails can't be recalled)
+  // Evolution allows editing up to 60 min; Meta API allows 15 min
+  const isEvolutionConv = conversation.channelType === "evolution" || !conversation.channelType;
+  const editWindowMs = isEvolutionConv ? 60 * 60 * 1000 : 15 * 60 * 1000;
+  // Can edit agent text messages (not for email — emails can't be recalled)
   const canEdit = !isEmailConversation && msg.sender === "agent" && msg.type === "text" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
-    (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
+    (Date.now() - new Date(msg.createdAt).getTime()) < editWindowMs;
   const canDelete = !isEmailConversation && msg.sender === "agent" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
     (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
 
@@ -3410,7 +3413,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </Button>
               <Button size="sm" variant="outline" onClick={() => setEditingMsg(null)}>إلغاء</Button>
             </div>
-            <p className="text-[10px] text-muted-foreground">يمكن تعديل الرسالة خلال 15 دقيقة من الإرسال فقط</p>
+            <p className="text-[10px] text-muted-foreground">{isEvolutionChannel ? "يمكن تعديل الرسالة خلال ساعة من الإرسال" : "يمكن تعديل الرسالة خلال 15 دقيقة من الإرسال فقط"}</p>
           </div>
         </DialogContent>
       </Dialog>

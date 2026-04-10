@@ -1550,6 +1550,18 @@ serve(async (req) => {
         return json({ error: "البيانات ناقصة" }, 400);
       }
 
+      // Resolve instance from channel_id if provided
+      if (channel_id) {
+        const { data: editConf } = await adminClient
+          .from("whatsapp_config")
+          .select("evolution_instance_name")
+          .eq("id", channel_id)
+          .maybeSingle();
+        if (editConf?.evolution_instance_name) {
+          instanceName = editConf.evolution_instance_name;
+        }
+      }
+
       let remoteJid = `${sanitizedPhone}@s.whatsapp.net`;
 
       try {
@@ -1647,7 +1659,12 @@ serve(async (req) => {
         }, orgId, userId);
       }
 
-      return json({ success: editRes.ok, data: editData });
+      if (!editRes.ok) {
+        const errMsg = (editData as any)?.message || (editData as any)?.response?.message || "فشل تعديل الرسالة";
+        return json({ success: false, error: Array.isArray(errMsg) ? errMsg.join(", ") : String(errMsg) });
+      }
+
+      return json({ success: true, data: editData });
     }
 
     // ── DELETE MESSAGE ──
