@@ -580,14 +580,13 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
   const CopyField = ({ label, value }: { label: string; value: string }) => (
-    <div className="flex items-center justify-between">
-      <button onClick={() => copyToClipboard(value, label)} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
+    <div className="flex items-center justify-between py-1 px-2 rounded-lg hover:bg-secondary/40 transition-colors">
+      <button onClick={() => copyToClipboard(value, label)} className="flex items-center gap-1 text-[11px] text-muted-foreground/60 hover:text-primary transition-colors">
         <Copy className="w-3 h-3" />
-        <span>نسخ</span>
       </button>
       <div className="text-left">
-        <span className="text-[10px] text-muted-foreground block">{label}</span>
-        <span className="text-xs font-medium" dir="ltr">{value}</span>
+        <span className="text-[10px] text-muted-foreground/60 block">{label}</span>
+        <span className="text-xs font-medium text-foreground" dir="ltr">{value}</span>
       </div>
     </div>
   );
