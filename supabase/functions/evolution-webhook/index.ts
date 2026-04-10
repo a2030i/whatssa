@@ -1976,7 +1976,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err: any) {
+  } catch (err) {
     await logToSystem(supabase, "critical", "خطأ غير متوقع في Evolution Webhook", {
       error: (err as Error).message, stack: (err as Error).stack,
     });
