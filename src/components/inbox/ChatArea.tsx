@@ -270,12 +270,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   const isEmailConversation = conversation.channelType === "email" || conversation.conversationType === "email";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
-    onSwipe: () => canReply && !isEmailConversation && onReply(msg),
+    onSwipe: () => canReply && onReply(msg),
     direction: swipeDirection,
     threshold: 60,
   });
 
-  // Can edit agent text messages within 15 minutes (not for email)
+  // Can edit agent text messages within 15 minutes (not for email — emails can't be recalled)
   const canEdit = !isEmailConversation && msg.sender === "agent" && msg.type === "text" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
     (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
   const canDelete = !isEmailConversation && msg.sender === "agent" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
@@ -345,7 +345,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
     } catch { toast.error("فشل الترجمة"); }
   };
 
-  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (!isEmailConversation && msg.sender === "customer" && msg.type === "text") || (!isEmailConversation && msg.waMessageId));
+  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (msg.sender === "customer" && msg.type === "text") || msg.waMessageId);
 
   return (
     <div
