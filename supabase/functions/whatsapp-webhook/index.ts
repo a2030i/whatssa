@@ -490,18 +490,21 @@ serve(async (req) => {
     if (mode === "subscribe" && token) {
       // Check against env fallback first (for new app setup)
       const envVerifyToken = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN");
+      console.log("[webhook-verify] token received:", token, "env token exists:", !!envVerifyToken, "match:", envVerifyToken === token);
       if (envVerifyToken && token === envVerifyToken) {
         await logToSystem(supabase, "info", "تم التحقق من Webhook بنجاح (env)", { mode });
         return new Response(challenge, { status: 200 });
       }
 
       // Then check against stored channel tokens
-      const { data: config } = await supabase
+      const { data: config, error: configErr } = await supabase
         .from("whatsapp_config")
         .select("webhook_verify_token")
         .eq("webhook_verify_token", token)
         .limit(1)
         .maybeSingle();
+
+      console.log("[webhook-verify] DB lookup result:", !!config, "error:", configErr?.message);
 
       if (config) {
         await logToSystem(supabase, "info", "تم التحقق من Webhook بنجاح", { mode, token });
