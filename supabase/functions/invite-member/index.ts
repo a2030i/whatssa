@@ -108,17 +108,10 @@ Deno.serve(async (req) => {
     // otherwise we just use primary team_id
     // Additional teams already saved via team_ids array above
 
-    // Generate recovery link
-    const { data: linkData } = await adminClient.auth.admin.generateLink({
-      type: "recovery",
-      email,
-    });
-
     return new Response(JSON.stringify({
       success: true,
       user_id: userId,
       email,
-      recovery_link: linkData?.properties?.action_link || null,
       temp_password: tempPassword,
     }), {
       status: 200,

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase, cloudSupabase } from "@/lib/supabase";
+import { supabase, cloudSupabase, invokeCloud } from "@/lib/supabase";
 import { toast } from "sonner";
 import {
   RefreshCw, Database, AlertTriangle, CheckCircle, XCircle,
@@ -33,10 +33,6 @@ const AdminEmergency = () => {
   const [savingInstance, setSavingInstance] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
 
-  const EXTERNAL_URL = "https://ovbrrumnqfvtgmqsscat.supabase.co";
-  const EXTERNAL_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92YnJydW1ucWZ2dGdtcXNzY2F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzc4ODQsImV4cCI6MjA5MDY1Mzg4NH0.-ed8-nrAbfO1lMm9Rc5bjwsIzmonunVKkcwRY586SrQ";
-  const CLOUD_URL = import.meta.env.VITE_SUPABASE_URL;
-  const CLOUD_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   // Load emergency settings from system_settings
   useEffect(() => {
@@ -95,55 +91,36 @@ const AdminEmergency = () => {
     setAuthStatus("checking");
     const start = Date.now();
 
-    let dbOk = false;
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(`${EXTERNAL_URL}/rest/v1/`, {
-        signal: controller.signal,
-        headers: { apikey: EXTERNAL_KEY, Authorization: `Bearer ${EXTERNAL_KEY}` },
+      const { data, error } = await invokeCloud("db-health-check", {
+        body: { manual: true },
       });
-      clearTimeout(timeout);
-      dbOk = res.ok || res.status === 401 || res.status === 406;
-      setDbStatus(dbOk ? "online" : "offline");
+
+      const ms = Date.now() - start;
+      setLatency(ms);
+      setLastCheck(new Date());
+
+      if (error || !data) {
+        setDbStatus("offline");
+        setAuthStatus("offline");
+      } else {
+        setDbStatus(data.db_status === "online" ? "online" : "offline");
+        setAuthStatus(data.auth_status === "online" ? "online" : "offline");
+      }
+
+      const log: HealthLog = {
+        checked_at: new Date().toISOString(),
+        db_status: data?.db_status || "offline",
+        auth_status: data?.auth_status || "offline",
+        latency_ms: ms,
+      };
+      setHealthLogs(prev => [log, ...prev].slice(0, 50));
     } catch {
       setDbStatus("offline");
-    }
-
-    let authOk = false;
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(`${EXTERNAL_URL}/auth/v1/settings`, {
-        signal: controller.signal,
-        headers: { apikey: EXTERNAL_KEY },
-      });
-      clearTimeout(timeout);
-      authOk = res.ok;
-      setAuthStatus(authOk ? "online" : "offline");
-    } catch {
       setAuthStatus("offline");
+      setLatency(Date.now() - start);
+      setLastCheck(new Date());
     }
-
-    const ms = Date.now() - start;
-    setLatency(ms);
-    setLastCheck(new Date());
-
-    const log: HealthLog = {
-      checked_at: new Date().toISOString(),
-      db_status: dbOk ? "online" : "offline",
-      auth_status: authOk ? "online" : "offline",
-      latency_ms: ms,
-    };
-    setHealthLogs(prev => [log, ...prev].slice(0, 50));
-
-    try {
-      await fetch(`${CLOUD_URL}/functions/v1/db-health-check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${CLOUD_KEY}` },
-        body: JSON.stringify({ manual: true }),
-      });
-    } catch {}
 
     setIsChecking(false);
   };
@@ -165,18 +142,13 @@ const AdminEmergency = () => {
   const sendTestAlert = async () => {
     setIsTesting(true);
     try {
-      const res = await fetch(`${CLOUD_URL}/functions/v1/db-health-check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${CLOUD_KEY}` },
-        body: JSON.stringify({ test: true }),
-      });
-      const data = await res.json();
-      if (data.alert_sent) {
+      const { data, error } = await invokeCloud("db-health-check", { body: { test: true } });
+      if (data?.alert_sent) {
         toast.success("تم إرسال التنبيه التجريبي بنجاح ✅");
       } else {
-        toast.error(`فشل الإرسال: ${data.alert_reason || data.alert_error || "خطأ غير معروف"}`);
+        toast.error(`فشل الإرسال: ${data?.alert_reason || data?.alert_error || error?.message || "خطأ غير معروف"}`);
       }
-    } catch (e: any) {
+    } catch {
       toast.error("فشل الاتصال بالخادم");
     }
     setIsTesting(false);

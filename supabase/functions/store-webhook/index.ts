@@ -52,6 +52,10 @@ Deno.serve(async (req) => {
   const signatureValid = await verifySignature(req, bodyText, integration, platform);
   if (!signatureValid) {
     console.warn(`[store-webhook] Invalid signature for ${platform} integration: ${integrationId}`);
+    return new Response(JSON.stringify({ error: "Invalid signature" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   let body: any;

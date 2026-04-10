@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (e) {
-    await log(supabase, "critical", "Checkout failed", { error: (e as Error).message, stack: (e as Error).stack });
+    await log(supabase, "critical", "Checkout failed", { error: (e as Error).message });
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: corsHeaders });
   }
 });
