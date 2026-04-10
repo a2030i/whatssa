@@ -1287,113 +1287,6 @@ serve(async (req) => {
       const message_id = asString(payload.message_id);
       const emoji = asString(payload.emoji);
       const isGroup = typeof payload.is_group === "boolean" ? payload.is_group : reactPhone.includes("@g.us");
-      // Use from_me hint from frontend (msg.sender === "agent")
-      const fromMe = typeof payload.from_me === "boolean" ? payload.from_me : false;
-      let targetInstanceName = instance_name;
-
-      if (!targetInstanceName && channel_id) {
-        const { data: channelConfig } = await adminClient
-          .from("whatsapp_config")
-          .select("evolution_instance_name")
-          .eq("id", channel_id)
-          .eq("org_id", orgId)
-          .eq("channel_type", "evolution")
-          .maybeSingle();
-
-        targetInstanceName = channelConfig?.evolution_instance_name || undefined;
-      }
-
-      if (!reactPhone || !message_id || !emoji || !targetInstanceName) {
-        console.log("[send_reaction] Missing data:", { reactPhone: !!reactPhone, message_id: !!message_id, emoji: !!emoji, targetInstanceName: !!targetInstanceName });
-        return json({ error: "بيانات التفاعل ناقصة", details: { phone: !!reactPhone, message_id: !!message_id, emoji: !!emoji, instance: !!targetInstanceName } }, 400);
-      }
-
-      // Build remoteJid from phone
-      let remoteJid = "";
-      if (reactPhone.includes("@")) {
-        remoteJid = reactPhone;
-      } else if (isGroup) {
-        remoteJid = `${reactPhone.replace(/\D/g, "")}@g.us`;
-      } else {
-        remoteJid = `${reactPhone.replace(/\D/g, "")}@s.whatsapp.net`;
-      }
-
-      const reactionPayload = {
-        key: {
-          remoteJid,
-          id: message_id,
-          fromMe,
-        },
-        reaction: emoji,
-      };
-
-      console.log("[send_reaction] Sending to Evolution:", JSON.stringify(reactionPayload));
-
-      const reactRes = await fetch(`${EVOLUTION_URL}/message/sendReaction/${targetInstanceName}`, {
-        method: "POST",
-        headers: evoHeaders,
-        body: JSON.stringify(reactionPayload),
-      });
-
-      const reactData = await reactRes.json().catch(() => ({}));
-      console.log("[send_reaction] Evolution response:", reactRes.status, JSON.stringify(reactData).slice(0, 500));
-
-      if (!reactRes.ok) {
-        await logToSystem(adminClient, "error", "فشل إرسال التفاعل", {
-          http_status: reactRes.status,
-          instance: targetInstanceName,
-          remoteJid,
-          message_id,
-          fromMe,
-          error: JSON.stringify(reactData).slice(0, 300),
-        }, orgId, userId);
-        return json({ error: reactData?.message || "فشل إرسال التفاعل" }, 400);
-      }
-
-      await logToSystem(adminClient, "info", "تم إرسال التفاعل", {
-        instance: targetInstanceName,
-        remoteJid,
-        message_id,
-        emoji,
-        fromMe,
-      }, orgId, userId);
-
-      // Persist the reaction in the message metadata so it shows in the UI via realtime
-      try {
-        const { data: targetMsg } = await adminClient
-          .from("messages")
-          .select("id, metadata")
-          .eq("wa_message_id", message_id)
-          .maybeSingle();
-
-        if (targetMsg) {
-          const meta = (targetMsg.metadata as Record<string, any>) || {};
-          let reactions: Array<{ emoji: string; fromMe: boolean; timestamp?: string }> = meta.reactions || [];
-
-          // Add or update our (agent) reaction
-          const existingIdx = reactions.findIndex(r => r.fromMe === true);
-          if (existingIdx >= 0) {
-            reactions[existingIdx] = { emoji, fromMe: true, timestamp: new Date().toISOString() };
-          } else {
-            reactions.push({ emoji, fromMe: true, timestamp: new Date().toISOString() });
-          }
-
-          await adminClient.from("messages").update({
-            metadata: { ...meta, reactions },
-          }).eq("id", targetMsg.id);
-        }
-      } catch {
-        // Non-critical — reaction was already sent to WhatsApp
-      }
-
-      return json({ success: true, data: reactData });
-    }
-    // ── SEND REACTION ──
-    if (action === "send_reaction") {
-      const reactPhone = asString(payload.phone);
-      const message_id = asString(payload.message_id);
-      const emoji = asString(payload.emoji);
-      const isGroup = typeof payload.is_group === "boolean" ? payload.is_group : reactPhone.includes("@g.us");
       const fromMe = typeof payload.from_me === "boolean" ? payload.from_me : false;
       let targetInstanceName = instance_name;
 
@@ -1410,7 +1303,6 @@ serve(async (req) => {
 
       if (!reactPhone || !message_id || !emoji || !targetInstanceName) {
         console.log("[send_reaction] Missing data:", { reactPhone: !!reactPhone, message_id: !!message_id, emoji: !!emoji, targetInstanceName: !!targetInstanceName });
-        // Always return 200 with error in body so client SDK doesn't swallow it
         return json({ error: "بيانات التفاعل ناقصة", success: false });
       }
 
@@ -1459,12 +1351,8 @@ serve(async (req) => {
         console.log("[send_reaction] Using fallback key:", JSON.stringify(resolvedKey));
       }
 
-      const reactionPayload = {
-        key: resolvedKey,
-        reaction: emoji,
-      };
-
-      console.log("[send_reaction] Final payload to Evolution:", JSON.stringify(reactionPayload));
+      const reactionPayload = { key: resolvedKey, reaction: emoji };
+      console.log("[send_reaction] Final payload:", JSON.stringify(reactionPayload));
 
       let reactRes: Response;
       let reactData: any = {};
@@ -1490,14 +1378,12 @@ serve(async (req) => {
           http_status: reactRes!.status, instance: targetInstanceName,
           resolvedKey, error: errDetail,
         }, orgId, userId);
-        // Return 200 with error in body (per stack-overflow pattern)
-        return json({ error: reactData?.message || "فشل إرسال التفاعل عبر الواتساب", success: false, details: errDetail });
+        return json({ error: reactData?.message || "فشل إرسال التفاعل", success: false, details: errDetail });
       }
 
-      // ── Verify reaction was actually accepted ──
-      // Some Evolution versions return 200 but with an error in the response body
+      // Verify reaction was actually accepted (some Evolution versions return 200 with error in body)
       const responseStr = JSON.stringify(reactData);
-      if (reactData?.error || reactData?.status === "error" || responseStr.includes('"error"')) {
+      if (reactData?.error || reactData?.status === "error") {
         await logToSystem(adminClient, "error", "Evolution أرجع خطأ ضمن استجابة 200", {
           instance: targetInstanceName, resolvedKey, response: responseStr.slice(0, 300),
         }, orgId, userId);
