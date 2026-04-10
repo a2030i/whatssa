@@ -23,8 +23,9 @@ interface AiConfig {
   capabilities: Record<string, boolean>;
 }
 
+// deno-lint-ignore no-explicit-any
 async function getOrgAiConfig(
-  serviceClient: ReturnType<typeof createClient>,
+  serviceClient: any,
   orgId: string,
   requiredCapability: string
 ): Promise<AiConfig | null> {
@@ -127,8 +128,9 @@ async function callAi(config: AiConfig, systemPrompt: string, userMessage: strin
   }
 }
 
+// deno-lint-ignore no-explicit-any
 async function logLovableAiUsage(
-  serviceClient: ReturnType<typeof createClient>,
+  serviceClient: any,
   orgId: string,
   action: string,
   model: string,
