@@ -737,6 +737,27 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
     return () => window.removeEventListener("optimistic-reaction", handler);
   }, []);
 
+  // Listen for reaction rollback (when API call fails)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { messageId } = (e as CustomEvent).detail;
+      setAllMessages((prev) => {
+        const updated: Record<string, Message[]> = {};
+        for (const [convId, msgs] of Object.entries(prev)) {
+          updated[convId] = msgs.map((m) => {
+            if (m.id !== messageId) return m;
+            // Remove the agent's optimistic reaction (fromMe === true)
+            const reactions = (m.reactions || []).filter((r) => r.fromMe !== true);
+            return { ...m, reactions: reactions.length > 0 ? reactions : undefined };
+          });
+        }
+        return updated;
+      });
+    };
+    window.addEventListener("optimistic-reaction-rollback", handler);
+    return () => window.removeEventListener("optimistic-reaction-rollback", handler);
+  }, []);
+
   // Listen for optimistic messages (voice, etc.) from ChatArea
   useEffect(() => {
     const addHandler = (e: Event) => {
