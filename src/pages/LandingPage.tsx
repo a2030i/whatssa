@@ -75,7 +75,9 @@ const LandingPage = () => {
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-black leading-[1.1] tracking-tight">
               حوّل واتساب إلى
               <br />
-              <span className="bg-gradient-to-l from-primary to-primary/60 bg-clip-text text-transparent">محرك نمو لعملك</span>
+              <span className="bg-gradient-to-l from-primary to-primary/60 bg-clip-text text-transparent">
+                محرك نمو لعملك 🚀
+              </span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               صندوق وارد موحد، ذكاء اصطناعي يتعلم من مؤسستك، أتمتة ذكية، وتحليلات متقدمة — كل ما تحتاجه في منصة واحدة
