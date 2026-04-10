@@ -172,6 +172,6 @@ Deno.serve(async (req) => {
     return json({ success: true, message: "Tasks table created in external DB" });
   } catch (err) {
     console.error("Init external tasks error:", err);
-    return json({ error: err.message }, 500);
+    return json({ error: (err as Error).message }, 500);
   }
 });

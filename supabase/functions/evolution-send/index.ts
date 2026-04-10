@@ -832,9 +832,9 @@ serve(async (req) => {
     return json({ success: true, message_id: waMessageId, conversation_id: conversation?.id || null });
   } catch (err: any) {
     logToSystem(adminClient, "critical", "خطأ غير متوقع في إرسال رسالة Evolution", {
-      error: err.message,
+      error: (err as Error).message,
     });
     console.error("Evolution send error:", err);
-    return json({ error: err.message }, 500);
+    return json({ error: (err as Error).message }, 500);
   }
 });

@@ -769,7 +769,7 @@ async function fetchEmailsForConfig(
       try {
         messageIds = await client.searchUnseen();
       } catch (e: any) {
-        console.log(`[email-fetch] Search failed, using last 20:`, e.message);
+        console.log(`[email-fetch] Search failed, using last 20:`, (e as Error).message);
         const start = Math.max(1, totalMessages - 19);
         messageIds = Array.from({ length: totalMessages - start + 1 }, (_, i) => start + i);
       }
@@ -1034,8 +1034,8 @@ async function fetchEmailsForConfig(
     await client.disconnect();
     console.log(`[email-fetch] Done for ${config.email_address}: fetched=${fetched} errors=${errors.length}`);
   } catch (e: any) {
-    errors.push(`IMAP error for ${config.email_address}: ${e.message}`);
-    console.error(`[email-fetch] IMAP error:`, e.message);
+    errors.push(`IMAP error for ${config.email_address}: ${(e as Error).message}`);
+    console.error(`[email-fetch] IMAP error:`, (e as Error).message);
     try { await client.disconnect(); } catch (_) {}
   }
 
@@ -1105,8 +1105,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    console.error("[email-fetch] ERROR:", e.message);
-    return new Response(JSON.stringify({ error: e.message }), {
+    console.error("[email-fetch] ERROR:", (e as Error).message);
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

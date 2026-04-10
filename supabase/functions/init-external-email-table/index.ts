@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } catch (e: any) {
-        console.warn("[init-email-table] Direct DB failed, trying HTTP:", e.message);
+        console.warn("[init-email-table] Direct DB failed, trying HTTP:", (e as Error).message);
       }
     }
 
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
         }
         lastError = `${endpoint}: ${resp.status} - ${await resp.text()}`;
       } catch (e: any) {
-        lastError = `${endpoint}: ${e.message}`;
+        lastError = `${endpoint}: ${(e as Error).message}`;
       }
     }
 
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

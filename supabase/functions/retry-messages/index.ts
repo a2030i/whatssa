@@ -262,7 +262,7 @@ Deno.serve(async (req) => {
           .update({
             status: "pending",
             retry_count: msg.retry_count + 1,
-            last_error: e.message,
+            last_error: (e as Error).message,
             next_retry_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
           })
           .eq("id", msg.id);
@@ -286,7 +286,7 @@ Deno.serve(async (req) => {
     );
   } catch (e) {
     console.error("Retry error:", e);
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
       headers: corsHeaders,
     });

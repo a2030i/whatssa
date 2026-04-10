@@ -148,7 +148,7 @@ serve(async (req) => {
 
         processed++;
       } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
+        const errMsg = err instanceof Error ? (err as Error).message : String(err);
         await supabase.from("scheduled_messages").update({
           status: "failed",
           error_message: errMsg,

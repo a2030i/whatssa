@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
     console.log(`[admin-delete-org] Successfully deleted org ${org_id}`);
     return jsonRes({ success: true });
   } catch (e: any) {
-    console.error(`[admin-delete-org] Error: ${e.message}`);
-    return jsonRes({ error: e.message }, 500);
+    console.error(`[admin-delete-org] Error: ${(e as Error).message}`);
+    return jsonRes({ error: (e as Error).message }, 500);
   }
 });

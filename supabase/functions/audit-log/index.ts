@@ -42,8 +42,9 @@ interface AuditEntry {
   metadata?: Record<string, unknown>;
 }
 
+// deno-lint-ignore no-explicit-any
 export async function auditLog(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   entry: AuditEntry
 ) {
   try {
@@ -107,6 +108,6 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: corsHeaders });
   }
 });

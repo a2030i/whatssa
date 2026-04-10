@@ -173,8 +173,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    console.error("[email-config-manage] ERROR:", e.message, e.details || "", e.hint || "");
-    return new Response(JSON.stringify({ error: e.message, details: e.details, hint: e.hint }), {
+    console.error("[email-config-manage] ERROR:", (e as Error).message, e.details || "", e.hint || "");
+    return new Response(JSON.stringify({ error: (e as Error).message, details: e.details, hint: e.hint }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

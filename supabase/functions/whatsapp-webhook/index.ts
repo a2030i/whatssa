@@ -791,7 +791,7 @@ serve(async (req) => {
                     body: JSON.stringify({ conversation_id: conversation.id, org_id: orgId, message_text: messageContent, exclude_supervisors: channelExcludeSupervisors }),
                   });
                 } catch (error) {
-                  const errMsg = error instanceof Error ? error.message : String(error);
+                  const errMsg = error instanceof Error ? (error as Error).message : String(error);
                   await logToSystem(supabase, "error", "فشل التعيين التلقائي للمحادثة", {
                     conversation_id: conversation.id,
                     error: errMsg,
@@ -1469,7 +1469,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
+      const errMsg = error instanceof Error ? (error as Error).message : String(error);
       const errStack = error instanceof Error ? error.stack : "";
       await logToSystem(supabase, "critical", "خطأ غير متوقع في Webhook واتساب", { error: errMsg, stack: errStack, trace_step: "CRASH" });
       console.error("Webhook error:", error);

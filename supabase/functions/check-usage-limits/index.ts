@@ -103,6 +103,6 @@ Deno.serve(async (req) => {
 
   } catch (e) {
     console.error("Check limits error:", e);
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: corsHeaders });
   }
 });

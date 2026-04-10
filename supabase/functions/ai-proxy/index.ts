@@ -177,7 +177,7 @@ async function testConnection(provider: string, apiKey: string, model: string) {
 
     return { error: "مزود غير مدعوم" };
   } catch (err) {
-    return { error: `فشل الاتصال: ${err.message}` };
+    return { error: `فشل الاتصال: ${(err as Error).message}` };
   }
 }
 
@@ -247,6 +247,6 @@ async function chatCompletion(
 
     return { error: "مزود غير مدعوم" };
   } catch (err) {
-    return { error: `خطأ: ${err.message}` };
+    return { error: `خطأ: ${(err as Error).message}` };
   }
 }

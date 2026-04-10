@@ -57,7 +57,7 @@ async function insertEmailDetails(admin: any, details: Record<string, any>) {
   try {
     await admin.from("email_message_details").insert(details);
   } catch (e: any) {
-    console.warn("[email-send] email_message_details insert skipped:", e.message);
+    console.warn("[email-send] email_message_details insert skipped:", (e as Error).message);
   }
 }
 
@@ -409,8 +409,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    console.error("[email-send] ERROR:", e.message);
-    return new Response(JSON.stringify({ error: e.message }), {
+    console.error("[email-send] ERROR:", (e as Error).message);
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -533,7 +533,7 @@ serve(async (req) => {
           }
         } catch (e) {
           await logToSystem(supabase, "error", "فشل محاولة إعادة الاتصال التلقائي", {
-            error: e instanceof Error ? e.message : String(e), instance: instanceName,
+            error: e instanceof Error ? (e as Error).message : String(e), instance: instanceName,
           }, orgId);
         }
       }
@@ -1137,7 +1137,7 @@ serve(async (req) => {
               }
             } catch (e) {
               await logToSystem(supabase, "warn", "فشل جلب معلومات المجموعة من Evolution", {
-                error: e instanceof Error ? e.message : String(e), remoteJid,
+                error: e instanceof Error ? (e as Error).message : String(e), remoteJid,
               }, orgId);
               convName = `قروب ${phone}`;
             }
@@ -1264,7 +1264,7 @@ serve(async (req) => {
                 }
               } catch (e) {
                 await logToSystem(supabase, "warn", "فشل تسجيل أعضاء القروب تلقائياً", {
-                  error: e instanceof Error ? e.message : String(e), group_jid: remoteJid,
+                  error: e instanceof Error ? (e as Error).message : String(e), group_jid: remoteJid,
                 }, orgId);
               }
             }
@@ -1968,10 +1968,10 @@ serve(async (req) => {
     });
   } catch (err: any) {
     await logToSystem(supabase, "critical", "خطأ غير متوقع في Evolution Webhook", {
-      error: err.message, stack: err.stack,
+      error: (err as Error).message, stack: (err as Error).stack,
     });
     console.error("Evolution webhook error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -2058,7 +2058,7 @@ async function uploadMediaFromEvolution(params: {
     return `storage:chat-media/${fileName}`;
   } catch (error) {
     await logToSystem(supabase, "error", "خطأ غير متوقع في رفع الوسائط (Evolution)", {
-      error: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? (error as Error).message : String(error),
     }, orgId);
     return null;
   }

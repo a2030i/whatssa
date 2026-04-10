@@ -170,6 +170,6 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("upload-chat-media fatal:", error);
-    return json({ error: error instanceof Error ? error.message : "حدث خطأ غير متوقع" }, 500);
+    return json({ error: error instanceof Error ? (error as Error).message : "حدث خطأ غير متوقع" }, 500);
   }
 });
