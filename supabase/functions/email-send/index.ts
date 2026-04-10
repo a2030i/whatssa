@@ -28,7 +28,7 @@ async function getCallerContext(authHeader: string | null) {
   const [{ data: profile }, { data: rolesData }] = await Promise.all([
     admin
       .from("profiles")
-      .select("id, org_id, full_name, team_id, team_ids, is_supervisor")
+      .select("id, org_id, full_name, team_id, team_ids, is_supervisor, email_signature")
       .eq("id", userId)
       .maybeSingle(),
     admin
@@ -238,8 +238,9 @@ Deno.serve(async (req) => {
       ? attachments.map((a: any) => a.filename)
       : [];
 
-    // Append org signature if configured
-    const signature = config.email_signature;
+    // Append signature: per-employee signature takes priority over org-level
+    const employeeSignature = profile.email_signature;
+    const signature = employeeSignature || config.email_signature;
     // Convert plain-text newlines to <br> so email clients render line breaks
     const isPlainText = !emailBody.includes("<") || !emailBody.includes(">");
     const bodyHtml = isPlainText ? emailBody.replace(/\n/g, "<br>") : emailBody;
@@ -249,6 +250,12 @@ Deno.serve(async (req) => {
       const sigHtml = `<br><br><div style="border-top:1px solid #ccc;padding-top:8px;margin-top:16px;color:#666;font-size:13px;white-space:pre-line">${signature.replace(/\n/g, "<br>")}</div>`;
       finalHtml = bodyHtml + sigHtml;
     }
+
+    // Generate tracking token and add tracking pixel
+    const trackingToken = crypto.randomUUID();
+    const cloudUrl = Deno.env.get("SUPABASE_URL") || "";
+    const trackingPixelUrl = `${cloudUrl}/functions/v1/email-tracking-pixel?t=${trackingToken}`;
+    finalHtml += `<img src="${trackingPixelUrl}" width="1" height="1" style="display:none" alt="" />`;
 
     // Encode non-ASCII characters as HTML numeric entities so the MIME body stays ASCII-safe
     // This prevents denomailer's quoted-printable encoding from corrupting multi-byte UTF-8 chars
