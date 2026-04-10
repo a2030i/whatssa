@@ -302,8 +302,10 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         detail: { messageId: msg.id, waMessageId: msg.waMessageId, emoji },
       }));
 
+      console.log("[Reaction] Sending:", { channelType: conversation.channelType, phone: conversation.customerPhone, channelId: conversation.channelId, waMessageId: msg.waMessageId, emoji });
+
       if (conversation.channelType === "evolution") {
-        const { data, error } = await invokeCloud("evolution-manage", {
+        const result = await invokeCloud("evolution-manage", {
           body: {
             action: "send_reaction",
             phone: conversation.customerPhone,
@@ -313,11 +315,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             is_group: conversation.conversationType === "group",
           },
         });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
+        console.log("[Reaction] Evolution result:", result);
+        if (result.error) throw result.error;
+        if (result.data?.error) throw new Error(result.data.error);
       } else {
         // Meta API reaction
-        const { data, error } = await invokeCloud("whatsapp-send", {
+        const result = await invokeCloud("whatsapp-send", {
           body: {
             to: conversation.customerPhone,
             channel_id: conversation.channelId,
@@ -326,12 +329,14 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             reaction_emoji: emoji,
           },
         });
-        if (error || data?.error) throw new Error(data?.error || "Failed");
+        console.log("[Reaction] Meta result:", result);
+        if (result.error || result.data?.error) throw new Error(result.data?.error || "Failed");
       }
       setReactionPickerOpen(false);
       toast.success("تم إرسال التفاعل");
-    } catch {
-      toast.error("فشل إرسال التفاعل");
+    } catch (err: any) {
+      console.error("[Reaction] Error:", err);
+      toast.error(err?.message || "فشل إرسال التفاعل");
     }
   };
 
