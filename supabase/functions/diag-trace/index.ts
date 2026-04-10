@@ -13,6 +13,22 @@ Deno.serve(async (req) => {
     Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  const authHeader = req.headers.get("authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  const { data: { user: caller }, error: userError } = await db.auth.getUser(authHeader.replace("Bearer ", ""));
+  if (userError || !caller) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  const { data: roleData } = await db.from("user_roles").select("role").eq("user_id", caller.id).eq("role", "super_admin").maybeSingle();
+  if (!roleData) {
+    return new Response(JSON.stringify({ error: "Forbidden — super_admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  let reqPhone = "";
+  try { const b = await req.json(); if (b?.phone) reqPhone = String(b.phone); } catch (_) {}
+
   try {
     const since30min = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 
@@ -25,11 +41,11 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: true })
       .limit(200);
 
-    // Get ALL conversations for the test phone
+    // Get ALL conversations for the target phone
     const { data: allConvs } = await db
       .from("conversations")
       .select("id, status, customer_phone, channel_id, conversation_type, created_at, closed_at, last_message_at, unread_count, org_id")
-      .eq("customer_phone", "966552266038")
+      .eq("customer_phone", reqPhone)
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -37,7 +53,7 @@ Deno.serve(async (req) => {
     const { data: allConvs2 } = await db
       .from("conversations")
       .select("id, status, customer_phone, channel_id, conversation_type, created_at")
-      .like("customer_phone", "%552266038%")
+      .like("customer_phone", `%${reqPhone.slice(-9)}%`)
       .order("created_at", { ascending: false })
       .limit(20);
 

@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     await sql.end();
-    return new Response(JSON.stringify({ error: (e as Error).message, stack: (e as Error).stack }), {
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

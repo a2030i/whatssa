@@ -13,9 +13,25 @@ Deno.serve(async (req) => {
     Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  const authHeader = req.headers.get("authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  const { data: { user: caller }, error: userError } = await db.auth.getUser(authHeader.replace("Bearer ", ""));
+  if (userError || !caller) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  const { data: roleData } = await db.from("user_roles").select("role").eq("user_id", caller.id).eq("role", "super_admin").maybeSingle();
+  if (!roleData) {
+    return new Response(JSON.stringify({ error: "Forbidden — super_admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  let reqBody: any = {};
+  try { reqBody = await req.json(); } catch (_) {}
+
   try {
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const phone = "966552266038"; // Phone with highest gap (25 webhooks, 1 saved)
+    const phone = reqBody?.phone ? String(reqBody.phone) : "";
 
     // 1. Get ALL system_logs for this phone in 24h
     const { data: allLogs } = await db
@@ -141,7 +157,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message, stack: (e as Error).stack }), {
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

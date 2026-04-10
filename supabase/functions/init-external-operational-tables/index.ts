@@ -283,6 +283,6 @@ Deno.serve(async (req) => {
     return json({ success: true, tables: results });
   } catch (err) {
     console.error("Init external operational tables error:", err);
-    return json({ error: (err as Error).message, stack: (err as Error).stack?.split("\n").slice(0, 3) }, 500);
+    return json({ error: (err as Error).message }, 500);
   }
 });

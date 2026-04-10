@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
       adminClient.from("conversations").select("*").eq("org_id", orgId).limit(1000),
       adminClient.from("customers").select("*").eq("org_id", orgId).limit(1000),
       adminClient.from("messages").select("id, conversation_id, sender, body, message_type, status, created_at")
+        .in("conversation_id", (await adminClient.from("conversations").select("id").eq("org_id", orgId)).data?.map((c: any) => c.id) || [])
         .limit(1000),
       adminClient.from("campaigns").select("*").eq("org_id", orgId),
       adminClient.from("automation_rules").select("*").eq("org_id", orgId),
