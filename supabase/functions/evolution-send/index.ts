@@ -532,7 +532,7 @@ serve(async (req) => {
             type: "safety",
             reference_type: "channel",
             reference_id: config.id,
-          }).then(() => {}).catch(() => {});
+           }).then(() => {}).catch((_e: any) => {});
         }
 
         const resetAt = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
@@ -746,7 +746,7 @@ serve(async (req) => {
       org_id: orgId,
       recipient_phone: to.replace(/\D/g, "").replace(/@.*/, ""),
       message_type: sentMessageType,
-    }).then(() => {}).catch(() => {});
+    }).then(() => {}).catch((_e: any) => {});
 
     logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
       wa_message_id: waMessageId, type: sentMessageType,
