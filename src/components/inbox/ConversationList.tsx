@@ -462,19 +462,19 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
           <Input
-            placeholder="بحث..."
+            placeholder="بحث في المحادثات..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-10 bg-background border border-border/50 text-sm h-10 rounded-xl focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/40"
+            className="pr-9 bg-secondary/50 border-0 text-sm h-9 rounded-full focus:bg-background focus:border focus:border-primary/30 focus:ring-0 transition-all placeholder:text-muted-foreground/40"
           />
         </div>
       </div>
 
-      {/* Quick Filters - Grid */}
-      <div className="shrink-0 px-4 pb-3">
-        <div className="grid grid-cols-3 gap-1.5">
+      {/* Quick Filters - Horizontal scroll pills */}
+      <div className="shrink-0 px-3 pb-2">
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-1">
           {quickFilters.map((qf) => {
             const isActive = activeQuickFilter === qf.id && !activeCustomInbox;
             return (
@@ -482,17 +482,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                 key={qf.id}
                 onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
                 className={cn(
-                  "flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-[11px] font-semibold transition-all border",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all whitespace-nowrap",
                   isActive
-                    ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_hsl(var(--primary)/0.25)]"
-                    : "bg-card text-muted-foreground border-border/40 hover:border-primary/40 hover:text-foreground hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-secondary/70 text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
-                <qf.icon className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{qf.label}</span>
+                <qf.icon className="w-3 h-3 shrink-0" />
+                <span>{qf.label}</span>
                 {(qf.count ?? 0) > 0 && (
                   <span className={cn(
-                    "text-[9px] min-w-[16px] h-[16px] rounded-full flex items-center justify-center font-bold px-0.5 shrink-0",
+                    "text-[9px] min-w-[16px] h-[16px] rounded-full flex items-center justify-center font-bold px-1 shrink-0",
                     isActive
                       ? "bg-primary-foreground/20 text-primary-foreground"
                       : "bg-primary/10 text-primary"
@@ -559,7 +559,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       )}
 
       {/* Conversation List */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 pt-1 pb-2 border-t border-primary/15">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scrollbar-thin px-2 pt-1 pb-2">
         {activeQuickFilter === "groups" && filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center mb-3">
