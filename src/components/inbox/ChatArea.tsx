@@ -1059,6 +1059,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [emailToInput, setEmailToInput] = useState("");
   const [emailCcInput, setEmailCcInput] = useState("");
   const [showEmailFields, setShowEmailFields] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
