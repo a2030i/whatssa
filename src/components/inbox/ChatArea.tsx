@@ -2199,7 +2199,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <div className={cn("w-9 h-9 md:w-10 md:h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
-              {conversation.lastSeen === "متصل الآن" && (
+              {(conversation.lastSeen === "متصل الآن" || customerLastSeen === "متصل الآن") && (
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-card" />
               )}
             </div>
