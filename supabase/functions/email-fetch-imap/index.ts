@@ -651,10 +651,7 @@ function extractAndDecodeBody(rawBody: string, headers: Record<string, string>):
       body = decodeBase64Body(body, charset);
     } else if (cte === "quoted-printable") {
       body = decodeQuotedPrintable(body);
-      try {
-        const bytes = new Uint8Array([...body].map(c => c.charCodeAt(0)));
-        body = new TextDecoder(charset).decode(bytes);
-      } catch {}
+      // decodeQuotedPrintable already handles UTF-8 decoding internally
     }
 
     // If HTML, convert to text
