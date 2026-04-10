@@ -2120,17 +2120,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <div className="flex items-center gap-1">
                 <p className="font-semibold text-[14px] truncate max-w-[140px] md:max-w-[250px]">{conversation.customerName}</p>
                 {isMetaChannel && (
-                  <span className="inline-flex items-center text-[7px] px-1 py-px rounded bg-emerald-500/10 text-emerald-600 font-bold shrink-0">
+                  <span className="inline-flex items-center text-[7px] px-1 py-px rounded-full bg-primary/10 text-primary font-bold shrink-0">
                     <ShieldCheck className="w-2 h-2 ml-0.5" />رسمي
                   </span>
                 )}
                 {conversation.sentiment === "negative" && (
-                  <span className="inline-flex items-center text-[7px] px-1.5 py-px rounded bg-destructive/10 text-destructive font-bold shrink-0 gap-0.5">
+                  <span className="inline-flex items-center text-[7px] px-1.5 py-px rounded-full bg-destructive/10 text-destructive font-bold shrink-0 gap-0.5">
                     😠 غاضب
                   </span>
                 )}
                 {conversation.sentiment === "positive" && (
-                  <span className="inline-flex items-center text-[7px] px-1.5 py-px rounded bg-emerald-500/10 text-emerald-600 font-bold shrink-0 gap-0.5">
+                  <span className="inline-flex items-center text-[7px] px-1.5 py-px rounded-full bg-success/10 text-success font-bold shrink-0 gap-0.5">
                     😊 راضٍ
                   </span>
                 )}
@@ -2289,7 +2289,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       </div>
 
       {/* Mobile Quick Action Toolbar */}
-      <div className="flex items-center overflow-x-auto scrollbar-none border-b border-border/20 bg-card/80 shrink-0">
+      <div className="flex items-center overflow-x-auto scrollbar-none border-b border-border/20 bg-card/60 backdrop-blur-sm shrink-0">
         {conversation.status !== "closed" ? (
           <button
             onClick={() => setShowClosureReason(true)}
