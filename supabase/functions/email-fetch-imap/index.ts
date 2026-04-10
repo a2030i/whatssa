@@ -588,46 +588,55 @@ async function findOrCreateConversation(
 
 /* ─── Body extraction from raw IMAP text ─── */
 
-function extractAndDecodeBody(rawBody: string, headers: Record<string, string>): string {
+interface ExtractedAttachment {
+  filename: string;
+  contentType: string;
+  size?: number;
+}
+
+function extractAndDecodeBody(rawBody: string, headers: Record<string, string>): { text: string; attachments: ExtractedAttachment[] } {
   const contentType = headers["content-type"] || "";
   const cte = (headers["content-transfer-encoding"] || "").toLowerCase().trim();
   const charsetMatch = contentType.match(/charset=["']?([^;"'\s]+)/i);
   const charset = charsetMatch ? charsetMatch[1] : "utf-8";
 
   let body = rawBody;
+  let attachments: ExtractedAttachment[] = [];
 
   // Handle multipart
   const boundaryMatch = contentType.match(/boundary=["']?([^;"'\s]+)/i);
   if (boundaryMatch) {
     const boundary = boundaryMatch[1];
-    body = extractFromMultipart(rawBody, boundary);
-  }
+    const result = extractFromMultipart(rawBody, boundary);
+    body = result.text;
+    attachments = result.attachments;
+  } else {
+    // Decode transfer encoding
+    if (cte === "base64") {
+      body = decodeBase64Body(body, charset);
+    } else if (cte === "quoted-printable") {
+      body = decodeQuotedPrintable(body);
+      try {
+        const bytes = new Uint8Array([...body].map(c => c.charCodeAt(0)));
+        body = new TextDecoder(charset).decode(bytes);
+      } catch {}
+    }
 
-  // Decode transfer encoding
-  if (cte === "base64") {
-    body = decodeBase64Body(body, charset);
-  } else if (cte === "quoted-printable") {
-    body = decodeQuotedPrintable(body);
-    // Always re-decode bytes through TextDecoder for proper multi-byte UTF-8 handling
-    try {
-      const bytes = new Uint8Array([...body].map(c => c.charCodeAt(0)));
-      body = new TextDecoder(charset).decode(bytes);
-    } catch {}
-  }
-
-  // If HTML, convert to text
-  if (contentType.includes("text/html") || body.includes("<html") || body.includes("<body") || body.includes("<div")) {
-    body = htmlToText(body);
+    // If HTML, convert to text
+    if (contentType.includes("text/html") || body.includes("<html") || body.includes("<body") || body.includes("<div")) {
+      body = htmlToText(body);
+    }
   }
 
   body = decodeMimeWords(body);
-  return body;
+  return { text: body, attachments };
 }
 
-function extractFromMultipart(raw: string, boundary: string): string {
+function extractFromMultipart(raw: string, boundary: string): { text: string; attachments: ExtractedAttachment[] } {
   const parts = raw.split(`--${boundary}`);
   let textPlain = "";
   let textHtml = "";
+  const attachments: ExtractedAttachment[] = [];
 
   for (const part of parts) {
     if (part.trim() === "--" || part.trim() === "") continue;
@@ -637,38 +646,59 @@ function extractFromMultipart(raw: string, boundary: string): string {
     const splitIdx = headerEnd !== -1 ? headerEnd : altEnd;
     if (splitIdx === -1) continue;
 
-    const partHeaders = part.substring(0, splitIdx).toLowerCase();
+    const partHeaders = part.substring(0, splitIdx);
+    const partHeadersLower = partHeaders.toLowerCase();
     const partBody = part.substring(splitIdx + (headerEnd !== -1 ? 4 : 2));
 
     // Check for nested multipart
-    const nestedBoundary = partHeaders.match(/boundary=["']?([^;"'\s]+)/i);
+    const nestedBoundary = partHeadersLower.match(/boundary=["']?([^;"'\s]+)/i);
     if (nestedBoundary) {
       const nested = extractFromMultipart(partBody, nestedBoundary[1]);
-      if (nested) return nested;
+      if (nested.text) textPlain = textPlain || nested.text;
+      attachments.push(...nested.attachments);
+      continue;
     }
 
+    // Check if this part is an attachment
+    const dispositionMatch = partHeaders.match(/Content-Disposition:\s*(attachment|inline)/i);
+    const filenameMatch = partHeaders.match(/filename[*]?=["']?(?:UTF-8''|utf-8'')?([^"';\r\n]+)/i);
+    const contentTypeMatch = partHeaders.match(/Content-Type:\s*([^;\r\n]+)/i);
+    const partCt = contentTypeMatch ? contentTypeMatch[1].trim().toLowerCase() : "";
+
+    if (filenameMatch || (dispositionMatch && dispositionMatch[1].toLowerCase() === "attachment")) {
+      const filename = filenameMatch ? decodeURIComponent(filenameMatch[1].trim()) : "attachment";
+      attachments.push({
+        filename: decodeMimeWords(filename),
+        contentType: partCt || "application/octet-stream",
+        size: partBody.trim().length, // approximate
+      });
+      continue;
+    }
+
+    // Skip image parts that are inline (signatures, etc.)
+    if (partCt.startsWith("image/") && !filenameMatch) continue;
+
     let decoded = partBody;
-    if (partHeaders.includes("base64")) {
-      const charsetM = partHeaders.match(/charset=["']?([^;"'\s]+)/i);
+    if (partHeadersLower.includes("base64")) {
+      const charsetM = partHeadersLower.match(/charset=["']?([^;"'\s]+)/i);
       decoded = decodeBase64Body(partBody, charsetM ? charsetM[1] : "utf-8");
-    } else if (partHeaders.includes("quoted-printable")) {
+    } else if (partHeadersLower.includes("quoted-printable")) {
       decoded = decodeQuotedPrintable(partBody);
-      // Always re-decode bytes through TextDecoder for proper multi-byte handling
-      const charsetM = partHeaders.match(/charset=["']?([^;"'\s]+)/i);
+      const charsetM = partHeadersLower.match(/charset=["']?([^;"'\s]+)/i);
       try {
         const bytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
         decoded = new TextDecoder(charsetM ? charsetM[1] : "utf-8").decode(bytes);
       } catch {}
     }
 
-    if (partHeaders.includes("text/plain")) {
+    if (partCt.includes("text/plain") || partHeadersLower.includes("text/plain")) {
       textPlain = decoded;
-    } else if (partHeaders.includes("text/html")) {
+    } else if (partCt.includes("text/html") || partHeadersLower.includes("text/html")) {
       textHtml = htmlToText(decoded);
     }
   }
 
-  return textPlain || textHtml;
+  return { text: textPlain || textHtml, attachments };
 }
 
 /* ─── Fetch emails for a single config ─── */
@@ -723,7 +753,7 @@ async function fetchEmailsForConfig(
       return { fetched: 0, errors };
     }
 
-    const toFetch = messageIds.slice(-30);
+    const toFetch = messageIds.slice(-100);
     console.log(`[email-fetch] Fetching ${toFetch.length} messages`);
 
     const seqSet = toFetch.join(",");
@@ -769,15 +799,24 @@ async function fetchEmailsForConfig(
         }
 
         // Extract and decode body
-        let bodyText = extractAndDecodeBody(msg.bodyText || "", headers);
+        const extracted = extractAndDecodeBody(msg.bodyText || "", headers);
+        let bodyText = extracted.text;
+        const emailAttachments = extracted.attachments;
         const cleanBody = cleanQuotedContent(bodyText);
         const displayContent = cleanBody.substring(0, 10000) || subject || "(بدون محتوى)";
+
+        // Build display content with attachment info
+        let finalDisplayContent = displayContent;
+        if (emailAttachments.length > 0) {
+          const attachNames = emailAttachments.map(a => a.filename).join(", ");
+          finalDisplayContent = `📎 ${attachNames}\n\n${displayContent}`;
+        }
 
         // Insert message
         const { data: insertedMsg, error: msgError } = await admin.from("messages").insert({
           conversation_id: convId,
           sender: "customer",
-          content: displayContent,
+          content: finalDisplayContent,
           message_type: "text",
           status: "received",
           wa_message_id: emailMessageId,
@@ -792,6 +831,7 @@ async function fetchEmailsForConfig(
             imap_fetched: true,
             email_in_reply_to: inReplyTo || undefined,
             email_references: refsRaw || undefined,
+            email_attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
           },
         }).select("id").single();
 
@@ -815,7 +855,7 @@ async function fetchEmailsForConfig(
               email_message_id: emailMessageId,
               email_in_reply_to: inReplyTo || null,
               email_references: refsRaw || null,
-              email_attachments: [],
+              email_attachments: emailAttachments.length > 0 ? emailAttachments : [],
               direction: "inbound",
               created_at: date,
             });

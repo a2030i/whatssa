@@ -1056,10 +1056,13 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   });
   const [emailToChips, setEmailToChips] = useState<string[]>([]);
   const [emailCcChips, setEmailCcChips] = useState<string[]>([]);
+  const [emailBccChips, setEmailBccChips] = useState<string[]>([]);
   const [emailToInput, setEmailToInput] = useState("");
   const [emailCcInput, setEmailCcInput] = useState("");
+  const [emailBccInput, setEmailBccInput] = useState("");
   const [showEmailFields, setShowEmailFields] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
+  const [emailSignature, setEmailSignature] = useState("");
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -1105,7 +1108,31 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     if (isMetaChannel && conversation.status === "closed") {
       setShowTemplates(true);
     }
+    // Auto-populate email subject from conversation notes
+    if (isEmailChannel) {
+      const subj = (conversation as any).notes?.replace(/^📧\s*/, "") || "";
+      setEmailSubject(subj ? `Re: ${subj}` : "");
+      // Auto-populate CC from last inbound message's CC
+      const lastInbound = [...messages].reverse().find(m => m.sender === "customer" && (m as any).metadata?.email_cc);
+      if (lastInbound) {
+        const ccRaw = (lastInbound as any).metadata?.email_cc || "";
+        const ccList = ccRaw.split(",").map((s: string) => s.trim()).filter(Boolean);
+        setEmailCcChips(ccList);
+      } else {
+        setEmailCcChips([]);
+      }
+      setEmailBccChips([]);
+    }
   }, [conversation.id, conversation.isBlocked, conversation.profilePic]);
+
+  // Fetch email signature for preview
+  useEffect(() => {
+    if (!isEmailChannel || !orgId) return;
+    (async () => {
+      const { data } = await supabase.from("email_configs").select("email_signature").eq("org_id", orgId).eq("is_active", true).limit(1).maybeSingle();
+      setEmailSignature(data?.email_signature || "");
+    })();
+  }, [isEmailChannel, orgId]);
 
   // Compute mention message IDs for floating @ navigation
   useEffect(() => {
@@ -1676,12 +1703,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     // Dispatch email overrides if set
     const allTo = [...emailToChips, ...(emailToInput.trim() ? [emailToInput.trim()] : [])];
     const allCc = [...emailCcChips, ...(emailCcInput.trim() ? [emailCcInput.trim()] : [])];
-    if (isEmailChannel && (allTo.length > 0 || allCc.length > 0 || emailSubject.trim())) {
+    const allBcc = [...emailBccChips, ...(emailBccInput.trim() ? [emailBccInput.trim()] : [])];
+    if (isEmailChannel && (allTo.length > 0 || allCc.length > 0 || allBcc.length > 0 || emailSubject.trim())) {
       window.dispatchEvent(new CustomEvent("email-override-recipients", {
         detail: {
           conversationId: conversation.id,
           to: allTo.length > 0 ? allTo.join(", ") : undefined,
           cc: allCc.length > 0 ? allCc.join(", ") : undefined,
+          bcc: allBcc.length > 0 ? allBcc.join(", ") : undefined,
           subject: emailSubject.trim() || undefined,
         }
       }));
@@ -2759,7 +2788,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </div>
           )}
 
-          {/* Email To/CC Fields with Chips */}
+          {/* Email To/CC/BCC Fields with Chips */}
           {isEmailChannel && !isNoteMode && (
             <div className="mx-3 mt-2 space-y-1">
               {/* Email Subject */}
@@ -2779,14 +2808,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 shrink-0"
                 >
                   <Mail className="w-3 h-3" />
-                  {showEmailFields ? "إخفاء" : "To / Cc"}
+                  {showEmailFields ? "إخفاء" : "To / Cc / Bcc"}
                   <ChevronDown className={cn("w-3 h-3 transition-transform", showEmailFields && "rotate-180")} />
                 </button>
-                {!showEmailFields && (emailToChips.length > 0 || emailCcChips.length > 0) && (
+                {!showEmailFields && (emailToChips.length > 0 || emailCcChips.length > 0 || emailBccChips.length > 0) && (
                   <span className="text-[10px] text-primary truncate">
                     {emailToChips.length > 0 && `إلى: ${emailToChips.join(", ")}`}
                     {emailToChips.length > 0 && emailCcChips.length > 0 && " | "}
                     {emailCcChips.length > 0 && `Cc: ${emailCcChips.join(", ")}`}
+                    {emailBccChips.length > 0 && ` | Bcc: ${emailBccChips.join(", ")}`}
                   </span>
                 )}
               </div>
@@ -2796,7 +2826,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   <div className="flex items-start gap-2">
                     <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left mt-1.5">To:</span>
                     <div className="flex-1 flex flex-wrap items-center gap-1 bg-background border border-border/40 rounded-md px-1.5 py-1 min-h-[28px] focus-within:ring-1 focus-within:ring-primary/30">
-                      {/* Default recipient chip */}
                       {conversation.customerPhone && !emailToChips.includes(conversation.customerPhone) && (
                         <span className="inline-flex items-center gap-0.5 bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[11px]">
                           {conversation.customerPhone}
@@ -2870,6 +2899,52 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                       />
                     </div>
                   </div>
+                  {/* Bcc field */}
+                  <div className="flex items-start gap-2">
+                    <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left mt-1.5">Bcc:</span>
+                    <div className="flex-1 flex flex-wrap items-center gap-1 bg-background border border-border/40 rounded-md px-1.5 py-1 min-h-[28px] focus-within:ring-1 focus-within:ring-primary/30">
+                      {emailBccChips.map((chip, i) => (
+                        <span key={i} className="inline-flex items-center gap-0.5 bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px]">
+                          {chip}
+                          <button onClick={() => setEmailBccChips(prev => prev.filter((_, idx) => idx !== i))} className="hover:text-destructive ml-0.5">
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        type="text"
+                        value={emailBccInput}
+                        onChange={(e) => setEmailBccInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if ((e.key === "Enter" || e.key === ",") && emailBccInput.trim()) {
+                            e.preventDefault();
+                            const val = emailBccInput.trim().replace(/,+$/, "");
+                            if (val && !emailBccChips.includes(val)) setEmailBccChips(prev => [...prev, val]);
+                            setEmailBccInput("");
+                          } else if (e.key === "Backspace" && !emailBccInput && emailBccChips.length > 0) {
+                            setEmailBccChips(prev => prev.slice(0, -1));
+                          }
+                        }}
+                        onBlur={() => {
+                          const val = emailBccInput.trim().replace(/,+$/, "");
+                          if (val && !emailBccChips.includes(val)) setEmailBccChips(prev => [...prev, val]);
+                          setEmailBccInput("");
+                        }}
+                        placeholder="أضف Bcc..."
+                        className="flex-1 min-w-[80px] text-[12px] bg-transparent border-0 outline-none px-1 py-0.5"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Signature Preview */}
+              {emailSignature && (
+                <div className="bg-muted/30 rounded-lg px-2 py-1.5 border border-border/20">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <Pencil className="w-2.5 h-2.5 text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground font-medium">التوقيع</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/80 whitespace-pre-line line-clamp-3">{emailSignature}</p>
                 </div>
               )}
             </div>
