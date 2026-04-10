@@ -1287,6 +1287,8 @@ serve(async (req) => {
       const message_id = asString(payload.message_id);
       const emoji = asString(payload.emoji);
       const isGroup = typeof payload.is_group === "boolean" ? payload.is_group : reactPhone.includes("@g.us");
+      // Use from_me hint from frontend (msg.sender === "agent")
+      const fromMe = typeof payload.from_me === "boolean" ? payload.from_me : false;
       let targetInstanceName = instance_name;
 
       if (!targetInstanceName && channel_id) {
@@ -1302,89 +1304,47 @@ serve(async (req) => {
       }
 
       if (!reactPhone || !message_id || !emoji || !targetInstanceName) {
-        return json({ error: "بيانات التفاعل ناقصة" }, 400);
+        console.log("[send_reaction] Missing data:", { reactPhone: !!reactPhone, message_id: !!message_id, emoji: !!emoji, targetInstanceName: !!targetInstanceName });
+        return json({ error: "بيانات التفاعل ناقصة", details: { phone: !!reactPhone, message_id: !!message_id, emoji: !!emoji, instance: !!targetInstanceName } }, 400);
       }
 
+      // Build remoteJid from phone
       let remoteJid = "";
-      let fromMe = false;
-
-      try {
-        const statusEndpoints = [
-          `${EVOLUTION_URL}/chat/findStatusMessage/${targetInstanceName}`,
-          `${EVOLUTION_URL}/chat/findMessages/${targetInstanceName}`,
-        ];
-
-        for (const endpoint of statusEndpoints) {
-          const findRes = await fetch(endpoint, {
-            method: "POST",
-            headers: evoHeaders,
-            body: JSON.stringify({ where: { id: message_id }, limit: 1 }),
-          });
-
-          if (!findRes.ok) continue;
-
-          const findData = await findRes.json().catch(() => ({}));
-          const rawItems = Array.isArray(findData)
-            ? findData
-            : Array.isArray(findData?.messages?.records)
-              ? findData.messages.records
-              : Array.isArray(findData?.messages)
-                ? findData.messages
-                : Array.isArray(findData?.data)
-                  ? findData.data
-                  : Array.isArray(findData?.response)
-                    ? findData.response
-                    : findData?.data
-                      ? [findData.data]
-                      : [];
-
-          const found = rawItems.find((item: any) => (
-            item?.key?.id === message_id ||
-            item?.keyId === message_id ||
-            item?.id === message_id ||
-            item?.messageId === message_id
-          ));
-
-          const foundJid = found?.key?.remoteJid || found?.remoteJid || found?.jid || "";
-          if (foundJid) {
-            remoteJid = foundJid;
-            fromMe = Boolean(found?.key?.fromMe ?? found?.fromMe);
-            break;
-          }
-        }
-      } catch {
+      if (reactPhone.includes("@")) {
+        remoteJid = reactPhone;
+      } else if (isGroup) {
+        remoteJid = `${reactPhone.replace(/\D/g, "")}@g.us`;
+      } else {
+        remoteJid = `${reactPhone.replace(/\D/g, "")}@s.whatsapp.net`;
       }
 
-      if (!remoteJid) {
-        if (reactPhone.includes("@")) {
-          remoteJid = reactPhone;
-        } else if (isGroup) {
-          remoteJid = `${reactPhone.replace(/\D/g, "")}@g.us`;
-        } else {
-          remoteJid = `${reactPhone.replace(/\D/g, "")}@s.whatsapp.net`;
-        }
-      }
+      const reactionPayload = {
+        key: {
+          remoteJid,
+          id: message_id,
+          fromMe,
+        },
+        reaction: emoji,
+      };
+
+      console.log("[send_reaction] Sending to Evolution:", JSON.stringify(reactionPayload));
 
       const reactRes = await fetch(`${EVOLUTION_URL}/message/sendReaction/${targetInstanceName}`, {
         method: "POST",
         headers: evoHeaders,
-        body: JSON.stringify({
-          key: {
-            remoteJid,
-            id: message_id,
-            fromMe,
-          },
-          reaction: emoji,
-        }),
+        body: JSON.stringify(reactionPayload),
       });
 
       const reactData = await reactRes.json().catch(() => ({}));
+      console.log("[send_reaction] Evolution response:", reactRes.status, JSON.stringify(reactData).slice(0, 500));
+
       if (!reactRes.ok) {
         await logToSystem(adminClient, "error", "فشل إرسال التفاعل", {
           http_status: reactRes.status,
           instance: targetInstanceName,
           remoteJid,
           message_id,
+          fromMe,
           error: JSON.stringify(reactData).slice(0, 300),
         }, orgId, userId);
         return json({ error: reactData?.message || "فشل إرسال التفاعل" }, 400);
@@ -1395,6 +1355,7 @@ serve(async (req) => {
         remoteJid,
         message_id,
         emoji,
+        fromMe,
       }, orgId, userId);
 
       // Persist the reaction in the message metadata so it shows in the UI via realtime

@@ -31,6 +31,9 @@ export async function invokeCloud(
   options?: { body?: unknown; headers?: Record<string, string> },
 ) {
   const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    console.warn(`[invokeCloud] No auth session for ${functionName}`);
+  }
   const result = await cloudSupabase.functions.invoke(functionName, {
     ...options,
     headers: {
