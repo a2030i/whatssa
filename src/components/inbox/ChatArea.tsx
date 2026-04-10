@@ -1056,10 +1056,13 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   });
   const [emailToChips, setEmailToChips] = useState<string[]>([]);
   const [emailCcChips, setEmailCcChips] = useState<string[]>([]);
+  const [emailBccChips, setEmailBccChips] = useState<string[]>([]);
   const [emailToInput, setEmailToInput] = useState("");
   const [emailCcInput, setEmailCcInput] = useState("");
+  const [emailBccInput, setEmailBccInput] = useState("");
   const [showEmailFields, setShowEmailFields] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
+  const [emailSignature, setEmailSignature] = useState("");
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
