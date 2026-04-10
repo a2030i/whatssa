@@ -552,7 +552,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
             direction: detail?.direction || (message.sender === "customer" ? "inbound" : "outbound"),
           } : undefined,
         };
-      });
+      }).filter((m) => m.type !== "reaction");
 
       setAllMessages((prev) => {
         const existing = prev[currentConversationId] || [];
@@ -622,6 +622,8 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
             direction: message.sender === "customer" ? "inbound" : "outbound",
           } : undefined,
         };
+        // Skip reaction-type messages — they're shown as badges on the original message
+        if (newMessage.type === "reaction") return;
         setAllMessages((prev) => ({
           ...prev,
           [currentConversationId]: (prev[currentConversationId] || []).some((m) => m.id === newMessage.id)
