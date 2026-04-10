@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ status: "paid", activated: true }), { headers: corsHeaders });
 
   } catch (e) {
-    await log(supabase, "critical", "Webhook processing failed", { error: (e as Error).message, stack: (e as Error).stack });
+    await log(supabase, "critical", "Webhook processing failed", { error: (e as Error).message });
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: corsHeaders });
   }
 });

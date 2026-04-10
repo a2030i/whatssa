@@ -1987,7 +1987,7 @@ serve(async (req) => {
     });
   } catch (err) {
     await logToSystem(supabase, "critical", "خطأ غير متوقع في Evolution Webhook", {
-      error: (err as Error).message, stack: (err as Error).stack,
+      error: (err as Error).message,
     });
     console.error("Evolution webhook error:", err);
     return new Response(JSON.stringify({ error: (err as Error).message }), {

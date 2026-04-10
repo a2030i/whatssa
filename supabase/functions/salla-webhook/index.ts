@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
   // Verify webhook signature
   const sallaSignature = req.headers.get("x-salla-signature");
-  if (sallaSignature && integration.webhook_secret) {
+  if (integration.webhook_secret) {
     const encoder = new TextEncoder();
     const bodyBytes = await req.clone().arrayBuffer();
     const key = await crypto.subtle.importKey(
@@ -60,8 +60,12 @@ Deno.serve(async (req) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    if (computed !== sallaSignature) {
+    if (!sallaSignature || computed !== sallaSignature) {
       console.warn("Invalid Salla signature for integration:", integrationId);
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
   }
 
