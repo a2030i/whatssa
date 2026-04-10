@@ -2222,7 +2222,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground/60 truncate">{isEmailChannel ? `📧 ${conversation.customerPhone}` : (isMetaChannel || conversation.channelType === "evolution") ? `عبر الواتساب${conversation.channelName ? ` • ${conversation.channelName}` : ""}` : conversation.customerPhone}</p>
+              <p className="text-[10px] text-muted-foreground/60 truncate">
+                {isEmailChannel ? `📧 ${conversation.customerPhone}` : (isMetaChannel || isEvolutionChannel) ? (
+                  <>
+                    {`عبر الواتساب${conversation.channelName ? ` • ${conversation.channelName}` : ""}`}
+                    {customerLastSeen && !isGroup && (
+                      <span className={cn("mr-1", customerLastSeen === "متصل الآن" ? "text-emerald-500 font-medium" : customerLastSeen === "يكتب..." ? "text-emerald-500" : "")}>
+                        {` • ${customerLastSeen}`}
+                      </span>
+                    )}
+                  </>
+                ) : conversation.customerPhone}
+              </p>
             </div>
             </button>
           </div>
