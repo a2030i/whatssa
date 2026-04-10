@@ -1628,6 +1628,37 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     loadReplies();
   }, [orgId]);
 
+  // SLA countdown: fetch active policy and compute remaining time
+  const [slaMinutes, setSlaMinutes] = useState<number | null>(null);
+  useEffect(() => {
+    if (!orgId) return;
+    supabase
+      .from("sla_policies")
+      .select("first_response_minutes")
+      .eq("org_id", orgId)
+      .eq("is_active", true)
+      .order("first_response_minutes", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => { if (data?.first_response_minutes) setSlaMinutes(data.first_response_minutes); });
+  }, [orgId]);
+
+  const [slaStatus, setSlaStatus] = useState<{ remainingMin: number; level: "ok" | "warning" | "breached" } | null>(null);
+  useEffect(() => {
+    if (!slaMinutes || conversation.lastMessageSender !== "customer" || !conversation.lastCustomerMessageAt || conversation.status === "closed") {
+      setSlaStatus(null);
+      return;
+    }
+    const compute = () => {
+      const deadline = new Date(conversation.lastCustomerMessageAt!).getTime() + slaMinutes * 60 * 1000;
+      const remaining = Math.round((deadline - Date.now()) / 60000);
+      setSlaStatus({ remainingMin: remaining, level: remaining <= 0 ? "breached" : remaining <= Math.max(5, slaMinutes * 0.2) ? "warning" : "ok" });
+    };
+    compute();
+    const iv = setInterval(compute, 30000);
+    return () => clearInterval(iv);
+  }, [slaMinutes, conversation.lastCustomerMessageAt, conversation.lastMessageSender, conversation.status]);
+
   // Track if user is near bottom of scroll
   const handleMessagesScroll = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -1798,8 +1829,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   };
 
   const insertSavedReply = (reply: { content: string }) => {
-    // Replace customer name placeholder
-    const text = reply.content.replace(/\{name\}/gi, conversation.customerName || "");
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("ar-SA-u-ca-gregory", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const timeStr = now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+    const text = reply.content
+      .replace(/\{name\}/gi, conversation.customerName || "")
+      .replace(/\{phone\}/gi, conversation.customerPhone || "")
+      .replace(/\{agent\}/gi, profile?.full_name || "")
+      .replace(/\{date\}/gi, dateStr)
+      .replace(/\{time\}/gi, timeStr);
     setInputText(text);
     setShowSavedReplies(false);
     inputRef.current?.focus();
@@ -2168,6 +2206,22 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </div>
               </div>
             ))}
+            {/* SLA countdown badge — shown for all channel types when customer is waiting */}
+            {slaStatus && (
+              <div className={cn(
+                "hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg ml-1",
+                slaStatus.level === "breached" ? "text-destructive bg-destructive/10" :
+                slaStatus.level === "warning" ? "text-warning bg-warning/10" :
+                "text-muted-foreground bg-muted/50"
+              )}>
+                <Clock className="w-3 h-3 shrink-0" />
+                <span className="text-[10px] font-bold font-mono">
+                  {slaStatus.level === "breached"
+                    ? `تأخر ${Math.abs(slaStatus.remainingMin)}د`
+                    : `${slaStatus.remainingMin}د`}
+                </span>
+              </div>
+            )}
             {/* Desktop: Transfer button directly visible */}
             {conversation.status !== "closed" && (
               <button

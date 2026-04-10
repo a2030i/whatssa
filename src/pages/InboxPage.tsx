@@ -94,31 +94,44 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const fetchConversationsRef = useRef<(() => Promise<void>) | null>(null);
   const conversationsRef = useRef<Conversation[]>([]);
   const lateAlertShownRef = useRef<Set<string>>(new Set());
+  const slaThresholdMsRef = useRef<number>(10 * 60 * 1000); // default 10 min, updated from DB
 
-  // Late response alert — check every 60s for conversations waiting > 10 min
+  // Load SLA policy threshold from DB once
   useEffect(() => {
-    const LATE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+    if (!orgId) return;
+    supabase
+      .from("sla_policies")
+      .select("first_response_minutes")
+      .eq("org_id", orgId)
+      .eq("is_active", true)
+      .order("first_response_minutes", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.first_response_minutes) {
+          slaThresholdMsRef.current = data.first_response_minutes * 60 * 1000;
+        }
+      });
+  }, [orgId]);
+
+  // Late response alert — check every 60s for conversations waiting beyond SLA threshold
+  useEffect(() => {
     const checkLateResponses = () => {
       const now = Date.now();
       conversationsRef.current.forEach(conv => {
         if (conv.status === "closed" || conv.lastMessageSender !== "customer" || !conv.lastCustomerMessageAt) return;
         const elapsed = now - new Date(conv.lastCustomerMessageAt).getTime();
-        if (elapsed >= LATE_THRESHOLD_MS && !lateAlertShownRef.current.has(conv.id)) {
+        if (elapsed >= slaThresholdMsRef.current && !lateAlertShownRef.current.has(conv.id)) {
           lateAlertShownRef.current.add(conv.id);
           const mins = Math.floor(elapsed / 60000);
           toast.warning(`⏱️ ${conv.customerName || conv.customerPhone} ينتظر رد منذ ${mins} دقيقة`, {
             duration: 8000,
-            action: {
-              label: "فتح",
-              onClick: () => setSelectedId(conv.id),
-            },
+            action: { label: "فتح", onClick: () => setSelectedId(conv.id) },
           });
         }
       });
     };
-    // Reset shown alerts when conversations change significantly
     const interval = setInterval(checkLateResponses, 60000);
-    // Initial check after 5s
     const timeout = setTimeout(checkLateResponses, 5000);
     return () => { clearInterval(interval); clearTimeout(timeout); };
   }, []);

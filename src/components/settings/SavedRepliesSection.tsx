@@ -219,7 +219,15 @@ const SavedRepliesSection = () => {
                 placeholder="أهلاً بك {name}! كيف يمكنني مساعدتك؟"
                 className="text-xs bg-secondary border-0 min-h-[80px]"
               />
-              <p className="text-[10px] text-muted-foreground">استخدم <code className="bg-primary/10 text-primary px-1 rounded">{"{name}"}</code> لإدراج اسم العميل تلقائياً</p>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {["{name}", "{phone}", "{agent}", "{date}", "{time}"].map(v => (
+                  <button key={v} type="button" onClick={() => setForm(f => ({ ...f, content: f.content + v }))}
+                    className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono hover:bg-primary/20 transition-colors">
+                    {v}
+                  </button>
+                ))}
+                <span className="text-[10px] text-muted-foreground self-center">— انقر للإدراج</span>
+              </div>
             </div>
             <Button onClick={handleSave} disabled={saving} className="w-full h-8 text-xs">
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : editing ? "حفظ التعديلات" : "إضافة"}
