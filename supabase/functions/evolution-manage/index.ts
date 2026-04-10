@@ -1388,6 +1388,153 @@ serve(async (req) => {
 
       return json({ success: true, data: reactData });
     }
+    // ── SEND REACTION ──
+    if (action === "send_reaction") {
+      const reactPhone = asString(payload.phone);
+      const message_id = asString(payload.message_id);
+      const emoji = asString(payload.emoji);
+      const isGroup = typeof payload.is_group === "boolean" ? payload.is_group : reactPhone.includes("@g.us");
+      const fromMe = typeof payload.from_me === "boolean" ? payload.from_me : false;
+      let targetInstanceName = instance_name;
+
+      if (!targetInstanceName && channel_id) {
+        const { data: channelConfig } = await adminClient
+          .from("whatsapp_config")
+          .select("evolution_instance_name")
+          .eq("id", channel_id)
+          .eq("org_id", orgId)
+          .eq("channel_type", "evolution")
+          .maybeSingle();
+        targetInstanceName = channelConfig?.evolution_instance_name || undefined;
+      }
+
+      if (!reactPhone || !message_id || !emoji || !targetInstanceName) {
+        console.log("[send_reaction] Missing data:", { reactPhone: !!reactPhone, message_id: !!message_id, emoji: !!emoji, targetInstanceName: !!targetInstanceName });
+        // Always return 200 with error in body so client SDK doesn't swallow it
+        return json({ error: "بيانات التفاعل ناقصة", success: false });
+      }
+
+      // ── Step 1: Resolve the CORRECT key from Evolution's message store ──
+      // The phone-based JID (@s.whatsapp.net) may differ from the actual stored JID (@lid)
+      let resolvedKey: { remoteJid: string; fromMe: boolean; id: string } | null = null;
+
+      // Try to find the message in Evolution to get the real key
+      try {
+        const findRes = await fetch(`${EVOLUTION_URL}/chat/findMessages/${targetInstanceName}`, {
+          method: "POST",
+          headers: evoHeaders,
+          body: JSON.stringify({ where: { key: { id: message_id } }, limit: 5 }),
+        });
+        if (findRes.ok) {
+          const findData = await findRes.json().catch(() => null);
+          const items = Array.isArray(findData) ? findData
+            : findData?.messages?.records || findData?.messages || findData?.data || [];
+          const found = items.find((item: any) =>
+            item?.key?.id === message_id || item?.keyId === message_id || item?.id === message_id
+          );
+          if (found?.key) {
+            resolvedKey = {
+              remoteJid: found.key.remoteJid || "",
+              fromMe: typeof found.key.fromMe === "boolean" ? found.key.fromMe : fromMe,
+              id: found.key.id || message_id,
+            };
+            console.log("[send_reaction] Resolved key from Evolution:", JSON.stringify(resolvedKey));
+          }
+        }
+      } catch (lookupErr) {
+        console.warn("[send_reaction] Message lookup failed, using fallback:", (lookupErr as Error).message);
+      }
+
+      // Fallback: build key from phone if lookup didn't find it
+      if (!resolvedKey) {
+        let remoteJid = "";
+        if (reactPhone.includes("@")) {
+          remoteJid = reactPhone;
+        } else if (isGroup) {
+          remoteJid = `${reactPhone.replace(/\D/g, "")}@g.us`;
+        } else {
+          remoteJid = `${reactPhone.replace(/\D/g, "")}@s.whatsapp.net`;
+        }
+        resolvedKey = { remoteJid, fromMe, id: message_id };
+        console.log("[send_reaction] Using fallback key:", JSON.stringify(resolvedKey));
+      }
+
+      const reactionPayload = {
+        key: resolvedKey,
+        reaction: emoji,
+      };
+
+      console.log("[send_reaction] Final payload to Evolution:", JSON.stringify(reactionPayload));
+
+      let reactRes: Response;
+      let reactData: any = {};
+      try {
+        reactRes = await fetch(`${EVOLUTION_URL}/message/sendReaction/${targetInstanceName}`, {
+          method: "POST",
+          headers: evoHeaders,
+          body: JSON.stringify(reactionPayload),
+        });
+        reactData = await reactRes.json().catch(() => ({}));
+        console.log("[send_reaction] Evolution response:", reactRes.status, JSON.stringify(reactData).slice(0, 500));
+      } catch (fetchErr) {
+        console.error("[send_reaction] Fetch error:", fetchErr);
+        await logToSystem(adminClient, "error", "فشل الاتصال بـ Evolution لإرسال التفاعل", {
+          instance: targetInstanceName, error: (fetchErr as Error).message,
+        }, orgId, userId);
+        return json({ error: "فشل الاتصال بخادم الواتساب", success: false });
+      }
+
+      if (!reactRes!.ok) {
+        const errDetail = JSON.stringify(reactData).slice(0, 300);
+        await logToSystem(adminClient, "error", "فشل إرسال التفاعل", {
+          http_status: reactRes!.status, instance: targetInstanceName,
+          resolvedKey, error: errDetail,
+        }, orgId, userId);
+        // Return 200 with error in body (per stack-overflow pattern)
+        return json({ error: reactData?.message || "فشل إرسال التفاعل عبر الواتساب", success: false, details: errDetail });
+      }
+
+      // ── Verify reaction was actually accepted ──
+      // Some Evolution versions return 200 but with an error in the response body
+      const responseStr = JSON.stringify(reactData);
+      if (reactData?.error || reactData?.status === "error" || responseStr.includes('"error"')) {
+        await logToSystem(adminClient, "error", "Evolution أرجع خطأ ضمن استجابة 200", {
+          instance: targetInstanceName, resolvedKey, response: responseStr.slice(0, 300),
+        }, orgId, userId);
+        return json({ error: "فشل التفاعل: " + (reactData?.error || reactData?.message || "خطأ غير معروف"), success: false });
+      }
+
+      await logToSystem(adminClient, "info", "تم إرسال التفاعل بنجاح", {
+        instance: targetInstanceName, resolvedKey, emoji, response: responseStr.slice(0, 200),
+      }, orgId, userId);
+
+      // Persist the reaction in message metadata
+      try {
+        const { data: targetMsg } = await adminClient
+          .from("messages")
+          .select("id, metadata")
+          .eq("wa_message_id", message_id)
+          .maybeSingle();
+
+        if (targetMsg) {
+          const meta = (targetMsg.metadata as Record<string, any>) || {};
+          let reactions: Array<{ emoji: string; fromMe: boolean; timestamp?: string }> = meta.reactions || [];
+          const existingIdx = reactions.findIndex(r => r.fromMe === true);
+          if (existingIdx >= 0) {
+            reactions[existingIdx] = { emoji, fromMe: true, timestamp: new Date().toISOString() };
+          } else {
+            reactions.push({ emoji, fromMe: true, timestamp: new Date().toISOString() });
+          }
+          await adminClient.from("messages").update({
+            metadata: { ...meta, reactions },
+          }).eq("id", targetMsg.id);
+        }
+      } catch {
+        // Non-critical
+      }
+
+      return json({ success: true, data: reactData });
+    }
 
     // ── UPDATE GROUP PICTURE ──
     if (action === "update_group_picture") {
