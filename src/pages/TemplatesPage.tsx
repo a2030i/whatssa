@@ -37,6 +37,7 @@ import { invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
+import { useNavigate } from "react-router-dom";
 
 const categoryLabels: Record<string, string> = {
   marketing: "تسويقي",
@@ -334,6 +335,7 @@ interface MetaChannel {
 
 const TemplatesPage = () => {
   const { isSuperAdmin, impersonatedOrgId } = useAuth();
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -748,7 +750,7 @@ const TemplatesPage = () => {
                   ? "Template management is available only through the official Meta Cloud API connection. Connect an official number from the integrations page first."
                   : "ميزة القوالب متاحة فقط عبر Meta Cloud API الرسمي. إذا كنت تستخدم واتساب ويب فلن تتمكن من إدارة القوالب. اربط رقماً رسمياً من صفحة التكاملات."}
               </p>
-              <Button variant="outline" className="mt-2" onClick={() => { window.location.href = "/integrations"; }}>
+              <Button variant="outline" className="mt-2" onClick={() => navigate("/integrations")}>
                 {isReviewMode ? "Go to integrations" : "الذهاب للتكاملات"}
               </Button>
             </div>

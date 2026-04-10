@@ -7,7 +7,7 @@ import {
   Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock, ClipboardList,
   Workflow, Send, Warehouse, DollarSign, Package, ClipboardCheck, Ticket
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -119,6 +119,7 @@ const roleLabels: Record<string, string> = {
 
 const AppSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, orgId, signOut, teamId } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
@@ -198,7 +199,7 @@ const AppSidebar = () => {
             toast.info(item.lockedMessage || "هذه الميزة غير متاحة حالياً", {
               action: {
                 label: "الربط والتكامل",
-                onClick: () => window.location.href = "/integrations",
+                onClick: () => navigate("/integrations"),
               },
             });
           }}

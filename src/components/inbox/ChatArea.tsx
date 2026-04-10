@@ -2537,7 +2537,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                                 .limit(1)
                                 .maybeSingle();
                               if (conv) {
-                                window.location.href = `/inbox?conversation=${conv.id}`;
+                                window.dispatchEvent(new CustomEvent("navigate-conversation", { detail: { conversationId: conv.id } }));
                                 return;
                               }
                             }
@@ -2553,7 +2553,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                               .limit(1)
                               .maybeSingle();
                             if (phoneConv) {
-                              window.location.href = `/inbox?conversation=${phoneConv.id}`;
+                              window.dispatchEvent(new CustomEvent("navigate-conversation", { detail: { conversationId: phoneConv.id } }));
                             } else {
                               toast.info(`لا توجد محادثة خاصة مع ${displayName} (${rawPhone})`);
                             }

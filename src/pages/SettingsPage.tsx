@@ -7,36 +7,10 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import usePushNotifications from "@/hooks/usePushNotifications";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BlacklistSection from "@/components/settings/BlacklistSection";
 import OutgoingWebhooksSection from "@/components/settings/OutgoingWebhooksSection";
 import AuditLogSection from "@/components/settings/AuditLogSection";
-
-const PushNotificationSettings = () => {
-  const { isSupported, isSubscribed, subscribe, unsubscribe } = usePushNotifications();
-
-  if (!isSupported) return null;
-
-  return (
-    <div className="bg-card rounded-lg shadow-card">
-      <div className="p-5 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BellRing className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold text-sm">إشعارات المتصفح</h3>
-        </div>
-        <Switch checked={isSubscribed} onCheckedChange={(v) => v ? subscribe() : unsubscribe()} />
-      </div>
-      <div className="p-5">
-        <p className="text-xs text-muted-foreground">
-          {isSubscribed
-            ? "✅ الإشعارات مفعلة — ستصلك تنبيهات عند وصول رسائل جديدة حتى لو كانت الصفحة مغلقة"
-            : "فعّل الإشعارات لتلقي تنبيهات فورية عند وصول رسائل جديدة من العملاء"}
-        </p>
-      </div>
-    </div>
-  );
-};
 
 const SettingsPage = () => {
   const { orgId, profile } = useAuth();
@@ -154,9 +128,6 @@ const SettingsPage = () => {
           ))}
         </div>
       </div>
-
-      {/* Push Notifications */}
-      <PushNotificationSettings />
 
       {/* Blacklist */}
       <div className="bg-card rounded-lg shadow-card p-5">

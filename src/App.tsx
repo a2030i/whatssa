@@ -46,7 +46,6 @@ import LandingPage from "./pages/LandingPage";
 import TasksPage from "./pages/TasksPage";
 import TicketsPage from "./pages/TicketsPage";
 import ForceChangePasswordPage from "./pages/ForceChangePasswordPage";
-import SystemStatusPage from "./pages/SystemStatusPage";
 import EmergencyAdminPage from "./pages/EmergencyAdminPage";
 import SafetyGuidePage from "./pages/SafetyGuidePage";
 import GrowthToolsPage from "./pages/GrowthToolsPage";
@@ -174,7 +173,6 @@ const AppRoutes = () => {
       <Route path="/permissions" element={<ProtectedRoute minRole="admin"><AppLayout><PermissionsPage /></AppLayout></ProtectedRoute>} />
       <Route path="/install" element={<InstallPage />} />
       <Route path="/tracking" element={<TrackingPage />} />
-      <Route path="/system-status" element={<SystemStatusPage />} />
       <Route path="/emergency-admin" element={<EmergencyAdminPage />} />
       
       <Route path="*" element={<NotFound />} />

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageSquare, LayoutDashboard, Settings, UserCircle, LogOut, Menu, Megaphone, Bot, BarChart3, Plug, ShoppingCart, ClipboardCheck, Workflow, Clock, FileText, Users as UsersIcon, Wallet, CreditCard, Code2, Warehouse, Send, Shield, Lock, Mail } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { supabase } from "@/lib/supabase";
 
 const roleLabels: Record<string, string> = {
   admin: "مدير",
@@ -15,8 +16,9 @@ const roleLabels: Record<string, string> = {
 
 const MobileBottomNav = () => {
   const location = useLocation();
-  const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, signOut } = useAuth();
+  const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, signOut, orgId, teamId } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hasEmailAccess, setHasEmailAccess] = useState(false);
   const displayRole = userRole === "super_admin"
     ? "super_admin"
     : userRole === "admin"
@@ -30,6 +32,30 @@ const MobileBottomNav = () => {
   const userLevel = roleHierarchy[effectiveRole] ?? 0;
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Match desktop logic: hide email inbox if user has no email assignment (non-admin).
+  useEffect(() => {
+    if (!orgId || !profile?.id) return;
+    if (effectiveRole === "admin" || isSuperAdmin) {
+      setHasEmailAccess(true);
+      return;
+    }
+    const conditions: string[] = [`dedicated_agent_id.eq.${profile.id}`];
+    if (teamId) conditions.push(`dedicated_team_id.eq.${teamId}`);
+    if (profile?.team_ids && Array.isArray(profile.team_ids)) {
+      profile.team_ids.forEach((tid: string) => conditions.push(`dedicated_team_id.eq.${tid}`));
+    }
+    supabase
+      .from("email_configs")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("is_active", true)
+      .or(conditions.join(","))
+      .limit(1)
+      .then(({ data }) => {
+        setHasEmailAccess(!!data && data.length > 0);
+      });
+  }, [orgId, profile?.id, teamId, effectiveRole, isSuperAdmin]);
 
   const allMoreItems: { label: string; icon: any; path: string; emoji: string; minRole?: string }[] = [
     { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
@@ -75,16 +101,18 @@ const MobileBottomNav = () => {
           <span className="text-[10px] font-medium">واتساب</span>
         </NavLink>
 
-        <NavLink
-          to="/email-inbox"
-          className={cn(
-            "flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-colors",
-            isActive("/email-inbox") ? "text-primary" : "text-muted-foreground"
-          )}
-        >
-          <Mail className="w-5 h-5" />
-          <span className="text-[10px] font-medium">إيميل</span>
-        </NavLink>
+        {hasEmailAccess && (
+          <NavLink
+            to="/email-inbox"
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg transition-colors",
+              isActive("/email-inbox") ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <Mail className="w-5 h-5" />
+            <span className="text-[10px] font-medium">إيميل</span>
+          </NavLink>
+        )}
 
         {effectiveRole === "admin" && (
           <NavLink

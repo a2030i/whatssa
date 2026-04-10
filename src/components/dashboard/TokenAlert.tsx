@@ -1,6 +1,7 @@
 import { AlertTriangle, RefreshCw, Clock, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardData } from "@/hooks/useDashboardData";
+import { useNavigate } from "react-router-dom";
 
 interface TokenAlertProps {
   data: DashboardData;
@@ -8,6 +9,7 @@ interface TokenAlertProps {
 
 const TokenAlert = ({ data }: TokenAlertProps) => {
   const { tokenExpiresAt, tokenRefreshError, waStatus, channelType } = data;
+  const navigate = useNavigate();
 
   // Only show for official channels
   if (channelType !== "official") return null;
@@ -29,7 +31,7 @@ const TokenAlert = ({ data }: TokenAlertProps) => {
               size="sm"
               variant="destructive"
               className="mt-3 text-xs gap-1"
-              onClick={() => window.location.href = "/integrations"}
+              onClick={() => navigate("/integrations")}
             >
               <RefreshCw className="w-3 h-3" /> إعادة الربط
             </Button>
@@ -61,7 +63,7 @@ const TokenAlert = ({ data }: TokenAlertProps) => {
               size="sm"
               variant="destructive"
               className="mt-3 text-xs gap-1"
-              onClick={() => window.location.href = "/integrations"}
+              onClick={() => navigate("/integrations")}
             >
               <RefreshCw className="w-3 h-3" /> إعادة الربط
             </Button>

@@ -74,7 +74,7 @@ const NotificationBell = () => {
   const handleClick = (n: Notification) => {
     markAsRead(n.id);
     if (n.reference_type === "conversation" && n.reference_id) {
-      navigate(`/inbox?conv=${n.reference_id}`);
+      navigate(`/inbox?conversation=${n.reference_id}`);
     }
     setOpen(false);
   };
