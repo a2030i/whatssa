@@ -1859,6 +1859,67 @@ export type Database = {
           },
         ]
       }
+      email_open_tracking: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          message_id: string | null
+          open_count: number
+          opened_at: string | null
+          org_id: string
+          tracking_token: string
+          user_agent: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          message_id?: string | null
+          open_count?: number
+          opened_at?: string | null
+          org_id: string
+          tracking_token: string
+          user_agent?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          message_id?: string | null
+          open_count?: number
+          opened_at?: string | null
+          org_id?: string
+          tracking_token?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_open_tracking_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_open_tracking_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_open_tracking_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_routing_rules: {
         Row: {
           action_type: string
@@ -1967,6 +2028,53 @@ export type Database = {
             columns: ["ticket_assigned_team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          body_html: string
+          category: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_system: boolean
+          name: string
+          org_id: string | null
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body_html?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          org_id?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          org_id?: string | null
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -3217,6 +3325,7 @@ export type Database = {
           avatar_url: string | null
           break_started_at: string | null
           created_at: string | null
+          email_signature: string | null
           full_name: string | null
           id: string
           is_active: boolean
@@ -3241,6 +3350,7 @@ export type Database = {
           avatar_url?: string | null
           break_started_at?: string | null
           created_at?: string | null
+          email_signature?: string | null
           full_name?: string | null
           id: string
           is_active?: boolean
@@ -3265,6 +3375,7 @@ export type Database = {
           avatar_url?: string | null
           break_started_at?: string | null
           created_at?: string | null
+          email_signature?: string | null
           full_name?: string | null
           id?: string
           is_active?: boolean
