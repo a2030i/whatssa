@@ -577,8 +577,9 @@ serve(async (req) => {
       const messages = body.data || [];
       const messageList = Array.isArray(messages) ? messages : [messages];
 
+
       // Load org settings once
-      const { data: orgData } = await supabase.from("organizations").select("settings, name").eq("id", orgId).single();
+      const { data: orgData, error: orgError } = await supabase.from("organizations").select("settings, name").eq("id", orgId).single();
       const orgSettings = (orgData?.settings as Record<string, any>) || {};
       // Block org name from being used as customer name
       setDynamicBlockedNames(orgData?.name);
@@ -825,7 +826,6 @@ serve(async (req) => {
           continue;
         }
 
-        if (!text && messageType === "text") continue;
 
         // ── Handle outgoing messages sent from phone ──
         if (isFromMe) {
@@ -1270,7 +1270,6 @@ serve(async (req) => {
             }
           }
 
-        if (!conversation) continue;
 
         // Auto-save customer record (skip groups — save individual participants instead)
         try {
@@ -1966,7 +1965,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err: any) {
+  } catch (err) {
     await logToSystem(supabase, "critical", "خطأ غير متوقع في Evolution Webhook", {
       error: (err as Error).message, stack: (err as Error).stack,
     });

@@ -135,6 +135,58 @@ Deno.serve(async (req) => {
     `;
     results.push("wa_conversation_id: ensured");
 
+    // Add last_message_sender column if missing
+    await sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_schema = 'public' AND table_name = 'conversations' AND column_name = 'last_message_sender'
+        ) THEN
+          ALTER TABLE public.conversations ADD COLUMN last_message_sender text;
+        END IF;
+      END $$;
+    `;
+    results.push("last_message_sender: ensured");
+
+    // Add unread_mention_count column if missing
+    await sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_schema = 'public' AND table_name = 'conversations' AND column_name = 'unread_mention_count'
+        ) THEN
+          ALTER TABLE public.conversations ADD COLUMN unread_mention_count integer NOT NULL DEFAULT 0;
+        END IF;
+      END $$;
+    `;
+    results.push("unread_mention_count: ensured");
+
+    // Add is_pinned column if missing
+    await sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_schema = 'public' AND table_name = 'conversations' AND column_name = 'is_pinned'
+        ) THEN
+          ALTER TABLE public.conversations ADD COLUMN is_pinned boolean NOT NULL DEFAULT false;
+        END IF;
+      END $$;
+    `;
+    results.push("is_pinned: ensured");
+
+    // Add is_archived column if missing
+    await sql`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_schema = 'public' AND table_name = 'conversations' AND column_name = 'is_archived'
+        ) THEN
+          ALTER TABLE public.conversations ADD COLUMN is_archived boolean NOT NULL DEFAULT false;
+        END IF;
+      END $$;
+    `;
+    results.push("is_archived: ensured");
+
     // Verify current columns
     const cols = await sql`
       SELECT column_name, data_type 
