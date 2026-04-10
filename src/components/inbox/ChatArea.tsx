@@ -313,6 +313,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             message_id: msg.waMessageId,
             emoji,
             is_group: conversation.conversationType === "group",
+            from_me: msg.sender === "agent",
           },
         });
         console.log("[Reaction] Evolution result:", result);
