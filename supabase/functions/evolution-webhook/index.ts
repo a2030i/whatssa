@@ -1206,8 +1206,7 @@ serve(async (req) => {
             .insert(convInsert)
             .select("id")
             .single();
-
-          if (convError) {
+          console.log(`[evolution-webhook] TRACE: insert conv result: data=${!!newConv}, error=${convError?.message || "none"}, code=${convError?.code || "none"}`);
             if (convError.code === "23505") {
               conversation = await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "open")
                 || await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "closed");
@@ -1277,7 +1276,8 @@ serve(async (req) => {
             }
           }
 
-        if (!conversation) continue;
+        if (!conversation) { console.log(`[evolution-webhook] TRACE: NO conversation found, skipping`); continue; }
+        console.log(`[evolution-webhook] TRACE: conversation ready, id=${conversation.id}`);
 
         // Auto-save customer record (skip groups — save individual participants instead)
         try {
