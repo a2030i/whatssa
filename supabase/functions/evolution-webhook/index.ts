@@ -2007,7 +2007,7 @@ async function uploadMediaFromEvolution(params: {
   key: Record<string, unknown>;
   conversationId: string;
   messageType: string;
-  supabase: ReturnType<typeof createClient>;
+  supabase: any;
   orgId: string;
 }) {
   const { instanceName, key, conversationId, messageType, supabase, orgId } = params;
