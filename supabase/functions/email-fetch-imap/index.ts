@@ -723,7 +723,7 @@ async function fetchEmailsForConfig(
       return { fetched: 0, errors };
     }
 
-    const toFetch = messageIds.slice(-30);
+    const toFetch = messageIds.slice(-100);
     console.log(`[email-fetch] Fetching ${toFetch.length} messages`);
 
     const seqSet = toFetch.join(",");
