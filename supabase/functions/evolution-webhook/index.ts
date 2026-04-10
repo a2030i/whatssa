@@ -1207,6 +1207,8 @@ serve(async (req) => {
             .select("id")
             .single();
           console.log(`[evolution-webhook] TRACE: insert conv result: data=${!!newConv}, error=${convError?.message || "none"}, code=${convError?.code || "none"}`);
+
+          if (convError) {
             if (convError.code === "23505") {
               conversation = await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "open")
                 || await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "closed");
