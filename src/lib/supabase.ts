@@ -6,8 +6,8 @@ const EXTERNAL_URL = "https://ovbrrumnqfvtgmqsscat.supabase.co";
 const EXTERNAL_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92YnJydW1ucWZ2dGdtcXNzY2F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzc4ODQsImV4cCI6MjA5MDY1Mzg4NH0.-ed8-nrAbfO1lMm9Rc5bjwsIzmonunVKkcwRY586SrQ";
 
 // Lovable Cloud (edge functions host)
-const CLOUD_URL = import.meta.env.VITE_SUPABASE_URL;
-const CLOUD_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const CLOUD_URL = import.meta.env.VITE_SUPABASE_URL || "https://dgnqehcezvewkdodqpyh.supabase.co";
+const CLOUD_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbnFlaGNlenZld2tkb2RxcHloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1OTY5MDQsImV4cCI6MjA5MDE3MjkwNH0.i3I8kvaAVq4SMJN87YI0eJqO395H7Swdli94zTMiunM";
 
 // Main client — all DB queries, auth, realtime go to external project
 export const supabase = createClient<Database>(EXTERNAL_URL, EXTERNAL_ANON_KEY, {
