@@ -921,7 +921,7 @@ serve(async (req) => {
       const providerAttempt = await updateEvolutionBlockStatus(
         EVOLUTION_URL,
         evoHeaders,
-        targetInstance,
+        targetInstance as string,
         sanitizedPhone,
         desiredStatus,
       );
@@ -1945,7 +1945,7 @@ function extractProviderError(data: unknown) {
 }
 
 async function resolveEvolutionInstanceName(
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: any,
   orgId: string,
   requestedInstanceName?: string,
   channelId?: string,
