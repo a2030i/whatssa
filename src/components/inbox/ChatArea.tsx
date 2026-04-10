@@ -2964,7 +2964,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             {/* Tools Row inside input box */}
             {(!windowExpired || isNoteMode) && (
               <div className="flex items-center gap-0 px-2 pb-1.5 border-t border-border/10">
-                {!isNoteMode && !isEmailChannel && (
+                {!isNoteMode && (
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
@@ -2989,7 +2989,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 )}
                 <input ref={fileInputRef} type="file" accept={allowedFileTypes} className="hidden" onChange={handleFileSelect} />
                 <input ref={groupPicInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleChangeGroupPicture(file); if (e.target) e.target.value = ""; }} />
-                {!isNoteMode && !isEmailChannel && (
+                {!isNoteMode && (
                   <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
                     <Zap className="w-4 h-4" />
                   </button>
