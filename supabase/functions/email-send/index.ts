@@ -257,12 +257,9 @@ Deno.serve(async (req) => {
     const trackingPixelUrl = `${cloudUrl}/functions/v1/email-tracking-pixel?t=${trackingToken}`;
     finalHtml += `<img src="${trackingPixelUrl}" width="1" height="1" style="display:none" alt="" />`;
 
-    // Encode non-ASCII characters as HTML numeric entities so the MIME body stays ASCII-safe
-    // This prevents denomailer's quoted-printable encoding from corrupting multi-byte UTF-8 chars
-    const safeHtml = finalHtml.replace(/[^\x00-\x7F]/g, (ch: string) => `&#${ch.codePointAt(0)};`);
-
-    // Wrap in proper HTML with UTF-8 charset
-    const wrappedHtml = `<!DOCTYPE html><html dir="auto"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;font-size:14px;line-height:1.6">${safeHtml}</body></html>`;
+    // Wrap in proper HTML with explicit UTF-8 charset declaration
+    // Send the HTML directly — email clients and SMTP servers handle UTF-8 correctly
+    const wrappedHtml = `<!DOCTYPE html><html dir="auto"><head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body style="font-family:sans-serif;font-size:14px;line-height:1.6">${finalHtml}</body></html>`;
 
     // NOTE: Do NOT pre-encode subject with RFC 2047 — denomailer handles encoding internally.
     // Pre-encoding causes double-encoding where recipients see raw "=?UTF-8?B?...?=" text.

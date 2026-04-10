@@ -59,19 +59,25 @@ function decodeMimeWords(text: string | null | undefined): string {
   return result;
 }
 
-function decodeQuotedPrintable(text: string): string {
+function decodeQuotedPrintable(text: string, charset = "utf-8"): string {
   // Remove soft line breaks first
   let decoded = text.replace(/=\r?\n/g, "");
   // Decode hex pairs to raw bytes
   decoded = decoded.replace(/=([0-9A-Fa-f]{2})/g, (_, hex) =>
     String.fromCharCode(parseInt(hex, 16))
   );
-  // Always try UTF-8 decode for the raw bytes (handles Arabic, etc.)
+  // Decode using the charset declared in Content-Type (e.g. windows-1256, iso-8859-6, utf-8)
   try {
     const bytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
-    return new TextDecoder("utf-8").decode(bytes);
+    return new TextDecoder(charset).decode(bytes);
   } catch {
-    return decoded;
+    // Fallback to UTF-8 if the declared charset is unsupported or decode fails
+    try {
+      const bytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
+      return new TextDecoder("utf-8").decode(bytes);
+    } catch {
+      return decoded;
+    }
   }
 }
 
@@ -650,8 +656,7 @@ function extractAndDecodeBody(rawBody: string, headers: Record<string, string>):
     if (cte === "base64") {
       body = decodeBase64Body(body, charset);
     } else if (cte === "quoted-printable") {
-      body = decodeQuotedPrintable(body);
-      // decodeQuotedPrintable already handles UTF-8 decoding internally
+      body = decodeQuotedPrintable(body, charset);
     }
 
     // If HTML, convert to text
@@ -715,8 +720,8 @@ function extractFromMultipart(raw: string, boundary: string): { text: string; at
       const charsetM = partHeadersLower.match(/charset=["']?([^;"'\s]+)/i);
       decoded = decodeBase64Body(partBody, charsetM ? charsetM[1] : "utf-8");
     } else if (partHeadersLower.includes("quoted-printable")) {
-      decoded = decodeQuotedPrintable(partBody);
-      // decodeQuotedPrintable already handles UTF-8 decoding internally
+      const partCharsetM = partHeadersLower.match(/charset=["']?([^;"'\s]+)/i);
+      decoded = decodeQuotedPrintable(partBody, partCharsetM ? partCharsetM[1] : "utf-8");
     }
 
     if (partCt.includes("text/plain") || partHeadersLower.includes("text/plain")) {
