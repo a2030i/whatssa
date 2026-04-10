@@ -180,10 +180,14 @@ serve(async (req) => {
       delete_message_id,
       sender_name,
     } = body;
-    const normalizedPhone = normalizePhone(to);
-
     if (!to || typeof to !== "string") {
       return json({ error: "رقم المستلم مطلوب" }, 400);
+    }
+    // Strip everything except digits for Meta API (E.164 without '+')
+    // e.g. "+966535195202" → "966535195202", "966535195202" → unchanged
+    const normalizedPhone = normalizePhone(to);
+    if (normalizedPhone.length < 7) {
+      return json({ error: "رقم الهاتف غير صالح" }, 400);
     }
 
     // Pick config — prefer the exact channel, then exact phone number, then fallback
@@ -277,7 +281,7 @@ serve(async (req) => {
     if (type === "edit" && edit_message_id && message) {
       const editPayload = {
         messaging_product: "whatsapp",
-        to,
+        to: normalizedPhone,
         type: "text",
         text: { body: message },
         context: { message_id: edit_message_id },
@@ -302,7 +306,7 @@ serve(async (req) => {
 
     let messagePayload: Record<string, unknown> = {
       messaging_product: "whatsapp",
-      to,
+      to: normalizedPhone,  // Meta requires E.164 without '+' (digits only)
     };
 
     // Add reply context if provided
