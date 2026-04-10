@@ -15,7 +15,6 @@ const useNotificationSound = () => {
   // Create audio element lazily
   const getAudio = useCallback(() => {
     if (!audioRef.current) {
-      // Use a simple notification tone generated via Web Audio API
       audioRef.current = new Audio(
         "data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAACA/3//fwCAAIAAgACA/3//f/9/AID/f/9//38AgACA/3//f/9/AID/fwCAAIAAgP9/AID/fwCA/38AgACA/3//fwCAAIAAgP9//38AgP9/AIAAgACA/3//f/9/AID/f/9/AID/fwCA/38AgACA/3//fwCAAIAAgP9//38AgP9/"
       );
@@ -46,27 +45,59 @@ const useNotificationSound = () => {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [updateTitle]);
 
-  // Listen for new incoming messages
+  // Listen for new incoming messages — filtered by org conversations
   useEffect(() => {
     if (!orgId || !user) return;
 
+    // Pre-fetch org conversation IDs for fast filtering
+    // We keep a Set of conversation IDs belonging to this org
+    const orgConvIds = new Set<string>();
+    let initialLoadDone = false;
+
+    // Load org conversation IDs once
+    supabase
+      .from("conversations")
+      .select("id")
+      .eq("org_id", orgId)
+      .then(({ data }) => {
+        if (data) data.forEach((c: any) => orgConvIds.add(c.id));
+        initialLoadDone = true;
+      });
+
     const channel = supabase
-      .channel("notification-sound")
+      .channel(`notification-sound-${orgId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
         async (payload) => {
           const msg = payload.new as any;
           if (msg.sender !== "customer") return;
 
-          // Verify this message belongs to user's org
-          const { data: conv } = await supabase
-            .from("conversations")
-            .select("org_id")
-            .eq("id", msg.conversation_id)
-            .maybeSingle();
+          // Fast path: check cached org conversation IDs
+          if (initialLoadDone && !orgConvIds.has(msg.conversation_id)) {
+            // Double-check with a direct query (conversation might be new)
+            const { data: conv } = await supabase
+              .from("conversations")
+              .select("org_id")
+              .eq("id", msg.conversation_id)
+              .maybeSingle();
 
-          if (!conv || conv.org_id !== orgId) return;
+            if (!conv || conv.org_id !== orgId) return;
+            // Add to cache for future messages
+            orgConvIds.add(msg.conversation_id);
+          } else if (!initialLoadDone) {
+            // Initial load not done yet, verify directly
+            const { data: conv } = await supabase
+              .from("conversations")
+              .select("org_id")
+              .eq("id", msg.conversation_id)
+              .maybeSingle();
+            if (!conv || conv.org_id !== orgId) return;
+          }
 
           // If tab is not visible, play sound and update title
           if (document.visibilityState !== "visible") {
