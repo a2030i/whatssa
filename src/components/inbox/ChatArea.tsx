@@ -2002,8 +2002,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       if (!uploadData?.storage_path) throw new Error("تعذر حفظ التسجيل");
 
       const storagePath = uploadData.storage_path as string;
-      const isEvolution = conversation.channelType === "evolution";
-      const isMetaSend = conversation.channelType === "meta_api";
+      let effectiveChannelType = conversation.channelType;
+      if (!effectiveChannelType && conversation.channelId) {
+        const { data: chData } = await supabase.from("whatsapp_config_safe").select("channel_type").eq("id", conversation.channelId).maybeSingle();
+        effectiveChannelType = chData?.channel_type as any;
+      }
+      const isEvolution = effectiveChannelType === "evolution";
+      const isMetaSend = effectiveChannelType === "meta_api";
+      if (!isEvolution && !isMetaSend) { toast.error("تعذر تحديد نوع القناة"); return; }
       const sendFn = isMetaSend ? "whatsapp-send" : "evolution-send";
 
       const sendBody: Record<string, any> = {
