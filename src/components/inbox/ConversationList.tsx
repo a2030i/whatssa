@@ -359,60 +359,65 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   return (
     <div className={cn(
-      "flex flex-col bg-card border-l border-border/40",
-      hasSelection ? "hidden md:flex md:w-[340px] lg:w-[370px]" : "w-full md:w-[340px] lg:w-[370px]"
+      "flex flex-col bg-card/80 backdrop-blur-sm border-l border-border/30",
+      hasSelection ? "hidden md:flex md:w-[360px] lg:w-[380px]" : "w-full md:w-[360px] lg:w-[380px]"
     )}>
       {/* Header */}
-      <div className="px-4 pt-5 pb-3 space-y-3 shrink-0 border-b border-border/30">
+      <div className="px-4 pt-4 pb-3 space-y-3 shrink-0">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold text-foreground tracking-tight">
-            {activeInbox ? activeInbox.name : inboxMode === "email" ? "صندوق الإيميل" : "صندوق الواتساب"}
-          </h1>
-          <div className="flex items-center gap-0.5">
+          <div>
+            <h1 className="text-lg font-bold text-foreground tracking-tight">
+              {activeInbox ? activeInbox.name : inboxMode === "email" ? "صندوق الإيميل" : "المحادثات"}
+            </h1>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+              {filtered.length} محادثة
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
             {inboxMode === "email" && (
               <button
                 onClick={handleFetchEmails}
                 disabled={fetchingEmails}
-                className="w-9 h-9 rounded-xl border border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground transition-all flex items-center justify-center disabled:opacity-50"
+                className="w-8 h-8 rounded-full bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground transition-all flex items-center justify-center disabled:opacity-50"
                 title="جلب الوارد"
               >
-                {fetchingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {fetchingEmails ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
               </button>
             )}
             {onNewConversation && (
               <button
                 onClick={onNewConversation}
-                className="w-9 h-9 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-[0_2px_6px_hsl(var(--primary)/0.25)]"
+                className="w-8 h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-sm"
                 title="محادثة جديدة"
               >
-                <MessageSquare className="w-4 h-4" />
+                <Plus className="w-4 h-4" />
               </button>
             )}
             <button
               onClick={() => { setEditingInbox(null); setBuilderOpen(true); }}
-              className="w-9 h-9 rounded-xl border border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground transition-all flex items-center justify-center"
+              className="w-8 h-8 rounded-full bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground transition-all flex items-center justify-center"
               title="صندوق مخصص"
             >
-              <Plus className="w-4 h-4" />
+              <Inbox className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); }}
-              className={cn("w-9 h-9 rounded-xl border transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary border-primary/30" : "border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground")}
+              className={cn("w-8 h-8 rounded-full transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary" : "bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground")}
               title="تحديد متعدد"
             >
-              <CheckSquare className="w-4 h-4" />
+              <CheckSquare className="w-3.5 h-3.5" />
             </button>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="w-9 h-9 rounded-xl border border-border/50 bg-background hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
-                <RotateCcw className="w-4 h-4 text-foreground/70" />
+              <button onClick={clearFilters} className="w-8 h-8 rounded-full bg-secondary hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
+                <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             )}
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={cn("w-9 h-9 rounded-xl border transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary border-primary/30" : "border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground")}
+              className={cn("w-8 h-8 rounded-full transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary" : "bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground")}
             >
-              <Filter className="w-4 h-4" />
-              {hasActiveFilters && <span className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-primary" />}
+              <Filter className="w-3.5 h-3.5" />
+              {hasActiveFilters && <span className="absolute top-1 left-1 w-2 h-2 rounded-full bg-primary" />}
             </button>
           </div>
         </div>
