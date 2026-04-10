@@ -921,7 +921,7 @@ serve(async (req) => {
       const providerAttempt = await updateEvolutionBlockStatus(
         EVOLUTION_URL,
         evoHeaders,
-        targetInstance,
+        targetInstance as string,
         sanitizedPhone,
         desiredStatus,
       );
