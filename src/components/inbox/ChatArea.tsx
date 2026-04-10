@@ -3099,6 +3099,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                     <Contact className="w-4 h-4" />
                   </button>
                 )}
+                {!isNoteMode && isEmailChannel && (
+                  <button onClick={() => setShowEmailTemplatePicker(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="قوالب البريد">
+                    <FileText className="w-4 h-4" />
+                  </button>
+                )}
                 {!isNoteMode && !windowExpired && !isEmailChannel && (
                   <button onClick={() => setIsRecording(true)} className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0" title="تسجيل صوتي">
                     <Mic className="w-4 h-4" />
