@@ -1485,6 +1485,79 @@ serve(async (req) => {
           }
         }
 
+        // ── Handle account_update events (quality, tier, restrictions, bans) ──
+        if (change.field === "account_update" || value.account_update) {
+          const au = value.account_update || value;
+          const event: string = au.event || "";
+
+          const configUpdate: Record<string, unknown> = {
+            updated_at: new Date().toISOString(),
+          };
+
+          // Quality rating change (GREEN / YELLOW / RED)
+          if (au.current_quality) {
+            configUpdate.quality_rating = au.current_quality;
+          }
+
+          // Messaging limit tier change (TIER_50 / TIER_250 / TIER_1K / TIER_10K / TIER_100K)
+          if (au.current_limit) {
+            configUpdate.messaging_limit_tier = au.current_limit;
+          }
+
+          // Account banned — mark channel disconnected
+          if (event === "ACCOUNT_BANNED") {
+            configUpdate.is_connected = false;
+            configUpdate.health_status = { ban: true, event, ts: new Date().toISOString() };
+            await logToSystem(supabase, "critical",
+              `حساب واتساب محظور: ${au.phone_number || metadataPhoneId}`,
+              { event, restriction_info: au.restriction_info, ban_info: au.ban_info },
+              orgId,
+            );
+          }
+
+          // Account restricted — log warning
+          if (event === "ACCOUNT_RESTRICTED") {
+            configUpdate.health_status = { restricted: true, event, restriction_info: au.restriction_info, ts: new Date().toISOString() };
+            await logToSystem(supabase, "warn",
+              `حساب واتساب مقيّد: ${au.phone_number || metadataPhoneId}`,
+              { event, restriction_info: au.restriction_info },
+              orgId,
+            );
+          }
+
+          // Flagged / unflagged
+          if (event === "FLAGGED") {
+            await logToSystem(supabase, "warn",
+              `تم وضع علامة على رقم واتساب: ${au.phone_number || metadataPhoneId}`,
+              { event },
+              orgId,
+            );
+          }
+
+          // Quality degraded — log warning
+          if (event === "PHONE_NUMBER_QUALITY_UPDATE" && au.current_quality && au.current_quality !== "GREEN") {
+            await logToSystem(supabase, "warn",
+              `انخفاض جودة رقم واتساب إلى ${au.current_quality}: ${au.phone_number || metadataPhoneId}`,
+              { event, current_quality: au.current_quality, previous_quality: au.previous_quality },
+              orgId,
+            );
+          }
+
+          // Apply config updates if any real field changed
+          if (channelConfigId && Object.keys(configUpdate).length > 1) {
+            await supabase.from("whatsapp_config")
+              .update(configUpdate)
+              .eq("id", channelConfigId);
+          }
+
+          // Always log the raw event for audit trail
+          await logToSystem(supabase, "info",
+            `account_update: ${event || "unknown"} — ${au.phone_number || metadataPhoneId}`,
+            { field: change.field, event, current_quality: au.current_quality, current_limit: au.current_limit },
+            orgId,
+          );
+        }
+
       }
 
       return new Response(JSON.stringify({ status: "ok" }), {
