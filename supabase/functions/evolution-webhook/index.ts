@@ -577,11 +577,9 @@ serve(async (req) => {
       const messages = body.data || [];
       const messageList = Array.isArray(messages) ? messages : [messages];
 
-      console.log(`[evolution-webhook] TRACE: messageList.length=${messageList.length}`);
 
       // Load org settings once
       const { data: orgData, error: orgError } = await supabase.from("organizations").select("settings, name").eq("id", orgId).single();
-      console.log(`[evolution-webhook] TRACE: orgData=${!!orgData}, orgError=${orgError?.message || "none"}`);
       const orgSettings = (orgData?.settings as Record<string, any>) || {};
       // Block org name from being used as customer name
       setDynamicBlockedNames(orgData?.name);
@@ -609,7 +607,6 @@ serve(async (req) => {
           const rawPhone = remoteJid.replace("@s.whatsapp.net", "").replace("@lid", "");
           phone = normalizePhone((remoteJid.includes("@lid") && senderPn) ? senderPn : rawPhone);
         }
-        console.log(`[evolution-webhook] TRACE: phone=${phone}, isFromMe=${isFromMe}, type=${conversationType}, remoteJid=${remoteJid}`);
         if (!phone || phone.includes("status")) continue;
 
         // ── Handle reactionMessage inside MESSAGES_UPSERT (v2.3.7 has no separate event) ──
@@ -829,12 +826,9 @@ serve(async (req) => {
           continue;
         }
 
-        console.log(`[evolution-webhook] TRACE: text="${(text||"").slice(0,30)}", messageType=${messageType}`);
-        if (!text && messageType === "text") { console.log(`[evolution-webhook] TRACE: SKIPPED empty text`); continue; }
 
         // ── Handle outgoing messages sent from phone ──
         if (isFromMe) {
-          console.log(`[evolution-webhook] TRACE: isFromMe=true, handling outgoing`);
           const resolvedOutgoingName = conversationType === "private"
             ? await fetchEvolutionContactName(instanceName, phone)
             : null;
@@ -981,7 +975,6 @@ serve(async (req) => {
           continue;
         }
 
-        console.log(`[evolution-webhook] TRACE: past isFromMe block, processing incoming`);
         await logToSystem(supabase, "info", `رسالة واردة (Evolution) من ${phone}`, {
           type: messageType, conversation_type: conversationType, wa_message_id: key.id,
         }, orgId);
@@ -1023,9 +1016,7 @@ serve(async (req) => {
           : null;
         let conversationDisplayName = chooseBestContactName(resolvedIncomingName, msg.pushName) || phone;
 
-        console.log(`[evolution-webhook] TRACE: looking for conversation, phone=${phone}, channelId=${config.id}`);
         let conversation = await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "open");
-        console.log(`[evolution-webhook] TRACE: open conv found=${!!conversation}, id=${conversation?.id || "none"}`);
 
         // If no open conversation, check for a closed one to reopen
         if (!conversation) {
@@ -1208,7 +1199,6 @@ serve(async (req) => {
             .insert(convInsert)
             .select("id")
             .single();
-          console.log(`[evolution-webhook] TRACE: insert conv result: data=${!!newConv}, error=${convError?.message || "none"}, code=${convError?.code || "none"}`);
 
           if (convError) {
             if (convError.code === "23505") {
@@ -1280,8 +1270,6 @@ serve(async (req) => {
             }
           }
 
-        if (!conversation) { console.log(`[evolution-webhook] TRACE: NO conversation found, skipping`); continue; }
-        console.log(`[evolution-webhook] TRACE: conversation ready, id=${conversation.id}`);
 
         // Auto-save customer record (skip groups — save individual participants instead)
         try {
@@ -1505,7 +1493,6 @@ serve(async (req) => {
           metadata,
         });
 
-        console.log(`[evolution-webhook] TRACE: message insert error=${messageInsertError?.message || "none"}`);
         if (messageInsertError) {
           await logToSystem(supabase, "error", "فشل حفظ الرسالة الواردة (Evolution)", {
             error: messageInsertError.message, wa_message_id: key.id, conversation_id: conversation.id,
