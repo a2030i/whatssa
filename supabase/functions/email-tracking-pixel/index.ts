@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     // Update tracking record
     const { data: existing } = await ext
       .from("email_open_tracking")
-      .select("id, open_count")
+      .select("id, open_count, opened_at")
       .eq("tracking_token", token)
       .maybeSingle();
 

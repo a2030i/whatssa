@@ -90,10 +90,10 @@ Deno.serve(async (req) => {
     // Get email config
     let configQuery = admin.from("email_configs").select("*").eq("org_id", profile.org_id).eq("is_active", true);
 
-    if (!caller.isAdmin) {
+    if (!caller!.isAdmin) {
       const conditions = [
         `dedicated_agent_id.eq.${profile.id}`,
-        ...caller.teamIds.map((teamId: string) => `dedicated_team_id.eq.${teamId}`),
+        ...caller!.teamIds.map((teamId: string) => `dedicated_team_id.eq.${teamId}`),
       ];
 
       if (conditions.length === 0) {
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     const { data: configs, error: configError } = await configQuery.limit(1).maybeSingle();
     
     if (configError || !configs) {
-      if (!caller.isAdmin || config_id) {
+      if (!caller!.isAdmin || config_id) {
         return new Response(JSON.stringify({ error: "لا تملك صلاحية استخدام هذا البريد" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
 
     // Encode non-ASCII characters as HTML numeric entities so the MIME body stays ASCII-safe
     // This prevents denomailer's quoted-printable encoding from corrupting multi-byte UTF-8 chars
-    const safeHtml = finalHtml.replace(/[^\x00-\x7F]/g, (ch) => `&#${ch.codePointAt(0)};`);
+    const safeHtml = finalHtml.replace(/[^\x00-\x7F]/g, (ch: string) => `&#${ch.codePointAt(0)};`);
 
     // Wrap in proper HTML with UTF-8 charset
     const wrappedHtml = `<!DOCTYPE html><html dir="auto"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;font-size:14px;line-height:1.6">${safeHtml}</body></html>`;
