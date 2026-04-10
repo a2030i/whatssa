@@ -42,8 +42,9 @@ interface AuditEntry {
   metadata?: Record<string, unknown>;
 }
 
+// deno-lint-ignore no-explicit-any
 export async function auditLog(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   entry: AuditEntry
 ) {
   try {
