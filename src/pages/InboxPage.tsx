@@ -1356,12 +1356,10 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background" dir="rtl">
-        <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <MessageSquare className="w-6 h-6 text-primary" />
-          </div>
-          <p className="text-sm font-medium text-foreground/60">جاري التحميل...</p>
+      <div className="flex h-screen items-center justify-center" dir="rtl">
+        <div className="text-center text-muted-foreground">
+          <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30 animate-pulse" />
+          <p className="text-sm">جاري التحميل...</p>
         </div>
       </div>
     );
@@ -1447,15 +1445,15 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
          />
       ) : (
         !isMobile && (
-          <div className="flex flex-1 items-center justify-center bg-background bg-mesh">
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-3xl bg-primary/[0.07] flex items-center justify-center mx-auto mb-5">
-                <MessageSquare className="w-8 h-8 text-primary/40" />
+          <div className="flex flex-1 items-center justify-center bg-background">
+            <div className="text-center text-muted-foreground">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-7 h-7 opacity-20" />
               </div>
-              <p className="text-lg font-semibold text-foreground/50 tracking-tight">
+              <p className="text-base font-medium text-foreground/60 tracking-tight">
                 {conversations.length === 0 ? "لا توجد محادثات بعد" : "اختر محادثة للبدء"}
               </p>
-              <p className="text-sm text-muted-foreground/40 mt-2 font-light">
+              <p className="text-sm text-muted-foreground/40 mt-1.5 font-light">
                 {conversations.length === 0 ? "اربط واتساب وابدأ باستقبال الرسائل" : "اختر من القائمة على اليمين"}
               </p>
             </div>
@@ -1464,13 +1462,13 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       )}
 
       {selected && !isMobile && desktopInfoOpen && (
-        <div className="relative animate-in slide-in-from-left duration-200 h-full border-r border-border/40">
+        <div className="relative animate-in slide-in-from-left duration-200 h-full">
           <button
             onClick={() => setDesktopInfoOpen(false)}
-            className="absolute top-3 left-3 z-10 w-7 h-7 rounded-full bg-muted/80 hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-all backdrop-blur-sm"
+            className="absolute top-3 left-3 z-10 w-7 h-7 rounded-lg bg-muted hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-all"
             title="إغلاق"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
           <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} onAssignAgent={handleAssignAgent} onAssignTeam={handleAssignTeam} />
         </div>

@@ -2093,9 +2093,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-secondary/30 dark:bg-background/50">
+    <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-[#efeae2] dark:bg-[#0b141a]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'400\' height=\'400\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cdefs%3E%3Cpattern id=\'p\' width=\'80\' height=\'80\' patternUnits=\'userSpaceOnUse\' patternTransform=\'rotate(15)\'%3E%3Cpath d=\'M20 10c2 0 3 1 3 3s-1 3-3 3-3-1-3-3 1-3 3-3zm30 25c1.5 0 2.5 1 2.5 2.5s-1 2.5-2.5 2.5-2.5-1-2.5-2.5 1-2.5 2.5-2.5zm-35 30c1 0 2 .8 2 2s-1 2-2 2-2-.8-2-2 1-2 2-2zm45 10c1.5 0 2.5 1 2.5 2.5s-1 2.5-2.5 2.5-2.5-1-2.5-2.5 1-2.5 2.5-2.5z\' fill=\'%23d6cfc4\' fill-opacity=\'0.3\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'400\' height=\'400\' fill=\'url(%23p)\'/%3E%3C/svg%3E")' }}>
       {/* Header */}
-      <div className="shrink-0 bg-card/90 backdrop-blur-sm border-b border-border/30">
+      <div className="shrink-0 bg-card border-b border-border">
         <div className="h-[56px] md:h-[60px] flex items-center justify-between px-3 md:px-5">
           <div className="flex items-center gap-2 min-w-0">
             <button className="w-8 h-8 rounded-full hover:bg-muted transition-all flex items-center justify-center shrink-0" onClick={onBack}>
@@ -2109,28 +2109,28 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               {groupPicture ? (
                 <img src={groupPicture} alt={conversation.customerName} className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
               ) : null}
-              <div className={cn("w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary flex items-center justify-center text-sm font-semibold text-muted-foreground", groupPicture ? "hidden" : "")}>
+              <div className={cn("w-9 h-9 md:w-10 md:h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
               {conversation.lastSeen === "متصل الآن" && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-success border-2 border-card" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-card" />
               )}
             </div>
             <div className="min-w-0 overflow-hidden">
               <div className="flex items-center gap-1">
                 <p className="font-semibold text-[14px] truncate max-w-[140px] md:max-w-[250px]">{conversation.customerName}</p>
                 {isMetaChannel && (
-                  <span className="inline-flex items-center text-[7px] px-1 py-px rounded-full bg-primary/10 text-primary font-bold shrink-0">
+                  <span className="inline-flex items-center text-[7px] px-1 py-px rounded bg-emerald-500/10 text-emerald-600 font-bold shrink-0">
                     <ShieldCheck className="w-2 h-2 ml-0.5" />رسمي
                   </span>
                 )}
                 {conversation.sentiment === "negative" && (
-                  <span className="inline-flex items-center text-[7px] px-1.5 py-px rounded-full bg-destructive/10 text-destructive font-bold shrink-0 gap-0.5">
+                  <span className="inline-flex items-center text-[7px] px-1.5 py-px rounded bg-destructive/10 text-destructive font-bold shrink-0 gap-0.5">
                     😠 غاضب
                   </span>
                 )}
                 {conversation.sentiment === "positive" && (
-                  <span className="inline-flex items-center text-[7px] px-1.5 py-px rounded-full bg-success/10 text-success font-bold shrink-0 gap-0.5">
+                  <span className="inline-flex items-center text-[7px] px-1.5 py-px rounded bg-emerald-500/10 text-emerald-600 font-bold shrink-0 gap-0.5">
                     😊 راضٍ
                   </span>
                 )}
@@ -2289,7 +2289,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       </div>
 
       {/* Mobile Quick Action Toolbar */}
-      <div className="flex items-center overflow-x-auto scrollbar-none border-b border-border/20 bg-card/60 backdrop-blur-sm shrink-0">
+      <div className="flex items-center overflow-x-auto scrollbar-none border-b border-border/20 bg-card/80 shrink-0">
         {conversation.status !== "closed" ? (
           <button
             onClick={() => setShowClosureReason(true)}

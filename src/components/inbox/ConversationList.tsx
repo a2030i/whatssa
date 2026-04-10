@@ -359,72 +359,67 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
   return (
     <div className={cn(
-      "flex flex-col bg-card/80 backdrop-blur-sm border-l border-border/30",
-      hasSelection ? "hidden md:flex md:w-[360px] lg:w-[380px]" : "w-full md:w-[360px] lg:w-[380px]"
+      "flex flex-col bg-card border-l border-border/40",
+      hasSelection ? "hidden md:flex md:w-[340px] lg:w-[370px]" : "w-full md:w-[340px] lg:w-[370px]"
     )}>
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 space-y-3 shrink-0">
+      <div className="px-4 pt-5 pb-3 space-y-3 shrink-0 border-b border-border/30">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-foreground tracking-tight">
-              {activeInbox ? activeInbox.name : inboxMode === "email" ? "صندوق الإيميل" : "المحادثات"}
-            </h1>
-            <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-              {filtered.length} محادثة
-            </p>
-          </div>
-          <div className="flex items-center gap-1">
+          <h1 className="text-lg font-bold text-foreground tracking-tight">
+            {activeInbox ? activeInbox.name : inboxMode === "email" ? "صندوق الإيميل" : "صندوق الواتساب"}
+          </h1>
+          <div className="flex items-center gap-0.5">
             {inboxMode === "email" && (
               <button
                 onClick={handleFetchEmails}
                 disabled={fetchingEmails}
-                className="w-8 h-8 rounded-full bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground transition-all flex items-center justify-center disabled:opacity-50"
+                className="w-9 h-9 rounded-xl border border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground transition-all flex items-center justify-center disabled:opacity-50"
                 title="جلب الوارد"
               >
-                {fetchingEmails ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                {fetchingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               </button>
             )}
             {onNewConversation && (
               <button
                 onClick={onNewConversation}
-                className="w-8 h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-sm"
+                className="w-9 h-9 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center justify-center shadow-[0_2px_6px_hsl(var(--primary)/0.25)]"
                 title="محادثة جديدة"
               >
-                <Plus className="w-4 h-4" />
+                <MessageSquare className="w-4 h-4" />
               </button>
             )}
             <button
               onClick={() => { setEditingInbox(null); setBuilderOpen(true); }}
-              className="w-8 h-8 rounded-full bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground transition-all flex items-center justify-center"
+              className="w-9 h-9 rounded-xl border border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground transition-all flex items-center justify-center"
               title="صندوق مخصص"
             >
-              <Inbox className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
             </button>
             <button
               onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); }}
-              className={cn("w-8 h-8 rounded-full transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary" : "bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground")}
+              className={cn("w-9 h-9 rounded-xl border transition-all flex items-center justify-center", bulkMode ? "bg-primary/10 text-primary border-primary/30" : "border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground")}
               title="تحديد متعدد"
             >
-              <CheckSquare className="w-3.5 h-3.5" />
+              <CheckSquare className="w-4 h-4" />
             </button>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="w-8 h-8 rounded-full bg-secondary hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
-                <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />
+              <button onClick={clearFilters} className="w-9 h-9 rounded-xl border border-border/50 bg-background hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
+                <RotateCcw className="w-4 h-4 text-foreground/70" />
               </button>
             )}
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={cn("w-8 h-8 rounded-full transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary" : "bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground")}
+              className={cn("w-9 h-9 rounded-xl border transition-all relative flex items-center justify-center", showAdvancedFilters || hasActiveFilters ? "bg-primary/10 text-primary border-primary/30" : "border-border/50 bg-background hover:bg-muted text-foreground/70 hover:text-foreground")}
             >
-              <Filter className="w-3.5 h-3.5" />
-              {hasActiveFilters && <span className="absolute top-1 left-1 w-2 h-2 rounded-full bg-primary" />}
+              <Filter className="w-4 h-4" />
+              {hasActiveFilters && <span className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-primary" />}
             </button>
           </div>
         </div>
 
         {/* Custom Inbox Chips */}
         {customInboxes.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none">
             {customInboxes.map((inbox) => (
               <div key={inbox.id} className="flex items-center gap-0.5 group">
                 <button
@@ -433,13 +428,13 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                     else { setActiveCustomInbox(inbox.id); setActiveQuickFilter("all"); }
                   }}
                   className={cn(
-                    "text-[11px] px-3 py-1.5 rounded-full whitespace-nowrap font-medium transition-all flex items-center gap-1.5",
+                    "text-[11px] px-3.5 py-1.5 rounded-xl whitespace-nowrap font-semibold transition-all flex items-center gap-1.5 border",
                     activeCustomInbox === inbox.id
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary/70 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border/50 hover:border-primary/30 hover:text-foreground"
                   )}
                 >
-                  <Sparkles className="w-3 h-3" />
+                  <Inbox className="w-3 h-3" />
                   {inbox.name}
                 </button>
                 <button
@@ -462,19 +457,19 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
+          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
           <Input
-            placeholder="بحث في المحادثات..."
+            placeholder="بحث..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-9 bg-secondary/50 border-0 text-sm h-9 rounded-full focus:bg-background focus:border focus:border-primary/30 focus:ring-0 transition-all placeholder:text-muted-foreground/40"
+            className="pr-10 bg-background border border-border/50 text-sm h-10 rounded-xl focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/40"
           />
         </div>
       </div>
 
-      {/* Quick Filters - Horizontal scroll pills */}
-      <div className="shrink-0 px-3 pb-2">
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-1">
+      {/* Quick Filters - Grid */}
+      <div className="shrink-0 px-4 pb-3">
+        <div className="grid grid-cols-3 gap-1.5">
           {quickFilters.map((qf) => {
             const isActive = activeQuickFilter === qf.id && !activeCustomInbox;
             return (
@@ -482,17 +477,17 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                 key={qf.id}
                 onClick={() => { setActiveQuickFilter(qf.id); setActiveCustomInbox(null); }}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all whitespace-nowrap",
+                  "flex items-center justify-center gap-1 px-2 py-2 rounded-xl text-[11px] font-semibold transition-all border",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-secondary/70 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_hsl(var(--primary)/0.25)]"
+                    : "bg-card text-muted-foreground border-border/40 hover:border-primary/40 hover:text-foreground hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
                 )}
               >
-                <qf.icon className="w-3 h-3 shrink-0" />
-                <span>{qf.label}</span>
+                <qf.icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{qf.label}</span>
                 {(qf.count ?? 0) > 0 && (
                   <span className={cn(
-                    "text-[9px] min-w-[16px] h-[16px] rounded-full flex items-center justify-center font-bold px-1 shrink-0",
+                    "text-[9px] min-w-[16px] h-[16px] rounded-full flex items-center justify-center font-bold px-0.5 shrink-0",
                     isActive
                       ? "bg-primary-foreground/20 text-primary-foreground"
                       : "bg-primary/10 text-primary"
@@ -559,7 +554,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
       )}
 
       {/* Conversation List */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scrollbar-thin px-2 pt-1 pb-2">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 pt-1 pb-2 border-t border-primary/15">
         {activeQuickFilter === "groups" && filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
             <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center mb-3">
@@ -589,7 +584,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             )}
           </div>
         ) : (
-          <div className="space-y-0.5">
+          <div className="divide-y divide-primary/15">
           {filtered.map((conv) => {
             const isSelected = conv.id === selectedId;
             const countdown = conv.channelType === "meta_api" ? get24hCountdown(conv.lastCustomerMessageAt) : null;
@@ -633,11 +628,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   setTimeout(() => document.addEventListener("click", dismiss), 0);
                 }}
                 className={cn(
-                  "w-full text-right px-3 py-2.5 rounded-xl transition-all group relative",
+                  "w-full text-right px-3 py-3 rounded-xl transition-all group relative border",
                   isSelected && !bulkMode
-                    ? "bg-primary/[0.08] shadow-sm"
-                    : "hover:bg-secondary/60",
-                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/5",
+                    ? "bg-primary/[0.06] border-primary/20 shadow-[0_1px_6px_hsl(var(--primary)/0.08)]"
+                    : "border-transparent hover:bg-card hover:border-border/40 hover:shadow-[0_1px_4px_rgba(0,0,0,0.04)]",
+                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/5 border-primary/15",
                   hasUnread && !isSelected && "bg-primary/[0.03]"
                 )}
               >
@@ -658,7 +653,10 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       <img
                         src={conv.profilePic}
                         alt={displayName}
-                        className="w-11 h-11 rounded-full object-cover"
+                        className={cn(
+                          "w-11 h-11 rounded-full object-cover ring-2 transition-all",
+                          isSelected ? "ring-primary/30" : "ring-border/20"
+                        )}
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                           (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
@@ -666,11 +664,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       />
                     ) : null}
                     <div className={cn(
-                      "w-11 h-11 rounded-full flex items-center justify-center text-[13px] font-semibold transition-all",
+                      "w-11 h-11 rounded-full flex items-center justify-center text-[14px] font-semibold transition-all",
                       conv.profilePic ? "hidden" : "",
                       isSelected
-                        ? "bg-primary/12 text-primary"
-                        : "bg-secondary text-muted-foreground"
+                        ? "bg-primary/12 text-primary ring-2 ring-primary/20"
+                        : "bg-muted text-muted-foreground ring-2 ring-border/20"
                     )}>
                       {conv.conversationType === "group" ? (
                         <Users className="w-4.5 h-4.5" />
@@ -679,7 +677,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       )}
                     </div>
                     {hasUnread && (
-                      <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary border-2 border-card" />
+                      <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary border-2 border-background" />
                     )}
                   </div>
 
