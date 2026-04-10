@@ -1065,6 +1065,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [emailSubject, setEmailSubject] = useState("");
   const [emailSignature, setEmailSignature] = useState("");
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
+  const [showEmailTemplatePicker, setShowEmailTemplatePicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isUserNearBottomRef = useRef(true);
