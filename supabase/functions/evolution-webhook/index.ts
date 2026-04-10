@@ -981,6 +981,7 @@ serve(async (req) => {
           continue;
         }
 
+        console.log(`[evolution-webhook] TRACE: past isFromMe block, processing incoming`);
         await logToSystem(supabase, "info", `رسالة واردة (Evolution) من ${phone}`, {
           type: messageType, conversation_type: conversationType, wa_message_id: key.id,
         }, orgId);
