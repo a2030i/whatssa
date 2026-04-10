@@ -1773,7 +1773,7 @@ async function setWebhook(
   headers: Record<string, string>,
   instanceName: string,
   webhookUrl: string,
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: any,
   orgId: string,
 ) {
   try {
@@ -1812,7 +1812,7 @@ async function setWebhook(
 }
 
 async function syncInstanceIdentity(
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: any,
   orgId: string,
   instanceName: string,
   evolutionUrl: string,
@@ -1874,7 +1874,7 @@ async function syncInstanceIdentity(
   }
 }
 
-async function upsertConfig(adminClient: ReturnType<typeof createClient>, orgId: string, instanceName: string) {
+async function upsertConfig(adminClient: any, orgId: string, instanceName: string) {
   const { data: existing } = await adminClient
     .from("whatsapp_config")
     .select("id")
