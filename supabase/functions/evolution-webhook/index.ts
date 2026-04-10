@@ -577,8 +577,11 @@ serve(async (req) => {
       const messages = body.data || [];
       const messageList = Array.isArray(messages) ? messages : [messages];
 
+      console.log(`[evolution-webhook] TRACE: messageList.length=${messageList.length}`);
+
       // Load org settings once
-      const { data: orgData } = await supabase.from("organizations").select("settings, name").eq("id", orgId).single();
+      const { data: orgData, error: orgError } = await supabase.from("organizations").select("settings, name").eq("id", orgId).single();
+      console.log(`[evolution-webhook] TRACE: orgData=${!!orgData}, orgError=${orgError?.message || "none"}`);
       const orgSettings = (orgData?.settings as Record<string, any>) || {};
       // Block org name from being used as customer name
       setDynamicBlockedNames(orgData?.name);
@@ -606,6 +609,7 @@ serve(async (req) => {
           const rawPhone = remoteJid.replace("@s.whatsapp.net", "").replace("@lid", "");
           phone = normalizePhone((remoteJid.includes("@lid") && senderPn) ? senderPn : rawPhone);
         }
+        console.log(`[evolution-webhook] TRACE: phone=${phone}, isFromMe=${isFromMe}, type=${conversationType}, remoteJid=${remoteJid}`);
         if (!phone || phone.includes("status")) continue;
 
         // ── Handle reactionMessage inside MESSAGES_UPSERT (v2.3.7 has no separate event) ──
