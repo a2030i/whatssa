@@ -552,7 +552,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
             direction: detail?.direction || (message.sender === "customer" ? "inbound" : "outbound"),
           } : undefined,
         };
-      });
+      }).filter((m) => m.type !== "reaction");
 
       setAllMessages((prev) => {
         const existing = prev[currentConversationId] || [];
