@@ -105,8 +105,9 @@ const pickStatusResponseItem = (payload: any, messageId: string) => {
   }) || items[0] || null;
 };
 
+// deno-lint-ignore no-explicit-any
 async function logToSystem(
-  client: ReturnType<typeof createClient>,
+  client: any,
   level: string,
   message: string,
   metadata: Record<string, unknown> = {},
@@ -123,7 +124,7 @@ async function logToSystem(
       metadata,
       org_id: orgId || null,
       user_id: userId || null,
-    }).then(() => {}).catch((e) => console.error("Log write failed:", e));
+    }).then(() => {}).catch((e: any) => console.error("Log write failed:", e));
   } catch (e) {
     console.error("Failed to write system log:", e);
   }
@@ -1772,7 +1773,7 @@ async function setWebhook(
   headers: Record<string, string>,
   instanceName: string,
   webhookUrl: string,
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: any,
   orgId: string,
 ) {
   try {
@@ -1811,7 +1812,7 @@ async function setWebhook(
 }
 
 async function syncInstanceIdentity(
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: any,
   orgId: string,
   instanceName: string,
   evolutionUrl: string,
@@ -1873,7 +1874,7 @@ async function syncInstanceIdentity(
   }
 }
 
-async function upsertConfig(adminClient: ReturnType<typeof createClient>, orgId: string, instanceName: string) {
+async function upsertConfig(adminClient: any, orgId: string, instanceName: string) {
   const { data: existing } = await adminClient
     .from("whatsapp_config")
     .select("id")
