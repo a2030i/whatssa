@@ -805,11 +805,18 @@ async function fetchEmailsForConfig(
         const cleanBody = cleanQuotedContent(bodyText);
         const displayContent = cleanBody.substring(0, 10000) || subject || "(بدون محتوى)";
 
+        // Build display content with attachment info
+        let finalDisplayContent = displayContent;
+        if (emailAttachments.length > 0) {
+          const attachNames = emailAttachments.map(a => a.filename).join(", ");
+          finalDisplayContent = `📎 ${attachNames}\n\n${displayContent}`;
+        }
+
         // Insert message
         const { data: insertedMsg, error: msgError } = await admin.from("messages").insert({
           conversation_id: convId,
           sender: "customer",
-          content: displayContent,
+          content: finalDisplayContent,
           message_type: "text",
           status: "received",
           wa_message_id: emailMessageId,
@@ -824,6 +831,7 @@ async function fetchEmailsForConfig(
             imap_fetched: true,
             email_in_reply_to: inReplyTo || undefined,
             email_references: refsRaw || undefined,
+            email_attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
           },
         }).select("id").single();
 
@@ -847,7 +855,7 @@ async function fetchEmailsForConfig(
               email_message_id: emailMessageId,
               email_in_reply_to: inReplyTo || null,
               email_references: refsRaw || null,
-              email_attachments: [],
+              email_attachments: emailAttachments.length > 0 ? emailAttachments : [],
               direction: "inbound",
               created_at: date,
             });
