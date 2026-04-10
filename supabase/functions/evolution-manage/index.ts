@@ -1945,7 +1945,7 @@ function extractProviderError(data: unknown) {
 }
 
 async function resolveEvolutionInstanceName(
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: any,
   orgId: string,
   requestedInstanceName?: string,
   channelId?: string,

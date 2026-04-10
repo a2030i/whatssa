@@ -31,7 +31,7 @@ function getUserIdFromAuthHeader(authHeader: string) {
 }
 
 async function logToSystem(
-  client: ReturnType<typeof createClient>,
+  client: any,
   level: string,
   message: string,
   metadata: Record<string, unknown> = {},
