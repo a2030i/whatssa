@@ -658,10 +658,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       <img
                         src={conv.profilePic}
                         alt={displayName}
-                        className={cn(
-                          "w-11 h-11 rounded-full object-cover ring-2 transition-all",
-                          isSelected ? "ring-primary/30" : "ring-border/20"
-                        )}
+                        className="w-11 h-11 rounded-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                           (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
@@ -669,11 +666,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       />
                     ) : null}
                     <div className={cn(
-                      "w-11 h-11 rounded-full flex items-center justify-center text-[14px] font-semibold transition-all",
+                      "w-11 h-11 rounded-full flex items-center justify-center text-[13px] font-semibold transition-all",
                       conv.profilePic ? "hidden" : "",
                       isSelected
-                        ? "bg-primary/12 text-primary ring-2 ring-primary/20"
-                        : "bg-muted text-muted-foreground ring-2 ring-border/20"
+                        ? "bg-primary/12 text-primary"
+                        : "bg-secondary text-muted-foreground"
                     )}>
                       {conv.conversationType === "group" ? (
                         <Users className="w-4.5 h-4.5" />
@@ -682,7 +679,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                       )}
                     </div>
                     {hasUnread && (
-                      <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary border-2 border-background" />
+                      <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary border-2 border-card" />
                     )}
                   </div>
 
