@@ -2864,10 +2864,6 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                       chipClassName="bg-muted text-muted-foreground"
                     />
                   </div>
-                        className="flex-1 min-w-[80px] text-[12px] bg-transparent border-0 outline-none px-1 py-0.5"
-                      />
-                    </div>
-                  </div>
                 </div>
               )}
               {/* Signature Preview */}
