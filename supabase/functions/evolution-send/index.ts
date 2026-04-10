@@ -40,7 +40,8 @@ async function logToSystem(
 ) {
   try {
     // Fire-and-forget: don't block the main flow
-    client.from("system_logs").insert({
+    // deno-lint-ignore no-explicit-any
+    Promise.resolve(client.from("system_logs").insert({
       level,
       source: "edge_function",
       function_name: "evolution-send",
@@ -48,8 +49,7 @@ async function logToSystem(
       metadata,
       org_id: orgId || null,
       user_id: userId || null,
-    // deno-lint-ignore no-explicit-any
-    }).then(() => {}).catch((e: any) => console.error("Log write failed:", e));
+    })).then(() => {}).catch((e: any) => console.error("Log write failed:", e));
   } catch (e) {
     console.error("Failed to write system log:", e);
   }
