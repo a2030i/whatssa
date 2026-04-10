@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, RefreshCw, Database, AlertTriangle, CheckCircle, XCircle, Clock, ExternalLink } from "lucide-react";
-import { toast } from "sonner";
+import { Shield, RefreshCw, Database, AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-react";
 import { invokeCloud } from "@/lib/supabase";
 
 interface HealthLog {
@@ -21,7 +20,7 @@ const EmergencyAdminPage = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
 
-  const checkExternalDB = async () => {
+  const checkHealth = async () => {
     setIsChecking(true);
     setDbStatus("checking");
     setAuthStatus("checking");
@@ -29,48 +28,43 @@ const EmergencyAdminPage = () => {
     const start = Date.now();
 
     try {
-      const result = await invokeCloud("db-health-check", { manual: true });
+      const { data, error } = await invokeCloud("db-health-check", {
+        body: { manual: true },
+      });
+
       const ms = Date.now() - start;
-
-      const dbOk = result?.db_status === "online";
-      const authOk = result?.auth_status === "online";
-
-      setDbStatus(dbOk ? "online" : "offline");
-      setAuthStatus(authOk ? "online" : "offline");
       setLatency(ms);
       setLastCheck(new Date());
 
+      if (error || !data) {
+        setDbStatus("offline");
+        setAuthStatus("offline");
+      } else {
+        setDbStatus(data.db_status === "online" ? "online" : "offline");
+        setAuthStatus(data.auth_status === "online" ? "online" : "offline");
+      }
+
       const log: HealthLog = {
         checked_at: new Date().toISOString(),
-        db_status: dbOk ? "online" : "offline",
-        auth_status: authOk ? "online" : "offline",
+        db_status: data?.db_status || "offline",
+        auth_status: data?.auth_status || "offline",
         latency_ms: ms,
       };
       setHealthLogs(prev => [log, ...prev].slice(0, 50));
     } catch {
-      const ms = Date.now() - start;
       setDbStatus("offline");
       setAuthStatus("offline");
-      setLatency(ms);
+      setLatency(Date.now() - start);
       setLastCheck(new Date());
-      toast.error("تعذّر الاتصال بخدمة الفحص");
-
-      const log: HealthLog = {
-        checked_at: new Date().toISOString(),
-        db_status: "offline",
-        auth_status: "offline",
-        latency_ms: ms,
-      };
-      setHealthLogs(prev => [log, ...prev].slice(0, 50));
-    } finally {
-      setIsChecking(false);
     }
+
+    setIsChecking(false);
   };
 
   useEffect(() => {
-    checkExternalDB();
+    checkHealth();
     const interval = setInterval(() => {
-      if (!document.hidden) checkExternalDB();
+      if (!document.hidden) checkHealth();
     }, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -92,13 +86,12 @@ const EmergencyAdminPage = () => {
               <p className="text-sm text-muted-foreground">مراقبة وإدارة النظام عند تعطل القاعدة الخارجية</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={checkExternalDB} disabled={isChecking}>
+          <Button variant="outline" size="sm" onClick={checkHealth} disabled={isChecking}>
             <RefreshCw className={`w-4 h-4 ml-2 ${isChecking ? "animate-spin" : ""}`} />
             فحص الآن
           </Button>
         </div>
 
-        {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className={`border-2 ${dbStatus === "online" ? "border-green-500/30" : dbStatus === "offline" ? "border-red-500/30" : ""}`}>
             <CardContent className="p-4 flex items-center justify-between">
@@ -128,7 +121,6 @@ const EmergencyAdminPage = () => {
           </Card>
         </div>
 
-        {/* Actions */}
         {dbStatus === "offline" && (
           <Card className="border-red-500/30 bg-red-500/5">
             <CardHeader>
@@ -140,19 +132,14 @@ const EmergencyAdminPage = () => {
             <CardContent className="space-y-3">
               <p className="text-sm">الإجراءات المطلوبة:</p>
               <ol className="text-sm space-y-2 list-decimal list-inside">
-                <li>ادخل على لوحة تحكم Supabase وأعد تشغيل المشروع</li>
-                <li>تأكد من أن المشروع ليس في حالة Paused</li>
-                <li>إذا كانت المشكلة مستمرة، تواصل مع دعم Supabase</li>
+                <li>أعد تشغيل المشروع من لوحة التحكم</li>
+                <li>تأكد من أن المشروع ليس في حالة إيقاف مؤقت</li>
+                <li>إذا كانت المشكلة مستمرة، تواصل مع الدعم التقني</li>
               </ol>
-              <Button variant="outline" size="sm" onClick={() => window.open("https://supabase.com/dashboard", "_blank")}>
-                <ExternalLink className="w-4 h-4 ml-2" />
-                فتح لوحة Supabase
-              </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* Health Logs */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">سجل الفحوصات</CardTitle>
