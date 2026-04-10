@@ -742,12 +742,13 @@ serve(async (req) => {
     }
 
     // Log send for rate limiting
-    adminClient.from("channel_send_log").insert({
+    // deno-lint-ignore no-explicit-any
+    Promise.resolve(adminClient.from("channel_send_log").insert({
       channel_id: config.id,
       org_id: orgId,
       recipient_phone: to.replace(/\D/g, "").replace(/@.*/, ""),
       message_type: sentMessageType,
-    }).then(() => {}).catch((_e: any) => {});
+    })).then(() => {}).catch((_e: any) => {});
 
     logToSystem(adminClient, "info", `تم إرسال رسالة Evolution بنجاح إلى ${to}`, {
       wa_message_id: waMessageId, type: sentMessageType,
