@@ -30,6 +30,7 @@ import ContactCardDialog from "./ContactCardDialog";
 import CreateTicketDialog from "@/components/tickets/CreateTicketDialog";
 import SendQuotaBanner from "./SendQuotaBanner";
 import EmailTemplatePicker from "./EmailTemplatePicker";
+import EmailRecipientAutocomplete from "./EmailRecipientAutocomplete";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
@@ -2830,115 +2831,38 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   {/* To field */}
                   <div className="flex items-start gap-2">
                     <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left mt-1.5">To:</span>
-                    <div className="flex-1 flex flex-wrap items-center gap-1 bg-background border border-border/40 rounded-md px-1.5 py-1 min-h-[28px] focus-within:ring-1 focus-within:ring-primary/30">
-                      {conversation.customerPhone && !emailToChips.includes(conversation.customerPhone) && (
-                        <span className="inline-flex items-center gap-0.5 bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[11px]">
-                          {conversation.customerPhone}
-                        </span>
-                      )}
-                      {emailToChips.map((chip, i) => (
-                        <span key={i} className="inline-flex items-center gap-0.5 bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[11px]">
-                          {chip}
-                          <button onClick={() => setEmailToChips(prev => prev.filter((_, idx) => idx !== i))} className="hover:text-destructive ml-0.5">
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </span>
-                      ))}
-                      <input
-                        type="text"
-                        value={emailToInput}
-                        onChange={(e) => setEmailToInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if ((e.key === "Enter" || e.key === ",") && emailToInput.trim()) {
-                            e.preventDefault();
-                            const val = emailToInput.trim().replace(/,+$/, "");
-                            if (val && !emailToChips.includes(val)) setEmailToChips(prev => [...prev, val]);
-                            setEmailToInput("");
-                          } else if (e.key === "Backspace" && !emailToInput && emailToChips.length > 0) {
-                            setEmailToChips(prev => prev.slice(0, -1));
-                          }
-                        }}
-                        onBlur={() => {
-                          const val = emailToInput.trim().replace(/,+$/, "");
-                          if (val && !emailToChips.includes(val)) setEmailToChips(prev => [...prev, val]);
-                          setEmailToInput("");
-                        }}
-                        placeholder={emailToChips.length === 0 && !conversation.customerPhone ? "أضف إيميل..." : "أضف آخر..."}
-                        className="flex-1 min-w-[80px] text-[12px] bg-transparent border-0 outline-none px-1 py-0.5"
-                      />
-                    </div>
+                    <EmailRecipientAutocomplete
+                      chips={emailToChips}
+                      setChips={setEmailToChips}
+                      inputValue={emailToInput}
+                      setInputValue={setEmailToInput}
+                      placeholder={!conversation.customerPhone ? "أضف إيميل..." : "أضف آخر..."}
+                      chipClassName="bg-primary/10 text-primary"
+                    />
                   </div>
                   {/* Cc field */}
                   <div className="flex items-start gap-2">
                     <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left mt-1.5">Cc:</span>
-                    <div className="flex-1 flex flex-wrap items-center gap-1 bg-background border border-border/40 rounded-md px-1.5 py-1 min-h-[28px] focus-within:ring-1 focus-within:ring-primary/30">
-                      {emailCcChips.map((chip, i) => (
-                        <span key={i} className="inline-flex items-center gap-0.5 bg-accent text-accent-foreground rounded-full px-2 py-0.5 text-[11px]">
-                          {chip}
-                          <button onClick={() => setEmailCcChips(prev => prev.filter((_, idx) => idx !== i))} className="hover:text-destructive ml-0.5">
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </span>
-                      ))}
-                      <input
-                        type="text"
-                        value={emailCcInput}
-                        onChange={(e) => setEmailCcInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if ((e.key === "Enter" || e.key === ",") && emailCcInput.trim()) {
-                            e.preventDefault();
-                            const val = emailCcInput.trim().replace(/,+$/, "");
-                            if (val && !emailCcChips.includes(val)) setEmailCcChips(prev => [...prev, val]);
-                            setEmailCcInput("");
-                          } else if (e.key === "Backspace" && !emailCcInput && emailCcChips.length > 0) {
-                            setEmailCcChips(prev => prev.slice(0, -1));
-                          }
-                        }}
-                        onBlur={() => {
-                          const val = emailCcInput.trim().replace(/,+$/, "");
-                          if (val && !emailCcChips.includes(val)) setEmailCcChips(prev => [...prev, val]);
-                          setEmailCcInput("");
-                        }}
-                        placeholder="أضف Cc..."
-                        className="flex-1 min-w-[80px] text-[12px] bg-transparent border-0 outline-none px-1 py-0.5"
-                      />
-                    </div>
+                    <EmailRecipientAutocomplete
+                      chips={emailCcChips}
+                      setChips={setEmailCcChips}
+                      inputValue={emailCcInput}
+                      setInputValue={setEmailCcInput}
+                      placeholder="أضف Cc..."
+                      chipClassName="bg-accent text-accent-foreground"
+                    />
                   </div>
                   {/* Bcc field */}
                   <div className="flex items-start gap-2">
                     <span className="text-[11px] text-muted-foreground font-medium w-8 shrink-0 text-left mt-1.5">Bcc:</span>
-                    <div className="flex-1 flex flex-wrap items-center gap-1 bg-background border border-border/40 rounded-md px-1.5 py-1 min-h-[28px] focus-within:ring-1 focus-within:ring-primary/30">
-                      {emailBccChips.map((chip, i) => (
-                        <span key={i} className="inline-flex items-center gap-0.5 bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px]">
-                          {chip}
-                          <button onClick={() => setEmailBccChips(prev => prev.filter((_, idx) => idx !== i))} className="hover:text-destructive ml-0.5">
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </span>
-                      ))}
-                      <input
-                        type="text"
-                        value={emailBccInput}
-                        onChange={(e) => setEmailBccInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if ((e.key === "Enter" || e.key === ",") && emailBccInput.trim()) {
-                            e.preventDefault();
-                            const val = emailBccInput.trim().replace(/,+$/, "");
-                            if (val && !emailBccChips.includes(val)) setEmailBccChips(prev => [...prev, val]);
-                            setEmailBccInput("");
-                          } else if (e.key === "Backspace" && !emailBccInput && emailBccChips.length > 0) {
-                            setEmailBccChips(prev => prev.slice(0, -1));
-                          }
-                        }}
-                        onBlur={() => {
-                          const val = emailBccInput.trim().replace(/,+$/, "");
-                          if (val && !emailBccChips.includes(val)) setEmailBccChips(prev => [...prev, val]);
-                          setEmailBccInput("");
-                        }}
-                        placeholder="أضف Bcc..."
-                        className="flex-1 min-w-[80px] text-[12px] bg-transparent border-0 outline-none px-1 py-0.5"
-                      />
-                    </div>
+                    <EmailRecipientAutocomplete
+                      chips={emailBccChips}
+                      setChips={setEmailBccChips}
+                      inputValue={emailBccInput}
+                      setInputValue={setEmailBccInput}
+                      placeholder="أضف Bcc..."
+                      chipClassName="bg-muted text-muted-foreground"
+                    />
                   </div>
                 </div>
               )}
