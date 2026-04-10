@@ -404,10 +404,30 @@ const pickBestUpdatedStatus = (payload: any): "sent" | "delivered" | "read" | nu
   }, null);
 };
 
+// ── Schema auto-heal: trigger auto-sync on first request ──
+let _schemaChecked = false;
+async function triggerSchemaSync() {
+  if (_schemaChecked) return;
+  _schemaChecked = true;
+  try {
+    const baseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!baseUrl || !serviceKey) return;
+    fetch(`${baseUrl}/functions/v1/auto-sync-schema`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+      body: JSON.stringify({ force: false }),
+    }).catch(e => console.error("[schema-sync] trigger failed:", e));
+  } catch (_) {}
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Trigger schema sync on first request (non-blocking)
+  triggerSchemaSync();
 
   const supabase = createClient(
     Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!,
