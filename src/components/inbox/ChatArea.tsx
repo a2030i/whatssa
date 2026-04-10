@@ -303,7 +303,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       }));
 
       if (conversation.channelType === "evolution") {
-        const { error } = await invokeCloud("evolution-manage", {
+        const { data, error } = await invokeCloud("evolution-manage", {
           body: {
             action: "send_reaction",
             phone: conversation.customerPhone,
@@ -314,6 +314,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           },
         });
         if (error) throw error;
+        if (data?.error) throw new Error(data.error);
       } else {
         // Meta API reaction
         const { data, error } = await invokeCloud("whatsapp-send", {
@@ -1078,6 +1079,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Track @lid mention JIDs that can't be extracted from message text by phone regex
   const mentionedJidsRef = useRef<string[]>([]);
+  const [customerLastSeen, setCustomerLastSeen] = useState<string | null>(null);
   const isGroup = conversation.conversationType === "group";
   const isEvolutionChannel = conversation.channelType === "evolution";
   const isMetaChannel = conversation.channelType === "meta_api";
@@ -1094,6 +1096,45 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       onScrollToMessageDone?.();
     }
   }, [scrollToMessageId, messages.length]);
+
+  // Fetch customer last seen for evolution channels
+  useEffect(() => {
+    if (isGroup || !isEvolutionChannel || !conversation.customerPhone || !conversation.channelId) return;
+    setCustomerLastSeen(null);
+    invokeCloud("evolution-manage", {
+      body: {
+        action: "fetch_presence",
+        phone: conversation.customerPhone,
+        channel_id: conversation.channelId,
+      },
+    }).then(({ data }) => {
+      if (data?.last_seen) {
+        const ts = typeof data.last_seen === "number"
+          ? new Date(data.last_seen * 1000)
+          : new Date(data.last_seen);
+        if (!isNaN(ts.getTime())) {
+          const diff = Date.now() - ts.getTime();
+          const mins = Math.floor(diff / 60000);
+          if (mins < 2) {
+            setCustomerLastSeen("متصل الآن");
+          } else if (mins < 60) {
+            setCustomerLastSeen(`آخر ظهور: منذ ${mins} دقيقة`);
+          } else {
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) {
+              setCustomerLastSeen(`آخر ظهور: منذ ${hours} ساعة`);
+            } else {
+              setCustomerLastSeen(`آخر ظهور: ${ts.toLocaleDateString("ar-SA")}`);
+            }
+          }
+        }
+      } else if (data?.status === "composing") {
+        setCustomerLastSeen("يكتب...");
+      } else if (data?.status === "available" || data?.status === "online") {
+        setCustomerLastSeen("متصل الآن");
+      }
+    }).catch(() => {});
+  }, [conversation.id, conversation.customerPhone, conversation.channelId, isEvolutionChannel, isGroup]);
 
   const copyConversationLink = useCallback(() => {
     const url = `${window.location.origin}/inbox?conversation=${conversation.id}`;
@@ -2158,7 +2199,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               <div className={cn("w-9 h-9 md:w-10 md:h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium text-muted-foreground", groupPicture ? "hidden" : "")}>
                 {conversation.customerName.charAt(0)}
               </div>
-              {conversation.lastSeen === "متصل الآن" && (
+              {(conversation.lastSeen === "متصل الآن" || customerLastSeen === "متصل الآن") && (
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-card" />
               )}
             </div>
@@ -2181,7 +2222,18 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground/60 truncate">{isEmailChannel ? `📧 ${conversation.customerPhone}` : (isMetaChannel || conversation.channelType === "evolution") ? `عبر الواتساب${conversation.channelName ? ` • ${conversation.channelName}` : ""}` : conversation.customerPhone}</p>
+              <p className="text-[10px] text-muted-foreground/60 truncate">
+                {isEmailChannel ? `📧 ${conversation.customerPhone}` : (isMetaChannel || isEvolutionChannel) ? (
+                  <>
+                    {`عبر الواتساب${conversation.channelName ? ` • ${conversation.channelName}` : ""}`}
+                    {customerLastSeen && !isGroup && (
+                      <span className={cn("mr-1", customerLastSeen === "متصل الآن" ? "text-emerald-500 font-medium" : customerLastSeen === "يكتب..." ? "text-emerald-500" : "")}>
+                        {` • ${customerLastSeen}`}
+                      </span>
+                    )}
+                  </>
+                ) : conversation.customerPhone}
+              </p>
             </div>
             </button>
           </div>
