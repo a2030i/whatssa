@@ -829,10 +829,11 @@ serve(async (req) => {
           continue;
         }
 
-        if (!text && messageType === "text") continue;
+        console.log(`[evolution-webhook] TRACE: text="${(text||"").slice(0,30)}", messageType=${messageType}`);
+        if (!text && messageType === "text") { console.log(`[evolution-webhook] TRACE: SKIPPED empty text`); continue; }
 
         // ── Handle outgoing messages sent from phone ──
-        if (isFromMe) {
+        if (isFromMe) { console.log(`[evolution-webhook] TRACE: isFromMe=true, handling outgoing`); }
           const resolvedOutgoingName = conversationType === "private"
             ? await fetchEvolutionContactName(instanceName, phone)
             : null;
