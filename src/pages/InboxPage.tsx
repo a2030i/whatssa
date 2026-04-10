@@ -1412,7 +1412,12 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       }],
     }));
 
-    const sendFunc = getSendFunction(conversation.channelType);
+    let sendFunc = getSendFunction(conversation.channelType);
+    if (!sendFunc && conversation.channelId) {
+      const resolved = await resolveChannelType(conversation.channelId);
+      if (resolved) sendFunc = getSendFunction(resolved);
+    }
+    if (!sendFunc) { toast.error("تعذر تحديد نوع القناة"); return; }
     const { data, error } = await invokeCloud(sendFunc, {
       body: {
         to: conversation.customerPhone,
