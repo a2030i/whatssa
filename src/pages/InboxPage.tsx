@@ -980,7 +980,20 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       return;
     }
 
-    const sendFunction = getSendFunction(conversation.channelType, conversation.conversationType);
+    let sendFunction = getSendFunction(conversation.channelType, conversation.conversationType);
+    // If channel type is unknown, resolve from DB before sending
+    if (!sendFunction && conversation.channelId) {
+      const resolved = await resolveChannelType(conversation.channelId);
+      if (resolved) {
+        sendFunction = getSendFunction(resolved, conversation.conversationType);
+        // Update local state so future sends don't need another lookup
+        setConversations(prev => prev.map(c => c.id === convId ? { ...c, channelType: resolved as any } : c));
+      }
+    }
+    if (!sendFunction) {
+      toast.error("تعذر تحديد نوع القناة — يرجى إعادة تحميل الصفحة");
+      return;
+    }
     const isEmail = sendFunction === "email-send";
 
     // Optimistic: add message to UI immediately
