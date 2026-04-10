@@ -3690,6 +3690,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         messagePreviews={messages.filter(m => selectedMsgIds.has(m.id)).map(m => ({ sender: m.sender, text: m.text, timestamp: m.timestamp }))}
         defaultDescription={selectedMsgIds.size > 0 ? `تذكرة من محادثة: ${conversation.customerName}` : undefined}
       />
+      {/* Email Template Picker */}
+      <EmailTemplatePicker
+        open={showEmailTemplatePicker}
+        onOpenChange={setShowEmailTemplatePicker}
+        onSelect={(subject, body) => {
+          setEmailSubject(subject);
+          setInputText(body);
+          inputRef.current?.focus();
+        }}
+      />
     </div>
   );
 };
