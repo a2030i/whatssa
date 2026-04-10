@@ -64,8 +64,19 @@ const getSendFunction = (channelType?: string, conversationType?: string): strin
   if (channelType === "meta_api") return "whatsapp-send";
   if (channelType === "evolution") return "evolution-send";
   // IMPORTANT: If channelType is unknown/undefined, we must NOT default blindly.
-  // Return "evolution-send" only as last resort — the edge function will validate channel_id.
-  return "evolution-send";
+  // Return empty string — caller must resolve channel_type from DB first.
+  return "";
+};
+
+/** Resolve channel_type from DB when it's missing on the conversation object */
+const resolveChannelType = async (channelId?: string): Promise<string | null> => {
+  if (!channelId) return null;
+  const { data } = await supabase
+    .from("whatsapp_config_safe")
+    .select("channel_type")
+    .eq("id", channelId)
+    .maybeSingle();
+  return data?.channel_type || null;
 };
 
 const formatTimestamp = (isoStr: string | null): string => {
