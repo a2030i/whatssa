@@ -388,6 +388,20 @@ serve(async (req) => {
       return json({ error: "إعدادات Evolution API غير مكتملة" }, 500);
     }
 
+    // ── Safety guard: if channel_id belongs to meta_api, reject early ──
+    if (channel_id) {
+      const { data: channelCheck } = await adminClient.from("whatsapp_config")
+        .select("channel_type")
+        .eq("id", channel_id)
+        .maybeSingle();
+      if (channelCheck?.channel_type === "meta_api") {
+        logToSystem(adminClient, "error", "⚠️ تداخل قنوات: تم إرسال رسالة عبر evolution-send لقناة رسمية (meta_api). يجب استخدام whatsapp-send.", {
+          channel_id, to, conversation_id,
+        }, orgId, profile.id);
+        return json({ error: "هذه المحادثة مربوطة بقناة رسمية (Meta API). يرجى إعادة تحميل الصفحة.", channel_mismatch: true }, 400);
+      }
+    }
+
     // Parallel: fetch config + resolve conversation simultaneously
       const [configResult, convResult] = await Promise.all([
       (() => {
