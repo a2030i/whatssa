@@ -52,11 +52,24 @@ Deno.serve(async (req) => {
     const cloudClient = createClient(CLOUD_URL, CLOUD_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
     const primaryClient = extClient || cloudClient;
 
-    const { data: profile } = await primaryClient
+    // Resolve profile from both DBs
+    let profile: { id: string; org_id: string } | null = null;
+    const { data: primaryProfile } = await primaryClient
       .from("profiles")
       .select("id, org_id")
       .eq("id", userId)
       .maybeSingle();
+    profile = primaryProfile;
+
+    // If not found in primary and we have ext, try cloud
+    if (!profile && extClient) {
+      const { data: cloudProfile } = await cloudClient
+        .from("profiles")
+        .select("id, org_id")
+        .eq("id", userId)
+        .maybeSingle();
+      profile = cloudProfile;
+    }
 
     if (!profile?.org_id) {
       return json({ error: "Unauthorized" }, 401);
@@ -72,31 +85,52 @@ Deno.serve(async (req) => {
     const channelSelect = "id, channel_type, safety_max_per_hour, safety_max_per_day, safety_max_unique_per_hour, safety_paused, safety_paused_at, safety_paused_reason, channel_age_days, org_id, safety_limits_enabled";
 
     // Get channel config — try primary DB first, fallback to cloud
-    let { data: channel } = await primaryClient
-      .from("whatsapp_config")
-      .select(channelSelect)
-      .eq("id", channel_id)
-      .maybeSingle();
-
+    let channel: any = null;
     let adminClient = primaryClient;
 
-    if (!channel && extClient) {
+    // Try external DB first
+    if (extClient) {
+      const { data: extChannel } = await extClient
+        .from("whatsapp_config")
+        .select(channelSelect)
+        .eq("id", channel_id)
+        .maybeSingle();
+      if (extChannel) {
+        channel = extChannel;
+        adminClient = extClient;
+      }
+    }
+
+    // Fallback to cloud DB
+    if (!channel) {
       const { data: cloudChannel } = await cloudClient
         .from("whatsapp_config")
         .select(channelSelect)
         .eq("id", channel_id)
         .maybeSingle();
-      channel = cloudChannel;
-      if (channel) adminClient = cloudClient;
+      if (cloudChannel) {
+        channel = cloudChannel;
+        adminClient = cloudClient;
+      }
     }
 
     if (!channel) {
+      console.warn(`[check-send-quota] Channel ${channel_id} not found in any DB`);
       return json({ error: "Channel not found" }, 404);
     }
 
-    // Verify org ownership
+    // Verify org ownership — check profile org from same DB as channel
     if (channel.org_id !== profile.org_id) {
-      return json({ error: "Channel not found" }, 404);
+      // Profile might be in a different DB with matching org — try resolving from channel's DB
+      const { data: matchProfile } = await adminClient
+        .from("profiles")
+        .select("id, org_id")
+        .eq("id", userId)
+        .maybeSingle();
+      if (!matchProfile || matchProfile.org_id !== channel.org_id) {
+        console.warn(`[check-send-quota] Org mismatch: profile=${profile.org_id} channel=${channel.org_id}`);
+        return json({ error: "Channel not found" }, 404);
+      }
     }
 
     // === EVOLUTION (unofficial) — safety limits ===
