@@ -1021,7 +1021,9 @@ serve(async (req) => {
           : null;
         let conversationDisplayName = chooseBestContactName(resolvedIncomingName, msg.pushName) || phone;
 
+        console.log(`[evolution-webhook] TRACE: looking for conversation, phone=${phone}, channelId=${config.id}`);
         let conversation = await findConversationByIdentity(supabase, orgId, phone, config.id, conversationType, "open");
+        console.log(`[evolution-webhook] TRACE: open conv found=${!!conversation}, id=${conversation?.id || "none"}`);
 
         // If no open conversation, check for a closed one to reopen
         if (!conversation) {
