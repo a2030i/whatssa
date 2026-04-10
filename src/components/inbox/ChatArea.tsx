@@ -1125,12 +1125,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
   }, [conversation.id, conversation.isBlocked, conversation.profilePic]);
 
-  // Fetch email signature for preview
+  // Fetch email signature for preview (per-employee takes priority over org-level)
   useEffect(() => {
     if (!isEmailChannel || !orgId) return;
     (async () => {
-      const { data } = await supabase.from("email_configs").select("email_signature").eq("org_id", orgId).eq("is_active", true).limit(1).maybeSingle();
-      setEmailSignature(data?.email_signature || "");
+      const [{ data: profileData }, { data: configData }] = await Promise.all([
+        supabase.from("profiles").select("email_signature").eq("id", session?.user?.id || "").maybeSingle(),
+        supabase.from("email_configs").select("email_signature").eq("org_id", orgId).eq("is_active", true).limit(1).maybeSingle(),
+      ]);
+      setEmailSignature(profileData?.email_signature || configData?.email_signature || "");
     })();
   }, [isEmailChannel, orgId]);
 
