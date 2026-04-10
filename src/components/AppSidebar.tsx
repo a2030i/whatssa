@@ -40,7 +40,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: string; emoji: string; items: (NavItem | NavGroup)[] }[] => [
+const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean, ticketBadge?: string): { section: string; emoji: string; items: (NavItem | NavGroup)[] }[] => [
   {
     section: "الرئيسية",
     emoji: "🏠",
@@ -48,7 +48,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean): { section: stri
       { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
       { label: "صندوق الواتساب", icon: MessageSquare, path: "/inbox", emoji: "💬" },
       { label: "صندوق الإيميل", icon: Mail, path: "/email-inbox", emoji: "📧", minRole: "member" },
-      { label: "التذاكر", icon: Ticket, path: "/tickets", emoji: "🎫" },
+      { label: "التذاكر", icon: Ticket, path: "/tickets", emoji: "🎫", badge: ticketBadge },
       { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
     ],
   },
@@ -124,6 +124,7 @@ const AppSidebar = () => {
   const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, isImpersonating, orgId, signOut, teamId } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [hasEmailAccess, setHasEmailAccess] = useState(false);
+  const [openTicketCount, setOpenTicketCount] = useState(0);
 
   // Check if non-admin user has email access (assigned as dedicated agent or team)
   useEffect(() => {
@@ -154,7 +155,17 @@ const AppSidebar = () => {
         : "member";
   const isInsideInboxConversation = location.pathname === "/inbox" && new URLSearchParams(location.search).has("conversation");
 
-  const navSections = buildGroups(isEcommerce, hasMetaApi);
+  useEffect(() => {
+    if (!orgId || !profile?.id) return;
+    supabase.from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .in("status", ["open", "in_progress"])
+      .eq("assigned_to", profile.id)
+      .then(({ count }) => setOpenTicketCount(count || 0));
+  }, [orgId, profile?.id]);
+
+  const navSections = buildGroups(isEcommerce, hasMetaApi, openTicketCount > 0 ? String(openTicketCount) : undefined);
 
   const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
   const roleHierarchy: Record<string, number> = { member: 0, supervisor: 1, admin: 2 };

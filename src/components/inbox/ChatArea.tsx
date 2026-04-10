@@ -39,7 +39,7 @@ interface ChatAreaProps {
   messages: Message[];
   templates: WhatsAppTemplate[];
   onBack: () => void;
-  onSendMessage: (convId: string, text: string, type?: "text" | "note", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }) => void;
+  onSendMessage: (convId: string, text: string, type?: "text" | "note", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }, mentionedJids?: string[]) => void;
   onSendTemplate: (convId: string, template: WhatsAppTemplate, variables: string[]) => void;
   onStatusChange: (convId: string, status: "active" | "waiting" | "closed") => void;
   onTransfer: (convId: string, agent: string) => void;
@@ -1076,6 +1076,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const groupPicInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Track @lid mention JIDs that can't be extracted from message text by phone regex
+  const mentionedJidsRef = useRef<string[]>([]);
   const isGroup = conversation.conversationType === "group";
   const isEvolutionChannel = conversation.channelType === "evolution";
   const isMetaChannel = conversation.channelType === "meta_api";
@@ -1626,6 +1628,37 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     loadReplies();
   }, [orgId]);
 
+  // SLA countdown: fetch active policy and compute remaining time
+  const [slaMinutes, setSlaMinutes] = useState<number | null>(null);
+  useEffect(() => {
+    if (!orgId) return;
+    supabase
+      .from("sla_policies")
+      .select("first_response_minutes")
+      .eq("org_id", orgId)
+      .eq("is_active", true)
+      .order("first_response_minutes", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => { if (data?.first_response_minutes) setSlaMinutes(data.first_response_minutes); });
+  }, [orgId]);
+
+  const [slaStatus, setSlaStatus] = useState<{ remainingMin: number; level: "ok" | "warning" | "breached" } | null>(null);
+  useEffect(() => {
+    if (!slaMinutes || conversation.lastMessageSender !== "customer" || !conversation.lastCustomerMessageAt || conversation.status === "closed") {
+      setSlaStatus(null);
+      return;
+    }
+    const compute = () => {
+      const deadline = new Date(conversation.lastCustomerMessageAt!).getTime() + slaMinutes * 60 * 1000;
+      const remaining = Math.round((deadline - Date.now()) / 60000);
+      setSlaStatus({ remainingMin: remaining, level: remaining <= 0 ? "breached" : remaining <= Math.max(5, slaMinutes * 0.2) ? "warning" : "ok" });
+    };
+    compute();
+    const iv = setInterval(compute, 30000);
+    return () => clearInterval(iv);
+  }, [slaMinutes, conversation.lastCustomerMessageAt, conversation.lastMessageSender, conversation.status]);
+
   // Track if user is near bottom of scroll
   const handleMessagesScroll = useCallback(() => {
     const container = messagesContainerRef.current;
@@ -1721,7 +1754,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         }
       }));
     }
-    onSendMessage(conversation.id, inputText.trim(), "text", replyData);
+    const lidJids = mentionedJidsRef.current;
+    mentionedJidsRef.current = [];
+    onSendMessage(conversation.id, inputText.trim(), "text", replyData, lidJids.length > 0 ? lidJids : undefined);
     setInputText("");
     setReplyTo(null);
     broadcastTyping(false);
@@ -1794,8 +1829,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   };
 
   const insertSavedReply = (reply: { content: string }) => {
-    // Replace customer name placeholder
-    const text = reply.content.replace(/\{name\}/gi, conversation.customerName || "");
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("ar-SA-u-ca-gregory", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const timeStr = now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+    const text = reply.content
+      .replace(/\{name\}/gi, conversation.customerName || "")
+      .replace(/\{phone\}/gi, conversation.customerPhone || "")
+      .replace(/\{agent\}/gi, profile?.full_name || "")
+      .replace(/\{date\}/gi, dateStr)
+      .replace(/\{time\}/gi, timeStr);
     setInputText(text);
     setShowSavedReplies(false);
     inputRef.current?.focus();
@@ -1805,12 +1847,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     !savedReplyFilter || r.shortcut.toLowerCase().includes(savedReplyFilter) || r.title.toLowerCase().includes(savedReplyFilter)
   );
 
-  const insertMention = (displayName: string, phone?: string) => {
+  const insertMention = (displayName: string, phone?: string, rawId?: string) => {
     const lastAtIndex = inputText.lastIndexOf("@");
     // For group participants, use @phone format so Evolution API can resolve mentions
     const mentionText = isGroupMentionMode && phone ? `@${phone}` : `@${displayName}`;
     const newText = inputText.slice(0, lastAtIndex) + `${mentionText} `;
     setInputText(newText);
+    // Track @lid JIDs — these can't be extracted from text by phone regex
+    if (isGroupMentionMode && !phone && rawId && rawId.includes("@lid")) {
+      mentionedJidsRef.current = [...mentionedJidsRef.current, rawId];
+    }
     setShowMentions(false);
     inputRef.current?.focus();
   };
@@ -2160,6 +2206,22 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </div>
               </div>
             ))}
+            {/* SLA countdown badge — shown for all channel types when customer is waiting */}
+            {slaStatus && (
+              <div className={cn(
+                "hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg ml-1",
+                slaStatus.level === "breached" ? "text-destructive bg-destructive/10" :
+                slaStatus.level === "warning" ? "text-warning bg-warning/10" :
+                "text-muted-foreground bg-muted/50"
+              )}>
+                <Clock className="w-3 h-3 shrink-0" />
+                <span className="text-[10px] font-bold font-mono">
+                  {slaStatus.level === "breached"
+                    ? `تأخر ${Math.abs(slaStatus.remainingMin)}د`
+                    : `${slaStatus.remainingMin}د`}
+                </span>
+              </div>
+            )}
             {/* Desktop: Transfer button directly visible */}
             {conversation.status !== "closed" && (
               <button
@@ -2736,16 +2798,21 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               const isPhoneOnly = !a.full_name && (!a.name || a.name === a.phone);
               const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2);
               return (
-                <button key={a.id} onClick={() => insertMention(displayName, a.phone)} className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-secondary hover:bg-accent transition-colors text-right">
+                <button key={a.id} onClick={() => insertMention(displayName, a.phone, a.id)} className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-secondary hover:bg-accent transition-colors text-right">
                   <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{initials}</div>
                   <div className="flex flex-col items-start min-w-0">
                     <span className="font-medium truncate flex items-center gap-1">{displayName}{isGroupMentionMode && a.admin && <Crown className="w-3 h-3 shrink-0 text-primary" />}</span>
                     {isGroupMentionMode && a.phone && (
                       <span className="text-[10px] text-muted-foreground" dir="ltr">+{a.phone}</span>
                     )}
+                    {isGroupMentionMode && !a.phone && a.id?.includes("@lid") && (
+                      <span className="text-[10px] text-muted-foreground">بدون رقم (LID)</span>
+                    )}
                   </div>
-                  {!isPhoneOnly && isGroupMentionMode && (
-                    <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 mr-auto shrink-0">جهة اتصال</Badge>
+                  {isGroupMentionMode && (
+                    a.phone
+                      ? (!isPhoneOnly && <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 mr-auto shrink-0">جهة اتصال</Badge>)
+                      : a.id?.includes("@lid") && <Badge variant="secondary" className="text-[8px] px-1 py-0 h-4 mr-auto shrink-0">LID</Badge>
                   )}
                 </button>
               );

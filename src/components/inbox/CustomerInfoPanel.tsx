@@ -75,6 +75,28 @@ const extractParticipantName = (participant: any, phone: string) => {
 const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssignTeam, isMobileSheet }: CustomerInfoPanelProps) => {
   const { orgId, isEcommerce } = useAuth();
   const [notes, setNotes] = useState(conversation.notes || "");
+  const [customerStats, setCustomerStats] = useState<{ convCount: number; avgMinutes: number | null } | null>(null);
+
+  useEffect(() => {
+    const phone = conversation.customerPhone?.replace(/\D/g, "");
+    if (!phone || !orgId) return;
+    setCustomerStats(null);
+    supabase
+      .from("conversations")
+      .select("id, first_response_at, created_at")
+      .eq("org_id", orgId)
+      .eq("customer_phone", phone)
+      .then(({ data }) => {
+        if (!data) return;
+        const times = data
+          .filter((c: any) => c.first_response_at && c.created_at)
+          .map((c: any) => (new Date(c.first_response_at).getTime() - new Date(c.created_at).getTime()) / 60000);
+        setCustomerStats({
+          convCount: data.length,
+          avgMinutes: times.length > 0 ? Math.round(times.reduce((a: number, b: number) => a + b, 0) / times.length) : null,
+        });
+      });
+  }, [conversation.customerPhone, orgId]);
   const [editingNotes, setEditingNotes] = useState(false);
   const [customer, setCustomer] = useState<any>(null);
   const [newTag, setNewTag] = useState("");
@@ -997,7 +1019,9 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           <div className="space-y-2 pb-3">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">إجمالي المحادثات</span>
-              <span className="font-medium">3</span>
+              <span className="font-medium">
+                {customerStats ? customerStats.convCount : <span className="text-muted-foreground/50">…</span>}
+              </span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">آخر تواصل</span>
@@ -1011,7 +1035,13 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">متوسط الاستجابة</span>
-              <span className="font-medium">1.5 دقيقة</span>
+              <span className="font-medium">
+                {customerStats
+                  ? customerStats.avgMinutes != null
+                    ? `${customerStats.avgMinutes} دقيقة`
+                    : "—"
+                  : <span className="text-muted-foreground/50">…</span>}
+              </span>
             </div>
           </div>
         )}
@@ -1178,7 +1208,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
 
         {/* Tickets Tab */}
         <TabsContent value="tickets" className="mt-0">
-          <TicketsTab conversationId={conversation.id} customerPhone={conversation.customerPhone} orgId={orgId} />
+          <TicketsTab conversationId={conversation.id} customerPhone={conversation.customerPhone} customerName={conversation.customerName} orgId={orgId} />
         </TabsContent>
 
         {/* Notes Tab */}

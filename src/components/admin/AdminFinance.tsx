@@ -15,6 +15,10 @@ const AdminFinance = () => {
   const [showAddCredit, setShowAddCredit] = useState<string | null>(null);
   const [creditAmount, setCreditAmount] = useState("");
   const [creditDesc, setCreditDesc] = useState("");
+  const [txFromDate, setTxFromDate] = useState("");
+  const [txToDate, setTxToDate] = useState("");
+  const [txOrgFilter, setTxOrgFilter] = useState("");
+  const [txType, setTxType] = useState<"" | "credit" | "debit">("");
 
   useEffect(() => { load(); }, []);
 
@@ -149,11 +153,41 @@ const AdminFinance = () => {
 
       {/* Recent Transactions */}
       <div className="bg-card rounded-xl shadow-card border border-border/50">
-        <div className="p-4 border-b border-border">
-          <h2 className="font-semibold text-sm">آخر المعاملات</h2>
+        <div className="p-4 border-b border-border space-y-3">
+          <h2 className="font-semibold text-sm">المعاملات</h2>
+          <div className="flex gap-2 flex-wrap items-center">
+            <select value={txOrgFilter} onChange={e => setTxOrgFilter(e.target.value)}
+              className="h-7 text-xs bg-secondary rounded-md px-2 border-0 min-w-[130px]">
+              <option value="">كل المنظمات</option>
+              {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+            <select value={txType} onChange={e => setTxType(e.target.value as any)}
+              className="h-7 text-xs bg-secondary rounded-md px-2 border-0">
+              <option value="">الكل</option>
+              <option value="credit">شحن</option>
+              <option value="debit">خصم</option>
+            </select>
+            <input type="date" value={txFromDate} onChange={e => setTxFromDate(e.target.value)}
+              className="h-7 text-xs bg-secondary rounded-md px-2 border-0 focus:outline-none focus:ring-1 focus:ring-primary" dir="ltr" />
+            <span className="text-[10px] text-muted-foreground">←</span>
+            <input type="date" value={txToDate} onChange={e => setTxToDate(e.target.value)}
+              className="h-7 text-xs bg-secondary rounded-md px-2 border-0 focus:outline-none focus:ring-1 focus:ring-primary" dir="ltr" />
+            {(txFromDate || txToDate || txOrgFilter || txType) && (
+              <button onClick={() => { setTxFromDate(""); setTxToDate(""); setTxOrgFilter(""); setTxType(""); }}
+                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors">
+                مسح
+              </button>
+            )}
+          </div>
         </div>
         <div className="divide-y divide-border">
-          {transactions.slice(0, 20).map((t) => (
+          {transactions.filter(t => {
+            if (txOrgFilter && t.org_id !== txOrgFilter) return false;
+            if (txType && t.type !== txType) return false;
+            if (txFromDate && t.created_at < txFromDate) return false;
+            if (txToDate && t.created_at > txToDate + "T23:59:59") return false;
+            return true;
+          }).slice(0, 50).map((t) => (
             <div key={t.id} className="p-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {t.type === "credit" ? <ArrowUpCircle className="w-4 h-4 text-primary" /> : <ArrowDownCircle className="w-4 h-4 text-destructive" />}
@@ -171,6 +205,13 @@ const AdminFinance = () => {
             </div>
           ))}
           {transactions.length === 0 && <p className="p-6 text-center text-muted-foreground text-sm">لا توجد معاملات</p>}
+          {transactions.length > 0 && transactions.filter(t => {
+            if (txOrgFilter && t.org_id !== txOrgFilter) return false;
+            if (txType && t.type !== txType) return false;
+            if (txFromDate && t.created_at < txFromDate) return false;
+            if (txToDate && t.created_at > txToDate + "T23:59:59") return false;
+            return true;
+          }).length === 0 && <p className="p-6 text-center text-muted-foreground text-sm">لا توجد معاملات تطابق الفلتر</p>}
         </div>
       </div>
     </div>

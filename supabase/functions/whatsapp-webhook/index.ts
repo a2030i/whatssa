@@ -542,7 +542,9 @@ serve(async (req) => {
       const body = await req.json();
       const entries = Array.isArray(body?.entry) ? body.entry : [];
       const changeItems = entries.flatMap((entry: any) =>
-        Array.isArray(entry?.changes) ? entry.changes : []
+        Array.isArray(entry?.changes)
+          ? entry.changes.map((ch: any) => ({ ...ch, _waba_id: entry.id || null }))
+          : []
       );
 
       if (changeItems.length === 0) {
@@ -583,8 +585,22 @@ serve(async (req) => {
           }
         }
 
+        // Fallback: events like message_template_status_update carry WABA ID in entry.id
+        // but have no metadata.phone_number_id — look up org by business_account_id
+        if (!orgId && (change as any)._waba_id) {
+          const wabaId: string = (change as any)._waba_id;
+          const { data: config } = await supabase
+            .from("whatsapp_config")
+            .select("id, org_id")
+            .eq("business_account_id", wabaId)
+            .eq("channel_type", "meta_api")
+            .maybeSingle();
+          orgId = config?.org_id || null;
+          channelConfigId = config?.id || null;
+        }
+
         if (!orgId) {
-          logToSystem(supabase, "warn", "Webhook وارد بدون مؤسسة مطابقة", { phone_number_id: metadataPhoneId });
+          logToSystem(supabase, "warn", "Webhook وارد بدون مؤسسة مطابقة", { phone_number_id: metadataPhoneId, waba_id: (change as any)._waba_id });
           continue;
         }
 
@@ -1482,6 +1498,170 @@ serve(async (req) => {
                 updated_at: new Date().toISOString(),
               }).eq("id", campaignId);
             }
+          }
+        }
+
+        // ── Handle account_update events (quality, tier, restrictions, bans) ──
+        if (change.field === "account_update" || value.account_update) {
+          const au = value.account_update || value;
+          const event: string = au.event || "";
+
+          const configUpdate: Record<string, unknown> = {
+            updated_at: new Date().toISOString(),
+          };
+
+          // Quality rating change (GREEN / YELLOW / RED)
+          if (au.current_quality) {
+            configUpdate.quality_rating = au.current_quality;
+          }
+
+          // Messaging limit tier change (TIER_50 / TIER_250 / TIER_1K / TIER_10K / TIER_100K)
+          if (au.current_limit) {
+            configUpdate.messaging_limit_tier = au.current_limit;
+          }
+
+          // Account banned — mark channel disconnected
+          if (event === "ACCOUNT_BANNED") {
+            configUpdate.is_connected = false;
+            configUpdate.health_status = { ban: true, event, ts: new Date().toISOString() };
+            await logToSystem(supabase, "critical",
+              `حساب واتساب محظور: ${au.phone_number || metadataPhoneId}`,
+              { event, restriction_info: au.restriction_info, ban_info: au.ban_info },
+              orgId,
+            );
+          }
+
+          // Account restricted — log warning
+          if (event === "ACCOUNT_RESTRICTED") {
+            configUpdate.health_status = { restricted: true, event, restriction_info: au.restriction_info, ts: new Date().toISOString() };
+            await logToSystem(supabase, "warn",
+              `حساب واتساب مقيّد: ${au.phone_number || metadataPhoneId}`,
+              { event, restriction_info: au.restriction_info },
+              orgId,
+            );
+          }
+
+          // Flagged / unflagged
+          if (event === "FLAGGED") {
+            await logToSystem(supabase, "warn",
+              `تم وضع علامة على رقم واتساب: ${au.phone_number || metadataPhoneId}`,
+              { event },
+              orgId,
+            );
+          }
+
+          // Quality degraded — log warning
+          if (event === "PHONE_NUMBER_QUALITY_UPDATE" && au.current_quality && au.current_quality !== "GREEN") {
+            await logToSystem(supabase, "warn",
+              `انخفاض جودة رقم واتساب إلى ${au.current_quality}: ${au.phone_number || metadataPhoneId}`,
+              { event, current_quality: au.current_quality, previous_quality: au.previous_quality },
+              orgId,
+            );
+          }
+
+          // Apply config updates if any real field changed
+          if (channelConfigId && Object.keys(configUpdate).length > 1) {
+            await supabase.from("whatsapp_config")
+              .update(configUpdate)
+              .eq("id", channelConfigId);
+          }
+
+          // Always log the raw event for audit trail
+          await logToSystem(supabase, "info",
+            `account_update: ${event || "unknown"} — ${au.phone_number || metadataPhoneId}`,
+            { field: change.field, event, current_quality: au.current_quality, current_limit: au.current_limit },
+            orgId,
+          );
+        }
+
+        // ── Handle message_template_status_update events ──
+        if (change.field === "message_template_status_update" || value.message_template_status_update) {
+          const tplData = value.message_template_status_update || value;
+          const templateMetaId = String(tplData.message_template_id || tplData.id || "");
+          const templateName: string = tplData.message_template_name || tplData.name || "";
+          const newStatus: string = (tplData.event || tplData.status || "").toUpperCase();
+          const reason: string = tplData.reason || "";
+
+          if (templateMetaId && newStatus) {
+            // Get previous status from cache to detect change
+            const { data: prev } = await supabase
+              .from("template_status_cache")
+              .select("status, template_name")
+              .eq("org_id", orgId)
+              .eq("template_meta_id", templateMetaId)
+              .maybeSingle();
+
+            // Upsert into template_status_cache
+            await supabase.from("template_status_cache").upsert(
+              {
+                org_id: orgId,
+                template_meta_id: templateMetaId,
+                template_name: templateName || prev?.template_name || templateMetaId,
+                status: newStatus,
+                last_checked_at: new Date().toISOString(),
+              },
+              { onConflict: "org_id,template_meta_id" }
+            );
+
+            // Notify org admins if status changed
+            const resolvedName = templateName || prev?.template_name || templateMetaId;
+            const STATUS_AR_MAP: Record<string, string> = {
+              APPROVED: "تمت الموافقة",
+              REJECTED: "مرفوض",
+              PENDING: "قيد المراجعة",
+              PAUSED: "متوقف مؤقتاً",
+              DISABLED: "معطّل",
+              IN_APPEAL: "قيد الاستئناف",
+              PENDING_DELETION: "قيد الحذف",
+              DELETED: "محذوف",
+              LIMIT_EXCEEDED: "تجاوز الحد",
+            };
+
+            if (!prev || prev.status !== newStatus) {
+              let title = "";
+              let body = "";
+
+              if (newStatus === "APPROVED") {
+                title = `✅ تمت الموافقة على قالب "${resolvedName}"`;
+                body = `القالب جاهز للاستخدام في الحملات والرسائل.`;
+              } else if (newStatus === "REJECTED") {
+                title = `❌ تم رفض قالب "${resolvedName}"`;
+                body = `راجع محتوى القالب وأعد تقديمه.${reason ? ` السبب: ${reason}` : ""}`;
+              } else if (newStatus === "PAUSED") {
+                title = `⏸ تم إيقاف قالب "${resolvedName}" مؤقتاً`;
+                body = `القالب متوقف بسبب تقييمات جودة منخفضة.`;
+              } else {
+                const statusAr = STATUS_AR_MAP[newStatus] || newStatus;
+                title = `📋 تغيّرت حالة قالب "${resolvedName}"`;
+                body = `الحالة الجديدة: ${statusAr}.${reason ? ` السبب: ${reason}` : ""}`;
+              }
+
+              const { data: orgAdmins } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("org_id", orgId)
+                .eq("is_active", true);
+
+              const adminIds = (orgAdmins || []).map((a: any) => a.id);
+              if (adminIds.length > 0) {
+                const notifications = adminIds.map((userId: string) => ({
+                  user_id: userId,
+                  org_id: orgId,
+                  title,
+                  body,
+                  type: "template_status",
+                  reference_type: "template",
+                  reference_id: templateMetaId,
+                }));
+                await supabase.from("notifications").insert(notifications);
+              }
+            }
+
+            await logToSystem(supabase, "info",
+              `template_status_update: "${resolvedName}" → ${newStatus}`,
+              { template_id: templateMetaId, status: newStatus, reason },
+              orgId,
+            );
           }
         }
 

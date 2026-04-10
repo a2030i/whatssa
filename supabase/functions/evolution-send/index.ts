@@ -113,7 +113,7 @@ serve(async (req) => {
 
     const orgId = profile.org_id;
 
-    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id, action, group_name, members, sender_name, poll_name, poll_options } = body;
+    const { to, message, conversation_id, reply_to, media_url, media_type, channel_id, customer_name: reqCustomerName, type, edit_message_id, delete_message_id, action, group_name, members, sender_name, poll_name, poll_options, mentioned_jids } = body;
     const normalizedPhone = normalizePhone(to);
 
     // ── Create Group (Evolution API) ──
@@ -694,8 +694,14 @@ serve(async (req) => {
         while ((match = mentionPattern.exec(message)) !== null) {
           mentionedNumbers.push(`${match[1]}@s.whatsapp.net`);
         }
+        // Merge @lid JIDs (passed explicitly since they can't be extracted from text by phone regex)
+        if (Array.isArray(mentioned_jids)) {
+          for (const jid of mentioned_jids) {
+            if (typeof jid === "string" && jid.trim()) mentionedNumbers.push(jid.trim());
+          }
+        }
         if (mentionedNumbers.length > 0) {
-          sendBody.mentioned = mentionedNumbers;
+          sendBody.mentioned = [...new Set(mentionedNumbers)];
         }
       }
 

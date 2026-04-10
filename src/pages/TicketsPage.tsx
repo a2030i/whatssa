@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import {
   Ticket, Plus, Filter, Clock, CheckCircle2, AlertCircle,
   User, MoreHorizontal, Loader2, MessageSquare, Eye,
-  RefreshCw, XCircle, ArrowUpCircle, Phone, UserCircle, Link2
+  RefreshCw, XCircle, ArrowUpCircle, Phone, UserCircle, Link2, Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -29,6 +30,7 @@ const TicketsPage = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(null);
 
@@ -75,6 +77,14 @@ const TicketsPage = () => {
   const filteredTickets = tickets.filter(t => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const matchTitle = t.title?.toLowerCase().includes(q);
+      const matchCustomer = t.customer_name?.toLowerCase().includes(q);
+      const matchPhone = t.customer_phone?.includes(q);
+      const matchDesc = t.description?.toLowerCase().includes(q);
+      if (!matchTitle && !matchCustomer && !matchPhone && !matchDesc) return false;
+    }
     return true;
   });
 
@@ -119,6 +129,15 @@ const TicketsPage = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="بحث بالعنوان أو اسم العميل أو الرقم..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="pr-9 h-9 text-sm"
+          />
+        </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="الحالة" /></SelectTrigger>
           <SelectContent>

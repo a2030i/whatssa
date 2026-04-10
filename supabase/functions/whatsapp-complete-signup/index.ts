@@ -504,10 +504,14 @@ serve(async (req) => {
       // Get business ID from WABA info
       const metaBusinessId = wabaDetails?.on_behalf_of_business_info?.id || null;
 
+      // Long-lived tokens last ~60 days; set expiry so the monitor can warn before it lapses
+      const tokenExpiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+
       const configPayload: Record<string, any> = {
         phone_number_id: phoneId,
         business_account_id: wabaId,
         access_token: accessToken,
+        token_expires_at: tokenExpiresAt,
         display_phone: displayPhone,
         business_name: businessName,
         is_connected: alreadyRegistered,
@@ -613,7 +617,7 @@ serve(async (req) => {
               object: "whatsapp_business_account",
               callback_url: webhookUrl,
               verify_token: webhookVerifyToken,
-              fields: ["messages"],
+              fields: ["messages", "account_update", "message_template_status_update"],
               access_token: appToken,
             }),
           }

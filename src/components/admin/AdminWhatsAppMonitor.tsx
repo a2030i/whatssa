@@ -29,6 +29,8 @@ interface ChannelWithStats {
   updated_at: string | null;
   onboarding_type: string | null;
   health_status: any;
+  token_expires_at: string | null;
+  last_webhook_at: string | null;
   // Stats
   sent_count: number;
   received_count: number;
@@ -64,22 +66,26 @@ const AdminWhatsAppMonitor = () => {
       const channelList = chRes.data || [];
       const channelIds = channelList.map((c: any) => c.id).filter(Boolean);
 
-      // Get conversations grouped by channel with last_message_at
+      // Get conversations grouped by channel with last_message_at + id for message lookup
       const convRes = await supabase
         .from("conversations")
-        .select("channel_id, last_message_at")
+        .select("id, channel_id, last_message_at")
         .in("channel_id", channelIds.length ? channelIds : ["__none__"]);
 
       const convCounts: Record<string, number> = {};
       const lastActivity: Record<string, string | null> = {};
+      const convToChannel: Record<string, string> = {};
       (convRes.data || []).forEach((c: any) => {
         convCounts[c.channel_id] = (convCounts[c.channel_id] || 0) + 1;
         if (c.last_message_at && (!lastActivity[c.channel_id] || c.last_message_at > lastActivity[c.channel_id]!)) {
           lastActivity[c.channel_id] = c.last_message_at;
         }
+        if (c.id && c.channel_id) convToChannel[c.id] = c.channel_id;
       });
 
-      // Get send log counts per channel (last 30 days)
+      const convIds = Object.keys(convToChannel);
+
+      // Get send log counts per channel
       const sendLogRes = await supabase
         .from("channel_send_log")
         .select("channel_id, message_type")
@@ -88,6 +94,21 @@ const AdminWhatsAppMonitor = () => {
       const sentCounts: Record<string, number> = {};
       (sendLogRes.data || []).forEach((s: any) => {
         sentCounts[s.channel_id] = (sentCounts[s.channel_id] || 0) + 1;
+      });
+
+      // Get received message counts — messages sent by customers, grouped per channel
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const receivedRes = await supabase
+        .from("messages")
+        .select("conversation_id")
+        .in("conversation_id", convIds.length ? convIds : ["__none__"])
+        .eq("sender", "customer")
+        .gte("created_at", thirtyDaysAgo);
+
+      const receivedByChannel: Record<string, number> = {};
+      (receivedRes.data || []).forEach((m: any) => {
+        const chId = convToChannel[m.conversation_id];
+        if (chId) receivedByChannel[chId] = (receivedByChannel[chId] || 0) + 1;
       });
 
       const enriched: ChannelWithStats[] = channelList.map((ch: any) => ({
@@ -107,8 +128,10 @@ const AdminWhatsAppMonitor = () => {
         updated_at: ch.updated_at,
         onboarding_type: ch.onboarding_type,
         health_status: ch.health_status,
+        token_expires_at: ch.token_expires_at || null,
+        last_webhook_at: ch.last_webhook_at || null,
         sent_count: sentCounts[ch.id] || 0,
-        received_count: 0,
+        received_count: receivedByChannel[ch.id] || 0,
         conversations_count: convCounts[ch.id] || 0,
         last_message_at: lastActivity[ch.id] || null,
       }));
@@ -251,6 +274,13 @@ const ChannelCard = ({ channel }: { channel: ChannelWithStats }) => {
   const isMeta = channel.channel_type === "meta";
   const quality = qualityMap[channel.quality_rating || ""] || null;
 
+  // Token expiry warning: warn if expires within 7 days, critical if expired
+  const tokenExpiry = channel.token_expires_at ? new Date(channel.token_expires_at) : null;
+  const now = new Date();
+  const tokenDaysLeft = tokenExpiry ? Math.ceil((tokenExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+  const tokenExpired = tokenDaysLeft !== null && tokenDaysLeft <= 0;
+  const tokenWarning = tokenDaysLeft !== null && tokenDaysLeft > 0 && tokenDaysLeft <= 7;
+
   return (
     <div className={cn(
       "rounded-xl border p-4 bg-card/70 backdrop-blur-sm transition-all hover:shadow-sm",
@@ -302,7 +332,7 @@ const ChannelCard = ({ channel }: { channel: ChannelWithStats }) => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
         <StatPill icon={<MessageSquare className="w-3 h-3" />} label="محادثات" value={channel.conversations_count} />
         <StatPill icon={<ArrowUpRight className="w-3 h-3 text-blue-500" />} label="مرسلة" value={channel.sent_count} />
-        <StatPill icon={<ArrowDownLeft className="w-3 h-3 text-emerald-500" />} label="مستقبلة" value={channel.received_count} />
+        <StatPill icon={<ArrowDownLeft className="w-3 h-3 text-emerald-500" />} label="مستقبلة (30د)" value={channel.received_count} />
         <StatPill
           icon={<Clock className="w-3 h-3" />}
           label="آخر نشاط"
@@ -325,6 +355,16 @@ const ChannelCard = ({ channel }: { channel: ChannelWithStats }) => {
           {channel.messaging_limit_tier && (
             <Badge variant="outline" className="text-[10px] border-border/40">
               حد الإرسال: {channel.messaging_limit_tier}
+            </Badge>
+          )}
+          {tokenExpired && (
+            <Badge variant="destructive" className="gap-1 text-[10px]">
+              <AlertTriangle className="w-3 h-3" /> Token منتهي
+            </Badge>
+          )}
+          {tokenWarning && (
+            <Badge variant="outline" className="text-[10px] border-amber-300 bg-amber-50 text-amber-700 gap-1">
+              <Clock className="w-3 h-3" /> Token ينتهي خلال {tokenDaysLeft}د
             </Badge>
           )}
         </div>
