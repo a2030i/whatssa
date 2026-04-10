@@ -1,5 +1,21 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+type DbClient = ReturnType<typeof createClient>;
+type ProfileRow = { id: string; org_id: string };
+type ChannelRow = {
+  id: string;
+  channel_type: string | null;
+  safety_max_per_hour: number | null;
+  safety_max_per_day: number | null;
+  safety_max_unique_per_hour: number | null;
+  safety_paused: boolean | null;
+  safety_paused_at: string | null;
+  safety_paused_reason: string | null;
+  channel_age_days: number | null;
+  org_id: string;
+  safety_limits_enabled: boolean | null;
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -25,12 +41,76 @@ function getWarmupMultiplier(ageDays: number): number {
 
 function getUserIdFromJwt(authorization: string): string | null {
   try {
-    const token = authorization.replace("Bearer ", "");
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.sub || null;
+    const token = authorization.replace(/^Bearer\s+/i, "").trim();
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+    const decoded = JSON.parse(atob(padded));
+    return typeof decoded?.sub === "string" ? decoded.sub : null;
   } catch {
     return null;
   }
+}
+
+async function fetchProfile(client: DbClient, userId: string) {
+  const { data } = await client
+    .from("profiles")
+    .select("id, org_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return (data as ProfileRow | null) ?? null;
+}
+
+async function fetchChannel(client: DbClient, channelId: string) {
+  const channelSelect = "id, channel_type, safety_max_per_hour, safety_max_per_day, safety_max_unique_per_hour, safety_paused, safety_paused_at, safety_paused_reason, channel_age_days, org_id, safety_limits_enabled";
+
+  const { data } = await client
+    .from("whatsapp_config")
+    .select(channelSelect)
+    .eq("id", channelId)
+    .maybeSingle();
+
+  return (data as ChannelRow | null) ?? null;
+}
+
+async function resolveAccess(userId: string, channelId: string, extClient: DbClient | null, cloudClient: DbClient) {
+  const candidates: Array<{ name: "external" | "cloud"; client: DbClient }> = [];
+  if (extClient) candidates.push({ name: "external", client: extClient });
+  candidates.push({ name: "cloud", client: cloudClient });
+
+  let fallbackProfile: ProfileRow | null = null;
+
+  for (const source of candidates) {
+    const [profile, channel] = await Promise.all([
+      fetchProfile(source.client, userId),
+      fetchChannel(source.client, channelId),
+    ]);
+
+    if (profile && !fallbackProfile) fallbackProfile = profile;
+
+    if (profile && channel && profile.org_id === channel.org_id) {
+      return { profile, channel, adminClient: source.client, source: source.name };
+    }
+  }
+
+  if (fallbackProfile) {
+    for (const source of candidates) {
+      const channel = await fetchChannel(source.client, channelId);
+      if (channel) {
+        return {
+          profile: fallbackProfile,
+          channel,
+          adminClient: source.client,
+          source: source.name,
+          orgMismatch: fallbackProfile.org_id !== channel.org_id,
+        };
+      }
+    }
+  }
+
+  return { profile: fallbackProfile, channel: null, adminClient: candidates[0]?.client ?? cloudClient, source: candidates[0]?.name ?? "cloud" };
 }
 
 Deno.serve(async (req) => {
@@ -45,35 +125,10 @@ Deno.serve(async (req) => {
       return json({ error: "Unauthorized" }, 401);
     }
 
-    // Use external DB if configured, otherwise Cloud
     const extClient = EXT_URL && EXT_KEY
       ? createClient(EXT_URL, EXT_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
       : null;
     const cloudClient = createClient(CLOUD_URL, CLOUD_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-    const primaryClient = extClient || cloudClient;
-
-    // Resolve profile from both DBs
-    let profile: { id: string; org_id: string } | null = null;
-    const { data: primaryProfile } = await primaryClient
-      .from("profiles")
-      .select("id, org_id")
-      .eq("id", userId)
-      .maybeSingle();
-    profile = primaryProfile;
-
-    // If not found in primary and we have ext, try cloud
-    if (!profile && extClient) {
-      const { data: cloudProfile } = await cloudClient
-        .from("profiles")
-        .select("id, org_id")
-        .eq("id", userId)
-        .maybeSingle();
-      profile = cloudProfile;
-    }
-
-    if (!profile?.org_id) {
-      return json({ error: "Unauthorized" }, 401);
-    }
 
     const body = await req.json().catch(() => ({}));
     const { channel_id } = body;
@@ -82,77 +137,44 @@ Deno.serve(async (req) => {
       return json({ error: "channel_id is required" }, 400);
     }
 
-    const channelSelect = "id, channel_type, safety_max_per_hour, safety_max_per_day, safety_max_unique_per_hour, safety_paused, safety_paused_at, safety_paused_reason, channel_age_days, org_id, safety_limits_enabled";
+    const resolved = await resolveAccess(userId, channel_id, extClient, cloudClient);
+    const { profile, channel, adminClient } = resolved;
 
-    // Get channel config — try primary DB first, fallback to cloud
-    let channel: any = null;
-    let adminClient = primaryClient;
-
-    // Try external DB first
-    if (extClient) {
-      const { data: extChannel } = await extClient
-        .from("whatsapp_config")
-        .select(channelSelect)
-        .eq("id", channel_id)
-        .maybeSingle();
-      if (extChannel) {
-        channel = extChannel;
-        adminClient = extClient;
-      }
-    }
-
-    // Fallback to cloud DB
-    if (!channel) {
-      const { data: cloudChannel } = await cloudClient
-        .from("whatsapp_config")
-        .select(channelSelect)
-        .eq("id", channel_id)
-        .maybeSingle();
-      if (cloudChannel) {
-        channel = cloudChannel;
-        adminClient = cloudClient;
-      }
+    if (!profile?.org_id) {
+      return json({ error: "Unauthorized" }, 401);
     }
 
     if (!channel) {
-      console.warn(`[check-send-quota] Channel ${channel_id} not found in any DB`);
+      console.warn(`[check-send-quota] channel_missing user=${userId} channel=${channel_id} ext=${Boolean(extClient)}`);
       return json({ error: "Channel not found" }, 404);
     }
 
-    // Verify org ownership — check profile org from same DB as channel
-    if (channel.org_id !== profile.org_id) {
-      // Profile might be in a different DB with matching org — try resolving from channel's DB
-      const { data: matchProfile } = await adminClient
-        .from("profiles")
-        .select("id, org_id")
-        .eq("id", userId)
-        .maybeSingle();
-      if (!matchProfile || matchProfile.org_id !== channel.org_id) {
-        console.warn(`[check-send-quota] Org mismatch: profile=${profile.org_id} channel=${channel.org_id}`);
-        return json({ error: "Channel not found" }, 404);
-      }
+    if (resolved.orgMismatch) {
+      console.warn(`[check-send-quota] org_mismatch user=${userId} profile_org=${profile.org_id} channel_org=${channel.org_id} source=${resolved.source}`);
+      return json({ error: "Channel not found" }, 404);
     }
 
-    // === EVOLUTION (unofficial) — safety limits ===
     if (channel.channel_type === "evolution") {
-      // If safety limits not enabled, return unlimited
       if (!channel.safety_limits_enabled) {
         return json({
           channel_type: "evolution",
           paused: false,
           safety_limits_enabled: false,
           remaining: 999,
-          limits: { hourly: { used: 0, max: 999, remaining: 999 }, daily: { used: 0, max: 999, remaining: 999 }, unique: { used: 0, max: 999, remaining: 999 } },
+          limits: {
+            hourly: { used: 0, max: 999, remaining: 999 },
+            daily: { used: 0, max: 999, remaining: 999 },
+            unique: { used: 0, max: 999, remaining: 999 },
+          },
           warmup_pct: 100,
           reset_at: null,
         });
       }
+
       const warmup = getWarmupMultiplier(channel.channel_age_days || 0);
       const maxHour = Math.floor((channel.safety_max_per_hour || 60) * warmup);
       const maxDay = Math.floor((channel.safety_max_per_day || 500) * warmup);
       const maxUnique = Math.floor((channel.safety_max_unique_per_hour || 30) * warmup);
-
-      // Count usage from channel_send_log
       const now = new Date();
       const hourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
       const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
@@ -177,19 +199,15 @@ Deno.serve(async (req) => {
 
       const hourlyUsed = hourlyRes.count || 0;
       const dailyUsed = dailyRes.count || 0;
-      const uniquePhones = new Set((uniqueRes.data || []).map((r: any) => r.recipient_phone).filter(Boolean));
+      const uniquePhones = new Set((uniqueRes.data || []).map((r: { recipient_phone: string | null }) => r.recipient_phone).filter(Boolean));
       const uniqueUsed = uniquePhones.size;
-
-      // Determine the most limiting factor
       const hourlyRemaining = Math.max(0, maxHour - hourlyUsed);
       const dailyRemaining = Math.max(0, maxDay - dailyUsed);
       const uniqueRemaining = Math.max(0, maxUnique - uniqueUsed);
       const remaining = Math.min(hourlyRemaining, dailyRemaining, uniqueRemaining);
 
-      // Calculate reset time (when hourly window resets)
       let resetAt: string | null = null;
       if (remaining === 0) {
-        // Find oldest send in the last hour to calculate when it falls out
         const { data: oldest } = await adminClient
           .from("channel_send_log")
           .select("sent_at")
@@ -219,21 +237,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // === META API (official) — plan limits ===
     if (channel.channel_type === "meta_api") {
-      const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const effectiveOrgId = channel.org_id || profile.org_id;
+      const period = new Date().toISOString().slice(0, 7);
 
       const [usageRes, orgRes] = await Promise.all([
         adminClient
           .from("usage_tracking")
           .select("messages_sent, messages_received")
-          .eq("org_id", profile.org_id)
+          .eq("org_id", effectiveOrgId)
           .eq("period", period)
           .maybeSingle(),
         adminClient
           .from("organizations")
           .select("plan_id")
-          .eq("id", profile.org_id)
+          .eq("id", effectiveOrgId)
           .maybeSingle(),
       ]);
 
@@ -249,8 +267,6 @@ Deno.serve(async (req) => {
 
       const totalUsed = (usageRes.data?.messages_sent || 0) + (usageRes.data?.messages_received || 0);
       const remaining = Math.max(0, maxMessages - totalUsed);
-
-      // Reset at start of next month
       const now = new Date();
       const resetAt = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
 
@@ -267,6 +283,8 @@ Deno.serve(async (req) => {
 
     return json({ channel_type: channel.channel_type, paused: false, remaining: 999999, limits: {}, reset_at: null });
   } catch (error) {
-    return json({ error: error instanceof Error ? (error as Error).message : "Unexpected error" }, 500);
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    console.error("[check-send-quota] unexpected_error", message);
+    return json({ error: message }, 500);
   }
 });
