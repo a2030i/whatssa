@@ -524,7 +524,8 @@ serve(async (req) => {
         const { data: orgMembers } = await adminClient.from("profiles")
           .select("id").eq("org_id", orgId).eq("role", "owner").limit(1).maybeSingle();
         if (orgMembers) {
-          adminClient.from("notifications").insert({
+          // deno-lint-ignore no-explicit-any
+          Promise.resolve(adminClient.from("notifications").insert({
             org_id: orgId,
             user_id: orgMembers.id,
             title: "⚠️ تم إيقاف الإرسال مؤقتاً",
@@ -532,7 +533,7 @@ serve(async (req) => {
             type: "safety",
             reference_type: "channel",
             reference_id: config.id,
-           }).then(() => {}).catch((_e: any) => {});
+           })).then(() => {}).catch((_e: any) => {});
         }
 
         const resetAt = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
