@@ -32,7 +32,6 @@ async function findPrivateConversation(
   const { data, error } = await query.order(orderColumn, { ascending: false }).limit(1).maybeSingle();
   if (error) console.error("findPrivateConversation error:", error.message);
   return data;
-  return data;
 }
 
 // ── Chatbot Flow Processor ──
@@ -511,7 +510,7 @@ serve(async (req) => {
     if (mode === "subscribe" && token) {
       // Check against env fallback first (for new app setup)
       const envVerifyToken = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN");
-      console.log("[webhook-verify] token received:", token, "env token exists:", !!envVerifyToken, "match:", envVerifyToken === token);
+      console.log("[webhook-verify] token received: [REDACTED], env token exists:", !!envVerifyToken, "match:", envVerifyToken === token);
       if (envVerifyToken && token === envVerifyToken) {
         await logToSystem(supabase, "info", "تم التحقق من Webhook بنجاح (env)", { mode });
         return new Response(challenge, { status: 200 });

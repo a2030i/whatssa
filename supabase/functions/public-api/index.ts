@@ -58,15 +58,6 @@ async function authenticateToken(apiKey: string) {
 
   if (hashMatch) {
     token = hashMatch;
-  } else {
-    // Fallback for tokens not yet hashed
-    const { data: plainMatch } = await admin
-      .from("api_tokens")
-      .select("id, org_id, permissions, is_active, expires_at")
-      .eq("token", apiKey)
-      .eq("is_active", true)
-      .maybeSingle();
-    token = plainMatch;
   }
 
   if (!token) return null;
@@ -84,6 +75,23 @@ async function authenticateToken(apiKey: string) {
 
 function hasPermission(token: { permissions: string[] }, required: string) {
   return token.permissions.includes(required);
+}
+
+// ── In-memory rate limiter: max 60 requests per minute per API key ──
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 60;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+function checkRateLimit(apiKey: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(apiKey);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(apiKey, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
 }
 
 serve(async (req) => {
@@ -105,6 +113,11 @@ serve(async (req) => {
     if (!token) {
       await logToSystem(admin, "warn", "مفتاح API غير صالح أو منتهي", { request_id: requestId, api_key_prefix: apiKey.substring(0, 8) + "..." });
       return json({ error: "API Key غير صالح أو منتهي" }, 401);
+    }
+
+    if (!checkRateLimit(token.id)) {
+      await logToSystem(admin, "warn", "تجاوز حد الطلبات", { request_id: requestId, token_id: token.id }, token.org_id);
+      return json({ error: "تجاوزت الحد المسموح به (60 طلب/دقيقة)" }, 429);
     }
 
     const url = new URL(req.url);
