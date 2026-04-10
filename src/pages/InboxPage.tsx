@@ -245,7 +245,8 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           .from("conversations")
           .select("*")
           .eq("org_id", currentOrgId)
-          .order("last_message_at", { ascending: false }),
+          .order("last_message_at", { ascending: false })
+          .limit(500),
         supabase
           .from("whatsapp_config_safe")
           .select("id, display_phone, business_name, channel_label, channel_type, evolution_instance_name, default_team_id, default_agent_id")
