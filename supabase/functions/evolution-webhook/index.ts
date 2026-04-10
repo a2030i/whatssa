@@ -249,8 +249,9 @@ const normalizePhone = (value: string | null | undefined) => String(value || "")
 const normalizeConversationIdentity = (customerPhone: string | null | undefined, conversationType: string) =>
   conversationType === "private" ? normalizePhone(customerPhone) : String(customerPhone || "");
 
+// deno-lint-ignore no-explicit-any
 async function findConversationByIdentity(
-  client: ReturnType<typeof createClient>,
+  client: any,
   orgId: string,
   customerPhone: string,
   channelId: string | null,
