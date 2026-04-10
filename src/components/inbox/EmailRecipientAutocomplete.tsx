@@ -183,9 +183,9 @@ export default function EmailRecipientAutocomplete({
 
   const sourceIcon = (source: string) => {
     switch (source) {
-      case "crm": return <User className="w-3 h-3 text-emerald-500" />;
-      case "history": return <Mail className="w-3 h-3 text-blue-500" />;
-      case "team": return <Users className="w-3 h-3 text-purple-500" />;
+      case "crm": return <User className="w-3 h-3 text-primary" />;
+      case "history": return <Mail className="w-3 h-3 text-accent-foreground" />;
+      case "team": return <Users className="w-3 h-3 text-secondary-foreground" />;
       default: return null;
     }
   };

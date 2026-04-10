@@ -30,6 +30,7 @@ import ContactCardDialog from "./ContactCardDialog";
 import CreateTicketDialog from "@/components/tickets/CreateTicketDialog";
 import SendQuotaBanner from "./SendQuotaBanner";
 import EmailTemplatePicker from "./EmailTemplatePicker";
+import EmailRecipientAutocomplete from "./EmailRecipientAutocomplete";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
