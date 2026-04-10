@@ -1130,7 +1130,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     if (!isEmailChannel || !orgId) return;
     (async () => {
       const [{ data: profileData }, { data: configData }] = await Promise.all([
-        supabase.from("profiles").select("email_signature").eq("id", session?.user?.id || "").maybeSingle(),
+        supabase.from("profiles").select("email_signature").eq("id", user?.id || "").maybeSingle(),
         supabase.from("email_configs").select("email_signature").eq("org_id", orgId).eq("is_active", true).limit(1).maybeSingle(),
       ]);
       setEmailSignature(profileData?.email_signature || configData?.email_signature || "");
