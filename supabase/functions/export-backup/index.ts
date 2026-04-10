@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
         .limit(1000),
       adminClient.from("campaigns").select("*").eq("org_id", orgId),
       adminClient.from("automation_rules").select("*").eq("org_id", orgId),
-      adminClient.from("whatsapp_templates").select("*").eq("org_id", orgId),
+      adminClient.from("template_status_cache").select("*").eq("org_id", orgId),
     ]);
 
     const backup = {
