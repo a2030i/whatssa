@@ -257,24 +257,13 @@ Deno.serve(async (req) => {
     // Wrap in proper HTML with UTF-8 charset
     const wrappedHtml = `<!DOCTYPE html><html dir="auto"><head><meta charset="utf-8"></head><body style="font-family:sans-serif;font-size:14px;line-height:1.6">${safeHtml}</body></html>`;
 
-    // Encode subject for non-ASCII (RFC 2047 Base64)
-    const encoder = new TextEncoder();
-    const subjectBytes = encoder.encode(threadSubject);
-    const hasNonAscii = subjectBytes.some((b) => b > 127);
-    let encodedSubject = threadSubject;
-    if (hasNonAscii) {
-      // Build binary string in chunks to avoid call-stack overflow on large subjects
-      let binaryStr = "";
-      for (let i = 0; i < subjectBytes.length; i++) {
-        binaryStr += String.fromCharCode(subjectBytes[i]);
-      }
-      encodedSubject = `=?UTF-8?B?${btoa(binaryStr)}?=`;
-    }
+    // NOTE: Do NOT pre-encode subject with RFC 2047 — denomailer handles encoding internally.
+    // Pre-encoding causes double-encoding where recipients see raw "=?UTF-8?B?...?=" text.
 
     const sendOptions: any = {
       from: config.email_address,
       to,
-      subject: encodedSubject,
+      subject: threadSubject,
       html: wrappedHtml,
       headers: customHeaders,
     };
