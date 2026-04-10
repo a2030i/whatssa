@@ -64,8 +64,19 @@ const getSendFunction = (channelType?: string, conversationType?: string): strin
   if (channelType === "meta_api") return "whatsapp-send";
   if (channelType === "evolution") return "evolution-send";
   // IMPORTANT: If channelType is unknown/undefined, we must NOT default blindly.
-  // Return "evolution-send" only as last resort — the edge function will validate channel_id.
-  return "evolution-send";
+  // Return empty string — caller must resolve channel_type from DB first.
+  return "";
+};
+
+/** Resolve channel_type from DB when it's missing on the conversation object */
+const resolveChannelType = async (channelId?: string): Promise<string | null> => {
+  if (!channelId) return null;
+  const { data } = await supabase
+    .from("whatsapp_config_safe")
+    .select("channel_type")
+    .eq("id", channelId)
+    .maybeSingle();
+  return data?.channel_type || null;
 };
 
 const formatTimestamp = (isoStr: string | null): string => {
@@ -969,7 +980,20 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       return;
     }
 
-    const sendFunction = getSendFunction(conversation.channelType, conversation.conversationType);
+    let sendFunction = getSendFunction(conversation.channelType, conversation.conversationType);
+    // If channel type is unknown, resolve from DB before sending
+    if (!sendFunction && conversation.channelId) {
+      const resolved = await resolveChannelType(conversation.channelId);
+      if (resolved) {
+        sendFunction = getSendFunction(resolved, conversation.conversationType);
+        // Update local state so future sends don't need another lookup
+        setConversations(prev => prev.map(c => c.id === convId ? { ...c, channelType: resolved as any } : c));
+      }
+    }
+    if (!sendFunction) {
+      toast.error("تعذر تحديد نوع القناة — يرجى إعادة تحميل الصفحة");
+      return;
+    }
     const isEmail = sendFunction === "email-send";
 
     // Optimistic: add message to UI immediately
@@ -1142,7 +1166,12 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           }
 
           if (satEnabled && satMessage) {
-            const satFunc = getSendFunction(conv.channelType);
+            let satFunc = getSendFunction(conv.channelType);
+            if (!satFunc && conv.channelId) {
+              const resolved = await resolveChannelType(conv.channelId);
+              if (resolved) satFunc = getSendFunction(resolved);
+            }
+            if (!satFunc) return; // skip CSAT if channel unknown
             await invokeCloud(satFunc, {
               body: {
                 to: conv.customerPhone,
@@ -1313,7 +1342,11 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
 
   const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
     const conv = conversations.find(c => c.customerPhone === convPhone);
-    const isEvolution = conv?.channelType === "evolution" || !conv?.channelType;
+    let effectiveChannelType = conv?.channelType;
+    if (!effectiveChannelType && conv?.channelId) {
+      effectiveChannelType = (await resolveChannelType(conv.channelId)) as any;
+    }
+    const isEvolution = effectiveChannelType === "evolution";
 
     const { data, error } = await invokeCloud(isEvolution ? "evolution-manage" : "whatsapp-send", {
       body: isEvolution
@@ -1341,7 +1374,12 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
 
     // Background: call the edge function
     const conv = conversations.find(c => c.customerPhone === convPhone);
-    const func = getSendFunction(conv?.channelType);
+    let func = getSendFunction(conv?.channelType);
+    if (!func && conv?.channelId) {
+      const resolved = await resolveChannelType(conv.channelId);
+      if (resolved) func = getSendFunction(resolved);
+    }
+    if (!func) { toast.error("تعذر تحديد نوع القناة"); return; }
     invokeCloud(func, {
       body: { to: convPhone, delete_message_id: waMessageId, channel_id: conv?.channelId },
     }).then(({ data, error }) => {
@@ -1378,7 +1416,12 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       }],
     }));
 
-    const sendFunc = getSendFunction(conversation.channelType);
+    let sendFunc = getSendFunction(conversation.channelType);
+    if (!sendFunc && conversation.channelId) {
+      const resolved = await resolveChannelType(conversation.channelId);
+      if (resolved) sendFunc = getSendFunction(resolved);
+    }
+    if (!sendFunc) { toast.error("تعذر تحديد نوع القناة"); return; }
     const { data, error } = await invokeCloud(sendFunc, {
       body: {
         to: conversation.customerPhone,
