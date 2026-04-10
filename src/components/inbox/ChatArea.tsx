@@ -3455,6 +3455,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             body: {
               to: conversation.customerPhone,
               conversation_id: conversation.id,
+              channel_id: conversation.channelId,
               ...payload,
             },
           });

@@ -35,12 +35,28 @@ const AbandonedCartsPage = () => {
 
   const sendReminder = async (cart: any) => {
     if (!cart.customer_phone) { toast.error("لا يوجد رقم هاتف"); return; }
-    
+
     // Send WhatsApp reminder
     const message = `مرحباً ${cart.customer_name || ""}! 🛒\n\nلاحظنا أنك تركت منتجات في سلة التسوق بقيمة ${Number(cart.total).toFixed(2)} ر.س\n\nأكمل طلبك الآن${cart.checkout_url ? `: ${cart.checkout_url}` : ""}`;
-    
+
+    // Look up existing conversation to route via correct channel
+    const { data: existingConv } = await supabase
+      .from("conversations")
+      .select("id, channel_id")
+      .eq("org_id", orgId!)
+      .eq("customer_phone", cart.customer_phone)
+      .neq("status", "closed")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     await invokeCloud("whatsapp-send", {
-      body: { to: cart.customer_phone, message }
+      body: {
+        to: cart.customer_phone,
+        message,
+        ...(existingConv?.channel_id ? { channel_id: existingConv.channel_id } : {}),
+        ...(existingConv?.id ? { conversation_id: existingConv.id } : {}),
+      }
     }).catch(() => {});
 
     await supabase.from("abandoned_carts").update({
