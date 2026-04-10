@@ -2002,8 +2002,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       if (!uploadData?.storage_path) throw new Error("تعذر حفظ التسجيل");
 
       const storagePath = uploadData.storage_path as string;
-      const isEvolution = conversation.channelType === "evolution" || !conversation.channelType;
-      const sendFn = isEvolution ? "evolution-send" : "whatsapp-send";
+      const isEvolution = conversation.channelType === "evolution";
+      const isMetaSend = conversation.channelType === "meta_api";
+      const sendFn = isMetaSend ? "whatsapp-send" : "evolution-send";
 
       const sendBody: Record<string, any> = {
           to: conversation.customerPhone,
@@ -2123,7 +2124,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       const caption = inputText.trim();
 
       // Check if using Evolution based on conversation channel type
-      const isEvolution = conversation.channelType === "evolution" || !conversation.channelType;
+      const isEvolution = conversation.channelType === "evolution";
 
       if (isEvolution) {
         const { data, error } = await invokeCloud("evolution-send", {

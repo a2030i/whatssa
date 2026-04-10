@@ -62,7 +62,10 @@ const triggerSentimentAnalysis = async (conversationId: string, orgId: string) =
 const getSendFunction = (channelType?: string, conversationType?: string): string => {
   if (channelType === "email" || conversationType === "email") return "email-send";
   if (channelType === "meta_api") return "whatsapp-send";
-  return "evolution-send"; // Default to evolution for evolution or unknown channels
+  if (channelType === "evolution") return "evolution-send";
+  // IMPORTANT: If channelType is unknown/undefined, we must NOT default blindly.
+  // Return "evolution-send" only as last resort — the edge function will validate channel_id.
+  return "evolution-send";
 };
 
 const formatTimestamp = (isoStr: string | null): string => {
