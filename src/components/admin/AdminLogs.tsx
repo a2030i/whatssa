@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, RefreshCw, AlertTriangle, AlertCircle, Info, XCircle, Filter } from "lucide-react";
+import { Search, RefreshCw, AlertTriangle, AlertCircle, Info, XCircle, Filter, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -40,11 +40,20 @@ const sourceLabels: Record<string, string> = {
 
 const AdminLogs = () => {
   const [logs, setLogs] = useState<SystemLog[]>([]);
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
+  const [orgFilter, setOrgFilter] = useState<string>("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [logsLimit, setLogsLimit] = useState(200);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.from("organizations").select("id, name").order("name").then(({ data }) => setOrgs(data || []));
+  }, []);
 
   const fetchLogs = async () => {
     setIsLoading(true);
@@ -52,20 +61,39 @@ const AdminLogs = () => {
       .from("system_logs")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(logsLimit);
 
     if (levelFilter) query = query.eq("level", levelFilter);
     if (sourceFilter) query = query.eq("source", sourceFilter);
     if (search) query = query.ilike("message", `%${search}%`);
+    if (orgFilter) query = query.eq("org_id", orgFilter);
+    if (fromDate) query = query.gte("created_at", new Date(fromDate).toISOString());
+    if (toDate) {
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999);
+      query = query.lte("created_at", to.toISOString());
+    }
 
     const { data } = await query;
     setLogs((data as SystemLog[]) || []);
     setIsLoading(false);
   };
 
-  useEffect(() => { fetchLogs(); }, [levelFilter, sourceFilter]);
+  useEffect(() => { fetchLogs(); }, [levelFilter, sourceFilter, logsLimit]);
 
   const handleSearch = () => fetchLogs();
+
+  const clearFilters = () => {
+    setLevelFilter(null);
+    setSourceFilter(null);
+    setOrgFilter("");
+    setFromDate("");
+    setToDate("");
+    setSearch("");
+    setLogsLimit(200);
+  };
+
+  const hasActiveFilters = levelFilter || sourceFilter || orgFilter || fromDate || toDate || search;
 
   return (
     <div className="space-y-4">
@@ -74,16 +102,24 @@ const AdminLogs = () => {
           <AlertCircle className="w-4 h-4 text-primary" />
           سجلات النظام
         </h2>
-        <Button variant="outline" size="sm" className="text-xs gap-1" onClick={fetchLogs} disabled={isLoading}>
-          <RefreshCw className={cn("w-3 h-3", isLoading && "animate-spin")} />
-          تحديث
-        </Button>
+        <div className="flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" className="text-xs h-7 text-muted-foreground" onClick={clearFilters}>
+              مسح الفلاتر
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={fetchLogs} disabled={isLoading}>
+            <RefreshCw className={cn("w-3 h-3", isLoading && "animate-spin")} />
+            تحديث
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="bg-card rounded-xl shadow-card p-3 space-y-3">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+        {/* Row 1: search + org + limit */}
+        <div className="flex gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input
               placeholder="بحث في السجلات..."
@@ -93,11 +129,43 @@ const AdminLogs = () => {
               className="h-8 text-xs pr-9"
             />
           </div>
+          <select
+            value={orgFilter}
+            onChange={e => setOrgFilter(e.target.value)}
+            className="h-8 text-xs bg-secondary rounded-md px-2 border-0 min-w-[140px]"
+          >
+            <option value="">كل المنظمات</option>
+            {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+          <select
+            value={logsLimit}
+            onChange={e => setLogsLimit(Number(e.target.value))}
+            className="h-8 text-xs bg-secondary rounded-md px-2 border-0"
+          >
+            <option value={50}>50 سجل</option>
+            <option value={100}>100 سجل</option>
+            <option value={200}>200 سجل</option>
+            <option value={500}>500 سجل</option>
+          </select>
           <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleSearch}>
             بحث
           </Button>
         </div>
 
+        {/* Row 2: date range */}
+        <div className="flex gap-2 items-center flex-wrap">
+          <span className="text-[10px] text-muted-foreground">من:</span>
+          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+            className="h-7 text-xs bg-secondary rounded-md px-2 border-0 focus:outline-none focus:ring-1 focus:ring-primary" dir="ltr" />
+          <span className="text-[10px] text-muted-foreground">إلى:</span>
+          <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+            className="h-7 text-xs bg-secondary rounded-md px-2 border-0 focus:outline-none focus:ring-1 focus:ring-primary" dir="ltr" />
+          {(fromDate || toDate) && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleSearch}>تطبيق</Button>
+          )}
+        </div>
+
+        {/* Row 3: level + source chips */}
         <div className="flex gap-2 flex-wrap">
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <Filter className="w-3 h-3" /> المستوى:
@@ -151,6 +219,7 @@ const AdminLogs = () => {
                 const cfg = levelConfig[log.level] || levelConfig.info;
                 const Icon = cfg.icon;
                 const isExpanded = expandedLog === log.id;
+                const orgName = orgs.find(o => o.id === log.org_id)?.name;
 
                 return (
                   <div
@@ -182,8 +251,9 @@ const AdminLogs = () => {
                             </Badge>
                           )}
                           {log.org_id && (
-                            <span className="text-[9px] text-muted-foreground font-mono">
-                              org:{log.org_id.slice(0, 8)}
+                            <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
+                              <Building2 className="w-2.5 h-2.5" />
+                              {orgName || log.org_id.slice(0, 8)}
                             </span>
                           )}
                         </div>
@@ -230,6 +300,7 @@ const AdminLogs = () => {
           <span>إجمالي: {logs.length}</span>
           <span className="text-red-500">أخطاء: {logs.filter(l => l.level === "error" || l.level === "critical").length}</span>
           <span className="text-yellow-500">تحذيرات: {logs.filter(l => l.level === "warn").length}</span>
+          {hasActiveFilters && <span className="text-primary">• فلتر نشط</span>}
         </div>
       )}
     </div>

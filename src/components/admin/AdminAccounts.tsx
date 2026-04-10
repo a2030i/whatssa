@@ -103,6 +103,25 @@ const AdminAccounts = () => {
     load();
   };
 
+  const updateTrialEnd = async (orgId: string, dateStr: string) => {
+    if (!dateStr) return;
+    await supabase.from("organizations").update({ trial_ends_at: new Date(dateStr).toISOString() }).eq("id", orgId);
+    toast.success("تم تحديث تاريخ انتهاء التجربة");
+    load();
+  };
+
+  const extendTrial = async (orgId: string, days: number) => {
+    const org = orgs.find(o => o.id === orgId);
+    const base = org?.trial_ends_at && new Date(org.trial_ends_at) > new Date() ? new Date(org.trial_ends_at) : new Date();
+    base.setDate(base.getDate() + days);
+    await supabase.from("organizations").update({
+      trial_ends_at: base.toISOString(),
+      subscription_status: "trial",
+    }).eq("id", orgId);
+    toast.success(`تم تمديد التجربة ${days} يوماً`);
+    load();
+  };
+
   const createAccount = async () => {
     if (!newAccount.email || !newAccount.full_name) {
       toast.error("الاسم والبريد الإلكتروني مطلوبين");
@@ -348,7 +367,21 @@ const AdminAccounts = () => {
                     </div>
                     <div>
                       <label className="text-[10px] text-muted-foreground">نهاية التجربة</label>
-                      <p className="text-xs mt-1 bg-secondary rounded-lg px-3 py-2">{org.trial_ends_at ? new Date(org.trial_ends_at).toLocaleDateString("ar-SA-u-ca-gregory") : "-"}</p>
+                      <input
+                        type="date"
+                        defaultValue={org.trial_ends_at ? org.trial_ends_at.slice(0, 10) : ""}
+                        onBlur={e => { if (e.target.value) updateTrialEnd(org.id, e.target.value); }}
+                        className="w-full text-xs bg-secondary rounded-lg px-3 py-2 mt-1 border-0 focus:outline-none focus:ring-1 focus:ring-primary"
+                        dir="ltr"
+                      />
+                      <div className="flex gap-1 mt-1">
+                        {[7, 14, 30].map(d => (
+                          <button key={d} onClick={() => extendTrial(org.id, d)}
+                            className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded hover:bg-primary/20 transition-colors">
+                            +{d}د
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 

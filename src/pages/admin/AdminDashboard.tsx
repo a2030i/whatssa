@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Shield, LogOut } from "lucide-react";
+import { Shield, LogOut, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -77,6 +77,9 @@ const AdminDashboard = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="text-xs gap-1 text-muted-foreground" onClick={() => navigate("/")}>
+            <Home className="w-3 h-3" /> <span className="hidden sm:inline">التطبيق</span>
+          </Button>
           <Button variant="ghost" size="sm" className="text-xs gap-1 text-destructive" onClick={signOut}>
             <LogOut className="w-3 h-3" /> <span className="hidden sm:inline">خروج</span>
           </Button>
