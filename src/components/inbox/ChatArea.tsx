@@ -1676,12 +1676,13 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     // Dispatch email overrides if set
     const allTo = [...emailToChips, ...(emailToInput.trim() ? [emailToInput.trim()] : [])];
     const allCc = [...emailCcChips, ...(emailCcInput.trim() ? [emailCcInput.trim()] : [])];
-    if (isEmailChannel && (allTo.length > 0 || allCc.length > 0)) {
+    if (isEmailChannel && (allTo.length > 0 || allCc.length > 0 || emailSubject.trim())) {
       window.dispatchEvent(new CustomEvent("email-override-recipients", {
         detail: {
           conversationId: conversation.id,
           to: allTo.length > 0 ? allTo.join(", ") : undefined,
           cc: allCc.length > 0 ? allCc.join(", ") : undefined,
+          subject: emailSubject.trim() || undefined,
         }
       }));
     }
