@@ -589,7 +589,7 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             )}
           </div>
         ) : (
-          <div className="divide-y divide-primary/15">
+          <div className="space-y-0.5">
           {filtered.map((conv) => {
             const isSelected = conv.id === selectedId;
             const countdown = conv.channelType === "meta_api" ? get24hCountdown(conv.lastCustomerMessageAt) : null;
@@ -633,11 +633,11 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                   setTimeout(() => document.addEventListener("click", dismiss), 0);
                 }}
                 className={cn(
-                  "w-full text-right px-3 py-3 rounded-xl transition-all group relative border",
+                  "w-full text-right px-3 py-2.5 rounded-xl transition-all group relative",
                   isSelected && !bulkMode
-                    ? "bg-primary/[0.06] border-primary/20 shadow-[0_1px_6px_hsl(var(--primary)/0.08)]"
-                    : "border-transparent hover:bg-card hover:border-border/40 hover:shadow-[0_1px_4px_rgba(0,0,0,0.04)]",
-                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/5 border-primary/15",
+                    ? "bg-primary/[0.08] shadow-sm"
+                    : "hover:bg-secondary/60",
+                  bulkMode && bulkSelected.has(conv.id) && "bg-primary/5",
                   hasUnread && !isSelected && "bg-primary/[0.03]"
                 )}
               >
