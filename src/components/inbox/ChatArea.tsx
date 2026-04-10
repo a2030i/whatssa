@@ -303,7 +303,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
       }));
 
       if (conversation.channelType === "evolution") {
-        const { error } = await invokeCloud("evolution-manage", {
+        const { data, error } = await invokeCloud("evolution-manage", {
           body: {
             action: "send_reaction",
             phone: conversation.customerPhone,
@@ -314,6 +314,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           },
         });
         if (error) throw error;
+        if (data?.error) throw new Error(data.error);
       } else {
         // Meta API reaction
         const { data, error } = await invokeCloud("whatsapp-send", {
