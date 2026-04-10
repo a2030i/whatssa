@@ -279,23 +279,24 @@ async function findConversationByIdentity(
   return data;
 }
 
-async function logToSystem(
-  client: ReturnType<typeof createClient>,
+// deno-lint-ignore no-explicit-any
+function logToSystem(
+  client: any,
   level: string,
   message: string,
   metadata: Record<string, unknown> = {},
   orgId?: string | null,
 ) {
   try {
-    // Fire-and-forget: don't block webhook processing
-    client.from("system_logs").insert({
+    // deno-lint-ignore no-explicit-any
+    Promise.resolve(client.from("system_logs").insert({
       level,
       source: "edge_function",
       function_name: "evolution-webhook",
       message,
       metadata,
       org_id: orgId || null,
-    }).then(() => {}).catch((e) => console.error("Log write failed:", e));
+    })).then(() => {}).catch((e: any) => console.error("Log write failed:", e));
   } catch (e) {
     console.error("Failed to write system log:", e);
   }
