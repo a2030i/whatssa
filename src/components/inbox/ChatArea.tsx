@@ -1136,7 +1136,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }).catch(() => {});
   }, [conversation.id, conversation.customerPhone, conversation.channelId, isEvolutionChannel, isGroup]);
 
-
+  const copyConversationLink = useCallback(() => {
     const url = `${window.location.origin}/inbox?conversation=${conversation.id}`;
     navigator.clipboard.writeText(url).then(() => toast.success("تم نسخ رابط المحادثة"));
   }, [conversation.id]);
