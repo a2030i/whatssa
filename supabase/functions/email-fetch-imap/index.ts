@@ -716,11 +716,7 @@ function extractFromMultipart(raw: string, boundary: string): { text: string; at
       decoded = decodeBase64Body(partBody, charsetM ? charsetM[1] : "utf-8");
     } else if (partHeadersLower.includes("quoted-printable")) {
       decoded = decodeQuotedPrintable(partBody);
-      const charsetM = partHeadersLower.match(/charset=["']?([^;"'\s]+)/i);
-      try {
-        const bytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
-        decoded = new TextDecoder(charsetM ? charsetM[1] : "utf-8").decode(bytes);
-      } catch {}
+      // decodeQuotedPrintable already handles UTF-8 decoding internally
     }
 
     if (partCt.includes("text/plain") || partHeadersLower.includes("text/plain")) {
