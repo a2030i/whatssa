@@ -29,6 +29,8 @@ interface ChannelWithStats {
   updated_at: string | null;
   onboarding_type: string | null;
   health_status: any;
+  token_expires_at: string | null;
+  last_webhook_at: string | null;
   // Stats
   sent_count: number;
   received_count: number;
@@ -126,6 +128,8 @@ const AdminWhatsAppMonitor = () => {
         updated_at: ch.updated_at,
         onboarding_type: ch.onboarding_type,
         health_status: ch.health_status,
+        token_expires_at: ch.token_expires_at || null,
+        last_webhook_at: ch.last_webhook_at || null,
         sent_count: sentCounts[ch.id] || 0,
         received_count: receivedByChannel[ch.id] || 0,
         conversations_count: convCounts[ch.id] || 0,
@@ -270,6 +274,13 @@ const ChannelCard = ({ channel }: { channel: ChannelWithStats }) => {
   const isMeta = channel.channel_type === "meta";
   const quality = qualityMap[channel.quality_rating || ""] || null;
 
+  // Token expiry warning: warn if expires within 7 days, critical if expired
+  const tokenExpiry = channel.token_expires_at ? new Date(channel.token_expires_at) : null;
+  const now = new Date();
+  const tokenDaysLeft = tokenExpiry ? Math.ceil((tokenExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+  const tokenExpired = tokenDaysLeft !== null && tokenDaysLeft <= 0;
+  const tokenWarning = tokenDaysLeft !== null && tokenDaysLeft > 0 && tokenDaysLeft <= 7;
+
   return (
     <div className={cn(
       "rounded-xl border p-4 bg-card/70 backdrop-blur-sm transition-all hover:shadow-sm",
@@ -344,6 +355,16 @@ const ChannelCard = ({ channel }: { channel: ChannelWithStats }) => {
           {channel.messaging_limit_tier && (
             <Badge variant="outline" className="text-[10px] border-border/40">
               حد الإرسال: {channel.messaging_limit_tier}
+            </Badge>
+          )}
+          {tokenExpired && (
+            <Badge variant="destructive" className="gap-1 text-[10px]">
+              <AlertTriangle className="w-3 h-3" /> Token منتهي
+            </Badge>
+          )}
+          {tokenWarning && (
+            <Badge variant="outline" className="text-[10px] border-amber-300 bg-amber-50 text-amber-700 gap-1">
+              <Clock className="w-3 h-3" /> Token ينتهي خلال {tokenDaysLeft}د
             </Badge>
           )}
         </div>
