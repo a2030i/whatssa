@@ -1166,7 +1166,12 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           }
 
           if (satEnabled && satMessage) {
-            const satFunc = getSendFunction(conv.channelType);
+            let satFunc = getSendFunction(conv.channelType);
+            if (!satFunc && conv.channelId) {
+              const resolved = await resolveChannelType(conv.channelId);
+              if (resolved) satFunc = getSendFunction(resolved);
+            }
+            if (!satFunc) return; // skip CSAT if channel unknown
             await invokeCloud(satFunc, {
               body: {
                 to: conv.customerPhone,
