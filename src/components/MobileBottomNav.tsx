@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MessageSquare, LayoutDashboard, Settings, UserCircle, LogOut, Menu, Megaphone, Bot, BarChart3, Plug, ShoppingCart, ClipboardCheck, Workflow, Clock, FileText, Users as UsersIcon, Wallet, CreditCard, Code2, Warehouse, Send, Shield, Lock, Mail } from "lucide-react";
+import { MessageSquare, LayoutDashboard, Settings, UserCircle, LogOut, Menu, Megaphone, Bot, BarChart3, Plug, ShoppingCart, ClipboardCheck, Workflow, Clock, FileText, Users as UsersIcon, Wallet, CreditCard, Code2, Warehouse, Send, Shield, Lock, Mail, Ticket } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +19,7 @@ const MobileBottomNav = () => {
   const { profile, userRole, isSuperAdmin, isEcommerce, hasMetaApi, signOut, orgId, teamId } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [hasEmailAccess, setHasEmailAccess] = useState(false);
+  const [openTicketCount, setOpenTicketCount] = useState(0);
   const displayRole = userRole === "super_admin"
     ? "super_admin"
     : userRole === "admin"
@@ -57,8 +58,19 @@ const MobileBottomNav = () => {
       });
   }, [orgId, profile?.id, teamId, effectiveRole, isSuperAdmin]);
 
+  useEffect(() => {
+    if (!orgId || !profile?.id) return;
+    supabase.from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .in("status", ["open", "in_progress"])
+      .eq("assigned_to", profile.id)
+      .then(({ count }) => setOpenTicketCount(count || 0));
+  }, [orgId, profile?.id]);
+
   const allMoreItems: { label: string; icon: any; path: string; emoji: string; minRole?: string }[] = [
     { label: "لوحة التحكم", icon: LayoutDashboard, path: "/", emoji: "📊", minRole: "admin" },
+    { label: "التذاكر", icon: Ticket, path: "/tickets", emoji: "🎫" },
     { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
     { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "🚀", minRole: "admin" },
     { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰", minRole: "admin" },
@@ -143,8 +155,15 @@ const MobileBottomNav = () => {
         {/* More menu */}
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
-            <button className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg text-muted-foreground">
-              <Menu className="w-5 h-5" />
+            <button className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-lg text-muted-foreground relative">
+              <div className="relative">
+                <Menu className="w-5 h-5" />
+                {openTicketCount > 0 && (
+                  <span className="absolute -top-1 -left-1 min-w-[14px] h-[14px] bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                    {openTicketCount > 99 ? "99+" : openTicketCount}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] font-medium">المزيد</span>
             </button>
           </SheetTrigger>

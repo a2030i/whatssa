@@ -1208,7 +1208,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
 
         {/* Tickets Tab */}
         <TabsContent value="tickets" className="mt-0">
-          <TicketsTab conversationId={conversation.id} customerPhone={conversation.customerPhone} orgId={orgId} />
+          <TicketsTab conversationId={conversation.id} customerPhone={conversation.customerPhone} customerName={conversation.customerName} orgId={orgId} />
         </TabsContent>
 
         {/* Notes Tab */}
