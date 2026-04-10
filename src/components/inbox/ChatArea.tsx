@@ -788,18 +788,64 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         const isEmailConv = conversation.channelType === "email" || conversation.conversationType === "email";
         if (isEmailConv && msg.emailMeta) {
           const em = msg.emailMeta;
+
+          // Decode MIME-encoded strings (=?UTF-8?B?...?=) that may leak into stored data
+          const decodeMime = (s: string | undefined | null): string => {
+            if (!s) return "";
+            return s.replace(/=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g, (_m, charset, enc, encoded) => {
+              try {
+                if (enc.toUpperCase() === "B") {
+                  const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+                  return new TextDecoder(charset).decode(bytes);
+                }
+                const qp = encoded.replace(/_/g, " ").replace(/=([0-9A-Fa-f]{2})/g, (_: string, h: string) => String.fromCharCode(parseInt(h, 16)));
+                return new TextDecoder(charset).decode(new Uint8Array([...qp].map(c => c.charCodeAt(0))));
+              } catch { return encoded; }
+            });
+          };
+
+          const decodedSubject = decodeMime(em.subject);
+          const decodedFrom = decodeMime(em.from);
+          const decodedTo = decodeMime(em.to);
+          const decodedCc = decodeMime(em.cc);
+
           // Strip the "📧 subject\n\n" prefix from display text if present
           let emailDisplayText = textWithoutUrl;
           if (em.subject) {
             const prefix = `📧 ${em.subject}\n\n`;
+            const decodedPrefix = `📧 ${decodedSubject}\n\n`;
             if (emailDisplayText.startsWith(prefix)) {
               emailDisplayText = emailDisplayText.slice(prefix.length);
+            } else if (emailDisplayText.startsWith(decodedPrefix)) {
+              emailDisplayText = emailDisplayText.slice(decodedPrefix.length);
             } else if (emailDisplayText.startsWith(`📧 `)) {
               const nlIdx = emailDisplayText.indexOf("\n\n");
               if (nlIdx !== -1) emailDisplayText = emailDisplayText.slice(nlIdx + 2);
             }
           }
           if (!emailDisplayText.trim()) emailDisplayText = textWithoutUrl;
+
+          // Client-side cleanup of email body: remove trailing signatures, URLs, phone numbers
+          const cleanEmailDisplay = (text: string): string => {
+            const lines = text.split("\n");
+            // Cut at signature delimiters
+            const sigIdx = lines.findIndex(l => /^--\s*$/.test(l) || /^_{5,}$/.test(l.trim()) || /^-{5,}$/.test(l.trim()) || /^Sent from my /i.test(l.trim()) || /^(تم الإرسال من|أُرسل من|مرسل من)\s/i.test(l.trim()) || /^Get Outlook for/i.test(l.trim()));
+            const trimmedLines = sigIdx > 0 ? lines.slice(0, sigIdx) : lines;
+            // Remove trailing URL-only, domain-only, phone-only lines
+            while (trimmedLines.length > 0) {
+              const last = trimmedLines[trimmedLines.length - 1].trim();
+              if (!last) { trimmedLines.pop(); continue; }
+              if (/^(https?:\/\/|www\.)\S+$/i.test(last)) { trimmedLines.pop(); continue; }
+              if (/^[a-z0-9-]+\.[a-z]{2,}(\.[a-z]{2,})?$/i.test(last)) { trimmedLines.pop(); continue; }
+              if (/^(www\.|https?:\/\/).*https?:\/\//i.test(last)) { trimmedLines.pop(); continue; }
+              if (/^[+\d\s()-]{7,}$/.test(last)) { trimmedLines.pop(); continue; }
+              if (/^\[since\s+\d{4}\]$/i.test(last)) { trimmedLines.pop(); continue; }
+              break;
+            }
+            return trimmedLines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+          };
+
+          emailDisplayText = cleanEmailDisplay(emailDisplayText);
 
           return (
             <div className={cn(
@@ -811,32 +857,32 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               {/* Email Header */}
               <div className="px-4 pt-3 pb-2 border-b border-border/20 space-y-1.5">
                 {/* Subject */}
-                {em.subject && (
+                {decodedSubject && (
                   <div className="flex items-center gap-2">
                     <Mail className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <p className="text-[13px] font-bold text-foreground truncate">{em.subject}</p>
+                    <p className="text-[13px] font-bold text-foreground truncate">{decodedSubject}</p>
                   </div>
                 )}
                 {/* From */}
-                {em.from && (
+                {decodedFrom && (
                   <div className="flex items-center gap-2 text-[11px]">
                     <span className="text-muted-foreground/70 font-medium min-w-[28px]">من:</span>
-                    <span className="text-foreground/80 truncate">{em.from}</span>
+                    <span className="text-foreground/80 truncate">{decodedFrom}</span>
                   </div>
                 )}
                 {/* To */}
-                {em.to && (
+                {decodedTo && (
                   <div className="flex items-center gap-2 text-[11px]">
                     <span className="text-muted-foreground/70 font-medium min-w-[28px]">إلى:</span>
-                    <span className="text-foreground/80 truncate">{em.to}</span>
+                    <span className="text-foreground/80 truncate">{decodedTo}</span>
                   </div>
                 )}
                 {/* CC */}
-                {em.cc && (
+                {decodedCc && (
                   <div className="flex items-center gap-2 text-[11px]">
                     <Users className="w-3 h-3 text-muted-foreground/50 shrink-0" />
                     <span className="text-muted-foreground/70 font-medium">نسخة:</span>
-                    <span className="text-foreground/70 truncate">{em.cc}</span>
+                    <span className="text-foreground/70 truncate">{decodedCc}</span>
                   </div>
                 )}
               </div>

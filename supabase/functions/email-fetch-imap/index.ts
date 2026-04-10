@@ -151,23 +151,72 @@ function cleanQuotedContent(body: string): string {
 
 /** Final cleanup pass to remove leftover artifacts from plain-text conversion */
 function postCleanEmailBody(text: string): string {
-  return text
+  let cleaned = text
     // Remove cid: references that survived
     .replace(/\[?cid:[^\]\s]+\]?/gi, "")
     // Remove [Description: ...] image alt-text placeholders
     .replace(/\[Description:\s*[^\]]*\]/gi, "")
     // Remove [image: ...] or [Image: ...]
     .replace(/\[image:\s*[^\]]*\]/gi, "")
+    // Remove [since YYYY] or similar bracket artifacts from signatures
+    .replace(/\[since\s+\d{4}\]/gi, "")
+    .replace(/\[est\.?\s*\d{4}\]/gi, "")
     // Clean URLs in angle brackets
     .replace(/<(https?:\/\/[^>]+)>/gi, "$1")
     // Remove "The content of this email is confidential..." disclaimer blocks
     .replace(/The content of this email is confidential[\s\S]{0,500}$/i, "")
-    // Remove "Please consider the environment" lines
-    .replace(/^.*(?:Please consider the environment|يرجى مراعاة البيئة).*$/gim, "")
-    // Collapse multiple spaces and newlines
+    .replace(/هذه الرسالة سرية[\s\S]{0,500}$/i, "")
+    .replace(/This email and any attachments[\s\S]{0,500}$/i, "")
+    .replace(/DISCLAIMER[\s\S]{0,500}$/i, "")
+    .replace(/^.*(?:Please consider the environment|يرجى مراعاة البيئة).*$/gim, "");
+
+  // ── Signature detection: cut text after common signature delimiters ──
+  const sigPatterns = [
+    /^--\s*$/m,                              // Standard "-- " signature delimiter
+    /^_{5,}\s*$/m,                           // _____ line
+    /^-{5,}\s*$/m,                           // ----- line
+    /^={5,}\s*$/m,                           // ===== line
+    /^Sent from my (iPhone|iPad|Galaxy|Android|Huawei|Samsung)/im,
+    /^(تم الإرسال من|أُرسل من|مرسل من)\s/im, // Arabic "Sent from"
+    /^Get Outlook for/im,
+    /^Envoyé depuis/im,                       // French "Sent from"
+  ];
+
+  for (const pattern of sigPatterns) {
+    const match = cleaned.match(pattern);
+    if (match && match.index !== undefined && match.index > 20) {
+      cleaned = cleaned.substring(0, match.index);
+      break;
+    }
+  }
+
+  // ── Remove trailing URL-only lines (common in signatures) ──
+  // Lines that are just URLs or "www.xxx.com" at the end
+  const lines = cleaned.split("\n");
+  while (lines.length > 0) {
+    const lastLine = lines[lines.length - 1].trim();
+    if (!lastLine) { lines.pop(); continue; }
+    // Pure URL line
+    if (/^(https?:\/\/|www\.)\S+$/i.test(lastLine)) { lines.pop(); continue; }
+    // Line that's just a domain like "company.com"
+    if (/^[a-z0-9-]+\.[a-z]{2,}(\.[a-z]{2,})?$/i.test(lastLine)) { lines.pop(); continue; }
+    // Line that is URL concatenated: "www.xxx.comhttps://www.xxx.com"
+    if (/^(www\.|https?:\/\/).*https?:\/\//i.test(lastLine)) { lines.pop(); continue; }
+    // Phone/fax number only lines at the end
+    if (/^[+\d\s()-]{7,}$/.test(lastLine)) { lines.pop(); continue; }
+    // Single word trademark/brand lines (< 30 chars, no spaces or just one word)
+    if (lastLine.length < 30 && /^[\w\u0600-\u06FF.-]+$/.test(lastLine) && !/\s/.test(lastLine)) { lines.pop(); continue; }
+    break;
+  }
+  cleaned = lines.join("\n");
+
+  // Collapse multiple spaces and newlines
+  cleaned = cleaned
     .replace(/[ \t]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  return cleaned;
 }
 
 /* ─── Raw IMAP client over TLS ─── */
