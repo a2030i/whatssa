@@ -270,12 +270,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   const isEmailConversation = conversation.channelType === "email" || conversation.conversationType === "email";
   const canReply = msg.type !== "note" && !msg.isDeleted;
   const swipe = useSwipeReply({
-    onSwipe: () => canReply && !isEmailConversation && onReply(msg),
+    onSwipe: () => canReply && onReply(msg),
     direction: swipeDirection,
     threshold: 60,
   });
 
-  // Can edit agent text messages within 15 minutes (not for email)
+  // Can edit agent text messages within 15 minutes (not for email — emails can't be recalled)
   const canEdit = !isEmailConversation && msg.sender === "agent" && msg.type === "text" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
     (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000;
   const canDelete = !isEmailConversation && msg.sender === "agent" && msg.waMessageId && !msg.isDeleted && msg.createdAt &&
@@ -345,7 +345,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
     } catch { toast.error("فشل الترجمة"); }
   };
 
-  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (!isEmailConversation && msg.sender === "customer" && msg.type === "text") || (!isEmailConversation && msg.waMessageId));
+  const hasAnyAction = !msg.isDeleted && (canReply || canEdit || canDelete || (msg.sender === "customer" && msg.type === "text") || msg.waMessageId);
 
   return (
     <div
@@ -410,12 +410,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               <Trash2 className="w-3.5 h-3.5 text-destructive" />
             </button>
           )}
-          {!isEmailConversation && onForward && msg.type === "text" && !msg.isDeleted && (
+          {onForward && msg.type === "text" && !msg.isDeleted && (
             <button onClick={() => onForward(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="إعادة توجيه">
               <Forward className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
-          {!isEmailConversation && onStar && !msg.isDeleted && (
+          {onStar && !msg.isDeleted && (
             <button onClick={() => onStar(msg)} className="w-7 h-7 rounded-full bg-secondary shadow-md flex items-center justify-center hover:bg-accent" title="تمييز">
               <Star className={cn("w-3.5 h-3.5", (msg as any).isStarred ? "text-amber-500 fill-amber-500" : "text-muted-foreground")} />
             </button>
@@ -451,12 +451,12 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                   <Link2 className="w-3.5 h-3.5" /> نسخ رابط الرسالة
                 </DropdownMenuItem>
                )}
-              {!isEmailConversation && onForward && msg.type === "text" && !msg.isDeleted && (
+              {onForward && msg.type === "text" && !msg.isDeleted && (
                 <DropdownMenuItem onClick={() => onForward(msg)} className="text-xs gap-2">
                   <Forward className="w-3.5 h-3.5" /> إعادة توجيه
                 </DropdownMenuItem>
               )}
-              {!isEmailConversation && onStar && !msg.isDeleted && (
+              {onStar && !msg.isDeleted && (
                 <DropdownMenuItem onClick={() => onStar(msg)} className="text-xs gap-2">
                   <Star className={cn("w-3.5 h-3.5", (msg as any).isStarred ? "text-amber-500 fill-amber-500" : "")} /> {(msg as any).isStarred ? "إلغاء التمييز" : "تمييز ⭐"}
                 </DropdownMenuItem>
@@ -1059,6 +1059,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [emailToInput, setEmailToInput] = useState("");
   const [emailCcInput, setEmailCcInput] = useState("");
   const [showEmailFields, setShowEmailFields] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
   const [ticketAgents, setTicketAgents] = useState<{id:string;full_name:string}[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -1675,12 +1676,13 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     // Dispatch email overrides if set
     const allTo = [...emailToChips, ...(emailToInput.trim() ? [emailToInput.trim()] : [])];
     const allCc = [...emailCcChips, ...(emailCcInput.trim() ? [emailCcInput.trim()] : [])];
-    if (isEmailChannel && (allTo.length > 0 || allCc.length > 0)) {
+    if (isEmailChannel && (allTo.length > 0 || allCc.length > 0 || emailSubject.trim())) {
       window.dispatchEvent(new CustomEvent("email-override-recipients", {
         detail: {
           conversationId: conversation.id,
           to: allTo.length > 0 ? allTo.join(", ") : undefined,
           cc: allCc.length > 0 ? allCc.join(", ") : undefined,
+          subject: emailSubject.trim() || undefined,
         }
       }));
     }
@@ -2760,6 +2762,17 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           {/* Email To/CC Fields with Chips */}
           {isEmailChannel && !isNoteMode && (
             <div className="mx-3 mt-2 space-y-1">
+              {/* Email Subject */}
+              <div className="flex items-center gap-2 bg-secondary/40 rounded-lg px-2 py-1.5 border border-border/30">
+                <span className="text-[11px] text-muted-foreground font-medium shrink-0">📧</span>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="الموضوع..."
+                  className="flex-1 text-[13px] font-medium bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground/50"
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowEmailFields(!showEmailFields)}
@@ -2951,7 +2964,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             {/* Tools Row inside input box */}
             {(!windowExpired || isNoteMode) && (
               <div className="flex items-center gap-0 px-2 pb-1.5 border-t border-border/10">
-                {!isNoteMode && !isEmailChannel && (
+                {!isNoteMode && (
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground shrink-0">
@@ -2976,7 +2989,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 )}
                 <input ref={fileInputRef} type="file" accept={allowedFileTypes} className="hidden" onChange={handleFileSelect} />
                 <input ref={groupPicInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleChangeGroupPicture(file); if (e.target) e.target.value = ""; }} />
-                {!isNoteMode && !isEmailChannel && (
+                {!isNoteMode && (
                   <button onClick={() => setShowQuickReplies(!showQuickReplies)} className={cn("p-1.5 rounded-lg transition-colors shrink-0", showQuickReplies ? "bg-primary/10 text-primary" : "hover:bg-secondary text-muted-foreground")}>
                     <Zap className="w-4 h-4" />
                   </button>
