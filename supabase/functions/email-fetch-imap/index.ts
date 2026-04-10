@@ -799,7 +799,9 @@ async function fetchEmailsForConfig(
         }
 
         // Extract and decode body
-        let bodyText = extractAndDecodeBody(msg.bodyText || "", headers);
+        const extracted = extractAndDecodeBody(msg.bodyText || "", headers);
+        let bodyText = extracted.text;
+        const emailAttachments = extracted.attachments;
         const cleanBody = cleanQuotedContent(bodyText);
         const displayContent = cleanBody.substring(0, 10000) || subject || "(بدون محتوى)";
 
