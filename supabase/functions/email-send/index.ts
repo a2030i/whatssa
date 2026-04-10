@@ -384,6 +384,17 @@ Deno.serve(async (req) => {
           sent_by_name: profile.full_name,
           direction: "outbound",
         });
+        // Insert tracking pixel record
+        try {
+          await admin.from("email_open_tracking").insert({
+            message_id: insertedMsg.id,
+            conversation_id: convId,
+            org_id: profile.org_id,
+            tracking_token: trackingToken,
+          });
+        } catch (trackErr: any) {
+          console.warn("[email-send] tracking insert skipped:", trackErr.message);
+        }
       }
 
       await admin.from("conversations").update({
