@@ -1108,7 +1108,31 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     if (isMetaChannel && conversation.status === "closed") {
       setShowTemplates(true);
     }
+    // Auto-populate email subject from conversation notes
+    if (isEmailChannel) {
+      const subj = (conversation as any).notes?.replace(/^📧\s*/, "") || "";
+      setEmailSubject(subj ? `Re: ${subj}` : "");
+      // Auto-populate CC from last inbound message's CC
+      const lastInbound = [...messages].reverse().find(m => m.sender === "customer" && (m as any).metadata?.email_cc);
+      if (lastInbound) {
+        const ccRaw = (lastInbound as any).metadata?.email_cc || "";
+        const ccList = ccRaw.split(",").map((s: string) => s.trim()).filter(Boolean);
+        setEmailCcChips(ccList);
+      } else {
+        setEmailCcChips([]);
+      }
+      setEmailBccChips([]);
+    }
   }, [conversation.id, conversation.isBlocked, conversation.profilePic]);
+
+  // Fetch email signature for preview
+  useEffect(() => {
+    if (!isEmailChannel || !orgId) return;
+    (async () => {
+      const { data } = await supabase.from("email_configs").select("email_signature").eq("org_id", orgId).eq("is_active", true).limit(1).maybeSingle();
+      setEmailSignature(data?.email_signature || "");
+    })();
+  }, [isEmailChannel, orgId]);
 
   // Compute mention message IDs for floating @ navigation
   useEffect(() => {
