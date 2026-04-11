@@ -585,7 +585,7 @@ serve(async (req) => {
       }
 
       // ── Step 5: Subscribe app to WABA webhooks ──
-      let wabaWebhookOk = false;
+      wabaWebhookOk = false;
       try {
         const subscribeRes = await fetch(
           `https://graph.facebook.com/v22.0/${wabaId}/subscribed_apps`,
