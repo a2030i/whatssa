@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 type DbClient = ReturnType<typeof createClient>;
 type ProfileRow = { id: string; org_id: string };
+type RawChannelRow = Record<string, unknown>;
 type ChannelRow = {
   id: string;
   channel_type: string | null;
@@ -31,6 +32,26 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+function mapRawChannel(raw: RawChannelRow): ChannelRow | null {
+  if (typeof raw.id !== "string" || typeof raw.org_id !== "string") {
+    return null;
+  }
+
+  return {
+    id: raw.id,
+    channel_type: typeof raw.channel_type === "string" ? raw.channel_type : null,
+    safety_max_per_hour: typeof raw.safety_max_per_hour === "number" ? raw.safety_max_per_hour : null,
+    safety_max_per_day: typeof raw.safety_max_per_day === "number" ? raw.safety_max_per_day : null,
+    safety_max_unique_per_hour: typeof raw.safety_max_unique_per_hour === "number" ? raw.safety_max_unique_per_hour : null,
+    safety_paused: typeof raw.safety_paused === "boolean" ? raw.safety_paused : null,
+    safety_paused_at: typeof raw.safety_paused_at === "string" ? raw.safety_paused_at : null,
+    safety_paused_reason: typeof raw.safety_paused_reason === "string" ? raw.safety_paused_reason : null,
+    channel_age_days: typeof raw.channel_age_days === "number" ? raw.channel_age_days : null,
+    org_id: raw.org_id,
+    safety_limits_enabled: typeof raw.safety_limits_enabled === "boolean" ? raw.safety_limits_enabled : null,
+  };
+}
 
 function getWarmupMultiplier(ageDays: number): number {
   if (ageDays < 7) return 0.2;
@@ -66,13 +87,29 @@ async function fetchProfile(client: DbClient, userId: string) {
 async function fetchChannel(client: DbClient, channelId: string) {
   const channelSelect = "id, channel_type, safety_max_per_hour, safety_max_per_day, safety_max_unique_per_hour, safety_paused, safety_paused_at, safety_paused_reason, channel_age_days, org_id, safety_limits_enabled";
 
-  const { data } = await client
+  const { data, error } = await client
     .from("whatsapp_config")
     .select(channelSelect)
     .eq("id", channelId)
     .maybeSingle();
 
-  return (data as ChannelRow | null) ?? null;
+  if (data) {
+    return data as ChannelRow;
+  }
+
+  if (!error) {
+    return null;
+  }
+
+  console.warn(`[check-send-quota] channel_select_fallback channel=${channelId} reason=${error.message}`);
+
+  const fallback = await client
+    .from("whatsapp_config")
+    .select("*")
+    .eq("id", channelId)
+    .maybeSingle();
+
+  return fallback.data ? mapRawChannel(fallback.data as RawChannelRow) : null;
 }
 
 async function resolveAccess(userId: string, channelId: string, extClient: DbClient | null, cloudClient: DbClient) {
@@ -146,12 +183,12 @@ Deno.serve(async (req) => {
 
     if (!channel) {
       console.warn(`[check-send-quota] channel_missing user=${userId} channel=${channel_id} ext=${Boolean(extClient)}`);
-      return json({ error: "Channel not found" }, 404);
+      return json({ error: "Channel not found" });
     }
 
     if (resolved.orgMismatch) {
       console.warn(`[check-send-quota] org_mismatch user=${userId} profile_org=${profile.org_id} channel_org=${channel.org_id} source=${resolved.source}`);
-      return json({ error: "Channel not found" }, 404);
+      return json({ error: "Channel not found" });
     }
 
     if (channel.channel_type === "evolution") {
