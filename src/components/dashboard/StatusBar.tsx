@@ -1,6 +1,6 @@
 import { Wifi, WifiOff, Phone, ShieldCheck, ShieldX, Signal, Gauge, Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DashboardData } from "@/hooks/useDashboardData";
+import { DashboardData, ChannelStatus } from "@/hooks/useDashboardData";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 
@@ -29,14 +29,14 @@ const dotColors = {
   neutral: "bg-muted-foreground",
 };
 
-const getConnectionStatus = (data: DashboardData): StatusItem => {
-  if (!data.waStatus.phoneNumberId) return { label: "حالة الربط", value: "غير متصل", status: "danger", icon: WifiOff };
-  if (!data.waStatus.isConnected) return { label: "حالة الربط", value: "يحتاج إجراء", status: "warning", icon: AlertTriangle };
+const getConnectionStatus = (ch: ChannelStatus): StatusItem => {
+  if (!ch.waStatus.phoneNumberId && ch.channelType === "official") return { label: "حالة الربط", value: "غير متصل", status: "danger", icon: WifiOff };
+  if (!ch.waStatus.isConnected) return { label: "حالة الربط", value: "يحتاج إجراء", status: "warning", icon: AlertTriangle };
   return { label: "حالة الربط", value: "متصل", status: "success", icon: Wifi };
 };
 
-const getPhoneStatus = (data: DashboardData): StatusItem => {
-  if (!data.metaPhoneStatus) return { label: "حالة الرقم", value: "غير محدد", status: "neutral", icon: Phone };
+const getPhoneStatus = (ch: ChannelStatus): StatusItem => {
+  if (!ch.metaPhoneStatus) return { label: "حالة الرقم", value: "غير محدد", status: "neutral", icon: Phone };
   const map: Record<string, { value: string; status: "success" | "warning" | "danger" }> = {
     VERIFIED: { value: "نشط", status: "success" },
     NOT_VERIFIED: { value: "قيد الإعداد", status: "warning" },
@@ -44,35 +44,35 @@ const getPhoneStatus = (data: DashboardData): StatusItem => {
     FLAGGED: { value: "محظور", status: "danger" },
     RESTRICTED: { value: "مقيد", status: "danger" },
   };
-  const s = map[data.metaPhoneStatus] || { value: data.metaPhoneStatus, status: "neutral" as const };
+  const s = map[ch.metaPhoneStatus] || { value: ch.metaPhoneStatus, status: "neutral" as const };
   return { label: "حالة الرقم", value: s.value, status: s.status, icon: Phone };
 };
 
-const getBusinessStatus = (data: DashboardData): StatusItem => {
-  if (!data.metaBusinessVerification) return { label: "النشاط التجاري", value: "غير موثق", status: "warning", icon: ShieldX };
+const getBusinessStatus = (ch: ChannelStatus): StatusItem => {
+  if (!ch.metaBusinessVerification) return { label: "النشاط التجاري", value: "غير موثق", status: "warning", icon: ShieldX };
   const map: Record<string, { value: string; status: "success" | "warning" | "danger" }> = {
     verified: { value: "موثق", status: "success" },
     not_verified: { value: "غير موثق", status: "warning" },
     pending: { value: "قيد المراجعة", status: "warning" },
     rejected: { value: "مرفوض", status: "danger" },
   };
-  const s = map[data.metaBusinessVerification] || { value: data.metaBusinessVerification, status: "neutral" as const };
+  const s = map[ch.metaBusinessVerification] || { value: ch.metaBusinessVerification, status: "neutral" as const };
   return { label: "النشاط التجاري", value: s.value, status: s.status, icon: s.status === "success" ? ShieldCheck : ShieldX };
 };
 
-const getQualityStatus = (data: DashboardData): StatusItem => {
-  if (!data.metaQualityRating) return { label: "جودة الرقم", value: "غير محدد", status: "neutral", icon: Signal };
+const getQualityStatus = (ch: ChannelStatus): StatusItem => {
+  if (!ch.metaQualityRating) return { label: "جودة الرقم", value: "غير محدد", status: "neutral", icon: Signal };
   const map: Record<string, { value: string; status: "success" | "warning" | "danger" }> = {
     GREEN: { value: "عالية", status: "success" },
     YELLOW: { value: "متوسطة", status: "warning" },
     RED: { value: "منخفضة", status: "danger" },
   };
-  const s = map[data.metaQualityRating] || { value: data.metaQualityRating, status: "neutral" as const };
+  const s = map[ch.metaQualityRating] || { value: ch.metaQualityRating, status: "neutral" as const };
   return { label: "جودة الرقم", value: s.value, status: s.status, icon: Signal };
 };
 
-const getMessagingLimit = (data: DashboardData): StatusItem => {
-  if (!data.metaMessagingLimit) return { label: "حد الإرسال", value: "غير محدد", status: "neutral", icon: Gauge };
+const getMessagingLimit = (ch: ChannelStatus): StatusItem => {
+  if (!ch.metaMessagingLimit) return { label: "حد الإرسال", value: "غير محدد", status: "neutral", icon: Gauge };
   const tierMap: Record<string, string> = {
     TIER_1K: "1,000 / يوم",
     TIER_10K: "10,000 / يوم",
@@ -80,39 +80,53 @@ const getMessagingLimit = (data: DashboardData): StatusItem => {
     TIER_250: "250 / يوم",
     UNLIMITED: "غير محدود",
   };
-  return { label: "حد الإرسال", value: tierMap[data.metaMessagingLimit] || data.metaMessagingLimit, status: "neutral", icon: Gauge };
+  return { label: "حد الإرسال", value: tierMap[ch.metaMessagingLimit] || ch.metaMessagingLimit, status: "neutral", icon: Gauge };
 };
 
-const StatusBar = ({ data }: StatusBarProps) => {
-  const isOfficial = data.channelType === "official";
-  
+const ChannelStatusCard = ({ channel }: { channel: ChannelStatus }) => {
+  const isOfficial = channel.channelType === "official";
+
   const items: StatusItem[] = [
-    getConnectionStatus(data),
+    getConnectionStatus(channel),
     ...(isOfficial ? [
-      getPhoneStatus(data),
-      getBusinessStatus(data),
-      getQualityStatus(data),
-      getMessagingLimit(data),
+      getPhoneStatus(channel),
+      getBusinessStatus(channel),
+      getQualityStatus(channel),
+      getMessagingLimit(channel),
     ] : []),
   ];
 
-  const lastSync = data.waStatus.lastSync
-    ? format(new Date(data.waStatus.lastSync), "d MMM yyyy HH:mm", { locale: ar })
+  const lastSync = channel.waStatus.lastSync
+    ? format(new Date(channel.waStatus.lastSync), "d MMM yyyy HH:mm", { locale: ar })
     : "لم تتم المزامنة";
+
+  const channelName = channel.channelLabel || channel.waStatus.displayPhone || channel.waStatus.businessName || "قناة";
+  const typeBadge = isOfficial ? "رسمي" : "QR";
 
   return (
     <div className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/40 shadow-card p-5 animate-fade-in">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-          <div className="w-1.5 h-5 rounded-full bg-primary" />
-          حالة الحساب
+          <div className={cn("w-1.5 h-5 rounded-full", isOfficial ? "bg-primary" : "bg-warning")} />
+          <span className="truncate max-w-[200px]">{channelName}</span>
+          <span className={cn(
+            "text-[10px] font-medium px-2 py-0.5 rounded-full border",
+            isOfficial
+              ? "bg-primary/10 text-primary border-primary/20"
+              : "bg-warning/10 text-warning border-warning/20"
+          )}>
+            {typeBadge}
+          </span>
         </h2>
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-secondary/50 rounded-lg px-2.5 py-1">
           <Clock className="w-3 h-3" />
           <span>{lastSync}</span>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className={cn(
+        "grid gap-3",
+        isOfficial ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" : "grid-cols-1 max-w-[200px]"
+      )}>
         {items.map((item) => (
           <div
             key={item.label}
@@ -132,6 +146,33 @@ const StatusBar = ({ data }: StatusBarProps) => {
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+const StatusBar = ({ data }: StatusBarProps) => {
+  // If no channels at all, show a single "not connected" card using legacy data
+  if (data.channels.length === 0) {
+    const legacyChannel: ChannelStatus = {
+      id: "legacy",
+      channelType: data.channelType,
+      channelLabel: null,
+      waStatus: data.waStatus,
+      metaPhoneStatus: data.metaPhoneStatus,
+      metaBusinessVerification: data.metaBusinessVerification,
+      metaQualityRating: data.metaQualityRating,
+      metaMessagingLimit: data.metaMessagingLimit,
+      tokenExpiresAt: data.tokenExpiresAt,
+      tokenRefreshError: data.tokenRefreshError,
+    };
+    return <ChannelStatusCard channel={legacyChannel} />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {data.channels.map((ch) => (
+        <ChannelStatusCard key={ch.id} channel={ch} />
+      ))}
     </div>
   );
 };
