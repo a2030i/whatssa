@@ -30,6 +30,43 @@ function getUserIdFromAuthHeader(authHeader: string) {
   }
 }
 
+async function resolveRequesterProfile(authorization: string, adminClient: any) {
+  const userId = getUserIdFromAuthHeader(authorization);
+  if (!authorization || !userId) {
+    return { profile: null, userId: null, error: "missing_auth" };
+  }
+
+  const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false },
+    db: { schema: "public" },
+  });
+
+  const { data: rlsProfile, error: rlsError } = await authClient
+    .from("profiles")
+    .select("id, org_id, full_name")
+    .eq("id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (rlsProfile?.org_id) {
+    return { profile: rlsProfile, userId, error: null };
+  }
+
+  const { data: adminProfile, error: adminError } = await adminClient
+    .from("profiles")
+    .select("id, org_id, full_name")
+    .eq("id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    profile: adminProfile,
+    userId,
+    error: rlsError?.message || adminError?.message || null,
+  };
+}
+
 async function logToSystem(
   client: any,
   level: string,
@@ -94,20 +131,16 @@ serve(async (req) => {
 
   try {
     const authorization = req.headers.get("Authorization") || "";
-    const userId = getUserIdFromAuthHeader(authorization);
+    const { profile, userId, error: authError } = await resolveRequesterProfile(authorization, adminClient);
     if (!authorization || !userId) {
       logToSystem(adminClient, "warn", "طلب إرسال Evolution بدون توثيق");
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const [profileResult, body] = await Promise.all([
-      adminClient.from("profiles").select("id, org_id, full_name").eq("id", userId).limit(1).maybeSingle(),
-      req.json(),
-    ]);
-    const profile = profileResult.data;
+    const body = await req.json();
 
-    if (profileResult.error || !profile?.org_id) {
-      logToSystem(adminClient, "warn", "فشل التحقق من المستخدم (Evolution Send)", { error: profileResult.error?.message, user_id: userId });
+    if (!profile?.org_id) {
+      logToSystem(adminClient, "warn", "فشل التحقق من المستخدم (Evolution Send)", { error: authError, user_id: userId });
       return json({ error: "Unauthorized" }, 401);
     }
 
