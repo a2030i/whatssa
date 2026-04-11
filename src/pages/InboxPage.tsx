@@ -251,18 +251,30 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
 
     const fetchConversations = async () => {
       // Fetch conversations and channel configs in parallel
-      const [convRes, channelRes] = await Promise.all([
-        supabase
-          .from("conversations")
-          .select("*")
-          .eq("org_id", currentOrgId)
-          .order("last_message_at", { ascending: false })
-          .limit(500),
-        supabase
+      // Try with channel_label first; if it fails (column missing on external DB), retry without it
+      const convPromise = supabase
+        .from("conversations")
+        .select("*")
+        .eq("org_id", currentOrgId)
+        .order("last_message_at", { ascending: false })
+        .limit(500);
+
+      let channelPromise = supabase
+        .from("whatsapp_config_safe")
+        .select("id, display_phone, business_name, channel_label, channel_type, evolution_instance_name, default_team_id, default_agent_id")
+        .eq("org_id", currentOrgId);
+
+      const [convRes, channelRes1] = await Promise.all([convPromise, channelPromise]);
+
+      let channelRes = channelRes1;
+      // Fallback: if channel_label column doesn't exist, retry without it
+      if (channelRes.error && channelRes.error.message?.includes("channel_label")) {
+        console.warn("[INBOX] channel_label missing, retrying without it");
+        channelRes = await supabase
           .from("whatsapp_config_safe")
-          .select("id, display_phone, business_name, channel_label, channel_type, evolution_instance_name, default_team_id, default_agent_id")
-          .eq("org_id", currentOrgId),
-      ]);
+          .select("id, display_phone, business_name, channel_type, evolution_instance_name, default_team_id, default_agent_id")
+          .eq("org_id", currentOrgId);
+      }
 
       const { data, error } = convRes;
 
