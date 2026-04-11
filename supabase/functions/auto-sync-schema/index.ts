@@ -40,7 +40,18 @@ const REQUIRED_CONVERSATION_COLUMNS: ColumnDef[] = [
   { name: "customer_id", type: "uuid", nullable: true },
 ];
 
-const REQUIRED_MESSAGE_COLUMNS: ColumnDef[] = [
+const REQUIRED_WHATSAPP_CONFIG_COLUMNS: ColumnDef[] = [
+  { name: "channel_label", type: "text", nullable: true },
+  { name: "channel_age_days", type: "integer", nullable: true },
+  { name: "rate_limit_settings", type: "jsonb", nullable: true },
+  { name: "safety_limits_enabled", type: "boolean", default_value: "false", nullable: true },
+  { name: "ai_auto_reply_enabled", type: "boolean", default_value: "false", nullable: true },
+  { name: "ai_max_attempts", type: "integer", default_value: "3", nullable: true },
+  { name: "ai_transfer_keywords", type: "text[]", nullable: true },
+  { name: "exclude_supervisors", type: "boolean", default_value: "false", nullable: true },
+];
+
+
   { name: "wa_message_id", type: "text", nullable: true },
   { name: "status", type: "text", nullable: true },
   { name: "metadata", type: "jsonb", nullable: true },
