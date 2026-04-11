@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { supabase } from "@/lib/supabase";
+import { supabase, invokeCloud } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -142,18 +142,9 @@ const TasksPage = () => {
       throw new Error("انتهت الجلسة، أعد تسجيل الدخول");
     }
 
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tasks-manage`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || result?.success === false) {
-      throw new Error(result?.error || "تعذر تنفيذ العملية");
+    const { data: result, error } = await invokeCloud("tasks-manage", { body: payload });
+    if (error || result?.success === false) {
+      throw new Error(result?.error || error?.message || "���� ����� �������");
     }
 
     return result;
@@ -900,3 +891,4 @@ const TasksPage = () => {
 };
 
 export default TasksPage;
+

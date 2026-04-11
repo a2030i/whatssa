@@ -138,7 +138,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
     const checkLateResponses = () => {
       const now = Date.now();
       conversationsRef.current.forEach(conv => {
-        if (conv.status === "closed" || conv.lastMessageSender !== "customer" || !conv.lastCustomerMessageAt) return;
+        if (conv.status === "closed" || conv.lastMessageSender !== "customer" || !conv.lastCustomerMessageAt || conv.conversationType === "group") return;
         const elapsed = now - new Date(conv.lastCustomerMessageAt).getTime();
         if (elapsed >= slaThresholdMsRef.current && !lateAlertShownRef.current.has(conv.id)) {
           lateAlertShownRef.current.add(conv.id);

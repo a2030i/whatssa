@@ -147,14 +147,17 @@ verify_jwt = false
 [functions.upload-chat-media]
 verify_jwt = false
 
-[functions.generate-vapid-keys]
-verify_jwt = false
-
-[functions.send-push-notification]
-verify_jwt = false
-
 [functions.diag-message-flow]
 verify_jwt = false
 
 [functions.init-external-conv-columns]
 verify_jwt = false
+
+[functions.tasks-manage]
+verify_jwt = false
+
+[functions.assign-on-reconnect]
+verify_jwt = false
+
+
+
