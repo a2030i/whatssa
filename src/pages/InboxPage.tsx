@@ -1592,3 +1592,4 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
 };
 
 export default InboxPage;
+

@@ -101,3 +101,4 @@ const BulkActionsBar = ({ selectedIds, onClear, onDone }: BulkActionsBarProps) =
 };
 
 export default BulkActionsBar;
+

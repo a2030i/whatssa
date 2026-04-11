@@ -189,3 +189,4 @@ const ContactCardDialog = ({ open, onOpenChange, conversationId, customerPhone, 
 };
 
 export default ContactCardDialog;
+

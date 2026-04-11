@@ -556,3 +556,4 @@ const EmailAutomationRules = ({ orgId, agents, teams }: EmailAutomationRulesProp
 };
 
 export default EmailAutomationRules;
+

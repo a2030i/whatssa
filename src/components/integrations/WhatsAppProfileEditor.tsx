@@ -324,3 +324,4 @@ const WhatsAppProfileEditor = ({ configId, channelType }: Props) => {
 };
 
 export default WhatsAppProfileEditor;
+

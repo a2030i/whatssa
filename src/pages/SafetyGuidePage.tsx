@@ -136,3 +136,4 @@ const SafetyGuidePage = () => {
 };
 
 export default SafetyGuidePage;
+

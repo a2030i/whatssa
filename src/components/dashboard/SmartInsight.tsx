@@ -56,3 +56,4 @@ const SmartInsight = ({ data }: { data: DashboardData }) => {
 };
 
 export default SmartInsight;
+

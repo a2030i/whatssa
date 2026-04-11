@@ -118,3 +118,4 @@ const ClosureReasonDialog = ({ open, onOpenChange, conversationId, onClose }: Cl
 };
 
 export default ClosureReasonDialog;
+

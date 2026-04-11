@@ -14,8 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import StoreEventNotifications from "./StoreEventNotifications";
 
-const SALLA_WEBHOOK_BASE = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/salla-webhook`;
-const STORE_WEBHOOK_BASE = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/store-webhook`;
+const SALLA_WEBHOOK_BASE = `https://ovbrrumnqfvtgmqsscat.supabase.co/functions/v1/salla-webhook`;
+const STORE_WEBHOOK_BASE = `https://ovbrrumnqfvtgmqsscat.supabase.co/functions/v1/store-webhook`;
 const LAMHA_WEBHOOK_BASE = ""; // Lamha uses API polling, not webhooks
 
 interface StoreIntegration {
@@ -801,3 +801,4 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
 }
 
 export default SallaIntegrationSection;
+

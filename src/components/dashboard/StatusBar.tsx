@@ -178,3 +178,4 @@ const StatusBar = ({ data }: StatusBarProps) => {
 };
 
 export default StatusBar;
+

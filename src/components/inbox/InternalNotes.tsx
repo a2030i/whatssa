@@ -238,3 +238,4 @@ const InternalNotes = ({ conversationId }: InternalNotesProps) => {
 };
 
 export default InternalNotes;
+

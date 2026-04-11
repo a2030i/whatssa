@@ -238,3 +238,4 @@ export const QRCodeSection = () => {
     </div>
   );
 };
+

@@ -84,3 +84,4 @@ const TemplateVariableInputs = ({ template, variables, onChange, compact }: Temp
 };
 
 export default TemplateVariableInputs;
+

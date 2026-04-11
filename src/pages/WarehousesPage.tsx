@@ -252,3 +252,4 @@ const WarehousesPage = () => {
 };
 
 export default WarehousesPage;
+

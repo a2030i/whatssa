@@ -247,3 +247,4 @@ const ShiftManagement = ({ onShiftsLoaded }: ShiftManagementProps) => {
 };
 
 export default ShiftManagement;
+

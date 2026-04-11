@@ -165,3 +165,4 @@ const AttendanceReport = ({ profileId, compact }: AttendanceReportProps) => {
 };
 
 export default AttendanceReport;
+

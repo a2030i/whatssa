@@ -152,3 +152,4 @@ const AutomationLogsPanel = () => {
 };
 
 export default AutomationLogsPanel;
+

@@ -101,3 +101,4 @@ const SmartAlerts = ({ data }: { data: DashboardData }) => {
 };
 
 export default SmartAlerts;
+

@@ -376,3 +376,4 @@ const InfoCard = ({ title, children }: { title: string; children: React.ReactNod
 );
 
 export default CustomerProfile;
+

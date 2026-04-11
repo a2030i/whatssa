@@ -1221,3 +1221,4 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
 };
 
 export default CustomerInfoPanel;
+

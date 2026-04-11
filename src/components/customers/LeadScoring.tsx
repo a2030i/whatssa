@@ -220,3 +220,4 @@ const LeadScoring = () => {
 };
 
 export default LeadScoring;
+

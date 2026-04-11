@@ -42,3 +42,4 @@ const KpiCard = ({ title, value, subtitle, icon: Icon, emoji, trend, colorIndex 
 };
 
 export default KpiCard;
+

@@ -184,3 +184,4 @@ const CustomerTimeline = ({ customerId, customerPhone }: CustomerTimelineProps) 
 };
 
 export default CustomerTimeline;
+

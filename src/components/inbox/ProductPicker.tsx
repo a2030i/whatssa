@@ -286,3 +286,4 @@ const ProductPicker = ({ open, onOpenChange, onSendProduct, invokeCloud }: Produ
 };
 
 export default ProductPicker;
+

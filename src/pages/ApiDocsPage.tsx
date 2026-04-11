@@ -375,3 +375,4 @@ console.log(data);`;
 };
 
 export default ApiDocsPage;
+

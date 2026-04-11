@@ -382,3 +382,4 @@ const CustomInboxBuilder = ({ open, onOpenChange, editInbox, onSaved }: CustomIn
 };
 
 export default CustomInboxBuilder;
+

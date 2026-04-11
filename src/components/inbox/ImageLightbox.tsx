@@ -79,3 +79,4 @@ const ImageLightbox = ({ src, alt = "صورة", onClose }: ImageLightboxProps) =
 };
 
 export default ImageLightbox;
+

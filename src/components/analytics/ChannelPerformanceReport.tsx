@@ -589,3 +589,4 @@ const ChannelPerformanceReport = ({ period }: { period: string }) => {
 };
 
 export default ChannelPerformanceReport;
+

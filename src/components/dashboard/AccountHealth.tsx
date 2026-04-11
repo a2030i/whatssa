@@ -104,3 +104,4 @@ const AccountHealth = ({ data }: { data: DashboardData }) => {
 };
 
 export default AccountHealth;
+

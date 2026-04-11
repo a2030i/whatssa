@@ -602,3 +602,4 @@ const StoreEventNotifications = ({ storeId, currentMetadata, onSaved }: Props) =
 };
 
 export default StoreEventNotifications;
+

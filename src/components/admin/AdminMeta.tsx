@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Copy, Webhook, Phone, CheckCircle2, XCircle, RefreshCw, Clock, AlertTriangle, ShieldCheck, Server, Wifi, Loader2, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
-const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
+const WEBHOOK_URL = `https://ovbrrumnqfvtgmqsscat.supabase.co/functions/v1/whatsapp-webhook`;
 
 const SYSTEM_KEY = "whatsapp_web_vps";
 
@@ -277,3 +277,4 @@ const AdminMeta = () => {
 };
 
 export default AdminMeta;
+

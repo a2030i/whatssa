@@ -24,7 +24,7 @@ import { supabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
-const WEBHOOK_URL = `https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook`;
+const WEBHOOK_URL = `https://ovbrrumnqfvtgmqsscat.supabase.co/functions/v1/whatsapp-webhook`;
 const DEFAULT_META_APP_ID = "1239578701681497";
 const DEFAULT_META_CONFIG_ID = "913936624804564";
 
@@ -2725,12 +2725,12 @@ const IntegrationsPage = () => {
                     {t("في قسم Webhook، ألصق هذا الرابط:", "In Webhook section, paste this URL:")}
                     <div className="mt-1 flex items-center gap-2">
                       <Input
-                        value="https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook"
+                        value="https://ovbrrumnqfvtgmqsscat.supabase.co/functions/v1/whatsapp-webhook"
                         readOnly
                         className="bg-secondary border-0 text-[11px] flex-1 font-mono"
                         dir="ltr"
                       />
-                      <Button size="sm" variant="outline" className="h-7 px-2 shrink-0" onClick={() => { navigator.clipboard.writeText("https://dgnqehcezvewkdodqpyh.supabase.co/functions/v1/whatsapp-webhook"); toast.success(t("تم النسخ", "Copied")); }}>
+                      <Button size="sm" variant="outline" className="h-7 px-2 shrink-0" onClick={() => { navigator.clipboard.writeText("https://ovbrrumnqfvtgmqsscat.supabase.co/functions/v1/whatsapp-webhook"); toast.success(t("تم النسخ", "Copied")); }}>
                         <Copy className="w-3 h-3" />
                       </Button>
                     </div>
@@ -2814,3 +2814,4 @@ const IntegrationsPage = () => {
 };
 
 export default IntegrationsPage;
+

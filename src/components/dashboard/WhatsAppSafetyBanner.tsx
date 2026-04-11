@@ -75,3 +75,4 @@ const WhatsAppSafetyBanner = () => {
 };
 
 export default WhatsAppSafetyBanner;
+

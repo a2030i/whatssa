@@ -31,3 +31,4 @@ const EmptyStateCard = ({ icon, title, description, actionLabel, onAction, class
 };
 
 export default EmptyStateCard;
+

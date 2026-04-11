@@ -417,3 +417,4 @@ const AdminAiManagement = () => {
 };
 
 export default AdminAiManagement;
+

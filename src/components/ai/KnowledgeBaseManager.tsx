@@ -597,3 +597,4 @@ const KnowledgeBaseManager = () => {
 };
 
 export default KnowledgeBaseManager;
+

@@ -228,3 +228,4 @@ const InternalProductPicker = ({ open, onOpenChange, onSendProduct }: InternalPr
 };
 
 export default InternalProductPicker;
+

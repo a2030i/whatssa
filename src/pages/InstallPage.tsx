@@ -190,3 +190,4 @@ const NotificationCard = ({
 );
 
 export default InstallPage;
+

@@ -39,3 +39,4 @@ const PermissionsPage = () => {
 };
 
 export default PermissionsPage;
+

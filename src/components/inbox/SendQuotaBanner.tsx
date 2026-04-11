@@ -200,3 +200,4 @@ export default function SendQuotaBanner({ channelId, channelType, onQuotaExhaust
     </div>
   );
 }
+

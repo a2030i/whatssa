@@ -198,3 +198,4 @@ const AuditLogSection = () => {
 };
 
 export default AuditLogSection;
+

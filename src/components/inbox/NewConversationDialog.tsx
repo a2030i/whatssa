@@ -1058,3 +1058,4 @@ const NewConversationDialog = ({ open, onOpenChange, templates, onConversationCr
 };
 
 export default NewConversationDialog;
+

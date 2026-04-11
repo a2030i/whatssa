@@ -133,3 +133,4 @@ const TicketDetailDialog = ({ ticket, agents, open, onOpenChange, onUpdated }: P
 };
 
 export default TicketDetailDialog;
+

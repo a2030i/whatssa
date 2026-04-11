@@ -167,3 +167,4 @@ const ActivityHeatmap = () => {
 };
 
 export default ActivityHeatmap;
+

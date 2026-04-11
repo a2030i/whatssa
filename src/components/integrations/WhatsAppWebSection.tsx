@@ -737,3 +737,4 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
 };
 
 export default WhatsAppWebSection;
+

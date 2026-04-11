@@ -124,3 +124,4 @@ const ForceChangePasswordPage = () => {
 };
 
 export default ForceChangePasswordPage;
+

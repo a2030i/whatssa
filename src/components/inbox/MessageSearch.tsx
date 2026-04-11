@@ -75,3 +75,4 @@ const MessageSearch = ({ messages, onClose, onNavigate }: MessageSearchProps) =>
 };
 
 export default MessageSearch;
+

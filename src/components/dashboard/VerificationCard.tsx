@@ -234,3 +234,4 @@ const VerificationCard = ({ data }: { data: DashboardData }) => {
 };
 
 export default VerificationCard;
+
