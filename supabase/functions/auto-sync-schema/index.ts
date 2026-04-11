@@ -40,7 +40,18 @@ const REQUIRED_CONVERSATION_COLUMNS: ColumnDef[] = [
   { name: "customer_id", type: "uuid", nullable: true },
 ];
 
-const REQUIRED_MESSAGE_COLUMNS: ColumnDef[] = [
+const REQUIRED_WHATSAPP_CONFIG_COLUMNS: ColumnDef[] = [
+  { name: "channel_label", type: "text", nullable: true },
+  { name: "channel_age_days", type: "integer", nullable: true },
+  { name: "rate_limit_settings", type: "jsonb", nullable: true },
+  { name: "safety_limits_enabled", type: "boolean", default_value: "false", nullable: true },
+  { name: "ai_auto_reply_enabled", type: "boolean", default_value: "false", nullable: true },
+  { name: "ai_max_attempts", type: "integer", default_value: "3", nullable: true },
+  { name: "ai_transfer_keywords", type: "text[]", nullable: true },
+  { name: "exclude_supervisors", type: "boolean", default_value: "false", nullable: true },
+];
+
+
   { name: "wa_message_id", type: "text", nullable: true },
   { name: "status", type: "text", nullable: true },
   { name: "metadata", type: "jsonb", nullable: true },
@@ -249,16 +260,46 @@ Deno.serve(async (req) => {
 
     const convResult = await ensureColumnsViaSql(dbUrl, "conversations", REQUIRED_CONVERSATION_COLUMNS);
     const msgResult = await ensureColumnsViaSql(dbUrl, "messages", REQUIRED_MESSAGE_COLUMNS);
+    const waConfigResult = await ensureColumnsViaSql(dbUrl, "whatsapp_config", REQUIRED_WHATSAPP_CONFIG_COLUMNS);
+
+    // If whatsapp_config columns were added, refresh the safe view to include them
+    if (waConfigResult.added.length > 0) {
+      console.log("[auto-sync] whatsapp_config columns added, refreshing whatsapp_config_safe view...");
+      try {
+        const { default: postgres } = await import("https://deno.land/x/postgresjs@v3.4.5/mod.js");
+        const sql = postgres(dbUrl, { ssl: "prefer" });
+        await sql.unsafe(`
+          CREATE OR REPLACE VIEW public.whatsapp_config_safe AS
+          SELECT id, org_id, phone_number_id, display_phone, business_name,
+                 quality_rating, messaging_limit, is_connected, channel_type,
+                 evolution_instance_name, evolution_instance_status,
+                 default_team_id, default_agent_id, settings,
+                 created_at, updated_at, business_account_id,
+                 code_verification_status, is_official_api,
+                 last_webhook_at, channel_label, channel_age_days,
+                 rate_limit_settings, safety_limits_enabled,
+                 ai_auto_reply_enabled, ai_max_attempts, ai_transfer_keywords,
+                 exclude_supervisors
+          FROM public.whatsapp_config
+        `);
+        await sql.end();
+        console.log("[auto-sync] whatsapp_config_safe view refreshed");
+      } catch (viewErr) {
+        console.error("[auto-sync] Error refreshing view:", (viewErr as Error).message);
+        waConfigResult.errors.push(`view refresh: ${(viewErr as Error).message}`);
+      }
+    }
 
     _lastSyncTime = now;
 
-    const totalAdded = convResult.added.length + msgResult.added.length;
-    const totalErrors = convResult.errors.length + msgResult.errors.length;
+    const totalAdded = convResult.added.length + msgResult.added.length + waConfigResult.added.length;
+    const totalErrors = convResult.errors.length + msgResult.errors.length + waConfigResult.errors.length;
 
     return new Response(JSON.stringify({
       status: totalErrors > 0 ? "partial" : "ok",
       conversations: convResult,
       messages: msgResult,
+      whatsapp_config: waConfigResult,
       total_added: totalAdded,
       total_errors: totalErrors,
       synced_at: new Date().toISOString(),
