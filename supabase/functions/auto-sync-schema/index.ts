@@ -51,7 +51,7 @@ const REQUIRED_WHATSAPP_CONFIG_COLUMNS: ColumnDef[] = [
   { name: "exclude_supervisors", type: "boolean", default_value: "false", nullable: true },
 ];
 
-
+const REQUIRED_MESSAGE_COLUMNS: ColumnDef[] = [
   { name: "wa_message_id", type: "text", nullable: true },
   { name: "status", type: "text", nullable: true },
   { name: "metadata", type: "jsonb", nullable: true },
