@@ -189,16 +189,24 @@ Deno.serve(async (req) => {
   if (!authHeader.startsWith("Bearer ")) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
+
   const extUrl = Deno.env.get("EXTERNAL_SUPABASE_URL") || Deno.env.get("SUPABASE_URL")!;
   const extKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const authClient = createClient(extUrl, extKey);
-  const { data: { user: caller }, error: userError } = await authClient.auth.getUser(authHeader.replace("Bearer ", ""));
-  if (userError || !caller) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-  const { data: roleData } = await authClient.from("user_roles").select("role").eq("user_id", caller.id).eq("role", "super_admin").maybeSingle();
-  if (!roleData) {
-    return new Response(JSON.stringify({ error: "Forbidden — super_admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  const token = authHeader.replace("Bearer ", "");
+
+  // Allow service-role key as auth (for internal/programmatic calls)
+  const isServiceRole = token === extKey || token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!isServiceRole) {
+    const authClient = createClient(extUrl, extKey);
+    const { data: { user: caller }, error: userError } = await authClient.auth.getUser(token);
+    if (userError || !caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const { data: roleData } = await authClient.from("user_roles").select("role").eq("user_id", caller.id).eq("role", "super_admin").maybeSingle();
+    if (!roleData) {
+      return new Response(JSON.stringify({ error: "Forbidden — super_admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
   }
 
   try {
