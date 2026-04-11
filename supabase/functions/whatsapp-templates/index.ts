@@ -350,7 +350,11 @@ serve(async (req) => {
   const result = await response.json();
 
   if (!response.ok) {
-    return json({ error: result?.error?.message || "تعذر إنشاء القالب في Meta" }, response.status);
+    const metaError = result?.error;
+    const errorDetail = metaError?.error_user_msg || metaError?.message || "تعذر إنشاء القالب في Meta";
+    const errorCode = metaError?.code || response.status;
+    console.error("[whatsapp-templates] create failed:", JSON.stringify(metaError), "payload:", JSON.stringify({ name, category, language, components }));
+    return json({ error: errorDetail, meta_error_code: errorCode, meta_error_subcode: metaError?.error_subcode }, response.status);
   }
 
   return json({ success: true, template: result });
