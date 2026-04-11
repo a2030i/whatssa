@@ -1,8 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-type DbClient = ReturnType<typeof createClient>;
+// deno-lint-ignore no-explicit-any
+type DbClient = any;
 type ProfileRow = { id: string; org_id: string };
 type RawChannelRow = Record<string, unknown>;
+type SendLogPhoneRow = { recipient_phone: string | null };
+type SendLogTimeRow = { sent_at: string };
+type UsageRow = { messages_sent: number | null; messages_received: number | null };
+type OrgPlanRow = { plan_id: string | null };
+type PlanRow = { max_messages_per_month: number | null };
 type ChannelRow = {
   id: string;
   channel_type: string | null;
@@ -51,6 +57,14 @@ function mapRawChannel(raw: RawChannelRow): ChannelRow | null {
     org_id: raw.org_id,
     safety_limits_enabled: typeof raw.safety_limits_enabled === "boolean" ? raw.safety_limits_enabled : null,
   };
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
 }
 
 function getWarmupMultiplier(ageDays: number): number {
@@ -236,7 +250,11 @@ Deno.serve(async (req) => {
 
       const hourlyUsed = hourlyRes.count || 0;
       const dailyUsed = dailyRes.count || 0;
-      const uniquePhones = new Set((uniqueRes.data || []).map((r: { recipient_phone: string | null }) => r.recipient_phone).filter(Boolean));
+      const uniquePhones = new Set(
+        ((uniqueRes.data || []) as SendLogPhoneRow[])
+          .map((r) => r.recipient_phone)
+          .filter((phone): phone is string => Boolean(phone)),
+      );
       const uniqueUsed = uniquePhones.size;
       const hourlyRemaining = Math.max(0, maxHour - hourlyUsed);
       const dailyRemaining = Math.max(0, maxDay - dailyUsed);
@@ -254,8 +272,11 @@ Deno.serve(async (req) => {
           .limit(1);
 
         if (oldest && oldest.length > 0) {
-          const oldestTime = new Date(oldest[0].sent_at);
+          const oldestSentAt = asString((oldest[0] as SendLogTimeRow).sent_at);
+          if (oldestSentAt) {
+            const oldestTime = new Date(oldestSentAt);
           resetAt = new Date(oldestTime.getTime() + 60 * 60 * 1000).toISOString();
+          }
         }
       }
 
@@ -293,16 +314,18 @@ Deno.serve(async (req) => {
       ]);
 
       let maxMessages = 999999;
-      if (orgRes.data?.plan_id) {
+      const orgData = (orgRes.data as OrgPlanRow | null) ?? null;
+      if (orgData?.plan_id) {
         const { data: plan } = await adminClient
           .from("plans")
           .select("max_messages_per_month")
-          .eq("id", orgRes.data.plan_id)
+          .eq("id", orgData.plan_id)
           .maybeSingle();
-        if (plan) maxMessages = plan.max_messages_per_month || 999999;
+        if (plan) maxMessages = asNumber((plan as PlanRow).max_messages_per_month, 999999);
       }
 
-      const totalUsed = (usageRes.data?.messages_sent || 0) + (usageRes.data?.messages_received || 0);
+      const usageData = (usageRes.data as UsageRow | null) ?? null;
+      const totalUsed = asNumber(usageData?.messages_sent) + asNumber(usageData?.messages_received);
       const remaining = Math.max(0, maxMessages - totalUsed);
       const now = new Date();
       const resetAt = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
