@@ -475,7 +475,7 @@ const TemplatesPage = () => {
         action,
         channel_id: selectedFormChannel || undefined,
         ...(impersonatedOrgId ? { org_id: impersonatedOrgId } : {}),
-        name: formData.name.trim(),
+        name: formData.name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, ""),
         category: formData.category,
         header_type: formData.headerType,
         header: formData.headerType === "TEXT" ? formData.header.trim() : "",
