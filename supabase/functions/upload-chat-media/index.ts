@@ -33,7 +33,8 @@ const BUCKET = "chat-media";
 let bucketEnsured = false;
 
 /** Ensure the chat-media bucket exists on external storage (runs once per cold start) */
-async function ensureBucket(client: ReturnType<typeof createClient>) {
+// deno-lint-ignore no-explicit-any
+async function ensureBucket(client: any) {
   if (bucketEnsured) return;
   try {
     const { data } = await client.storage.getBucket(BUCKET);
@@ -128,9 +129,9 @@ serve(async (req) => {
     }
 
     const [{ data: profile }, { data: conversation }, { data: isSuperAdmin }] = await Promise.all([
-      extAdmin.from("profiles").select("org_id").eq("id", user.id).maybeSingle().abortSignal(AbortSignal.timeout(8000)),
-      extAdmin.from("conversations").select("id, org_id").eq("id", conversation_id).maybeSingle().abortSignal(AbortSignal.timeout(8000)),
-      extAdmin.rpc("has_role", { _user_id: user.id, _role: "super_admin" }).abortSignal(AbortSignal.timeout(8000)),
+      extAdmin.from("profiles").select("org_id").eq("id", user.id).maybeSingle(),
+      extAdmin.from("conversations").select("id, org_id").eq("id", conversation_id).maybeSingle(),
+      extAdmin.rpc("has_role", { _user_id: user.id, _role: "super_admin" }),
     ]);
 
     if (!profile?.org_id) {

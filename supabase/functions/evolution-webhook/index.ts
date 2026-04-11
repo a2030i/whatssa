@@ -1405,7 +1405,7 @@ serve(async (req) => {
                 name: contactDisplayName || null,
                 source: "whatsapp",
               });
-            } else if (contactDisplayName && (!existingCustomer.name || existingCustomer.name === phone)) {
+            } else if (existingCustomer && contactDisplayName && (!existingCustomer.name || existingCustomer.name === phone)) {
               await supabase.from("customers").update({ name: contactDisplayName }).eq("id", existingCustomer.id);
             }
 
@@ -1531,7 +1531,7 @@ serve(async (req) => {
           }
         }
         if (quotedStanzaId && quotedMessage) {
-          metadata.quoted = {
+          const quotedMeta: Record<string, unknown> = {
             stanza_id: quotedStanzaId,
             sender_name: quotedSenderName,
             text: quotedText,
@@ -1543,11 +1543,12 @@ serve(async (req) => {
             .limit(1)
             .maybeSingle();
           if (originalMsg) {
-            metadata.quoted.message_id = originalMsg.id;
-            metadata.quoted.text = originalMsg.content;
-            metadata.quoted.sender_name =
+            quotedMeta.message_id = originalMsg.id;
+            quotedMeta.text = originalMsg.content;
+            quotedMeta.sender_name =
               (originalMsg.metadata as any)?.sender_name || (originalMsg.sender === "agent" ? "أنت" : quotedSenderName);
           }
+          metadata.quoted = quotedMeta;
         }
 
         // ── Duplicate check: skip if wa_message_id already exists ──
@@ -1591,7 +1592,7 @@ serve(async (req) => {
 
         // ── Detect if our channel phone was mentioned in group ──
         if (conversationType === "group" && Array.isArray(metadata.mentioned) && (metadata.mentioned as string[]).length > 0) {
-          const channelPhone = config.display_phone?.replace(/\D/g, "") || "";
+          const channelPhone = (config as any).display_phone?.replace(/\D/g, "") || "";
           const mentionedList = metadata.mentioned as string[];
           const wasMentioned = channelPhone && mentionedList.some((m: string) => {
             const normalized = String(m).replace(/\D/g, "");

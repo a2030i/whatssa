@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
       function_name: "process-follow-ups",
       message: `تمت معالجة ${dueReminders.length} متابعة مجدولة (${notified} إشعار، ${autoSent} رسالة تلقائية)`,
       metadata: { total: dueReminders.length, notified, auto_sent: autoSent },
-    }).then(() => {}).catch(() => {});
+    }).then(() => {}, () => {});
 
     return json({ processed: dueReminders.length, notified, auto_sent: autoSent });
   } catch (err: any) {
