@@ -155,6 +155,7 @@ const IntegrationsPage = () => {
   const [syncingMessagesId, setSyncingMessagesId] = useState<string | null>(null);
   const [metaAppId, setMetaAppId] = useState("");
   const [metaConfigId, setMetaConfigId] = useState("");
+  const [connectedConfigId, setConnectedConfigId] = useState<string | null>(null);
   const [officialEnabled, setOfficialEnabled] = useState(false);
   const [metaSettingsLoaded, setMetaSettingsLoaded] = useState(false);
   const embeddedSignupSelectionRef = useRef<EmbeddedSignupSelection | null>(null);
@@ -911,6 +912,7 @@ const IntegrationsPage = () => {
           setConnectedPhone(resolvedDisplayPhone);
           setWabaInfo(result.waba_details);
           setWebhookStatus(result.webhook_status || null);
+          setConnectedConfigId(result?.saved_config?.id || null);
           setFlowStep("success");
         }
         clearEmbeddedSignupSelection();
@@ -1036,6 +1038,7 @@ const IntegrationsPage = () => {
         setConnectedPhone(data.selected_phone?.display_phone_number || manualPhoneNumberId);
         setWabaInfo(data.waba_details);
         setWebhookStatus(data.webhook_status || null);
+        setConnectedConfigId(data?.saved_config?.id || null);
         setFlowStep("success");
         await loadConfigs(true);
       }
@@ -1079,12 +1082,16 @@ const IntegrationsPage = () => {
     setIsLoading(false);
   };
 
-  const sendTestMessage = async () => {
+  const sendTestMessage = async (channelId?: string) => {
     if (!testPhone.trim()) { toast.error("أدخل رقم الهاتف"); return; }
     setTestSending(true);
     try {
       const { data, error } = await invokeCloud("whatsapp-send", {
-        body: { to: testPhone.trim(), message: "✅ تم الربط بنجاح! هذه رسالة اختبار من Respondly." },
+        body: {
+          to: testPhone.trim(),
+          message: "✅ تم الربط بنجاح! هذه رسالة اختبار من Respondly.",
+          ...(channelId ? { channel_id: channelId } : {}),
+        },
       });
       if (error || data?.error) {
         toast.error(data?.error || "فشل إرسال الرسالة");
@@ -1290,7 +1297,7 @@ const IntegrationsPage = () => {
                     className="h-8 text-xs flex-1"
                     dir="ltr"
                   />
-                  <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={sendTestMessage} disabled={testSending || !testPhone}>
+                  <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={() => sendTestMessage(config.id)} disabled={testSending || !testPhone}>
                     {testSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                     إرسال
                   </Button>
@@ -1826,7 +1833,7 @@ const IntegrationsPage = () => {
                                   </div>
                                   <div className="flex gap-2">
                                     <Input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="9665xxxxxxxx" className="h-8 text-xs flex-1" dir="ltr" />
-                                    <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={sendTestMessage} disabled={testSending || !testPhone}>
+                                    <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={() => sendTestMessage(config.id)} disabled={testSending || !testPhone}>
                                       {testSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                                       إرسال
                                     </Button>
@@ -2680,7 +2687,7 @@ const IntegrationsPage = () => {
                   className="bg-card border border-border text-sm flex-1"
                   dir="ltr"
                 />
-                <Button onClick={sendTestMessage} disabled={testSending || !testPhone} className="gap-1.5 shrink-0">
+                <Button onClick={() => sendTestMessage(connectedConfigId || undefined)} disabled={testSending || !testPhone} className="gap-1.5 shrink-0">
                   {testSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   {t("إرسال", "Send")}
                 </Button>

@@ -714,8 +714,8 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
                         <span className="text-[8px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded leading-none">واتساب</span>
                       )}
                       {conv.channelName && (
-                        <span className="text-[9px] text-muted-foreground/50 truncate max-w-[80px]">
-                          {conv.channelName}
+                        <span className="text-[9px] text-muted-foreground/80 truncate max-w-[90px] font-medium">
+                          · {conv.channelName}
                         </span>
                       )}
                       {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
