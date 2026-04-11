@@ -266,14 +266,14 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
 
       const [convRes, channelRes1] = await Promise.all([convPromise, channelPromise]);
 
-      let channelRes = channelRes1;
+      let channelRes: { data: any[] | null; error: any } = channelRes1;
       // Fallback: if channel_label column doesn't exist, retry without it
-      if (channelRes.error && channelRes.error.message?.includes("channel_label")) {
+      if (channelRes1.error && channelRes1.error.message?.includes("channel_label")) {
         console.warn("[INBOX] channel_label missing, retrying without it");
         channelRes = await supabase
           .from("whatsapp_config_safe")
           .select("id, display_phone, business_name, channel_type, evolution_instance_name, default_team_id, default_agent_id")
-          .eq("org_id", currentOrgId);
+          .eq("org_id", currentOrgId) as any;
       }
 
       const { data, error } = convRes;
