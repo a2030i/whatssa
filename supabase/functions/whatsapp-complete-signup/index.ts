@@ -255,7 +255,7 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const supabase = createClient(supabaseUrl, serviceKey);
-    const { appId, appSecret } = await resolveMetaCredentials(supabase);
+    const { appId, appSecret } = await resolveMetaCredentials(supabase as any);
 
     if (!appSecret) return error("META_APP_SECRET not configured — احفظه من إعدادات السوبر أدمن أو كـ Edge Function Secret", 500);
 
@@ -362,7 +362,7 @@ serve(async (req) => {
       const fallbackWabaIds = [...new Set((waScope?.target_ids || []).filter((id: string) => !wabaIds.includes(id)))];
 
       for (const fallbackWabaId of fallbackWabaIds) {
-        const phonesResult = await fetchPhoneNumbersForWaba(fallbackWabaId, accessToken);
+        const phonesResult = await fetchPhoneNumbersForWaba(fallbackWabaId as string, accessToken);
         results.push({ waba_id: fallbackWabaId, phone_numbers: phonesResult.phones });
         resolvedPhones.push(...phonesResult.phones);
       }
@@ -412,7 +412,7 @@ serve(async (req) => {
         const retryWabaIds = [...new Set((retryWaScope?.target_ids || []).filter((id: string) => !wabaIds.includes(id)))];
 
         for (const rWabaId of retryWabaIds) {
-          const phonesResult = await fetchPhoneNumbersForWaba(rWabaId, accessToken);
+          const phonesResult = await fetchPhoneNumbersForWaba(rWabaId as string, accessToken);
           results.push({ waba_id: rWabaId, phone_numbers: phonesResult.phones });
           resolvedPhones.push(...phonesResult.phones);
         }
@@ -456,6 +456,8 @@ serve(async (req) => {
     let onboardingInfo: any = null;
     let migrationPrereqs: any = null;
     let wabaDetails: any = null;
+    let appWebhookOk: boolean | undefined;
+    let wabaWebhookOk: boolean | undefined;
 
     if (selectedPhone && org_id) {
       const wabaId = selectedPhone.waba_id;
@@ -583,7 +585,7 @@ serve(async (req) => {
       }
 
       // ── Step 5: Subscribe app to WABA webhooks ──
-      let wabaWebhookOk = false;
+      wabaWebhookOk = false;
       try {
         const subscribeRes = await fetch(
           `https://graph.facebook.com/v22.0/${wabaId}/subscribed_apps`,
@@ -603,7 +605,7 @@ serve(async (req) => {
       }
 
       // ── Step 5.5: Register app-level webhook URL ──
-      let appWebhookOk = false;
+      appWebhookOk = false;
       try {
         const webhookVerifyToken = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN") || "respondly_verify";
         const webhookUrl = `${Deno.env.get("SUPABASE_URL") || Deno.env.get("EXTERNAL_SUPABASE_URL")}/functions/v1/whatsapp-webhook`;
