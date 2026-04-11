@@ -605,7 +605,7 @@ serve(async (req) => {
       }
 
       // ── Step 5.5: Register app-level webhook URL ──
-      let appWebhookOk = false;
+      appWebhookOk = false;
       try {
         const webhookVerifyToken = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN") || "respondly_verify";
         const webhookUrl = `${Deno.env.get("SUPABASE_URL") || Deno.env.get("EXTERNAL_SUPABASE_URL")}/functions/v1/whatsapp-webhook`;

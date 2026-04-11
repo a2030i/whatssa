@@ -45,7 +45,7 @@ async function getUserContext(req: Request, requestedChannelId?: string, request
   return { adminClient, orgId: profile.org_id, config };
 }
 
-serve(async (req) => {
+serve(async (req): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const body = await req.json().catch(() => ({}));
