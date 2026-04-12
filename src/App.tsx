@@ -18,6 +18,7 @@ const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const CampaignsPage = lazy(() => import("./pages/CampaignsPage"));
 const AutomationPage = lazy(() => import("./pages/AutomationPage"));
 const TeamPage = lazy(() => import("./pages/TeamPage"));
+const SavedRepliesPage = lazy(() => import("./pages/SavedRepliesPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const ConversationSettingsPage = lazy(() => import("./pages/ConversationSettingsPage"));
 const AiSettingsPage = lazy(() => import("./pages/AiSettingsPage"));
@@ -122,7 +123,7 @@ const AppRoutes = () => {
         <Route path="/dashboard" element={<ProtectedRoute minRole="admin"><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
         <Route path="/inbox" element={<ProtectedRoute><AppLayout><InboxPage inboxMode="whatsapp" /></AppLayout></ProtectedRoute>} />
         <Route path="/email-inbox" element={<ProtectedRoute><AppLayout><InboxPage inboxMode="email" /></AppLayout></ProtectedRoute>} />
-        <Route path="/customers" element={<ProtectedRoute minRole="admin"><AppLayout><CustomersPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/customers" element={<ProtectedRoute minRole="agent"><AppLayout><CustomersPage /></AppLayout></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute minRole="supervisor"><AppLayout><AnalyticsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/campaigns" element={<ProtectedRoute minRole="admin"><AppLayout><CampaignsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/automation" element={<ProtectedRoute minRole="admin"><AppLayout><AutomationPage /></AppLayout></ProtectedRoute>} />
@@ -130,6 +131,7 @@ const AppRoutes = () => {
         <Route path="/team" element={<ProtectedRoute minRole="supervisor"><AppLayout><TeamPage /></AppLayout></ProtectedRoute>} />
         <Route path="/plans" element={<ProtectedRoute minRole="admin"><AppLayout><CustomPlanBuilderPage /></AppLayout></ProtectedRoute>} />
         <Route path="/integrations" element={<ProtectedRoute minRole="admin"><AppLayout><IntegrationsPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/saved-replies" element={<ProtectedRoute minRole="agent"><AppLayout><SavedRepliesPage /></AppLayout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute minRole="admin"><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/conversation-settings" element={<ProtectedRoute minRole="admin"><AppLayout><ConversationSettingsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/ai-settings" element={<ProtectedRoute minRole="admin"><AppLayout><AiSettingsPage /></AppLayout></ProtectedRoute>} />

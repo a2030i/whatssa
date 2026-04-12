@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import {
   MessageSquare, BarChart3, Megaphone, Bot, Settings, Users, Menu, X,
   FileText, Shield, LogOut, Wallet, UserCircle, CreditCard, Plug,
@@ -58,7 +58,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean, ticketBadge?: st
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "📣", minRole: "admin" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰", minRole: "admin" },
-      { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب", minRole: "admin" },
+      { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب", minRole: "agent" },
       { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡", minRole: "admin" },
       { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖", minRole: "admin" },
     ],
@@ -75,7 +75,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean, ticketBadge?: st
     section: "العملاء والمبيعات",
     emoji: "👥",
     items: [
-      { label: "العملاء", icon: UserCircle, path: "/customers", emoji: "👥", minRole: "admin" },
+      { label: "العملاء", icon: UserCircle, path: "/customers", emoji: "👥", minRole: "agent" },
       { label: "الطلبات", icon: ShoppingCart, path: "/orders", emoji: "🛒", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً", minRole: "admin" },
       { label: "السلل المهجورة", icon: ShoppingBag, path: "/abandoned-carts", emoji: "🛒", ecommerceOnly: true, lockedMessage: "اربط متجرك الإلكتروني أولاً", minRole: "admin" },
       { label: "الكتالوج", icon: Package, path: "/catalog", emoji: "📦", minRole: "admin" },
