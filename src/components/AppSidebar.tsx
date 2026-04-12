@@ -58,7 +58,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean, ticketBadge?: st
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "📣", minRole: "admin" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰", minRole: "admin" },
-      { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب", minRole: "admin" },
+      { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب", minRole: "agent" },
       { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡", minRole: "admin" },
       { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖", minRole: "admin" },
     ],
@@ -147,6 +147,22 @@ const AppSidebar = () => {
       });
   }, [orgId, profile?.id, teamId, userRole, isSuperAdmin]);
 
+  const [hasMetaAccess, setHasMetaAccess] = useState(false);
+  useEffect(() => {
+    if (!orgId || !profile?.id) return;
+    const effectiveR = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
+    if (effectiveR === "admin") { setHasMetaAccess(true); return; }
+    const conditions: string[] = [`default_agent_id.eq.${profile.id}`];
+    if (teamId) conditions.push(`default_team_id.eq.${teamId}`);
+    if (profile?.team_ids && Array.isArray(profile.team_ids)) {
+      profile.team_ids.forEach((tid: string) => conditions.push(`default_team_id.eq.${tid}`));
+    }
+    supabase.from("whatsapp_config").select("id").eq("org_id", orgId).eq("channel_type", "meta_api").eq("is_connected", true)
+      .or(conditions.join(",")).limit(1).then(({ data }) => {
+        setHasMetaAccess(!!data && data.length > 0);
+      });
+  }, [orgId, profile?.id, teamId, userRole, isSuperAdmin]);
+
   const displayRole = userRole === "super_admin"
     ? "super_admin"
     : userRole === "admin"
@@ -180,7 +196,7 @@ const AppSidebar = () => {
 
   const isLocked = (item: NavItem): boolean => {
     if (isSuperAdmin) return false;
-    if (item.metaApiOnly && !hasMetaApi) return true;
+    if (item.metaApiOnly && !hasMetaAccess) return true;
     if (item.ecommerceOnly && !isEcommerce) return true;
     return false;
   };
