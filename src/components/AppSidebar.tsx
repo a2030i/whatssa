@@ -58,7 +58,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean, ticketBadge?: st
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "📣", minRole: "admin" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰", minRole: "admin" },
-      { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب", minRole: "agent" },
+      { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب", minRole: "admin" },
       { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡", minRole: "admin" },
       { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖", minRole: "admin" },
     ],
@@ -99,6 +99,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean, ticketBadge?: st
       { label: "الفريق والصلاحيات", icon: Users, path: "/team", emoji: "👤", minRole: "supervisor" },
       { label: "الإعدادات العامة", icon: Settings, path: "/settings", emoji: "⚙️", minRole: "admin" },
       { label: "إعدادات المحادثات", icon: MessageSquare, path: "/conversation-settings", emoji: "💬", minRole: "admin" },
+      { label: "الردود الجاهزة", icon: MessageSquare, path: "/saved-replies", emoji: "⚡", minRole: "agent" },
       { label: "الأمان والصلاحيات", icon: Shield, path: "/permissions", emoji: "🔐", minRole: "admin" },
       { label: "مفاتيح API", icon: Code2, path: "/api-tokens", emoji: "🔑", minRole: "admin" },
       { label: "الباقة والفواتير", icon: CreditCard, path: "/plans", emoji: "💳", minRole: "admin" },
