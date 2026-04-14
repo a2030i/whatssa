@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -331,8 +331,8 @@ interface MetaChannel {
   display_phone: string;
   business_name: string | null;
   channel_label: string | null;
+  business_account_id?: string;
 }
-
 const TemplatesPage = () => {
   const { isSuperAdmin, impersonatedOrgId } = useAuth();
   const navigate = useNavigate();
@@ -359,7 +359,18 @@ const TemplatesPage = () => {
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [metaChannels, setMetaChannels] = useState<MetaChannel[]>([]);
   const [selectedFormChannel, setSelectedFormChannel] = useState<string>("");
-
+  const groupedWabas = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; phones: string[] }>();
+    metaChannels.forEach((ch) => {
+      const wabaId = ch.business_account_id || ch.id;
+      if (map.has(wabaId)) {
+        map.get(wabaId)!.phones.push(ch.channel_label || ch.display_phone);
+      } else {
+        map.set(wabaId, { id: ch.id, name: ch.business_name || ch.channel_label || ch.display_phone, phones: [ch.channel_label || ch.display_phone] });
+      }
+    });
+    return Array.from(map.values());
+  }, [metaChannels]);
   useEffect(() => {
     setIsReviewMode(window.localStorage.getItem("meta-review-mode") === "1");
   }, []);
@@ -396,7 +407,19 @@ const TemplatesPage = () => {
         setTemplates([]);
       } else {
         setNoWhatsApp(false);
-        setTemplates((templatesRes.data?.templates || []).map(mapMetaTemplate));
+        const raw = (templatesRes.data?.templates || []).map(mapMetaTemplate);
+        const grouped = new Map<string, WhatsAppTemplate>();
+        raw.forEach((t: any) => {
+          const key = `${t.name}__${t.language}`;
+          if (grouped.has(key)) {
+            const existing = grouped.get(key)!;
+            if (!existing.channels) existing.channels = [{ id: existing.channelId, name: existing.channelName, phone: existing.channelPhone }];
+            existing.channels.push({ id: t.channelId, name: t.channelName, phone: t.channelPhone });
+          } else {
+            grouped.set(key, { ...t, channels: [{ id: t.channelId, name: t.channelName, phone: t.channelPhone }] });
+          }
+        });
+        setTemplates(Array.from(grouped.values()));
       }
     } catch (e: any) {
       console.error("loadTemplates error:", e);
@@ -473,7 +496,8 @@ const TemplatesPage = () => {
     const { data, error } = await invokeCloud("whatsapp-templates", {
       body: {
         action,
-        channel_id: selectedFormChannel || undefined,
+          channel_id: selectedFormChannel || undefined,
+          template_id: editingTemplate?.id || undefined,
         ...(impersonatedOrgId ? { org_id: impersonatedOrgId } : {}),
         name: formData.name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, ""),
         category: formData.category,
@@ -827,7 +851,7 @@ const TemplatesPage = () => {
                         <Globe className="w-3 h-3" /> {template.language === "ar" ? (isReviewMode ? "Arabic" : "عربي") : template.language}
                       </span>
                       <span className="text-[10px] text-muted-foreground truncate max-w-[50%]" dir="ltr">
-                        {template.channelName || "Meta"}
+                        {template.channels && template.channels.length > 1 ? template.channels.map((c: any) => c.name || c.phone || "Meta").join(" ، ") : template.channelName || template.channelPhone || "Meta"}
                       </span>
                     </div>
                   </div>
@@ -899,15 +923,15 @@ const TemplatesPage = () => {
           <div className="space-y-4 mt-2">
             {metaChannels.length >= 1 && (
               <div className="space-y-1.5">
-                <Label className="text-xs">{isReviewMode ? "WhatsApp number" : "الرقم الرسمي"}</Label>
+                <Label className="text-xs">{isReviewMode ? "Business Account" : "حافظة الأعمال"}</Label>
                 <Select value={selectedFormChannel} onValueChange={setSelectedFormChannel}>
                   <SelectTrigger className="text-sm">
-                    <SelectValue placeholder={isReviewMode ? "Select number..." : "اختر الرقم..."} />
+                    <SelectValue placeholder={isReviewMode ? "Select account..." : "اختر الحافظة..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {metaChannels.map((ch) => (
-                      <SelectItem key={ch.id} value={ch.id}>
-                        {ch.channel_label || ch.business_name || ch.display_phone}
+                    {groupedWabas.map((waba) => (
+                      <SelectItem key={waba.id} value={waba.id}>
+                        {waba.name} ({waba.phones.join(" ، ")})
                       </SelectItem>
                     ))}
                   </SelectContent>

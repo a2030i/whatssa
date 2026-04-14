@@ -1,4 +1,4 @@
-export interface WhatsAppTemplateButton {
+﻿export interface WhatsAppTemplateButton {
   type: "url" | "phone" | "quick_reply" | string;
   text: string;
   value?: string;
@@ -33,6 +33,7 @@ export interface WhatsAppTemplate {
   bodyVariableCount: number;
   components?: WhatsAppTemplateComponent[];
   channelId?: string;
+  channels?: Array<{ id?: string; name?: string; phone?: string }>;
   channelPhone?: string;
   channelName?: string;
 }

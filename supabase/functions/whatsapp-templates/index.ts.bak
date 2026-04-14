@@ -1,4 +1,4 @@
-﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -120,8 +120,7 @@ serve(async (req) => {
         id: c.id,
         display_phone: c.display_phone,
         business_name: c.business_name,
-          channel_label: c.channel_label,
-          business_account_id: c.business_account_id,
+        channel_label: c.channel_label,
       })),
     });
   }
@@ -232,6 +231,19 @@ serve(async (req) => {
     const templateName = String(body?.name || "").trim();
     if (!templateName) return json({ error: "اسم القالب مطلوب" }, 400);
 
+    // Step 1: Delete old template
+    const deleteRes = await fetch(
+      `https://graph.facebook.com/v21.0/${config.business_account_id}/message_templates?name=${encodeURIComponent(templateName)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${config.access_token}` },
+      },
+    );
+    const deleteData = await deleteRes.json();
+    if (!deleteRes.ok) {
+      return json({ error: deleteData?.error?.message || "تعذر حذف القالب القديم لإعادة إنشائه" }, deleteRes.status);
+    }
+
     // Step 2: Recreate with new content
     const category = String(body?.category || "UTILITY").trim().toUpperCase();
     const language = String(body?.language || "ar").trim();
@@ -264,14 +276,14 @@ serve(async (req) => {
     }
 
     const createRes = await fetch(
-      `https://graph.facebook.com/v21.0/${templateId}`,
+      `https://graph.facebook.com/v21.0/${config.business_account_id}/message_templates`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${config.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ components }),
+        body: JSON.stringify({ name: templateName, category, language, components }),
       },
     );
     const createResult = await createRes.json();
@@ -347,5 +359,3 @@ serve(async (req) => {
 
   return json({ success: true, template: result });
 });
-
-
