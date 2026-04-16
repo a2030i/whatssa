@@ -900,6 +900,11 @@ const TemplatesPage = () => {
                           <span className={cn("flex items-center gap-0.5 text-[10px]", statusColors[template.status] || "text-muted-foreground")}>
                             <StatusIcon className="w-3 h-3" /> {activeStatusLabels[template.status] || template.status}
                           </span>
+                          {template.status === "approved" && (
+                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {template.category === "marketing" ? "~0.17-0.21 SAR" : template.category === "authentication" ? "~0.04-0.06 SAR" : "~0.04-0.06 SAR"}
+                            </span>
+                          )}
                         </div>
                         {template.status === "rejected" && template.statusReason && (
                           <p className="text-[10px] text-destructive mt-1 line-clamp-2">
