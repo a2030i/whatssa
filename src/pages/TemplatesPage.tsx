@@ -102,6 +102,8 @@ interface TemplateFormData {
   body: string;
   footer: string;
   buttons: CtaButton[];
+  bodyExamples?: string[];
+  headerExamples?: string[];
 }
 
 interface TemplateSuggestion {
@@ -119,6 +121,8 @@ const emptyForm: TemplateFormData = {
   body: "",
   footer: "",
   buttons: [],
+  bodyExamples: [],
+  headerExamples: [],
 };
 
 const ecommerceTemplateSuggestions: TemplateSuggestion[] = [
@@ -548,7 +552,8 @@ const TemplatesPage = () => {
         if (!Number.isNaN(idx) && idx > 0) indices.add(idx);
       }
       const max = indices.size ? Math.max(...Array.from(indices)) : 0;
-      return Array.from({ length: max }, (_, i) => `example_${i + 1}`);
+      const samples = ["Ahmed Ali", "ORD12345", "150.00", "Riyadh", "10:30 AM", "2026-01-15", "Product"];
+      return Array.from({ length: max }, (_, i) => samples[i] || `Sample${i + 1}`);
     };
 
     const bodyExampleValues = extractExampleValues(formData.body);

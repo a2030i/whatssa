@@ -271,7 +271,8 @@ serve(async (req) => {
       components.push({ type: "HEADER", format: headerType, example: { header_url: [headerUrl] } });
     }
     const bodyComp: Record<string, unknown> = { type: "BODY", text: content };
-    if (bodyExampleValues.length > 0) bodyComp.example = { body_text: bodyExampleValues };
+    // Cloud API expects body_text as array of example sets: [["v1","v2",...]]
+    if (bodyExampleValues.length > 0) bodyComp.example = { body_text: [bodyExampleValues] };
     components.push(bodyComp);
     if (footer) components.push({ type: "FOOTER", text: footer });
 
@@ -340,7 +341,8 @@ serve(async (req) => {
     components.push({ type: "HEADER", format: headerType, example: { header_url: [headerUrl] } });
   }
   const bodyComp: Record<string, unknown> = { type: "BODY", text: content };
-  if (bodyExampleValues.length > 0) bodyComp.example = { body_text: bodyExampleValues };
+  // Cloud API expects body_text as array of example sets: [["v1","v2",...]]
+  if (bodyExampleValues.length > 0) bodyComp.example = { body_text: [bodyExampleValues] };
   components.push(bodyComp);
   if (footer) components.push({ type: "FOOTER", text: footer });
 
