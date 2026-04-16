@@ -137,6 +137,17 @@ serve(async (req) => {
     const allTemplates: any[] = [];
     console.log("list_all: configs count =", allConfigs.length);
 
+    // Pull latest status/reason from webhook cache
+    const { data: cacheRows } = await (context as any).adminClient
+      .from("template_status_cache")
+      .select("template_meta_id,status,reason")
+      .eq("org_id", (context as any).orgId)
+      .limit(2000);
+    const cacheMap = new Map<string, { status?: string; reason?: string }>();
+    (cacheRows || []).forEach((r: any) => {
+      if (r?.template_meta_id) cacheMap.set(String(r.template_meta_id), { status: r.status, reason: r.reason });
+    });
+
     for (const cfg of allConfigs) {
       console.log("list_all: fetching for channel", cfg.id, "biz_account_id=", cfg.business_account_id, "token_len=", cfg.access_token?.length);
       
@@ -153,11 +164,15 @@ serve(async (req) => {
         
         if (response.ok && result.data) {
           for (const t of result.data) {
+            const cached = cacheMap.get(String(t?.id || "")) || cacheMap.get(String((t as any)?.message_template_id || "")) || undefined;
             allTemplates.push({
               ...t,
               channel_id: cfg.id,
               channel_phone: cfg.display_phone,
               channel_name: cfg.channel_label || cfg.business_name || cfg.display_phone,
+              // Prefer webhook cache when available (includes REJECTED reason codes)
+              status: (cached?.status || t.status) ?? t.status,
+              status_reason: cached?.reason || (t as any).reason || "",
             });
           }
         } else if (result.error) {
@@ -240,24 +255,32 @@ serve(async (req) => {
     const headerUrl = String(body?.header_url || "").trim();
     const content = String(body?.body || "").trim();
     const footer = String(body?.footer || "").trim();
-    const buttons: Array<{type: string; text: string; value: string}> = Array.isArray(body?.buttons) ? body.buttons : [];
+    const buttons: Array<{type: string; text: string; value?: string}> = Array.isArray(body?.buttons) ? body.buttons : [];
+
+    const headerExampleValues: string[] = Array.isArray(body?.header_example_values) ? body.header_example_values.filter((v: unknown) => typeof v === "string") : [];
+    const bodyExampleValues: string[] = Array.isArray(body?.body_example_values) ? body.body_example_values.filter((v: unknown) => typeof v === "string") : [];
 
     if (!content) return json({ error: "محتوى الرسالة مطلوب" }, 400);
 
     const components: Array<Record<string, unknown>> = [];
     if (headerType === "TEXT" && header) {
-      components.push({ type: "HEADER", format: "TEXT", text: header });
+      const headerComp: Record<string, unknown> = { type: "HEADER", format: "TEXT", text: header };
+      if (headerExampleValues.length > 0) headerComp.example = { header_text: headerExampleValues };
+      components.push(headerComp);
     } else if ((headerType === "IMAGE" || headerType === "VIDEO") && headerUrl) {
       components.push({ type: "HEADER", format: headerType, example: { header_url: [headerUrl] } });
     }
-    components.push({ type: "BODY", text: content });
+    const bodyComp: Record<string, unknown> = { type: "BODY", text: content };
+    if (bodyExampleValues.length > 0) bodyComp.example = { body_text: bodyExampleValues };
+    components.push(bodyComp);
     if (footer) components.push({ type: "FOOTER", text: footer });
 
     if (buttons.length > 0) {
       components.push({
         type: "BUTTONS",
         buttons: buttons.map((b: any) => {
-          if (b.type === "phone") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.value };
+          if (b.type === "phone" || b.type === "phone_number") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.value };
+          if (b.type === "quick_reply") return { type: "QUICK_REPLY", text: b.text, payload: b.value || b.text };
           return { type: "URL", text: b.text, url: b.value };
         }),
       });
@@ -291,7 +314,10 @@ serve(async (req) => {
   const headerUrl = String(body?.header_url || "").trim();
   const content = String(body?.body || "").trim();
   const footer = String(body?.footer || "").trim();
-  const buttons: Array<{type: string; text: string; value: string}> = Array.isArray(body?.buttons) ? body.buttons : [];
+  const buttons: Array<{type: string; text: string; value?: string}> = Array.isArray(body?.buttons) ? body.buttons : [];
+
+  const headerExampleValues: string[] = Array.isArray(body?.header_example_values) ? body.header_example_values.filter((v: unknown) => typeof v === "string") : [];
+  const bodyExampleValues: string[] = Array.isArray(body?.body_example_values) ? body.body_example_values.filter((v: unknown) => typeof v === "string") : [];
 
   if (!name || !content) {
     return json({ error: "الاسم ومحتوى الرسالة مطلوبان" }, 400);
@@ -307,18 +333,23 @@ serve(async (req) => {
 
   const components: Array<Record<string, unknown>> = [];
   if (headerType === "TEXT" && header) {
-    components.push({ type: "HEADER", format: "TEXT", text: header });
+    const headerComp: Record<string, unknown> = { type: "HEADER", format: "TEXT", text: header };
+    if (headerExampleValues.length > 0) headerComp.example = { header_text: headerExampleValues };
+    components.push(headerComp);
   } else if ((headerType === "IMAGE" || headerType === "VIDEO") && headerUrl) {
     components.push({ type: "HEADER", format: headerType, example: { header_url: [headerUrl] } });
   }
-  components.push({ type: "BODY", text: content });
+  const bodyComp: Record<string, unknown> = { type: "BODY", text: content };
+  if (bodyExampleValues.length > 0) bodyComp.example = { body_text: bodyExampleValues };
+  components.push(bodyComp);
   if (footer) components.push({ type: "FOOTER", text: footer });
 
   if (buttons.length > 0) {
     components.push({
       type: "BUTTONS",
       buttons: buttons.map((b: any) => {
-        if (b.type === "phone") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.value };
+        if (b.type === "phone" || b.type === "phone_number") return { type: "PHONE_NUMBER", text: b.text, phone_number: b.value };
+        if (b.type === "quick_reply") return { type: "QUICK_REPLY", text: b.text, payload: b.value || b.text };
         return { type: "URL", text: b.text, url: b.value };
       }),
     });

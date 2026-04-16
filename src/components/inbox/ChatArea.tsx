@@ -1165,10 +1165,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   useEffect(() => {
     setIsBlocked(conversation.isBlocked || false);
     setGroupPicture(conversation.profilePic || null);
-    // Auto-show templates when opening a closed meta conversation
-    if (isMetaChannel && conversation.status === "closed") {
-      setShowTemplates(true);
-    }
+    // Reset template picker state on conversation switch.
+    // Templates should only be shown when user attempts to send and the 24h window requires it.
+    setShowTemplates(false);
+    setSelectedTemplate(null);
+    setTemplateVars([]);
     // Auto-populate email subject from conversation notes
     if (isEmailChannel) {
       const subj = (conversation as any).notes?.replace(/^📧\s*/, "") || "";
@@ -1789,7 +1790,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
       });
       return;
     }
-    if (windowExpired) {
+    if (windowExpired || (isMetaChannel && conversation.status === "closed")) {
       toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
       setShowTemplates(true);
       return;
@@ -1918,7 +1919,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   };
 
   const handleQuickReply = (text: string) => {
-    if (windowExpired) {
+    if (windowExpired || (isMetaChannel && conversation.status === "closed")) {
       toast.error("انتهت نافذة الـ 24 ساعة - يرجى إرسال قالب معتمد أولاً");
       setShowQuickReplies(false);
       setShowTemplates(true);

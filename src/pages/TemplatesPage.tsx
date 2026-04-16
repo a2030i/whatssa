@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Plus,
+  MessageSquare,
   Search,
   FileText,
   Check,
@@ -38,6 +39,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
 import { useNavigate } from "react-router-dom";
+import { Copy } from "lucide-react";
 
 const categoryLabels: Record<string, string> = {
   marketing: "تسويقي",
@@ -86,7 +88,7 @@ const statusColors: Record<string, string> = {
 };
 
 interface CtaButton {
-  type: "url" | "phone";
+  type: "url" | "phone" | "quick_reply";
   text: string;
   value: string;
 }
@@ -466,11 +468,43 @@ const TemplatesPage = () => {
       body: template.body,
       footer: template.footer || "",
       buttons: (template.buttons || []).map((button) => ({
-        type: button.type === "phone_number" ? "phone" : "url",
+        type: button.type === "phone_number" ? "phone" : button.type === "quick_reply" ? "quick_reply" : "url",
         text: button.text,
         value: button.value || "",
       })),
     });
+    setShowFormDialog(true);
+  };
+
+  const openDuplicateDialog = (template: WhatsAppTemplate) => {
+    setEditingTemplate(null);
+    const baseName = template.name || "template";
+    const lang = template.language || "ar";
+
+    // Generate a unique "copy" name to reduce clashes in Meta.
+    let dupName = `${baseName}_copy`;
+    if (templates.some((t) => t.name === dupName && t.language === lang)) {
+      let i = 2;
+      while (i < 50 && templates.some((t) => t.name === `${dupName}_${i}` && t.language === lang)) i++;
+      dupName = `${dupName}_${i}`;
+    }
+
+    setSelectedFormChannel(template.channelId || (metaChannels.length === 1 ? metaChannels[0]?.id || "" : metaChannels[0]?.id || ""));
+    setFormData({
+      name: dupName,
+      category: template.category,
+      headerType: (template.headerFormat === "DOCUMENT" ? "NONE" : template.headerFormat) || (template.header ? "TEXT" : "NONE"),
+      header: template.header || "",
+      headerUrl: template.headerUrl || "",
+      body: template.body,
+      footer: template.footer || "",
+      buttons: (template.buttons || []).map((button) => ({
+        type: button.type === "phone_number" ? "phone" : button.type === "quick_reply" ? "quick_reply" : "url",
+        text: button.text,
+        value: button.value || "",
+      })),
+    });
+    setShowSuggestions(false);
     setShowFormDialog(true);
   };
 
@@ -493,6 +527,33 @@ const TemplatesPage = () => {
     setIsSubmitting(true);
     const action = editingTemplate ? "edit" : "create";
 
+    const outgoingButtons = formData.buttons
+      .filter((button) => button.text.trim() && (button.type === "quick_reply" || button.value.trim()))
+      .map((button) => {
+        return {
+          type: button.type,
+          text: button.text.trim(),
+          ...(button.type === "quick_reply" ? {} : { value: button.value.trim() }),
+        };
+      });
+
+    // Meta template review expects "example" values for BODY/HEADER variables.
+    // We auto-generate safe example strings to avoid missing-required-field rejections.
+    const extractExampleValues = (text: string) => {
+      const re = /\{\{(\d+)\}\}/g;
+      const indices = new Set<number>();
+      let match: RegExpExecArray | null;
+      while ((match = re.exec(text)) !== null) {
+        const idx = Number(match[1]);
+        if (!Number.isNaN(idx) && idx > 0) indices.add(idx);
+      }
+      const max = indices.size ? Math.max(...Array.from(indices)) : 0;
+      return Array.from({ length: max }, (_, i) => `example_${i + 1}`);
+    };
+
+    const bodyExampleValues = extractExampleValues(formData.body);
+    const headerExampleValues = formData.headerType === "TEXT" ? extractExampleValues(formData.header) : [];
+
     const { data, error } = await invokeCloud("whatsapp-templates", {
       body: {
         action,
@@ -506,13 +567,30 @@ const TemplatesPage = () => {
         header_url: formData.headerType !== "TEXT" && formData.headerType !== "NONE" ? formData.headerUrl.trim() : "",
         body: formData.body.trim(),
         footer: formData.footer.trim(),
-        buttons: formData.buttons.filter((button) => button.text.trim() && button.value.trim()),
+          buttons: outgoingButtons,
+        body_example_values: bodyExampleValues,
+        header_example_values: headerExampleValues,
         language: editingTemplate?.language || "ar",
       },
     });
 
     if (error || data?.error) {
-      toast.error(data?.error || (isReviewMode ? `Failed to ${editingTemplate ? "update" : "create"} template` : `تعذر ${editingTemplate ? "تعديل" : "إنشاء"} القالب`));
+      const errMsg =
+        data?.error ||
+        (typeof error === "string" ? error : (error as any)?.message) ||
+        (error ? JSON.stringify(error) : "");
+
+      console.error("whatsapp-templates submit failed", {
+        action,
+        template_id: editingTemplate?.id,
+        template_name: formData.name,
+        err: errMsg,
+      });
+
+      toast.error(
+        errMsg ||
+          (isReviewMode ? `Failed to ${editingTemplate ? "update" : "create"} template` : `تعذر ${editingTemplate ? "تعديل" : "إنشاء"} القالب`),
+      );
       setIsSubmitting(false);
       return;
     }
@@ -803,6 +881,11 @@ const TemplatesPage = () => {
                             <StatusIcon className="w-3 h-3" /> {activeStatusLabels[template.status] || template.status}
                           </span>
                         </div>
+                        {template.status === "rejected" && template.statusReason && (
+                          <p className="text-[10px] text-destructive mt-1 line-clamp-2">
+                            {isReviewMode ? `Reason: ${template.statusReason}` : `سبب الرفض: ${template.statusReason}`}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-0.5">
                         {template.status === "approved" && (
@@ -815,6 +898,15 @@ const TemplatesPage = () => {
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditDialog(template)} title={isReviewMode ? "Edit" : "تعديل"}>
                           <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => openDuplicateDialog(template)}
+                          title={isReviewMode ? "Duplicate" : "تكرار"}
+                        >
+                          <Copy className="w-3.5 h-3.5" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(template)} title={isReviewMode ? "Delete" : "حذف"}>
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1099,7 +1191,7 @@ const TemplatesPage = () => {
               <div className="flex items-center justify-between">
                 <Label className="text-xs">{isReviewMode ? "CTA buttons (optional)" : "أزرار CTA (اختياري)"}</Label>
                 {formData.buttons.length < 3 && (
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1">
                     <Button
                       type="button"
                       variant="outline"
@@ -1117,6 +1209,16 @@ const TemplatesPage = () => {
                       onClick={() => setFormData({ ...formData, buttons: [...formData.buttons, { type: "phone", text: "", value: "" }] })}
                     >
                       <Phone className="w-3 h-3" /> {isReviewMode ? "Phone button" : "رقم هاتف"}
+                      <Phone className="w-3 h-3" /> {isReviewMode ? "Phone button" : "رقم هاتف"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[10px] gap-1"
+                      onClick={() => setFormData({ ...formData, buttons: [...formData.buttons, { type: "quick_reply", text: "", value: "" }] })}
+                    >
+                      <MessageSquare className="w-3 h-3" /> {isReviewMode ? "Quick Reply" : "رد سريع"}
                     </Button>
                   </div>
                 )}
@@ -1126,9 +1228,9 @@ const TemplatesPage = () => {
                 <div key={index} className="flex items-start gap-2 bg-secondary/50 rounded-lg p-2.5">
                   <div className="flex-1 space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      {button.type === "url" ? <Link className="w-3 h-3 text-primary shrink-0" /> : <Phone className="w-3 h-3 text-primary shrink-0" />}
+                      {button.type === "url" ? <Link className="w-3 h-3 text-primary shrink-0" /> : button.type === "phone" ? <Phone className="w-3 h-3 text-primary shrink-0" /> : <MessageSquare className="w-3 h-3 text-primary shrink-0" />}
                       <span className="text-[10px] font-medium text-primary">
-                        {button.type === "url" ? (isReviewMode ? "URL button" : "رابط URL") : isReviewMode ? "Phone button" : "رقم هاتف"}
+                        {button.type === "url" ? (isReviewMode ? "URL button" : "رابط URL") : button.type === "phone" ? (isReviewMode ? "Phone button" : "رقم هاتف") : (isReviewMode ? "Quick Reply" : "رد سريع")}
                       </span>
                     </div>
                     <Input
@@ -1141,7 +1243,7 @@ const TemplatesPage = () => {
                       placeholder={isReviewMode ? "Button text" : "نص الزر"}
                       className="text-xs h-8"
                     />
-                    <Input
+                    {button.type !== "quick_reply" && <Input
                       value={button.value}
                       onChange={(event) => {
                         const updated = [...formData.buttons];
@@ -1150,8 +1252,7 @@ const TemplatesPage = () => {
                       }}
                       placeholder={button.type === "url" ? "https://example.com/page" : "+966500000000"}
                       className="text-xs h-8"
-                      dir="ltr"
-                    />
+                    />}
                   </div>
                   <Button
                     type="button"

@@ -22,6 +22,7 @@ export interface WhatsAppTemplate {
   category: string;
   language: string;
   status: string;
+  statusReason?: string;
   headerFormat?: "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT" | "NONE";
   header?: string;
   headerUrl?: string;
@@ -69,6 +70,7 @@ export const mapMetaTemplate = (template: any): WhatsAppTemplate => {
     category: String(template?.category || "UTILITY").toLowerCase(),
     language: template?.language || "ar",
     status: String(template?.status || "PENDING").toLowerCase(),
+    statusReason: String(template?.status_reason || template?.reason || "").trim() || undefined,
     headerFormat: headerFormat === "NONE" ? undefined : headerFormat,
     header,
     headerUrl,

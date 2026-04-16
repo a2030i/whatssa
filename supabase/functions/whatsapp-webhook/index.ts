@@ -1598,6 +1598,7 @@ serve(async (req) => {
                 template_meta_id: templateMetaId,
                 template_name: templateName || prev?.template_name || templateMetaId,
                 status: newStatus,
+                reason,
                 last_checked_at: new Date().toISOString(),
               },
               { onConflict: "org_id,template_meta_id" }
