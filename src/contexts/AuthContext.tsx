@@ -14,6 +14,7 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   isEcommerce: boolean;
   hasMetaApi: boolean;
+  metaApiChecked: boolean;
   isImpersonating: boolean;
   impersonatedOrgId: string | null;
   mustChangePassword: boolean;
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   isSuperAdmin: false,
   isEcommerce: false,
   hasMetaApi: false,
+  metaApiChecked: false,
   isImpersonating: false,
   impersonatedOrgId: null,
   mustChangePassword: false,
@@ -54,6 +56,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [isEcommerce, setIsEcommerce] = useState(false);
   const [hasMetaApi, setHasMetaApi] = useState(false);
+  const [metaApiChecked, setMetaApiChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [impersonatedOrgId, setImpersonatedOrgId] = useState<string | null>(null);
 
@@ -101,13 +104,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Org-level data in background (non-blocking)
     if (orgIdVal) {
+      setMetaApiChecked(false);
       Promise.all([
         supabase.from("organizations").select("is_ecommerce").eq("id", orgIdVal).maybeSingle(),
         supabase.from("whatsapp_config_safe").select("id").eq("org_id", orgIdVal).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
       ]).then(([orgRes, metaRes]) => {
         setIsEcommerce(orgRes.data?.is_ecommerce || false);
         setHasMetaApi(!!metaRes.data);
+        setMetaApiChecked(true);
       });
+    } else {
+      setMetaApiChecked(true);
     }
   };
 
@@ -115,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setImpersonatedOrgId(targetOrgId);
     setIsEcommerce(false);
     setHasMetaApi(false);
+    setMetaApiChecked(false);
 
     const [orgRes, metaRes] = await Promise.all([
       supabase.from("organizations").select("is_ecommerce").eq("id", targetOrgId).maybeSingle(),
@@ -123,17 +131,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     setIsEcommerce(orgRes.data?.is_ecommerce || false);
     setHasMetaApi(!!metaRes.data);
+    setMetaApiChecked(true);
   };
 
   const refreshOrg = () => {
     const targetId = impersonatedOrgId || orgId;
     if (!targetId) return;
+    setMetaApiChecked(false);
     Promise.all([
       supabase.from("organizations").select("is_ecommerce").eq("id", targetId).maybeSingle(),
       supabase.from("whatsapp_config_safe").select("id").eq("org_id", targetId).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
     ]).then(([orgRes, metaRes]) => {
       setIsEcommerce(orgRes.data?.is_ecommerce || false);
       setHasMetaApi(!!metaRes.data);
+      setMetaApiChecked(true);
     });
   };
 
@@ -142,15 +153,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!orgId) {
       setIsEcommerce(false);
       setHasMetaApi(false);
+      setMetaApiChecked(true);
       return;
     }
 
+    setMetaApiChecked(false);
     Promise.all([
       supabase.from("organizations").select("is_ecommerce").eq("id", orgId).maybeSingle(),
       supabase.from("whatsapp_config_safe").select("id").eq("org_id", orgId).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
     ]).then(([orgRes, metaRes]) => {
       setIsEcommerce(orgRes.data?.is_ecommerce || false);
       setHasMetaApi(!!metaRes.data);
+      setMetaApiChecked(true);
     });
   };
 
@@ -294,6 +308,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setOrgId(null);
     setIsEcommerce(false);
     setHasMetaApi(false);
+    setMetaApiChecked(false);
     setImpersonatedOrgId(null);
   };
 
@@ -311,6 +326,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isSuperAdmin,
         isEcommerce,
         hasMetaApi,
+        metaApiChecked,
         isImpersonating,
         impersonatedOrgId,
         mustChangePassword: !!user?.user_metadata?.must_change_password,

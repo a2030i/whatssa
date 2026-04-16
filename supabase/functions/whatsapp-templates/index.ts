@@ -375,6 +375,7 @@ serve(async (req) => {
     const errorDetail = metaError?.error_user_msg || metaError?.message || "تعذر إنشاء القالب في Meta";
     const errorCode = metaError?.code || response.status;
     console.error("[whatsapp-templates] create failed:", JSON.stringify(metaError), "payload:", JSON.stringify({ name, category, language, components }));
+    return json({ error: errorDetail, meta_error_code: errorCode, meta_error_subcode: metaError?.error_subcode, debug_payload: { name, category, language, components } }, response.status);
     return json({ error: errorDetail, meta_error_code: errorCode, meta_error_subcode: metaError?.error_subcode }, response.status);
   }
 

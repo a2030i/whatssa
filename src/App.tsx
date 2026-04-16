@@ -96,9 +96,11 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const MetaApiRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading, hasMetaApi } = useAuth();
+  const { user, isLoading, hasMetaApi, metaApiChecked } = useAuth();
   if (isLoading) return <PageLoader />;
   if (!user) return <Navigate to="/auth" replace />;
+  // Avoid redirect flashes on hard refresh while meta_api capability is still being checked.
+  if (!metaApiChecked) return <PageLoader />;
   if (!hasMetaApi) return <Navigate to="/" replace />;
   return <>{children}</>;
 };

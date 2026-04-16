@@ -527,6 +527,21 @@ const TemplatesPage = () => {
       toast.error(isReviewMode ? "Please select a WhatsApp number" : "يرجى اختيار الرقم الرسمي");
       return;
     }
+    // UTILITY template validation - warn about promotional content
+    if (formData.category === "utility") {
+      const promoEmojis = /[\u{1F389}\u{1F38A}\u{1F381}\u{1F6CD}\u{1F6D2}\u{2728}\u{1F496}\u{1F49A}\u{1F525}\u{1F4AA}\u{1F60D}\u{1F923}\u{1F64F}]/u;
+      const promoWords = /(شكراً لتسوقك|تجربة رائعة|نتمنى|سعداء|خصم|عرض|تخفيض|مجاناً|هدية|اشترِ|تسوق|فرصة|لا تفوت|حصري|محدود|أكمل الطلب|سلتك)/;
+      const promoWordsEn = /(thank you for shopping|great experience|discount|offer|free|gift|buy now|shop now|exclusive|limited|don't miss)/i;
+      const warnings: string[] = [];
+      const allText = `${formData.header} ${formData.body} ${formData.footer}`;
+      if (promoEmojis.test(allText)) warnings.push(isReviewMode ? "Remove promotional emojis (🛍️✅🎉✨💚)" : "أزل الإيموجي الترويجية (🛍️✅🎉✨💚)");
+      if (promoWords.test(allText) || promoWordsEn.test(allText)) warnings.push(isReviewMode ? "Remove promotional phrases - UTILITY must be purely transactional" : "أزل العبارات الترويجية — القالب الخدمي لازم يكون وظيفي فقط");
+      if (formData.header && promoEmojis.test(formData.header)) warnings.push(isReviewMode ? "Header should not contain emojis for UTILITY" : "العنوان لا يحتوي إيموجي في القالب الخدمي");
+      if (warnings.length > 0) {
+        const msg = warnings.join("\n");
+        if (!window.confirm(`⚠️ ${isReviewMode ? "Meta may reject this UTILITY template:" : "قد ترفض Meta هذا القالب الخدمي:"}\n\n${msg}\n\n${isReviewMode ? "Continue anyway?" : "تبي تكمل؟"}`)) return;
+      }
+    }
 
     setIsSubmitting(true);
     const action = editingTemplate ? "edit" : "create";

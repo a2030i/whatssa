@@ -447,11 +447,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         const urlConvId = searchParams.get("conversation");
         if (urlConvId && modeFiltered.some(c => c.id === urlConvId)) {
           setSelectedId(urlConvId);
-        } else if (!isMobile && modeFiltered.length > 0) {
-          setSelectedId(modeFiltered[0].id);
         }
-      } else if (!isMobile && modeFiltered.length > 0) {
-        setSelectedId((prev) => (prev && modeFiltered.some((item) => item.id === prev) ? prev : modeFiltered[0].id));
       }
       setLoading(false);
     };
