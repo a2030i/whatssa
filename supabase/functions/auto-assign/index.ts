@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+﻿import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -219,8 +219,8 @@ Deno.serve(async (req) => {
     }
 
     // Filter available agents: online AND within work shift
-    const available = members.filter((m) => m.is_online && !m.is_on_break && isAgentInShift(m, currentTime, currentDay));
-
+    // Filter available agents: online only (shifts ignored)
+    const available = members.filter((m) => m.is_online && !m.is_on_break);
     // Get conversation loads for available agents
     const getAgentLoads = async (pool: typeof members) => {
       return Promise.all(

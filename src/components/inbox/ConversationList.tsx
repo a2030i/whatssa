@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+﻿import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Search, Filter, X, User, CheckCircle, Tag, MessageSquare, Pin, UserX, Eye, AtSign, Clock, XCircle, Bot, ChevronDown, ChevronUp, Users, Radio, ShieldCheck, Wifi, Inbox, Plus, RotateCcw, Pencil, Trash2, Sparkles, Archive, PinOff, CheckSquare, Square, Mail, Send, UserCheck } from "lucide-react";
@@ -402,6 +402,15 @@ const ConversationList = ({ conversations, selectedId, onSelect, hasSelection, o
             >
               <CheckSquare className="w-4 h-4" />
             </button>
+            {bulkMode && (
+              <button
+                onClick={() => { if (bulkSelected.size === filtered.length) { setBulkSelected(new Set()); } else { setBulkSelected(new Set(filtered.map((c) => c.id))); } }}
+                className="w-9 h-9 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary transition-all flex items-center justify-center text-[10px] font-bold"
+                title="تحديد الكل"
+              >
+                {bulkSelected.size === filtered.length && filtered.length > 0 ? "إلغاء" : "الكل"}
+              </button>
+            )}
             {hasActiveFilters && (
               <button onClick={clearFilters} className="w-9 h-9 rounded-xl border border-border/50 bg-background hover:bg-destructive/10 transition-all flex items-center justify-center" title="إعادة ضبط">
                 <RotateCcw className="w-4 h-4 text-foreground/70" />
