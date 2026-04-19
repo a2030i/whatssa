@@ -40,6 +40,7 @@ const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
 const PaymentCallbackPage = lazy(() => import("./pages/PaymentCallbackPage"));
 const BillingPage = lazy(() => import("./pages/BillingPage"));
 const ScheduledMessagesPage = lazy(() => import("./pages/ScheduledMessagesPage"));
+const RemindersPage = lazy(() => import("./pages/RemindersPage"));
 const CustomPlanPage = lazy(() => import("./pages/CustomPlanPage"));
 const CustomPlanBuilderPage = lazy(() => import("./pages/CustomPlanBuilderPage"));
 const WhatsAppFlowsPage = lazy(() => import("./pages/WhatsAppFlowsPage"));
@@ -163,6 +164,7 @@ const AppRoutes = () => {
         <Route path="/payment-callback" element={<ProtectedRoute minRole="admin"><AppLayout><PaymentCallbackPage /></AppLayout></ProtectedRoute>} />
         <Route path="/billing" element={<ProtectedRoute minRole="admin"><AppLayout><BillingPage /></AppLayout></ProtectedRoute>} />
         <Route path="/scheduled-messages" element={<ProtectedRoute minRole="admin"><AppLayout><ScheduledMessagesPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/reminders" element={<ProtectedRoute><AppLayout><RemindersPage /></AppLayout></ProtectedRoute>} />
         <Route path="/custom-plan" element={<ProtectedRoute minRole="admin"><AppLayout><CustomPlanPage /></AppLayout></ProtectedRoute>} />
         <Route path="/build-plan" element={<ProtectedRoute minRole="admin"><AppLayout><CustomPlanBuilderPage /></AppLayout></ProtectedRoute>} />
         <Route path="/wa-flows" element={<ProtectedRoute minRole="admin"><AppLayout><WhatsAppFlowsPage /></AppLayout></ProtectedRoute>} />

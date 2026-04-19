@@ -24,11 +24,15 @@ import AdminImpersonationLogs from "@/components/admin/AdminImpersonationLogs";
 import AdminActivityFeed from "@/components/admin/AdminActivityFeed";
 import AdminAnnouncements from "@/components/admin/AdminAnnouncements";
 import AdminFeatureFlags from "@/components/admin/AdminFeatureFlags";
+import AdminBillingInvoices from "@/components/admin/AdminBillingInvoices";
+import AdminSystemHealth from "@/components/admin/AdminSystemHealth";
 
 const tabs = [
   { id: "overview", label: "نظرة عامة" },
   { id: "accounts", label: "الحسابات" },
   { id: "finance", label: "المالية" },
+  { id: "invoices", label: "🧾 الفواتير" },
+  { id: "system_health", label: "🩺 صحة النظام" },
   { id: "plans", label: "الباقات" },
   { id: "pricing", label: "💎 التسعير" },
   { id: "coupons", label: "الكوبونات" },
@@ -58,6 +62,8 @@ const AdminDashboard = () => {
       case "conversations": return <AdminConversations />;
       case "accounts": return <AdminAccounts />;
       case "finance": return <AdminFinance />;
+      case "invoices": return <AdminBillingInvoices />;
+      case "system_health": return <AdminSystemHealth />;
       case "plans": return <AdminPlans />;
       case "pricing": return <AdminPricingManager />;
       case "coupons": return <AdminCoupons />;

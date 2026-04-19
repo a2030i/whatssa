@@ -58,6 +58,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean, ticketBadge?: st
     items: [
       { label: "الحملات", icon: Megaphone, path: "/campaigns", emoji: "📣", minRole: "admin" },
       { label: "الرسائل المجدولة", icon: Clock, path: "/scheduled-messages", emoji: "⏰", minRole: "admin" },
+      { label: "تذكيرات المتابعة", icon: Bell, path: "/reminders", emoji: "🔔" },
       { label: "القوالب", icon: FileText, path: "/templates", emoji: "📝", metaApiOnly: true, lockedMessage: "اربط رقم واتساب رسمي (Meta API) أولاً من صفحة الربط والتكامل لإدارة القوالب", minRole: "agent" },
       { label: "الأتمتة", icon: Workflow, path: "/automation", emoji: "⚡", minRole: "admin" },
       { label: "الشات بوت", icon: Bot, path: "/chatbot", emoji: "🤖", minRole: "admin" },
