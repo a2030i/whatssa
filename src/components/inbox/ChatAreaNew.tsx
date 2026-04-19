@@ -57,6 +57,9 @@ interface ChatAreaProps {
   onForwardMessage?: (msg: Message) => void;
   onConversationMerged?: (sourceConversationId: string, targetConversationId: string) => void;
   onDeleteConversation?: (convId: string) => void;
+  hasMoreMessages?: boolean;
+  onLoadMoreMessages?: (convId: string) => void;
+  loadingMoreMessages?: boolean;
 }
 
 const MessageStatus = ({ status, isGroup, readBy, groupSize }: { status?: string; isGroup?: boolean; readBy?: string[]; groupSize?: number }) => {
@@ -1012,7 +1015,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
   );
 };
 
-const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo, scrollToMessageId, onScrollToMessageDone, onStarMessage, onForwardMessage, onConversationMerged, onDeleteConversation }: ChatAreaProps) => {
+const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, onSendTemplate, onStatusChange, onTransfer, onTagsChange, onEditMessage, onDeleteMessage, onShowCustomerInfo, scrollToMessageId, onScrollToMessageDone, onStarMessage, onForwardMessage, onConversationMerged, onDeleteConversation, hasMoreMessages, onLoadMoreMessages, loadingMoreMessages }: ChatAreaProps) => {
   const { orgId, user, profile, userRole, isSuperAdmin } = useAuth();
   const [inputText, setInputText] = useState("");
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -2694,6 +2697,20 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
       {/* Messages */}
       <div ref={messagesContainerRef} onScroll={handleMessagesScroll} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-8 md:py-6 space-y-0.5 md:space-y-1 bg-background">
+        {/* Load more older messages */}
+        {hasMoreMessages && (
+          <div className="flex justify-center py-2">
+            <button
+              onClick={() => onLoadMoreMessages?.(conversation.id)}
+              disabled={loadingMoreMessages}
+              className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-full bg-muted/50 hover:bg-muted"
+            >
+              {loadingMoreMessages
+                ? <><Loader2 className="w-3 h-3 animate-spin" /> جاري التحميل...</>
+                : <><ChevronUp className="w-3 h-3" /> تحميل رسائل أقدم</>}
+            </button>
+          </div>
+        )}
         {messages.map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";

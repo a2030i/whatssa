@@ -103,6 +103,11 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [allMessages, setAllMessages] = useState<Record<string, Message[]>>({});
+  const [hasMoreMessages, setHasMoreMessages] = useState<Record<string, boolean>>({});
+  const [loadingMoreMessages, setLoadingMoreMessages] = useState(false);
+  const MESSAGE_PAGE_SIZE = 50;
+  const lastSendTimeRef = useRef<number>(0);
+  const SEND_COOLDOWN_MS = 500;
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("conversation"));
   const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(searchParams.get("message"));
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
@@ -467,7 +472,8 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           .from("messages")
           .select("id, conversation_id, content, sender, status, created_at, message_type, media_url, wa_message_id, metadata")
           .eq("conversation_id", currentConversationId)
-          .order("created_at", { ascending: true }),
+          .order("created_at", { ascending: false })
+          .limit(MESSAGE_PAGE_SIZE),
         isEmailConv
           ? supabase
               .from("email_message_details" as any)
@@ -536,6 +542,15 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           } : undefined,
         };
       }).filter((m) => !isReactionPlaceholderMessage(m));
+
+      // Reverse so oldest is first (we fetched DESC for pagination)
+      mapped.reverse();
+
+      // Track if there are more messages to load
+      setHasMoreMessages((prev) => ({
+        ...prev,
+        [currentConversationId]: (msgResult.data || []).length === MESSAGE_PAGE_SIZE,
+      }));
 
       setAllMessages((prev) => {
         const existing = prev[currentConversationId] || [];
@@ -914,7 +929,32 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
     ? (allMessages[selectedId] || []).filter((message) => !isReactionPlaceholderMessage(message))
     : [];
 
+  const loadMoreMessages = useCallback(async (convId: string) => {
+    const existing = allMessages[convId] || [];
+    if (!existing.length || loadingMoreMessages) return;
+    setLoadingMoreMessages(true);
+    const oldest = existing[0];
+    const { data } = await supabase
+      .from("messages")
+      .select("id, conversation_id, content, sender, status, created_at, message_type, media_url, wa_message_id, metadata")
+      .eq("conversation_id", convId)
+      .lt("created_at", oldest.createdAt)
+      .order("created_at", { ascending: false })
+      .limit(MESSAGE_PAGE_SIZE);
+    const older = ((data || []) as any[]).reverse().filter((m: any) => !isReactionPlaceholderMessage({ id: m.id, type: m.message_type } as any));
+    setHasMoreMessages((prev) => ({ ...prev, [convId]: (data || []).length === MESSAGE_PAGE_SIZE }));
+    setAllMessages((prev) => ({
+      ...prev,
+      [convId]: sortMessagesByCreatedAt([...older.map((m: any) => ({ id: m.id, conversationId: m.conversation_id, text: m.content, sender: m.sender, status: m.status, createdAt: m.created_at, type: m.message_type, mediaUrl: m.media_url, waMessageId: m.wa_message_id, metadata: m.metadata })), ...(prev[convId] || [])]),
+    }));
+    setLoadingMoreMessages(false);
+  }, [allMessages, loadingMoreMessages, MESSAGE_PAGE_SIZE]);
+
   const handleSendMessage = useCallback(async (convId: string, text: string, type: "text" | "note" = "text", replyTo?: { id: string; waMessageId?: string; senderName?: string; text: string }, mentionedJids?: string[]) => {
+    // Rate limiting: prevent double-send within 500ms
+    const now = Date.now();
+    if (now - lastSendTimeRef.current < SEND_COOLDOWN_MS) return;
+    lastSendTimeRef.current = now;
     const agentDisplayName = profile?.full_name || "النظام";
     if (type === "note") {
       const { error } = await supabase.from("messages").insert({
@@ -1501,6 +1541,9 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
            scrollToMessageId={scrollToMessageId}
            onScrollToMessageDone={() => setScrollToMessageId(null)}
             onDeleteConversation={handleDeleteConversation}
+            hasMoreMessages={selectedId ? (hasMoreMessages[selectedId] ?? false) : false}
+            onLoadMoreMessages={loadMoreMessages}
+            loadingMoreMessages={loadingMoreMessages}
          />
       ) : (
         !isMobile && (

@@ -134,6 +134,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const [impersonationLogId, setImpersonationLogId] = useState<string | null>(null);
+
   const startImpersonation = async (targetOrgId: string) => {
     setImpersonatedOrgId(targetOrgId);
     setIsEcommerce(false);
@@ -141,13 +143,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setMetaApiChecked(false);
 
     const [orgRes, metaRes] = await Promise.all([
-      supabase.from("organizations").select("is_ecommerce").eq("id", targetOrgId).maybeSingle(),
+      supabase.from("organizations").select("is_ecommerce, name").eq("id", targetOrgId).maybeSingle(),
       supabase.from("whatsapp_config_safe").select("id").eq("org_id", targetOrgId).eq("channel_type", "meta_api").eq("is_connected", true).limit(1).maybeSingle(),
     ]);
 
     setIsEcommerce(orgRes.data?.is_ecommerce || false);
     setHasMetaApi(!!metaRes.data);
     setMetaApiChecked(true);
+
+    // Audit log: record impersonation start
+    const { data: logRow } = await supabase
+      .from("impersonation_logs")
+      .insert({
+        super_admin_id: (await supabase.auth.getUser()).data.user?.id,
+        target_org_id: targetOrgId,
+        target_org_name: orgRes.data?.name || targetOrgId,
+        started_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+    setImpersonationLogId(logRow?.id || null);
   };
 
   const refreshOrg = () => {
@@ -166,6 +181,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const stopImpersonation = () => {
     setImpersonatedOrgId(null);
+    // Audit log: record impersonation end
+    if (impersonationLogId) {
+      supabase.from("impersonation_logs")
+        .update({ ended_at: new Date().toISOString() })
+        .eq("id", impersonationLogId)
+        .then();
+      setImpersonationLogId(null);
+    }
     if (!orgId) {
       setIsEcommerce(false);
       setHasMetaApi(false);
