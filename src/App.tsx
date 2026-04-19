@@ -118,6 +118,8 @@ const AppRoutes = () => {
   const { user, isLoading, isSuperAdmin, isImpersonating, userRole, profile } = useAuth();
 
   if (isLoading) return <PageLoader />;
+  // Wait for role to load before redirecting — prevents super_admin landing on /inbox
+  if (user && !userRole && !isSuperAdmin) return <PageLoader />;
 
   const shouldRedirectToAdmin = isSuperAdmin && !isImpersonating;
   const effectiveRole = isSuperAdmin ? "admin" : userRole === "admin" ? "admin" : profile?.is_supervisor ? "supervisor" : "member";
