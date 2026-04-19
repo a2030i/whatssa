@@ -106,13 +106,13 @@ export const useDashboardData = (): DashboardData => {
     }
     const load = async () => {
       try {
-        const today = getDateRange(0).split("T")[0] + "T00:00:00Z";
+        const today = getDateRange(0).split("T")[0] + "T21:00:00Z";
         const days7 = getDateRange(7);
         const days30 = getDateRange(30);
 
         const [waConfigs, openConvsCount, totalConvsCount, automations, wallet, org] = await Promise.all([
           supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).eq("is_connected", true).order("created_at"),
-          supabase.from("conversations").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "active"),
+          supabase.from("conversations").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "active").eq("conversation_type", "private"),
           supabase.from("conversations").select("id", { count: "exact", head: true }).eq("org_id", orgId),
           supabase.from("automation_rules").select("id", { count: "exact", head: true }).eq("org_id", orgId),
           supabase.from("wallets").select("balance").eq("org_id", orgId).maybeSingle(),
