@@ -585,7 +585,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
 
         // Quoted message element
         const quotedSenderColor = (() => {
-          if (!isGroup || !msg.quoted?.sender_name) return null;
+          if (conversation.conversationType !== "group" || !msg.quoted?.sender_name) return null;
           // Try to find the phone from groupParticipants by name
           const p = groupParticipants.find(gp => gp.name === msg.quoted?.sender_name);
           return getMemberColor(p?.phone || p?.rawDigits || msg.quoted.sender_name || "");
