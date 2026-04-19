@@ -140,6 +140,19 @@ const resolveMediaUrl = async (url: string | null | undefined): Promise<string |
 const normalizeDigits = (value: unknown) =>
   typeof value === "string" ? value.replace(/@.*/, "").replace(/\D/g, "") : "";
 
+// Consistent per-member color based on phone/id hash — WhatsApp-style
+const MEMBER_PALETTE = [
+  "#e53935","#d81b60","#8e24aa","#5e35b1","#1e88e5",
+  "#039be5","#00897b","#43a047","#f4511e","#fb8c00",
+  "#6d4c41","#546e7a","#00acc1","#3949ab","#c0ca33",
+];
+const getMemberColor = (key: string): string => {
+  if (!key) return MEMBER_PALETTE[0];
+  const digits = key.replace(/\D/g, "");
+  const seed = (digits || key).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return MEMBER_PALETTE[seed % MEMBER_PALETTE.length];
+};
+
 const extractParticipantPhone = (participant: any) => {
   const rawId = participant?.id || participant?.jid || "";
   const candidates = [participant?.phone, participant?.number, participant?.senderPn, participant?.participantPn]
@@ -540,18 +553,20 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           const rawJid = msg.senderJid || "";
           const jidIsLidBubble = rawJid.includes("@lid");
           const rawPhone = msg.senderPhone || (!jidIsLidBubble ? normalizeDigits(rawJid) : "");
-// للـ @lid استخدم sender_name مباشرة
           let resolvedName = msg.senderName || "";
+          let isAdmin = false;
           if (rawPhone && groupParticipants?.length) {
             const found = groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone))));
             if (found?.name && found.name !== found.phone && found.name !== found.rawDigits && !found.name.startsWith("عضو")) {
               resolvedName = found.name;
             }
+            if (found?.admin) isAdmin = true;
           }
           if (!resolvedName && rawPhone) resolvedName = `+${rawPhone}`;
-          // للـ @lid: استخدم senderName من الرسالة مباشرة
           if (!resolvedName && msg.senderName) resolvedName = msg.senderName;
-          return resolvedName || null;
+          if (!resolvedName) return null;
+          const colorKey = rawPhone || rawJid || resolvedName;
+          return { name: resolvedName, color: getMemberColor(colorKey), isAdmin };
         })();
 
         // Timestamp element — separate footer row to avoid bubble width collapse
@@ -569,13 +584,20 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         );
 
         // Quoted message element
+        const quotedSenderColor = (() => {
+          if (!isGroup || !msg.quoted?.sender_name) return null;
+          // Try to find the phone from groupParticipants by name
+          const p = groupParticipants.find(gp => gp.name === msg.quoted?.sender_name);
+          return getMemberColor(p?.phone || p?.rawDigits || msg.quoted.sender_name || "");
+        })();
         const quotedEl = msg.quoted && (msg.quoted.text || msg.quoted.stanza_id || msg.quoted.message_id) && (
           <div
             onClick={() => scrollToMessage(msg.quoted?.message_id || msg.quoted?.stanza_id)}
+            style={quotedSenderColor ? { borderRightColor: quotedSenderColor } : undefined}
             className="rounded-lg px-3 py-2 mb-1.5 border-r-3 text-[12px] leading-relaxed cursor-pointer hover:opacity-80 transition-opacity bg-secondary/60 border-primary/30"
           >
             {msg.quoted.sender_name && (
-              <p className="text-[11px] font-bold mb-0.5 text-primary">{msg.quoted.sender_name}</p>
+              <p className="text-[11px] font-bold mb-0.5" style={{ color: quotedSenderColor || undefined }}>{msg.quoted.sender_name}</p>
             )}
             <p className="line-clamp-2 text-muted-foreground">{msg.quoted.text || "[رسالة]"}</p>
           </div>
@@ -763,7 +785,10 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             <div className="inline-flex flex-col gap-1 max-w-full">
               {/* Group sender label */}
               {groupSenderEl && (
-                <span className="text-[10.5px] font-bold text-muted-foreground/70">{groupSenderEl}</span>
+                <span className="text-[10.5px] font-bold flex items-center gap-1" style={{ color: groupSenderEl.color }}>
+                  {groupSenderEl.name}
+                  {groupSenderEl.isAdmin && <Crown className="w-2.5 h-2.5 inline shrink-0" />}
+                </span>
               )}
               {/* Quoted message */}
               {quotedEl}
@@ -1096,7 +1121,10 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
           )} style={{ wordBreak: "normal", overflowWrap: "anywhere", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
             {groupSenderEl && (
-              <div className="text-[10.5px] font-bold mb-0.5 text-white/80">{groupSenderEl}</div>
+              <div className="text-[10.5px] font-bold mb-0.5 flex items-center gap-1" style={{ color: groupSenderEl.color }}>
+                {groupSenderEl.name}
+                {groupSenderEl.isAdmin && <Crown className="w-2.5 h-2.5 inline shrink-0" />}
+              </div>
             )}
             {quotedEl && msg.sender === "customer" && (
               <div
@@ -1198,6 +1226,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [windowInfo, setWindowInfo] = useState(() => getWindowRemaining(conversation.lastCustomerMessageAt));
   const [teamMembers, setTeamMembers] = useState<Array<{ id: string; full_name: string }>>([]);
   const [groupParticipants, setGroupParticipants] = useState<Array<{ id: string; name: string; phone: string; rawDigits: string; admin?: boolean; isSaved?: boolean }>>([]);
+  const [filterMemberPhone, setFilterMemberPhone] = useState<string | null>(null); // filter messages by member
+  const [showGroupMembersBar, setShowGroupMembersBar] = useState(false);
   const [otherTypingAgents, setOtherTypingAgents] = useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
@@ -2647,6 +2677,63 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           </div>
         </div>
 
+        {/* Group members bar */}
+        {isGroup && groupParticipants.length > 0 && (
+          <div className="px-4 pb-2">
+            <button
+              onClick={() => setShowGroupMembersBar(v => !v)}
+              className="flex items-center gap-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <div className="flex -space-x-1 rtl:space-x-reverse">
+                {groupParticipants.slice(0, 5).map((p, i) => (
+                  <div key={p.id} className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white border border-background"
+                    style={{ backgroundColor: getMemberColor(p.phone || p.rawDigits || p.id), zIndex: 5 - i }}>
+                    {(p.name || p.phone).slice(0, 1)}
+                  </div>
+                ))}
+                {groupParticipants.length > 5 && (
+                  <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground border border-background" style={{ zIndex: 0 }}>
+                    +{groupParticipants.length - 5}
+                  </div>
+                )}
+              </div>
+              <span>{groupParticipants.length} عضو</span>
+              {filterMemberPhone && <span className="text-primary font-semibold">• تصفية نشطة</span>}
+              {showGroupMembersBar ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+
+            {showGroupMembersBar && (
+              <div className="mt-2 flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                {filterMemberPhone && (
+                  <button onClick={() => setFilterMemberPhone(null)}
+                    className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full bg-primary text-primary-foreground font-bold">
+                    <X className="w-2.5 h-2.5" /> إلغاء الفلتر
+                  </button>
+                )}
+                {groupParticipants.map(p => {
+                  const color = getMemberColor(p.phone || p.rawDigits || p.id);
+                  const isFiltered = filterMemberPhone === (p.phone || p.rawDigits);
+                  return (
+                    <button key={p.id}
+                      onClick={() => setFilterMemberPhone(isFiltered ? null : (p.phone || p.rawDigits || null))}
+                      className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full border transition-all"
+                      style={isFiltered
+                        ? { backgroundColor: color, borderColor: color, color: "#fff" }
+                        : { borderColor: color + "60", color }}>
+                      <div className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7px] font-bold text-white"
+                        style={{ backgroundColor: color }}>
+                        {(p.name || p.phone).slice(0, 1)}
+                      </div>
+                      <span className="font-medium">{p.name || `+${p.phone}`}</span>
+                      {p.admin && <Crown className="w-2.5 h-2.5 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tags row */}
         {conversation.tags.length > 0 && (
         <div className="flex items-center gap-1.5 px-4 pb-2.5 overflow-x-auto scrollbar-none">
@@ -2860,7 +2947,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             </button>
           </div>
         )}
-        {messages.map((msg, msgIdx) => {
+        {(filterMemberPhone
+          ? messages.filter(msg => {
+              if (msg.sender !== "customer") return false;
+              const rawPhone = (msg as any).senderPhone || normalizeDigits((msg as any).senderJid || "");
+              return rawPhone === filterMemberPhone || rawPhone.endsWith(filterMemberPhone) || filterMemberPhone.endsWith(rawPhone);
+            })
+          : messages
+        ).map((msg, msgIdx) => {
           // In groups, distinguish senders by their JID/phone, not just "customer"
           const isGroup = conversation.conversationType === "group";
           const getMsgSenderKey = (m: Message) => {
@@ -2890,8 +2984,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </button>
             )}
             {msg.sender === "system" ? (
-              <div className="bg-card border border-border/30 text-muted-foreground text-[11px] px-5 py-2 rounded-xl font-medium shadow-[0_1px_3px_rgba(0,0,0,0.04)] max-w-[85%] text-center leading-relaxed">
-                {msg.text}
+              <div className="flex items-center gap-2 max-w-[85%]">
+                <div className="flex-1 h-px bg-border/40" />
+                <div className={cn(
+                  "text-[11px] px-3 py-1.5 rounded-xl font-medium text-center leading-relaxed whitespace-nowrap",
+                  msg.text?.includes("انضم") || msg.text?.includes("joined") ? "bg-green-50 text-green-700 border border-green-100" :
+                  msg.text?.includes("غادر") || msg.text?.includes("خرج") || msg.text?.includes("left") ? "bg-red-50 text-red-600 border border-red-100" :
+                  msg.text?.includes("أُضيف") || msg.text?.includes("added") ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                  msg.text?.includes("أُزيل") || msg.text?.includes("removed") ? "bg-orange-50 text-orange-700 border border-orange-100" :
+                  "bg-muted/60 text-muted-foreground border border-border/30"
+                )}>
+                  {msg.text}
+                </div>
+                <div className="flex-1 h-px bg-border/40" />
               </div>
             ) : (
               <div className={cn("flex items-end gap-2 max-w-full", msg.sender === "agent" ? "flex-row-reverse" : "flex-row")}>
@@ -2907,8 +3012,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                           const participant = rawPhone ? groupParticipants.find(p => p.phone === rawPhone || p.rawDigits === rawPhone || (rawPhone.length >= 7 && (p.phone.endsWith(rawPhone) || rawPhone.endsWith(p.phone)))) : undefined;
                           const displayName = participant?.name || msg.senderName || rawPhone || "؟";
                           const initials = displayName.slice(0, 2);
-                          const hash = (rawPhone || displayName).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-                          const hue = hash % 360;
+                          const memberColor = getMemberColor(rawPhone || displayName);
                           const handleAvatarClick = async () => {
                             if (!rawPhone) return;
                             // 1. Look up customer by phone to get customer_id
@@ -2957,7 +3061,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                             <div
                               onClick={handleAvatarClick}
                               className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white cursor-pointer hover:opacity-80 transition-opacity"
-                              style={{ backgroundColor: `hsl(${hue}, 50%, 45%)` }}
+                              style={{ backgroundColor: memberColor }}
                               title={`${displayName}${rawPhone ? ` • +${rawPhone}` : ""}`}
                             >
                               {initials}
@@ -3125,16 +3229,24 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">
             {isGroupMentionMode ? "اذكر عضو في القروب" : "اذكر موظف"}
           </p>
-          <div className="flex flex-col gap-1 max-h-[180px] overflow-y-auto">
+          <div className="flex flex-col gap-0.5 max-h-[220px] overflow-y-auto">
             {filteredMentionAgents.map((a: any) => {
               const displayName = a.full_name || a.name || a.phone || "";
-              const isPhoneOnly = !a.full_name && (!a.name || a.name === a.phone);
-              const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2);
+              const initials = displayName.slice(0, 2);
+              const memberColor = isGroupMentionMode ? getMemberColor(a.phone || a.rawDigits || a.id || displayName) : undefined;
               return (
-                <button key={a.id} onClick={() => insertMention(displayName, a.phone, a.id)} className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-secondary hover:bg-accent transition-colors text-right">
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{initials}</div>
-                  <div className="flex flex-col items-start min-w-0">
-                    <span className="font-medium truncate flex items-center gap-1">{displayName}{isGroupMentionMode && a.admin && <Crown className="w-3 h-3 shrink-0 text-primary" />}</span>
+                <button key={a.id} onClick={() => insertMention(displayName, a.phone, a.id)}
+                  className="flex items-center gap-2.5 text-xs px-3 py-2.5 rounded-xl hover:bg-accent transition-colors text-right">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                    style={{ backgroundColor: memberColor || "hsl(var(--primary))" }}>
+                    {initials}
+                  </div>
+                  <div className="flex flex-col items-start min-w-0 flex-1">
+                    <span className="font-semibold text-[13px] truncate flex items-center gap-1"
+                      style={{ color: memberColor }}>
+                      {displayName}
+                      {isGroupMentionMode && a.admin && <Crown className="w-3 h-3 shrink-0" />}
+                    </span>
                     {isGroupMentionMode && a.phone && (
                       <span className="text-[10px] text-muted-foreground" dir="ltr">+{a.phone}</span>
                     )}
@@ -3142,10 +3254,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                       <span className="text-[10px] text-muted-foreground">بدون رقم (LID)</span>
                     )}
                   </div>
-                  {isGroupMentionMode && (
-                    a.phone
-                      ? (!isPhoneOnly && <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 mr-auto shrink-0">جهة اتصال</Badge>)
-                      : a.id?.includes("@lid") && <Badge variant="secondary" className="text-[8px] px-1 py-0 h-4 mr-auto shrink-0">LID</Badge>
+                  {isGroupMentionMode && a.admin && (
+                    <Badge variant="secondary" className="text-[8px] px-1.5 py-0 h-4 shrink-0 bg-amber-100 text-amber-700 border-0">مشرف</Badge>
                   )}
                 </button>
               );
@@ -3968,24 +4078,66 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
               </Button>
             </div>
             {/* Current members list */}
-            <div className="max-h-60 overflow-y-auto space-y-1">
-              <p className="text-xs text-muted-foreground font-medium mb-2">الأعضاء الحاليون ({groupParticipants.length})</p>
-              {groupParticipants.map((p) => (
-                <div key={p.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                      {(p.name || p.phone).slice(0, 2)}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground font-medium">{groupParticipants.length} عضو</p>
+                <span className="text-[10px] text-muted-foreground">{groupParticipants.filter(p => p.admin).length} مشرف</span>
+              </div>
+              <input
+                placeholder="بحث بالاسم أو الرقم..."
+                className="w-full border border-border rounded-xl px-3 py-1.5 text-xs bg-background focus:outline-none"
+                dir="rtl"
+                onChange={e => {
+                  const q = e.target.value.toLowerCase();
+                  const els = document.querySelectorAll("[data-member-row]");
+                  els.forEach((el) => {
+                    const txt = (el as HTMLElement).dataset.memberRow || "";
+                    (el as HTMLElement).style.display = txt.includes(q) ? "" : "none";
+                  });
+                }}
+              />
+              <div className="max-h-64 overflow-y-auto space-y-1 -mx-1 px-1">
+                {groupParticipants.map((p) => {
+                  const color = getMemberColor(p.phone || p.rawDigits || p.id);
+                  return (
+                    <div key={p.id} data-member-row={`${p.name} ${p.phone}`.toLowerCase()}
+                      className="flex items-center justify-between py-2 px-2.5 rounded-xl hover:bg-secondary/50 transition-colors group">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                          style={{ backgroundColor: color }}>
+                          {(p.name || p.phone).slice(0, 2)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-semibold truncate flex items-center gap-1" style={{ color }}>
+                            {p.name || `+${p.phone}`}
+                            {p.admin && <Crown className="w-3 h-3 shrink-0 text-amber-500" />}
+                            {p.isSaved && <span className="text-[9px] text-muted-foreground font-normal">جهة اتصال</span>}
+                          </p>
+                          {p.phone && (
+                            <button
+                              onClick={() => { navigator.clipboard.writeText(`+${p.phone}`); toast.success("تم نسخ الرقم"); }}
+                              className="text-[10px] text-muted-foreground hover:text-primary transition-colors" dir="ltr">
+                              +{p.phone}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => { setFilterMemberPhone(p.phone || p.rawDigits || null); setShowAddMembersDialog(false); }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                          title="عرض رسائله فقط">
+                          <SearchIcon className="w-3.5 h-3.5" />
+                        </button>
+                        <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleRemoveMember(p.phone)}>
+                          <UserMinus className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{p.name}</p>
-                      <p className="text-[10px] text-muted-foreground" dir="ltr">+{p.phone}</p>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:text-destructive" onClick={() => handleRemoveMember(p.phone)}>
-                    <UserMinus className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
           </div>
         </DialogContent>
