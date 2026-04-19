@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { Send, Paperclip, Smile, Mic, StickyNote, AtSign, Zap, X, FileText, Image as ImageIcon, Video } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Send, Paperclip, Smile, Mic, StickyNote, AtSign, Zap, X, FileText, Video, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface InputAreaNewProps {
@@ -37,8 +37,14 @@ export const InputAreaNew = ({
   placeholder,
 }: InputAreaNewProps) => {
   const [showEmoji, setShowEmoji] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-expand tools when special modes are active
+  useEffect(() => {
+    if (isNoteMode || replyTo || imagePreview) setToolsOpen(true);
+  }, [isNoteMode, replyTo, imagePreview]);
 
   const canSend = inputText.trim().length > 0 || !!imagePreview;
 
@@ -118,6 +124,21 @@ export const InputAreaNew = ({
             : "border-gray-200 bg-gray-50 focus-within:border-[#25D366]/40 focus-within:bg-white focus-within:shadow-sm"
         )}>
 
+          {/* Tools toggle button */}
+          <button
+            onClick={() => setToolsOpen(p => !p)}
+            className={cn(
+              "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mb-0.5 transition-all",
+              toolsOpen
+                ? isNoteMode ? "bg-amber-100 text-amber-500" : "bg-[#25D366]/10 text-[#25D366]"
+                : "hover:bg-gray-100 text-gray-300 hover:text-gray-500"
+            )}
+            title={toolsOpen ? "إخفاء الأدوات" : "إظهار الأدوات"}
+            tabIndex={-1}
+          >
+            {toolsOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+          </button>
+
           {/* Textarea */}
           <textarea
             ref={textareaRef}
@@ -159,8 +180,8 @@ export const InputAreaNew = ({
         </div>
       </div>
 
-      {/* Tools Bar */}
-      <div className="flex items-center gap-0.5 px-4 pb-3">
+      {/* Tools Bar — collapsible */}
+      {toolsOpen && <div className="flex items-center gap-0.5 px-4 pb-3 animate-in fade-in slide-in-from-top-1 duration-150">
 
         {/* Left tools */}
         <div className="flex items-center gap-0.5 flex-1">
@@ -245,7 +266,10 @@ export const InputAreaNew = ({
             {enterToSend ? "Enter للإرسال" : "Shift+Enter للإرسال"}
           </p>
         )}
-      </div>
+      </div>}
+
+      {/* Minimal padding when toolbar is hidden */}
+      {!toolsOpen && <div className="pb-2" />}
     </div>
   );
 };

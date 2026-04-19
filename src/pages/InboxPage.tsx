@@ -9,6 +9,7 @@ import ConversationList from "@/components/inbox/ConversationListNew";
 import ChatArea from "@/components/inbox/ChatAreaNew";
 import CustomerInfoPanel from "@/components/inbox/CustomerInfoPanel";
 import NewConversationDialog from "@/components/inbox/NewConversationDialog";
+import InboxCommandBar from "@/components/inbox/InboxCommandBar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from "@/types/whatsapp";
@@ -115,6 +116,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const [newConvOpen, setNewConvOpen] = useState(false);
   const [mobileCustomerInfoOpen, setMobileCustomerInfoOpen] = useState(false);
   const [desktopInfoOpen, setDesktopInfoOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const selectedIdRef = useRef<string | null>(null);
   const deepLinkApplied = useRef(false);
   const fetchConversationsRef = useRef<(() => Promise<void>) | null>(null);
@@ -122,6 +124,18 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
 
 
   const isMobile = useIsMobile();
+
+  // Global Cmd+K / Ctrl+K shortcut for command bar
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCmdOpen(prev => !prev);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // Sync URL when selectedId changes
   useEffect(() => {
@@ -1505,7 +1519,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-3rem)] overflow-hidden bg-background" dir="rtl">
+    <div className="flex h-[calc(100dvh-3rem)] overflow-hidden bg-background relative" dir="rtl">
       {/* On mobile: show list when no selection, show chat when selected */}
       {(!isMobile || !selected) && (
         <ConversationList
@@ -1564,16 +1578,29 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       )}
 
       {selected && !isMobile && desktopInfoOpen && (
-        <div className="relative animate-in slide-in-from-left duration-200 h-full">
-          <button
+        <>
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 z-20 bg-black/10"
             onClick={() => setDesktopInfoOpen(false)}
-            className="absolute top-3 left-3 z-10 w-7 h-7 rounded-lg bg-muted hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-all"
-            title="إغلاق"
-          >
-            <X className="w-4 h-4" />
-          </button>
-          <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} onAssignAgent={handleAssignAgent} onAssignTeam={handleAssignTeam} />
-        </div>
+          />
+          {/* Floating overlay panel */}
+          <div className="absolute inset-y-0 left-0 z-30 w-80 bg-background border-r shadow-2xl animate-in slide-in-from-left duration-200 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+              <span className="text-sm font-semibold">تفاصيل العميل</span>
+              <button
+                onClick={() => setDesktopInfoOpen(false)}
+                className="w-7 h-7 rounded-lg bg-muted hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-all"
+                title="إغلاق"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <CustomerInfoPanel conversation={selected} onUpdateNotes={handleUpdateNotes} onAssignAgent={handleAssignAgent} onAssignTeam={handleAssignTeam} />
+            </div>
+          </div>
+        </>
       )}
 
       <NewConversationDialog
@@ -1585,6 +1612,18 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           await fetchConversationsRef.current?.();
           setSelectedId(convId);
         }}
+      />
+
+      <InboxCommandBar
+        open={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        conversations={conversations}
+        onSelectConversation={(id) => {
+          setSelectedId(id);
+          setConversations(prev => prev.map(c => c.id === id ? { ...c, unread: 0 } : c));
+          supabase.from("conversations").update({ unread_count: 0 }).eq("id", id).then();
+        }}
+        onNewConversation={() => setNewConvOpen(true)}
       />
     </div>
   );
