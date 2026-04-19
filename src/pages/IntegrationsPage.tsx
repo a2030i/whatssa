@@ -110,6 +110,7 @@ const IntegrationsPage = () => {
   const [isReviewMode, setIsReviewMode] = useState(() => window.localStorage.getItem("meta-review-mode") === "1");
   const [disconnectConfirm, setDisconnectConfirm] = useState<{ id: string; label: string; unofficial?: boolean; config?: WhatsAppConfig } | null>(null);
   const [deleteInstanceConfirm, setDeleteInstanceConfirm] = useState<WhatsAppConfig | null>(null);
+  const [deleteConfigConfirm, setDeleteConfigConfirm] = useState<{ id: string; label: string } | null>(null);
 
   useEffect(() => {
     window.localStorage.setItem("meta-review-mode", isReviewMode ? "1" : "0");
@@ -1495,6 +1496,23 @@ const IntegrationsPage = () => {
     loadConfigs(true);
   };
 
+  const handleDeleteConfig = (config: WhatsAppConfig) => {
+    setDeleteConfigConfirm({
+      id: config.id,
+      label: config.channel_label || config.display_phone || config.business_name || config.id,
+    });
+  };
+
+  const confirmDeleteConfig = async () => {
+    if (!deleteConfigConfirm) return;
+    const { id } = deleteConfigConfirm;
+    setDeleteConfigConfirm(null);
+    await supabase.from("whatsapp_config").delete().eq("id", id);
+    setConfigs((prev) => prev.filter((c) => c.id !== id));
+    setUnofficialConfigs((prev) => prev.filter((c) => c.id !== id));
+    toast.success("تم حذف الرقم نهائياً");
+  };
+
   const deleteUnofficialInstance = (config: WhatsAppConfig) => {
     if (!config.evolution_instance_name) return;
     setDeleteInstanceConfirm(config);
@@ -1699,6 +1717,13 @@ const IntegrationsPage = () => {
                           >
                             <Copy className="w-3 h-3" />
                           </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteConfig(config); }}
+                            title="حذف الرقم نهائياً"
+                            className="text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
                         <span className="text-[9px] font-mono text-muted-foreground/50 select-all" dir="ltr">{config.id.slice(0, 8)}…</span>
                       </div>
@@ -1880,6 +1905,13 @@ const IntegrationsPage = () => {
                             className="text-muted-foreground hover:text-primary transition-colors"
                           >
                             <Copy className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteConfig(config); }}
+                            title="حذف الرقم نهائياً"
+                            className="text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
                         <span className="text-[9px] font-mono text-muted-foreground/50 select-all" dir="ltr">{config.id.slice(0, 8)}…</span>
@@ -2837,6 +2869,16 @@ const IntegrationsPage = () => {
         destructive
         onConfirm={confirmDeleteInstance}
         onCancel={() => setDeleteInstanceConfirm(null)}
+      />
+
+      <ConfirmDialog
+        open={!!deleteConfigConfirm}
+        title="هل تريد حذف هذا الرقم نهائياً؟"
+        description="سيتم حذف الرقم بشكل دائم ولا يمكن التراجع عن هذا الإجراء."
+        confirmLabel="حذف نهائياً"
+        destructive
+        onConfirm={confirmDeleteConfig}
+        onCancel={() => setDeleteConfigConfirm(null)}
       />
     </div>
   );
