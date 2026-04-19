@@ -1,4 +1,5 @@
-﻿import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+﻿import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Search, Filter, Clock, MessageSquare, Plus, CheckSquare, Square, Pencil, Trash2, ArrowUpDown } from "lucide-react";
 import BulkActionsBar from "./BulkActionsBar";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,143 @@ interface ConversationListProps {
   onToggleArchive?: (id: string) => void;
   inboxMode?: "whatsapp" | "email";
 }
+
+// ── Virtual conversation row ──────────────────────────────────────────────────
+interface VirtualConvListProps {
+  conversations: Conversation[];
+  selectedId: string | null;
+  bulkMode: boolean;
+  bulkSelected: Set<string>;
+  onSelect: (id: string) => void;
+  onBulkToggle: (id: string) => void;
+  onTogglePin?: (id: string) => void;
+  onToggleArchive?: (id: string) => void;
+  scrollContainerRef: React.RefObject<HTMLDivElement>;
+}
+
+const VirtualConvList = ({ conversations, selectedId, bulkMode, bulkSelected, onSelect, onBulkToggle, onTogglePin, onToggleArchive, scrollContainerRef }: VirtualConvListProps) => {
+  const virtualizer = useVirtualizer({
+    count: conversations.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 96,
+    overscan: 8,
+  });
+
+  return (
+    <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
+      {virtualizer.getVirtualItems().map(vItem => {
+        const conv = conversations[vItem.index];
+        const isSelected    = conv.id === selectedId;
+        const displayName   = getConversationDisplayName(conv);
+        const hasUnread     = conv.unread > 0;
+        const waitTime      = getWaitTime(conv);
+        const isBulkSelected = bulkSelected.has(conv.id);
+
+        return (
+          <div key={conv.id} data-index={vItem.index} ref={virtualizer.measureElement}
+            style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${vItem.start}px)` }}
+            className="pb-1.5">
+            <button
+              onClick={() => { if (bulkMode) onBulkToggle(conv.id); else onSelect(conv.id); }}
+              onContextMenu={e => {
+                e.preventDefault();
+                const menu = document.createElement("div");
+                menu.className = "fixed z-50 bg-white border border-gray-100 rounded-2xl shadow-xl p-1.5 min-w-[150px] text-sm";
+                menu.style.left = `${e.clientX}px`;
+                menu.style.top  = `${e.clientY}px`;
+                [
+                  { label: conv.isPinned ? "📌 إلغاء التثبيت" : "📌 تثبيت", action: () => onTogglePin?.(conv.id) },
+                  { label: conv.isArchived ? "📁 إلغاء الأرشفة" : "📁 أرشفة", action: () => onToggleArchive?.(conv.id) },
+                ].forEach(item => {
+                  const btn = document.createElement("button");
+                  btn.className = "w-full text-right px-3 py-2 rounded-xl hover:bg-gray-50 text-xs transition-colors text-gray-700";
+                  btn.textContent = item.label;
+                  btn.onclick = () => { item.action(); menu.remove(); };
+                  menu.appendChild(btn);
+                });
+                document.body.appendChild(menu);
+                const dismiss = () => { menu.remove(); document.removeEventListener("click", dismiss); };
+                setTimeout(() => document.addEventListener("click", dismiss), 0);
+              }}
+              className={cn(
+                "w-full text-right p-3 rounded-2xl transition-all border relative",
+                isSelected && !bulkMode ? "bg-[#25D366]/8 border-[#25D366]/20 shadow-sm" : "bg-white border-gray-100 hover:border-[#25D366]/20 hover:shadow-sm",
+                isBulkSelected && "bg-[#25D366]/5 border-[#25D366]/15",
+                waitTime?.urgency === "critical" && !isSelected && "border-r-4 border-r-red-400",
+                waitTime?.urgency === "warning"  && !isSelected && "border-r-2 border-r-amber-400",
+                hasUnread && !isSelected && !waitTime && "border-r-2 border-r-[#25D366]"
+              )}>
+              <div className="flex items-start gap-3">
+                {bulkMode && (
+                  <div className="flex items-center pt-1 shrink-0">
+                    {isBulkSelected ? <CheckSquare className="w-4 h-4 text-[#25D366]" /> : <Square className="w-4 h-4 text-gray-200" />}
+                  </div>
+                )}
+                <div className="relative shrink-0">
+                  {conv.profilePic ? (
+                    <img src={conv.profilePic} alt={displayName} className="w-11 h-11 rounded-2xl object-cover ring-2 ring-gray-100" onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
+                  ) : (
+                    <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center text-[15px] font-bold",
+                      isSelected ? "bg-[#25D366]/15 text-[#25D366]" : "bg-gray-100 text-gray-500")}>
+                      {conv.conversationType === "group" ? "👥" : displayName.charAt(0)}
+                    </div>
+                  )}
+                  <span className={cn("absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-white",
+                    conv.status === "active" ? "bg-[#25D366]" : conv.status === "waiting" ? "bg-amber-400" : "bg-gray-300")} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <p className={cn("text-[13px] truncate", hasUnread ? "font-bold text-gray-900" : "font-semibold text-gray-700")}>
+                      {conv.isPinned && <span className="text-[#25D366] ml-1">📌</span>}
+                      {displayName}
+                    </p>
+                    <span className={cn("text-[10px] shrink-0", hasUnread ? "text-[#25D366] font-bold" : "text-gray-300")}>
+                      {conv.timestamp}
+                    </span>
+                  </div>
+                  <p className={cn("text-[12px] truncate leading-snug mb-1.5",
+                    hasUnread ? "text-gray-600 font-medium" : "text-gray-400")}>
+                    {conv.lastMessage || "لا توجد رسائل بعد"}
+                  </p>
+                  {waitTime && (
+                    <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl mb-1.5",
+                      waitTime.urgency === "critical" ? "bg-red-100 text-red-600" :
+                      waitTime.urgency === "warning"  ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-500")}>
+                      <Clock className="w-3 h-3" />
+                      <span className="text-[11px] font-bold">
+                        {waitTime.urgency === "critical" ? "🚨 " : waitTime.urgency === "warning" ? "⚠️ " : ""}
+                        ينتظر {waitTime.text}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      {conv.channelType === "meta_api" && <span className="text-[9px] font-bold text-[#25D366] bg-[#25D366]/10 px-1.5 py-0.5 rounded-lg">Meta</span>}
+                      {conv.channelType === "evolution" && <span className="text-[9px] font-bold text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded-lg">QR</span>}
+                      {conv.channelName && <span className="text-[9px] text-gray-400 truncate max-w-[70px]">{conv.channelName}</span>}
+                      {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
+                        <span className="text-[9px] text-gray-400 truncate max-w-[60px]">• {conv.assignedTo.split(" ")[0]}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {conv.sentiment === "negative" && <span className="text-[11px]">😠</span>}
+                      {conv.sentiment === "positive" && <span className="text-[11px]">😊</span>}
+                      {hasUnread && (
+                        <span className="min-w-[20px] h-[20px] rounded-full bg-[#25D366] text-white text-[10px] font-bold flex items-center justify-center px-1.5 shadow-sm">
+                          {conv.unread}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 const ConversationListNew = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive, inboxMode = "whatsapp" }: ConversationListProps) => {
   const { orgId, profile, userRole, isSuperAdmin } = useAuth();
@@ -363,132 +501,25 @@ style={{fontSize: '16px'}}
         </div>
       )}
 
-      {/* ── Conversation List ── */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
+      {/* ── Conversation List (virtualised) ── */}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 py-2">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-gray-400">
             <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-3 text-2xl">💬</div>
             <p className="text-sm font-medium">لا توجد محادثات</p>
             <p className="text-xs text-gray-300 mt-1">جرّب تغيير الفلاتر</p>
           </div>
-        ) : filtered.map(conv => {
-          const isSelected   = conv.id === selectedId;
-          const displayName  = getConversationDisplayName(conv);
-          const hasUnread    = conv.unread > 0;
-          const waitTime     = getWaitTime(conv);
-          const isBulkSelected = bulkSelected.has(conv.id);
-
-          return (
-            <button key={conv.id}
-              onClick={() => {
-                if (bulkMode) {
-                  setBulkSelected(prev => { const next = new Set(prev); if (next.has(conv.id)) next.delete(conv.id); else next.add(conv.id); return next; });
-                } else { onSelect(conv.id); }
-              }}
-              onContextMenu={e => {
-                e.preventDefault();
-                const menu = document.createElement("div");
-                menu.className = "fixed z-50 bg-white border border-gray-100 rounded-2xl shadow-xl p-1.5 min-w-[150px] text-sm";
-                menu.style.left = `${e.clientX}px`;
-                menu.style.top  = `${e.clientY}px`;
-                [
-                  { label: conv.isPinned ? "📌 إلغاء التثبيت" : "📌 تثبيت", action: () => onTogglePin?.(conv.id) },
-                  { label: conv.isArchived ? "📁 إلغاء الأرشفة" : "📁 أرشفة", action: () => onToggleArchive?.(conv.id) },
-                ].forEach(item => {
-                  const btn = document.createElement("button");
-                  btn.className = "w-full text-right px-3 py-2 rounded-xl hover:bg-gray-50 text-xs transition-colors text-gray-700";
-                  btn.textContent = item.label;
-                  btn.onclick = () => { item.action(); menu.remove(); };
-                  menu.appendChild(btn);
-                });
-                document.body.appendChild(menu);
-                const dismiss = () => { menu.remove(); document.removeEventListener("click", dismiss); };
-                setTimeout(() => document.addEventListener("click", dismiss), 0);
-              }}
-              className={cn(
-                "w-full text-right p-3 rounded-2xl transition-all border relative",
-                isSelected && !bulkMode ? "bg-[#25D366]/8 border-[#25D366]/20 shadow-sm" : "bg-white border-gray-100 hover:border-[#25D366]/20 hover:shadow-sm",
-                isBulkSelected && "bg-[#25D366]/5 border-[#25D366]/15",
-                waitTime?.urgency === "critical" && !isSelected && "border-r-4 border-r-red-400",
-                waitTime?.urgency === "warning"  && !isSelected && "border-r-2 border-r-amber-400",
-                hasUnread && !isSelected && !waitTime && "border-r-2 border-r-[#25D366]"
-              )}>
-
-              <div className="flex items-start gap-3">
-                {bulkMode && (
-                  <div className="flex items-center pt-1 shrink-0">
-                    {isBulkSelected ? <CheckSquare className="w-4 h-4 text-[#25D366]" /> : <Square className="w-4 h-4 text-gray-200" />}
-                  </div>
-                )}
-
-                {/* Avatar */}
-                <div className="relative shrink-0">
-                  {conv.profilePic ? (
-                    <img src={conv.profilePic} alt={displayName} className="w-11 h-11 rounded-2xl object-cover ring-2 ring-gray-100" onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
-                  ) : (
-                    <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center text-[15px] font-bold",
-                      isSelected ? "bg-[#25D366]/15 text-[#25D366]" : "bg-gray-100 text-gray-500")}>
-                      {conv.conversationType === "group" ? "👥" : displayName.charAt(0)}
-                    </div>
-                  )}
-                  <span className={cn("absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-white",
-                    conv.status === "active" ? "bg-[#25D366]" : conv.status === "waiting" ? "bg-amber-400" : "bg-gray-300")} />
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-0.5">
-                    <p className={cn("text-[13px] truncate", hasUnread ? "font-bold text-gray-900" : "font-semibold text-gray-700")}>
-                      {conv.isPinned && <span className="text-[#25D366] ml-1">📌</span>}
-                      {displayName}
-                    </p>
-                    <span className={cn("text-[10px] shrink-0", hasUnread ? "text-[#25D366] font-bold" : "text-gray-300")}>
-                      {conv.timestamp}
-                    </span>
-                  </div>
-
-                  <p className={cn("text-[12px] truncate leading-snug mb-1.5",
-                    hasUnread ? "text-gray-600 font-medium" : "text-gray-400")}>
-                    {conv.lastMessage || "لا توجد رسائل بعد"}
-                  </p>
-
-                  {/* ── وقت الانتظار — واضح وكبير ── */}
-                  {waitTime && (
-                    <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl mb-1.5",
-                      waitTime.urgency === "critical" ? "bg-red-100 text-red-600" :
-                      waitTime.urgency === "warning"  ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-500")}>
-                      <Clock className="w-3 h-3" />
-                      <span className="text-[11px] font-bold">
-                        {waitTime.urgency === "critical" ? "🚨 " : waitTime.urgency === "warning" ? "⚠️ " : ""}
-                        ينتظر {waitTime.text}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      {conv.channelType === "meta_api" && <span className="text-[9px] font-bold text-[#25D366] bg-[#25D366]/10 px-1.5 py-0.5 rounded-lg">Meta</span>}
-                      {conv.channelType === "evolution" && <span className="text-[9px] font-bold text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded-lg">QR</span>}
-                      {conv.channelName && <span className="text-[9px] text-gray-400 truncate max-w-[70px]">{conv.channelName}</span>}
-                      {conv.assignedTo && conv.assignedTo !== "غير معيّن" && (
-                        <span className="text-[9px] text-gray-400 truncate max-w-[60px]">• {conv.assignedTo.split(" ")[0]}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {conv.sentiment === "negative" && <span className="text-[11px]">😠</span>}
-                      {conv.sentiment === "positive" && <span className="text-[11px]">😊</span>}
-                      {hasUnread && (
-                        <span className="min-w-[20px] h-[20px] rounded-full bg-[#25D366] text-white text-[10px] font-bold flex items-center justify-center px-1.5 shadow-sm">
-                          {conv.unread}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </button>
-          );
-        })}
+        ) : <VirtualConvList
+              conversations={filtered}
+              selectedId={selectedId}
+              bulkMode={bulkMode}
+              bulkSelected={bulkSelected}
+              onSelect={onSelect}
+              onBulkToggle={id => setBulkSelected(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; })}
+              onTogglePin={onTogglePin}
+              onToggleArchive={onToggleArchive}
+              scrollContainerRef={scrollContainerRef}
+            />}
       </div>
 
       {bulkMode && bulkSelected.size > 0 && (

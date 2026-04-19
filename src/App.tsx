@@ -58,7 +58,16 @@ const GrowthToolsPage = lazy(() => import("./pages/GrowthToolsPage"));
 const PermissionsPage = lazy(() => import("./pages/PermissionsPage"));
 const InstallPage = lazy(() => import("./pages/InstallPage"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">

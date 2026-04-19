@@ -19,9 +19,11 @@ import AdminAiManagement from "@/components/admin/AdminAiManagement";
 import AdminPricingManager from "@/components/admin/AdminPricingManager";
 import AdminBotTemplates from "@/components/admin/AdminBotTemplates";
 import AdminWhatsAppMonitor from "@/components/admin/AdminWhatsAppMonitor";
+import AdminConversations from "@/components/admin/AdminConversations";
 
 const tabs = [
   { id: "overview", label: "نظرة عامة" },
+  { id: "conversations", label: "💬 المحادثات" },
   { id: "accounts", label: "الحسابات" },
   { id: "finance", label: "المالية" },
   { id: "plans", label: "الباقات" },
@@ -46,6 +48,7 @@ const AdminDashboard = () => {
   const renderTab = () => {
     switch (activeTab) {
       case "overview": return <AdminOverview />;
+      case "conversations": return <AdminConversations />;
       case "accounts": return <AdminAccounts />;
       case "finance": return <AdminFinance />;
       case "plans": return <AdminPlans />;
