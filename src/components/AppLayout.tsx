@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/use-mobile";
 import useNotificationSound from "@/hooks/useNotificationSound";
 import useKeyboardShortcuts from "@/hooks/useKeyboardShortcuts";
+import PlatformAnnouncementBanner from "./PlatformAnnouncementBanner";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -81,6 +82,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </div>
       </div>
       <main className={`md:mr-[250px] min-h-screen ${isImpersonating ? "pt-[82px]" : "pt-12"} ${isMobile && !hideBottomNav ? "pb-16" : ""} transition-all duration-300`}>
+        <PlatformAnnouncementBanner />
         {children}
       </main>
 

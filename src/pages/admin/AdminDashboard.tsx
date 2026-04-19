@@ -20,10 +20,13 @@ import AdminPricingManager from "@/components/admin/AdminPricingManager";
 import AdminBotTemplates from "@/components/admin/AdminBotTemplates";
 import AdminWhatsAppMonitor from "@/components/admin/AdminWhatsAppMonitor";
 import AdminConversations from "@/components/admin/AdminConversations";
+import AdminImpersonationLogs from "@/components/admin/AdminImpersonationLogs";
+import AdminActivityFeed from "@/components/admin/AdminActivityFeed";
+import AdminAnnouncements from "@/components/admin/AdminAnnouncements";
+import AdminFeatureFlags from "@/components/admin/AdminFeatureFlags";
 
 const tabs = [
   { id: "overview", label: "نظرة عامة" },
-  { id: "conversations", label: "💬 المحادثات" },
   { id: "accounts", label: "الحسابات" },
   { id: "finance", label: "المالية" },
   { id: "plans", label: "الباقات" },
@@ -35,6 +38,10 @@ const tabs = [
   { id: "baileys", label: "سيرفر QR" },
   { id: "bot_templates", label: "🤖 قوالب البوت" },
   { id: "wa_monitor", label: "📡 مراقبة الأرقام" },
+  { id: "announcements", label: "📣 الإعلانات" },
+  { id: "feature_flags", label: "🚩 Feature Flags" },
+  { id: "impersonation_logs", label: "🔐 سجل الدخول" },
+  { id: "activity_feed", label: "📋 نشاط الأدمن" },
   { id: "logs", label: "السجلات" },
   { id: "settings", label: "إعدادات النظام" },
   { id: "emergency", label: "🚨 الطوارئ" },
@@ -60,6 +67,10 @@ const AdminDashboard = () => {
       case "baileys": return <AdminBaileys />;
       case "bot_templates": return <AdminBotTemplates />;
       case "wa_monitor": return <AdminWhatsAppMonitor />;
+      case "announcements": return <AdminAnnouncements />;
+      case "feature_flags": return <AdminFeatureFlags />;
+      case "impersonation_logs": return <AdminImpersonationLogs />;
+      case "activity_feed": return <AdminActivityFeed />;
       case "logs": return <AdminLogs />;
       case "settings": return <AdminSettings />;
       case "emergency": return <AdminEmergency />;
