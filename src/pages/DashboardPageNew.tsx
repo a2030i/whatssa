@@ -1,21 +1,6 @@
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
-
-interface AgentStat {
-  full_name: string;
-  open_convs: number;
-  messages_7days: number;
-  messages_today: number;
-  read_msgs: number;
-  delivered_msgs: number;
-}
-
-interface HourStat { hour: number; count: number; }
-interface DayStat { day: string; day_num: number; count: number; }
-interface TopCustomer { customer_name: string; customer_phone: string; msg_count: number; last_message: string; }
 
 const DAYS_AR: Record<string, string> = {
   Sunday:"الأحد", Monday:"الاثنين", Tuesday:"الثلاثاء",
@@ -24,133 +9,17 @@ const DAYS_AR: Record<string, string> = {
 
 const DashboardPageNew = () => {
   const data = useDashboardData();
-  const { profile, orgId } = useAuth();
-  const [agents, setAgents]           = useState<AgentStat[]>([]);
-  const [hourStats, setHourStats]     = useState<HourStat[]>([]);
-  const [dayStats, setDayStats]       = useState<DayStat[]>([]);
-  const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
-  const [loading, setLoading]         = useState(true);
+  const { profile } = useAuth();
 
-  useEffect(() => {
-    if (!orgId) return;
-    const run = async () => {
-      setLoading(true);
-
-      // conversation IDs للمنظمة
-      const { data: convRows } = await supabase
-        .from("conversations")
-        .select("id, assigned_to_id, status, conversation_type")
-        .eq("org_id", orgId);
-      const allConvIds = (convRows || []).map((c:any) => c.id);
-
-      // profiles
-      const { data: profiles } = await supabase
-        .from("profiles").select("id, full_name").eq("org_id", orgId);
-
-      // رسائل آخر 7 أيام
-      const { data: msgs7 } = await supabase
-        .from("messages")
-        .select("metadata, status, created_at, sender")
-        .eq("sender", "agent")
-        .gte("created_at", new Date(Date.now()-7*864e5).toISOString())
-        .in("conversation_id", allConvIds);
-
-      // رسائل آخر 30 يوم للإحصائيات
-      const { data: msgs30 } = await supabase
-        .from("messages")
-        .select("created_at, sender")
-        .gte("created_at", new Date(Date.now()-30*864e5).toISOString())
-        .in("conversation_id", allConvIds);
-
-      // أكثر العملاء — خاص فقط
-      const privateConvIds = (convRows||[])
-        .filter((c:any) => c.conversation_type === "private")
-        .map((c:any) => c.id);
-
-      const { data: custMsgs } = await supabase
-        .from("messages")
-        .select("conversation_id")
-        .eq("sender", "customer")
-        .gte("created_at", new Date(Date.now()-30*864e5).toISOString())
-        .in("conversation_id", privateConvIds);
-
-      // احسب أكثر العملاء
-      const convCount: Record<string,number> = {};
-      (custMsgs||[]).forEach((m:any) => {
-        convCount[m.conversation_id] = (convCount[m.conversation_id]||0)+1;
-      });
-      const topConvIds = Object.entries(convCount)
-        .sort(([,a],[,b]) => b-a).slice(0,8).map(([id]) => id);
-
-      let topCusts: TopCustomer[] = [];
-      if (topConvIds.length > 0) {
-        const { data: convDetails } = await supabase
-          .from("conversations")
-          .select("id, customer_name, customer_phone, last_message_at")
-          .in("id", topConvIds);
-        topCusts = (convDetails||[]).map((c:any) => ({
-          customer_name: c.customer_name || c.customer_phone,
-          customer_phone: c.customer_phone,
-          msg_count: convCount[c.id] || 0,
-          last_message: c.last_message_at,
-        })).sort((a,b) => b.msg_count - a.msg_count);
-        setTopCustomers(topCusts);
-      }
-
-      // توقيت السعودية
-      const todayStart = new Date();
-      todayStart.setHours(0,0,0,0);
-      const todayUTC = new Date(todayStart.getTime()-3*36e5);
-
-      // أداء الموظفين
-      if (profiles && msgs7) {
-        const stats: AgentStat[] = profiles.map((p:any) => {
-          const am = msgs7.filter((m:any) => m.metadata?.sender_name === p.full_name);
-          const tm = am.filter((m:any) => new Date(m.created_at) >= todayUTC);
-          const openC = (convRows||[]).filter((c:any) => c.assigned_to_id===p.id && c.status==="active").length;
-          return {
-            full_name: p.full_name,
-            open_convs: openC,
-            messages_7days: am.length,
-            messages_today: tm.length,
-            read_msgs: am.filter((m:any) => m.status==="read").length,
-            delivered_msgs: am.filter((m:any) => m.status==="delivered").length,
-          };
-        }).filter((a:AgentStat) => a.messages_7days>0||a.open_convs>0)
-          .sort((a:AgentStat,b:AgentStat) => b.messages_today-a.messages_today);
-        setAgents(stats);
-      }
-
-      // إحصائيات الساعات (بتوقيت السعودية)
-      if (msgs30) {
-        const hMap: Record<number,number> = {};
-        msgs30.forEach((m:any) => {
-          const h = (new Date(m.created_at).getUTCHours()+3)%24;
-          hMap[h] = (hMap[h]||0)+1;
-        });
-        setHourStats(Array.from({length:24},(_,i) => ({hour:i, count:hMap[i]||0})));
-
-        const dMap: Record<number,number> = {};
-        msgs30.forEach((m:any) => {
-          const d = new Date(new Date(m.created_at).getTime()+3*36e5).getUTCDay();
-          dMap[d] = (dMap[d]||0)+1;
-        });
-        const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-        setDayStats(dayNames.map((name,i) => ({day:name, day_num:i, count:dMap[i]||0})));
-      }
-
-      setLoading(false);
-    };
-    run();
-  }, [orgId]);
-
-  if (data.isLoading || loading) {
+  if (data.isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
+
+  const { agents, hourStats, dayStats, topCustomers } = data;
 
   const sentToday      = data.messageStats.sentToday;
   const openConvs      = data.openConversations;
@@ -173,9 +42,11 @@ const DashboardPageNew = () => {
   const colors         = ["#25D366","#6366f1","#f59e0b","#0ea5e9","#ec4899","#14b8a6","#f97316","#8b5cf6"];
   const totalToday     = agents.reduce((a,b)=>a+b.messages_today,0);
   const maxHour        = Math.max(...hourStats.map(h=>h.count),1);
-  const maxDay         = Math.max(...dayStats.map(d=>d.count),1);
   const peakHour       = hourStats.reduce((a,b)=>a.count>b.count?a:b,{hour:0,count:0});
+  const maxDay         = Math.max(...dayStats.map(d=>d.count),1);
   const peakDay        = dayStats.reduce((a,b)=>a.count>b.count?a:b,{day:"",day_num:0,count:0});
+
+  const csatStars = data.csatAverage !== null ? Math.round(data.csatAverage) : null;
 
   return (
     <div dir="rtl" style={{fontFamily:"'Tajawal',sans-serif",background:"#f0f2f5",minHeight:"100vh"}}>
@@ -183,7 +54,6 @@ const DashboardPageNew = () => {
       <style>{`
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
         .wu{animation:fadeUp .4s ease both;background:#fff;border-radius:20px;border:1px solid #e2e8f0;box-shadow:0 1px 8px rgba(0,0,0,.06)}
         .live{animation:pulse 1.8s infinite}
         .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -256,11 +126,9 @@ const DashboardPageNew = () => {
 
         {/* ══ Wallet Card (Visa Style) ══ */}
         <div style={{marginBottom:16,background:"linear-gradient(135deg,#1e3a5f 0%,#0f172a 50%,#1e3a5f 100%)",borderRadius:24,padding:"24px",position:"relative",overflow:"hidden",boxShadow:"0 8px 32px rgba(15,23,42,.35)"}}>
-          {/* Background circles */}
           <div style={{position:"absolute",top:-40,left:-40,width:160,height:160,borderRadius:"50%",background:"rgba(255,255,255,.03)"}}/>
           <div style={{position:"absolute",bottom:-60,right:-20,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
           <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle,rgba(37,211,102,.08) 0%,transparent 70%)"}}/>
-
           <div style={{position:"relative",zIndex:1}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
               <div>
@@ -273,14 +141,12 @@ const DashboardPageNew = () => {
                 <span style={{color:"rgba(255,255,255,.6)",fontSize:11,marginRight:8,fontWeight:600}}>whatssa</span>
               </div>
             </div>
-
             <div style={{marginBottom:24}}>
               <p style={{color:"rgba(255,255,255,.4)",fontSize:12,margin:"0 0 4px"}}>الرصيد المتاح</p>
               <p style={{color:"#fff",fontSize:38,fontWeight:900,margin:0,letterSpacing:-1}}>
                 {wallet.toFixed(2)} <span style={{fontSize:18,fontWeight:500,color:"rgba(255,255,255,.6)"}}>ر.س</span>
               </p>
             </div>
-
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
               <div>
                 <p style={{color:"rgba(255,255,255,.4)",fontSize:10,margin:"0 0 2px",letterSpacing:2}}>الحالة</p>
@@ -383,6 +249,39 @@ const DashboardPageNew = () => {
               </div>
             </div>
 
+            {/* CSAT Card */}
+            <div className="wu" style={{padding:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+                <div style={{width:4,height:22,borderRadius:99,background:"#f59e0b"}}/>
+                <p style={{fontSize:15,fontWeight:800,color:"#0f172a",margin:0}}>رضا العملاء</p>
+                <span style={{fontSize:12}}>⭐</span>
+              </div>
+              {data.csatAverage !== null ? (
+                <div>
+                  <div style={{textAlign:"center",marginBottom:12}}>
+                    <div style={{fontSize:42,fontWeight:900,color:"#f59e0b",lineHeight:1}}>{data.csatAverage}</div>
+                    <div style={{fontSize:11,color:"#64748b",marginTop:4}}>متوسط التقييم / 5</div>
+                    <div style={{display:"flex",justifyContent:"center",gap:3,marginTop:6}}>
+                      {[1,2,3,4,5].map(s => (
+                        <span key={s} style={{fontSize:18,color:csatStars!==null&&s<=csatStars?"#f59e0b":"#e2e8f0"}}>★</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{background:"#fef3c7",borderRadius:12,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:11,color:"#b45309",fontWeight:600}}>عدد التقييمات</span>
+                    <span style={{fontSize:18,fontWeight:900,color:"#b45309"}}>{data.csatCount}</span>
+                  </div>
+                  <p style={{fontSize:10,color:"#94a3b8",textAlign:"center",marginTop:8}}>آخر 30 يوم</p>
+                </div>
+              ) : (
+                <div style={{textAlign:"center",padding:"20px 0"}}>
+                  <div style={{fontSize:32,marginBottom:8}}>📊</div>
+                  <p style={{fontSize:12,color:"#94a3b8"}}>لا توجد تقييمات بعد</p>
+                  <p style={{fontSize:10,color:"#cbd5e1",marginTop:4}}>سيظهر المتوسط بعد أول تقييم</p>
+                </div>
+              )}
+            </div>
+
             {/* Channels */}
             <div className="wu" style={{padding:20}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
@@ -434,7 +333,7 @@ const DashboardPageNew = () => {
                 <div key={i} className="bar-h" title={`${h.hour}:00 — ${h.count} رسالة`}
                   style={{flex:1,height:`${Math.max(4,pct)}%`,borderRadius:"3px 3px 0 0",
                     background:isPeak?"#f59e0b":isWork?"#25D366":"#cbd5e1",
-                    transition:"all .3s ease",position:"relative"}}
+                    transition:"all .3s ease"}}
                 />
               );
             })}

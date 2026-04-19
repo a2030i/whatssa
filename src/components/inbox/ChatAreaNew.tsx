@@ -32,6 +32,7 @@ import CreateTicketDialog from "@/components/tickets/CreateTicketDialog";
 import SendQuotaBanner from "./SendQuotaBanner";
 import EmailTemplatePicker from "./EmailTemplatePicker";
 import EmailRecipientAutocomplete from "./EmailRecipientAutocomplete";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const emojis = ["😊", "👍", "❤️", "🎉", "🙏", "👋", "✅", "⭐", "🔥", "💯", "😂", "🤝", "📦", "💳", "🚚", "⏰"];
 
@@ -1058,6 +1059,7 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [hasProducts, setHasProducts] = useState(false);
   const [groupPicture, setGroupPicture] = useState<string | null>(conversation.profilePic || null);
   const [showAddMembersDialog, setShowAddMembersDialog] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ title: string; description?: string; action: () => void } | null>(null);
   const [currentChannelPhone, setCurrentChannelPhone] = useState("");
   const [mentionMessageIds, setMentionMessageIds] = useState<string[]>([]);
   const [currentMentionIdx, setCurrentMentionIdx] = useState(-1);
@@ -1311,17 +1313,21 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
   };
 
-  const handleLeaveGroup = async () => {
-    if (!confirm("هل أنت متأكد من الخروج من هذا القروب؟")) return;
-    try {
-      const { error } = await invokeCloud("evolution-manage", {
-        body: { action: "leave_group", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
-      });
-      if (error) throw error;
-      toast.success("✅ تم الخروج من القروب");
-    } catch (err: any) {
-      toast.error("فشل الخروج: " + (err.message || ""));
-    }
+  const handleLeaveGroup = () => {
+    setConfirmAction({
+      title: "الخروج من القروب؟",
+      action: async () => {
+        try {
+          const { error } = await invokeCloud("evolution-manage", {
+            body: { action: "leave_group", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
+          });
+          if (error) throw error;
+          toast.success("✅ تم الخروج من القروب");
+        } catch (err: any) {
+          toast.error("فشل الخروج: " + (err.message || ""));
+        }
+      },
+    });
   };
 
   const handleAddMember = async () => {
@@ -1355,18 +1361,22 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
     }
   };
 
-  const handleRemoveMember = async (phone: string) => {
-    if (!confirm(`هل تريد إزالة ${phone} من القروب؟`)) return;
-    try {
-      const { error } = await invokeCloud("evolution-manage", {
-        body: { action: "group_remove", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
-      });
-      if (error) throw error;
-      toast.success("✅ تمت إزالة العضو");
-      setGroupParticipants(prev => prev.filter(p => p.phone !== phone));
-    } catch (err: any) {
-      toast.error("فشل إزالة العضو: " + (err.message || ""));
-    }
+  const handleRemoveMember = (phone: string) => {
+    setConfirmAction({
+      title: `إزالة ${phone} من القروب؟`,
+      action: async () => {
+        try {
+          const { error } = await invokeCloud("evolution-manage", {
+            body: { action: "group_remove", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
+          });
+          if (error) throw error;
+          toast.success("✅ تمت إزالة العضو");
+          setGroupParticipants(prev => prev.filter(p => p.phone !== phone));
+        } catch (err: any) {
+          toast.error("فشل إزالة العضو: " + (err.message || ""));
+        }
+      },
+    });
   };
 
 
@@ -1889,9 +1899,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
 
   const handleDeleteMsg = (msg: Message) => {
     if (!onDeleteMessage || !msg.waMessageId) return;
-    if (confirm("هل تريد حذف هذه الرسالة للجميع؟")) {
-      onDeleteMessage(msg.id, msg.waMessageId, conversation.customerPhone);
-    }
+    setConfirmAction({
+      title: "حذف هذه الرسالة للجميع؟",
+      action: () => onDeleteMessage(msg.id, msg.waMessageId!, conversation.customerPhone),
+    });
   };
 
   const cancelReply = () => setReplyTo(null);
@@ -2402,10 +2413,11 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </DropdownMenuItem>
                 {(userRole === "admin" || isSuperAdmin) && (
                 <DropdownMenuItem
-                  onClick={() => {
-                    const confirm = window.confirm("هل أنت متأكد من حذف هذه المحادثة وجميع رسائلها؟ هذا الإجراء لا يمكن التراجع عنه.");
-                    if (confirm) onDeleteConversation?.(conversation.id);
-                  }}
+                  onClick={() => setConfirmAction({
+                    title: "حذف هذه المحادثة؟",
+                    description: "سيُحذف جميع الرسائل نهائياً ولا يمكن التراجع.",
+                    action: () => onDeleteConversation?.(conversation.id),
+                  })}
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="w-4 h-4 ml-2" /> حذف المحادثة
@@ -3868,6 +3880,16 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           setInputText(body);
           inputRef.current?.focus();
         }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.title || ""}
+        description={confirmAction?.description}
+        confirmLabel="تأكيد"
+        destructive
+        onConfirm={() => { confirmAction?.action(); setConfirmAction(null); }}
+        onCancel={() => setConfirmAction(null)}
       />
     </div>
   );

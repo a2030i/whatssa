@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const WEBHOOK_URL = `https://ovbrrumnqfvtgmqsscat.supabase.co/functions/v1/whatsapp-webhook`;
 const DEFAULT_META_APP_ID = "1239578701681497";
@@ -107,6 +108,8 @@ const IntegrationsPage = () => {
   const [businessAccountId, setBusinessAccountId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isReviewMode, setIsReviewMode] = useState(() => window.localStorage.getItem("meta-review-mode") === "1");
+  const [disconnectConfirm, setDisconnectConfirm] = useState<{ id: string; label: string; unofficial?: boolean; config?: WhatsAppConfig } | null>(null);
+  const [deleteInstanceConfirm, setDeleteInstanceConfirm] = useState<WhatsAppConfig | null>(null);
 
   useEffect(() => {
     window.localStorage.setItem("meta-review-mode", isReviewMode ? "1" : "0");
@@ -200,7 +203,6 @@ const IntegrationsPage = () => {
     if (!pendingAuth) return false;
 
     embeddedSignupInFlightRef.current = true;
-    console.log("[Embedded Signup] Processing pending auth:", reason, pendingAuth.code ? "code" : "token");
 
     try {
       if (pendingAuth.code && handleCodeExchangeRef.current) {
@@ -221,8 +223,7 @@ const IntegrationsPage = () => {
 
   // Load Meta settings first, then load SDK with correct appId
   useEffect(() => {
-    invokeCloud("get-meta-settings").then(({ data, error }) => {
-      console.log("[get-meta-settings] raw response:", { data, error });
+    invokeCloud("get-meta-settings").then(({ data, error: _err }) => {
       let settings: any[] = [];
       if (Array.isArray(data)) {
         settings = data;
@@ -273,7 +274,6 @@ const IntegrationsPage = () => {
       sessionStorage.removeItem("wa_previous_provider");
     }
 
-    console.log("[Embedded Signup] OAuth redirect received with code, processing...");
     setFlowStep("connecting");
     setIsLoading(true);
 
@@ -334,7 +334,6 @@ const IntegrationsPage = () => {
           if (FB) {
             const auth = FB.getAuthResponse();
             if (auth?.accessToken) {
-              console.log("[Embedded Signup] Recovered token via FB.getAuthResponse after popup close");
               clearInterval(interval);
               if (!cancelled && handleDirectTokenRef.current) handleDirectTokenRef.current(auth.accessToken);
               return;
@@ -346,7 +345,6 @@ const IntegrationsPage = () => {
         try {
           const linkedChannel = await recoverLinkedChannel(embeddedSignupSelectionRef.current);
           if (linkedChannel) {
-            console.log("[Embedded Signup] Found new connected channel in DB, recovering");
             clearInterval(interval);
             if (!cancelled) {
               setFlowStep("idle");
@@ -363,7 +361,6 @@ const IntegrationsPage = () => {
       if (elapsed >= MAX_MS) {
         clearInterval(interval);
         if (!cancelled) {
-          console.warn("[Embedded Signup] Watchdog: connecting state timed out after 3min");
           setFlowStep("idle");
           setIsLoading(false);
           if (loadConfigsRef.current) loadConfigsRef.current(true);
@@ -534,14 +531,11 @@ const IntegrationsPage = () => {
             const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           if (!data || typeof data !== "object") return;
           if (data.type === 'WA_EMBEDDED_SIGNUP') {
-            console.log('[Embedded Signup] session event:', data);
-            // Store phone_number_id and waba_id from session info
             if (data.data?.phone_number_id && data.data?.waba_id) {
               rememberEmbeddedSignupSelection({
                 phoneNumberId: data.data.phone_number_id,
                 wabaId: data.data.waba_id,
               });
-              console.log('[Embedded Signup] Got IDs from session:', data.data.phone_number_id, data.data.waba_id);
 
                 if (
                   pendingEmbeddedAuthRef.current &&
@@ -554,7 +548,6 @@ const IntegrationsPage = () => {
 
             // CANCEL: user exited before completing — immediately leave connecting state
             if (data.event === 'CANCEL') {
-              console.log('[Embedded Signup] User cancelled at step:', data.data?.current_step);
               setTimeout(() => {
                 if (!fbCallbackFiredRef.current && !postMessageHandledRef.current) {
                   postMessageHandledRef.current = true;
@@ -567,11 +560,9 @@ const IntegrationsPage = () => {
 
             // FINISH: user completed the flow — try to recover token immediately
             if (data.event === 'FINISH') {
-              console.log('[Embedded Signup] User finished signup flow');
               setTimeout(() => {
                 if (!fbCallbackFiredRef.current && !postMessageHandledRef.current) {
                   postMessageHandledRef.current = true;
-                  console.log('[Embedded Signup] FB.login callback not received, recovering via postMessage FINISH');
                   // Try FB.getAuthResponse — use refs for latest function versions
                   try {
                     const FB = (window as any).FB;
@@ -592,7 +583,6 @@ const IntegrationsPage = () => {
                   // Fallback: check DB for new/updated channel
                   const selection = embeddedSignupSelectionRef.current;
                   if (selection?.phoneNumberId && selection?.wabaId) {
-                    console.log('[Embedded Signup] Using postMessage IDs to check DB');
                     setTimeout(async () => {
                       try {
                          const linkedChannel = await recoverLinkedChannel(selection);
@@ -680,7 +670,6 @@ const IntegrationsPage = () => {
       const scopes = "whatsapp_business_management,whatsapp_business_messaging,business_management";
       const oauthUrl = `https://www.facebook.com/v22.0/dialog/oauth?client_id=${metaAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&config_id=${metaConfigId}&response_type=code&override_default_response_type=true&scope=${encodeURIComponent(scopes)}`;
 
-      console.log("[Embedded Signup] Mobile: redirecting to OAuth URL");
       window.location.href = oauthUrl;
       return;
     }
@@ -699,13 +688,10 @@ const IntegrationsPage = () => {
     setIsLoading(true);
     setErrorMessage("");
 
-    console.log("[Embedded Signup] Starting FB.login with config_id:", metaConfigId, "appId:", metaAppId);
-
     FB.login(
       (response: any) => {
         fbCallbackFiredRef.current = true;
         postMessageHandledRef.current = true;
-        console.log("[Embedded Signup] FB.login response:", JSON.stringify(response));
         if (response.authResponse) {
           const code = response.authResponse.code;
           const token = response.authResponse.accessToken;
@@ -749,15 +735,12 @@ const IntegrationsPage = () => {
     const redirectUri = `${window.location.origin}/integrations`;
     const scopes = "whatsapp_business_management,whatsapp_business_messaging,business_management";
     const oauthUrl = `https://www.facebook.com/v22.0/dialog/oauth?client_id=${metaAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&config_id=${metaConfigId}&response_type=code&override_default_response_type=true&scope=${encodeURIComponent(scopes)}`;
-    console.log("[Embedded Signup] Fallback: redirecting to OAuth URL (desktop redirect)");
     window.location.href = oauthUrl;
   }, [metaAppId, metaConfigId, onboardingMode, previousProvider]);
 
   const handleCodeExchange = async (code: string) => {
     try {
-      console.log("[Embedded Signup] Exchanging code for token...");
       const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { code } });
-      console.log("[Embedded Signup] Exchange result:", { data: data ? "received" : "null", error });
       if (error || data?.error) {
         handleError(data?.error || "فشل في تبادل الرمز");
         return;
@@ -777,21 +760,12 @@ const IntegrationsPage = () => {
     try {
       setAccessToken(token);
       let embeddedSelection = embeddedSignupSelectionRef.current;
-      console.log("[Embedded Signup] Calling exchange-token with access_token...", { hasSelection: !!embeddedSelection });
       const { data, error } = await invokeCloud("whatsapp-exchange-token", { body: { access_token: token } });
-      console.log("[Embedded Signup] Exchange response:", JSON.stringify({ 
-        error, 
-        waba_ids: data?.waba_ids, 
-        resultsCount: data?.results?.length,
-        message: data?.message,
-        businesses: data?.businesses?.length,
-      }));
       if (error || data?.error) { handleError(data?.error || "فشل في جلب بيانات الحساب"); return; }
 
       const allPhones: PhoneNumber[] = [];
       if (data.results?.length > 0) {
         data.results.forEach((r: WabaResult) => {
-          console.log("[Embedded Signup] WABA:", r.waba_id, "phones:", r.phone_numbers?.length);
           allPhones.push(...(r.phone_numbers || []).map((phone) => ({
             ...phone,
             waba_id: r.waba_id,
@@ -799,17 +773,13 @@ const IntegrationsPage = () => {
         });
       }
 
-      console.log("[Embedded Signup] Total phones found:", allPhones.length);
-
       // Re-check selection (postMessage may have arrived while exchange-token was running)
       if (!embeddedSelection?.phoneNumberId) {
         embeddedSelection = embeddedSignupSelectionRef.current;
-        console.log("[Embedded Signup] Re-checked selection after API call:", embeddedSelection?.phoneNumberId || "still empty");
       }
 
       // If still no selection and multiple phones, wait for the postMessage to arrive
       if (!embeddedSelection?.phoneNumberId && allPhones.length > 1) {
-        console.log("[Embedded Signup] Multiple phones & no selection yet — waiting 5s for Meta postMessage...");
         await new Promise<void>((resolve) => {
           let resolved = false;
           const checkInterval = setInterval(() => {
@@ -825,13 +795,11 @@ const IntegrationsPage = () => {
           }, 5000);
         });
         embeddedSelection = embeddedSignupSelectionRef.current;
-        console.log("[Embedded Signup] After wait, selection:", embeddedSelection?.phoneNumberId || "none");
       }
 
       // If still no selection and only one phone (including already-saved), auto-select it
       if (!embeddedSelection?.phoneNumberId && allPhones.length === 1) {
         const onlyPhone = allPhones[0];
-        console.log("[Embedded Signup] Only 1 phone total, auto-selecting:", onlyPhone.id);
         setSelectedPhoneId(onlyPhone.id);
         setBusinessAccountId(onlyPhone.waba_id || "");
         await selectPhone(onlyPhone, token, onlyPhone.waba_id);
@@ -843,14 +811,12 @@ const IntegrationsPage = () => {
         const selectedPhone = allPhones.find((phone) => phone.id === embeddedSelection!.phoneNumberId);
 
         if (selectedPhone) {
-          console.log("[Embedded Signup] Auto-selecting phone from popup:", embeddedSelection.phoneNumberId);
           setBusinessAccountId(embeddedSelection.wabaId);
           await selectPhone(selectedPhone, token, embeddedSelection.wabaId);
           return;
         }
 
         // Phone ID from popup not in API results — try direct lookup as fallback
-        console.warn("[Embedded Signup] Phone from popup not in API results, using direct IDs");
         setBusinessAccountId(embeddedSelection.wabaId);
         await selectPhone({
           id: embeddedSelection.phoneNumberId,
@@ -1048,9 +1014,18 @@ const IntegrationsPage = () => {
     setManualConnecting(false);
   };
 
-  const handleDisconnect = async (configId: string) => {
-    if (!confirm("هل تريد فصل هذا الرقم؟")) return;
-    await supabase.from("whatsapp_config").delete().eq("id", configId);
+  const handleDisconnect = (configId: string, label?: string) => {
+    setDisconnectConfirm({ id: configId, label: label || "" });
+  };
+
+  const confirmDisconnect = async () => {
+    if (!disconnectConfirm) return;
+    if (disconnectConfirm.unofficial && disconnectConfirm.config) {
+      await confirmLogoutUnofficial(disconnectConfirm.config);
+      return;
+    }
+    setDisconnectConfirm(null);
+    await supabase.from("whatsapp_config").delete().eq("id", disconnectConfirm.id);
     toast.success("تم فصل الرقم");
     loadConfigs(true);
   };
@@ -1505,26 +1480,36 @@ const IntegrationsPage = () => {
     loadConfigs(true);
   };
 
-  const logoutUnofficial = async (config: WhatsAppConfig) => {
-    if (!config.evolution_instance_name || !confirm("هل تريد فصل الرقم؟")) return;
-    const { data } = await invokeCloud("evolution-manage", {
-      body: { action: "logout", instance_name: config.evolution_instance_name },
-    });
-    if (data?.success) {
-      toast.success("تم فصل الرقم");
-      loadConfigs(true);
-    }
+  const logoutUnofficial = (config: WhatsAppConfig) => {
+    if (!config.evolution_instance_name) return;
+    setDisconnectConfirm({ id: config.id, label: config.display_phone || config.evolution_instance_name, unofficial: true, config });
   };
 
-  const deleteUnofficialInstance = async (config: WhatsAppConfig) => {
-    if (!config.evolution_instance_name || !confirm("هل تريد حذف الجلسة نهائياً؟")) return;
-    const { data } = await invokeCloud("evolution-manage", {
+  const confirmLogoutUnofficial = async (config: WhatsAppConfig) => {
+    setDisconnectConfirm(null);
+    await invokeCloud("evolution-manage", {
+      body: { action: "logout", instance_name: config.evolution_instance_name },
+    });
+    await supabase.from("whatsapp_config").delete().eq("id", config.id);
+    toast.success("تم فصل الرقم وحذفه");
+    loadConfigs(true);
+  };
+
+  const deleteUnofficialInstance = (config: WhatsAppConfig) => {
+    if (!config.evolution_instance_name) return;
+    setDeleteInstanceConfirm(config);
+  };
+
+  const confirmDeleteInstance = async () => {
+    if (!deleteInstanceConfirm) return;
+    const config = deleteInstanceConfirm;
+    setDeleteInstanceConfirm(null);
+    await invokeCloud("evolution-manage", {
       body: { action: "delete", instance_name: config.evolution_instance_name },
     });
-    if (data?.success) {
-      toast.success("تم حذف الجلسة");
-      loadConfigs(true);
-    }
+    await supabase.from("whatsapp_config").delete().eq("id", config.id);
+    toast.success("تم حذف الجلسة");
+    loadConfigs(true);
   };
 
   const reconnectUnofficial = async (config: WhatsAppConfig) => {
@@ -1695,16 +1680,28 @@ const IntegrationsPage = () => {
                   const ms = metaStatus[config.id];
                   return (
                     <div key={config.id} className="w-full">
-                      <button
-                        onClick={() => setExpandedChannelBadgeId(isExpanded ? null : config.id)}
-                        className="w-full flex items-center justify-center gap-1.5"
-                      >
-                        <Badge className={cn("text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer", config.is_connected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
-                          {config.is_connected ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
-                          <span dir="ltr">{config.channel_label || config.display_phone || config.business_name || "رسمي"}</span>
-                          {!config.is_connected && " (غير متصل)"}
-                        </Badge>
-                      </button>
+                      <div className="w-full flex flex-col items-center gap-0.5">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => setExpandedChannelBadgeId(isExpanded ? null : config.id)}
+                            className="flex items-center justify-center gap-1.5"
+                          >
+                            <Badge className={cn("text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer", config.is_connected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
+                              {config.is_connected ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertTriangle className="w-2.5 h-2.5" />}
+                              <span dir="ltr">{config.channel_label || config.display_phone || config.business_name || "رسمي"}</span>
+                              {!config.is_connected && " (غير متصل)"}
+                            </Badge>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyToClipboard(config.id, "Channel ID"); }}
+                            title="نسخ Channel ID"
+                            className="text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <span className="text-[9px] font-mono text-muted-foreground/50 select-all" dir="ltr">{config.id.slice(0, 8)}…</span>
+                      </div>
 
                       {isExpanded && (
                         <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-2.5 animate-fade-in">
@@ -1866,15 +1863,27 @@ const IntegrationsPage = () => {
                   const isActuallyConnected = config.is_connected && (config.registration_status === "connected" || config.evolution_instance_status === "connected");
                   return (
                     <div key={config.id} className="w-full">
-                      <button
-                        onClick={() => setExpandedChannelBadgeId(isExpanded ? null : config.id)}
-                        className="w-full flex items-center justify-center gap-1.5"
-                      >
-                        <Badge className={cn("text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer", isActuallyConnected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
-                          <QrCode className="w-2.5 h-2.5" />
-                          <span dir="ltr">{config.channel_label || config.display_phone || config.business_name || "واتساب ويب"}</span>
-                        </Badge>
-                      </button>
+                      <div className="w-full flex flex-col items-center gap-0.5">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => setExpandedChannelBadgeId(isExpanded ? null : config.id)}
+                            className="flex items-center justify-center gap-1.5"
+                          >
+                            <Badge className={cn("text-[10px] gap-1 px-2 py-0.5 border-0 cursor-pointer", isActuallyConnected ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
+                              <QrCode className="w-2.5 h-2.5" />
+                              <span dir="ltr">{config.channel_label || config.display_phone || config.business_name || "واتساب ويب"}</span>
+                            </Badge>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyToClipboard(config.id, "Channel ID"); }}
+                            title="نسخ Channel ID"
+                            className="text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <span className="text-[9px] font-mono text-muted-foreground/50 select-all" dir="ltr">{config.id.slice(0, 8)}…</span>
+                      </div>
 
                       {isExpanded && (
                         <div className="mt-2 p-3 bg-muted/50 rounded-lg text-right space-y-2.5 animate-fade-in">
@@ -2809,6 +2818,26 @@ const IntegrationsPage = () => {
     <div className="p-3 md:p-6 space-y-6 max-w-5xl" dir={dir}>
       <div className="flex justify-end">{reviewToggle}</div>
       {renderAllChannelsView(configs)}
+
+      <ConfirmDialog
+        open={!!disconnectConfirm}
+        title="فصل هذا الرقم؟"
+        description="سيتوقف استقبال وإرسال الرسائل من هذا الرقم."
+        confirmLabel="فصل"
+        destructive
+        onConfirm={confirmDisconnect}
+        onCancel={() => setDisconnectConfirm(null)}
+      />
+
+      <ConfirmDialog
+        open={!!deleteInstanceConfirm}
+        title="حذف الجلسة نهائياً؟"
+        description="لا يمكن التراجع عن هذا الإجراء."
+        confirmLabel="حذف"
+        destructive
+        onConfirm={confirmDeleteInstance}
+        onCancel={() => setDeleteInstanceConfirm(null)}
+      />
     </div>
   );
 };

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface BlacklistedNumber {
   id: string;
@@ -25,6 +26,7 @@ const BlacklistSection = () => {
   const [newReason, setNewReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [removeId, setRemoveId] = useState<string | null>(null);
 
   useEffect(() => {
     if (orgId) fetchNumbers();
@@ -71,9 +73,12 @@ const BlacklistSection = () => {
     setSaving(false);
   };
 
-  const removeNumber = async (id: string) => {
-    if (!confirm("هل تريد إزالة الحظر عن هذا الرقم؟")) return;
-    await supabase.from("blacklisted_numbers").delete().eq("id", id);
+  const removeNumber = (id: string) => { setRemoveId(id); };
+
+  const confirmRemove = async () => {
+    if (!removeId) return;
+    setRemoveId(null);
+    await supabase.from("blacklisted_numbers").delete().eq("id", removeId);
     toast.success("تم إزالة الحظر");
     fetchNumbers();
   };
@@ -181,6 +186,15 @@ const BlacklistSection = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!removeId}
+        title="إزالة الحظر عن هذا الرقم؟"
+        confirmLabel="إزالة"
+        destructive
+        onConfirm={confirmRemove}
+        onCancel={() => setRemoveId(null)}
+      />
     </div>
   );
 };

@@ -13,6 +13,7 @@ import { supabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import StoreEventNotifications from "./StoreEventNotifications";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const SALLA_WEBHOOK_BASE = `https://ovbrrumnqfvtgmqsscat.supabase.co/functions/v1/salla-webhook`;
 const STORE_WEBHOOK_BASE = `https://ovbrrumnqfvtgmqsscat.supabase.co/functions/v1/store-webhook`;
@@ -243,6 +244,7 @@ const SallaIntegrationSection = () => {
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreUrl, setNewStoreUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleteStoreId, setDeleteStoreId] = useState<string | null>(null);
   const [showApiDocs, setShowApiDocs] = useState(false);
   const [newApiToken, setNewApiToken] = useState("");
   const [shipperPhone, setShipperPhone] = useState("");
@@ -323,8 +325,12 @@ const SallaIntegrationSection = () => {
     fetchStores();
   };
 
-  const deleteStore = async (id: string) => {
-    if (!confirm("هل أنت متأكد من حذف هذا الربط؟")) return;
+  const deleteStore = (id: string) => { setDeleteStoreId(id); };
+
+  const confirmDeleteStore = async () => {
+    const id = deleteStoreId;
+    if (!id) return;
+    setDeleteStoreId(null);
     await supabase.from("store_integrations").delete().eq("id", id);
     toast.success("تم حذف الربط");
 
@@ -796,6 +802,15 @@ function StoreCard({ store, platform, onToggle, onDelete, onCopyUrl, onCopySecre
           </span>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteStoreId}
+        title="حذف هذا الربط؟"
+        confirmLabel="حذف"
+        destructive
+        onConfirm={confirmDeleteStore}
+        onCancel={() => setDeleteStoreId(null)}
+      />
     </div>
   );
 }

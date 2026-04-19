@@ -11,54 +11,50 @@ const PaymentCallbackPage = () => {
   const moyasarId = searchParams.get("id");
   const moyasarStatus = searchParams.get("status");
 
-  const [status, setStatus] = useState<"loading" | "success" | "failed">("loading");
+  const [status, setStatus] = useState<"loading" | "success" | "failed" | "timeout">("loading");
   const [payment, setPayment] = useState<any>(null);
 
-  useEffect(() => {
-    if (paymentId) {
-      checkPayment();
-    } else {
-      setStatus("failed");
-    }
-  }, [paymentId]);
-
   const checkPayment = async () => {
-    // Poll for payment status update (webhook may take a moment)
-    for (let i = 0; i < 10; i++) {
+    setStatus("loading");
+    const MAX_RETRIES = 10;
+    const RETRY_DELAY = 2000;
+
+    for (let i = 0; i < MAX_RETRIES; i++) {
       const { data } = await supabase
         .from("payments")
-        .select("*")
+        .select("id, status, amount, moyasar_payment_id")
         .eq("id", paymentId!)
         .maybeSingle();
 
       if (data) {
         setPayment(data);
-        if (data.status === "paid") {
-          setStatus("success");
-          return;
-        } else if (data.status === "failed") {
-          setStatus("failed");
-          return;
-        }
+        if (data.status === "paid") { setStatus("success"); return; }
+        if (data.status === "failed") { setStatus("failed"); return; }
       }
-      // Wait 2 seconds before retrying
-      await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, RETRY_DELAY));
     }
 
-    // After polling, check final status
+    // After all retries, last check — if still pending, show timeout
     const { data } = await supabase
       .from("payments")
-      .select("*")
+      .select("id, status, amount, moyasar_payment_id")
       .eq("id", paymentId!)
       .maybeSingle();
 
     if (data) {
       setPayment(data);
-      setStatus(data.status === "paid" ? "success" : "failed");
+      if (data.status === "paid") { setStatus("success"); return; }
+      if (data.status === "failed") { setStatus("failed"); return; }
+      setStatus("timeout");
     } else {
       setStatus("failed");
     }
   };
+
+  useEffect(() => {
+    if (paymentId) checkPayment();
+    else setStatus("failed");
+  }, [paymentId]);
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-6" dir="rtl">
@@ -120,6 +116,28 @@ const PaymentCallbackPage = () => {
               </Button>
               <Button className="flex-1" onClick={() => navigate("/plans")}>
                 إعادة المحاولة
+              </Button>
+            </div>
+          </>
+        )}
+
+        {status === "timeout" && (
+          <>
+            <div className="w-20 h-20 rounded-full bg-warning/10 flex items-center justify-center mx-auto">
+              <Loader2 className="w-10 h-10 text-warning" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-warning">الدفع قيد المعالجة</h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                استغرقت العملية وقتاً أطول من المتوقع. إذا اكتمل الدفع سيُفعَّل اشتراكك تلقائياً خلال دقائق.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => navigate("/")}>
+                الصفحة الرئيسية
+              </Button>
+              <Button className="flex-1" onClick={() => { setStatus("loading"); checkPayment(); }}>
+                إعادة الفحص
               </Button>
             </div>
           </>

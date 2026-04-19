@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Webhook, Plus, Trash2, Copy, CheckCircle2, XCircle, ExternalLink, RefreshCw, ScrollText, AlertTriangle } from "lucide-react";
+import { Webhook, Plus, Trash2, Copy, CheckCircle2, XCircle, ExternalLink, RefreshCw, ScrollText, AlertTriangle, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,8 +9,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase";
+import { invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface OrgWebhook {
   id: string;
@@ -97,16 +99,54 @@ const OutgoingWebhooksSection = () => {
     fetchWebhooks();
   };
 
-  const deleteWebhook = async (id: string) => {
-    if (!confirm("هل تريد حذف هذا الويب هوك؟")) return;
-    await supabase.from("org_webhooks").delete().eq("id", id);
+  const deleteWebhook = (id: string) => { setDeleteConfirmId(id); };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
+    setDeleteConfirmId(null);
+    await supabase.from("org_webhooks").delete().eq("id", deleteConfirmId);
     toast.success("تم الحذف");
     fetchWebhooks();
   };
 
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
   const copySecret = (secret: string) => {
     navigator.clipboard.writeText(secret);
     toast.success("تم نسخ الـ Secret");
+  };
+
+  const testWebhook = async (wh: OrgWebhook) => {
+    setTestingId(wh.id);
+    try {
+      const testPayload = {
+        event: "test",
+        timestamp: new Date().toISOString(),
+        org_id: orgId,
+        data: {
+          message: "هذا اختبار من منصة whatssa",
+          webhook_id: wh.id,
+        },
+      };
+      const response = await fetch(wh.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Whatssa-Event": "test", "X-Whatssa-Signature": "test" },
+        body: JSON.stringify(testPayload),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (response.ok) {
+        toast.success(`✅ استجاب الـ Webhook بنجاح (${response.status})`);
+      } else {
+        toast.error(`⚠️ الـ Webhook أعاد كود ${response.status}`);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "خطأ في الاتصال";
+      toast.error(`فشل الاتصال: ${msg}`);
+    } finally {
+      setTestingId(null);
+      fetchWebhooks();
+    }
   };
 
   const toggleEvent = (event: string) => {
@@ -176,6 +216,17 @@ const OutgoingWebhooksSection = () => {
                         <AlertTriangle className="w-2.5 h-2.5" /> {wh.failure_count} فشل
                       </Badge>
                     )}
+                    <Button
+                      size="icon" variant="ghost"
+                      className="h-7 w-7 text-primary"
+                      title="إرسال طلب اختبار"
+                      disabled={testingId === wh.id}
+                      onClick={() => testWebhook(wh)}
+                    >
+                      {testingId === wh.id
+                        ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        : <PlayCircle className="w-3.5 h-3.5" />}
+                    </Button>
                     <Switch checked={wh.is_active} onCheckedChange={(v) => toggleWebhook(wh.id, v)} />
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteWebhook(wh.id)}>
                       <Trash2 className="w-3.5 h-3.5" />
@@ -240,6 +291,16 @@ const OutgoingWebhooksSection = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      <ConfirmDialog
+        open={!!deleteConfirmId}
+        title="حذف الويب هوك؟"
+        description="لن تصل الأحداث لهذا العنوان بعد الحذف."
+        confirmLabel="حذف"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="max-w-md" dir="rtl">

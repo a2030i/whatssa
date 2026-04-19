@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 interface ApiToken {
@@ -43,6 +44,7 @@ const ApiTokensSection = () => {
   const [maxTokens, setMaxTokens] = useState<number>(2);
   // Store the raw token just after creation — shown once only
   const [justCreatedToken, setJustCreatedToken] = useState<{ id: string; raw: string } | null>(null);
+  const [deleteTokenId, setDeleteTokenId] = useState<string | null>(null);
 
   useEffect(() => {
     if (orgId) {
@@ -99,12 +101,15 @@ const ApiTokensSection = () => {
     loadTokens();
   };
 
-  const deleteToken = async (id: string) => {
-    if (!confirm("هل أنت متأكد من حذف هذا التوكن؟")) return;
-    const { error } = await supabase.from("api_tokens").delete().eq("id", id);
+  const deleteToken = (id: string) => { setDeleteTokenId(id); };
+
+  const confirmDeleteToken = async () => {
+    if (!deleteTokenId) return;
+    setDeleteTokenId(null);
+    const { error } = await supabase.from("api_tokens").delete().eq("id", deleteTokenId);
     if (error) { toast.error(error.message); return; }
     toast.success("تم حذف التوكن");
-    if (justCreatedToken?.id === id) setJustCreatedToken(null);
+    if (justCreatedToken?.id === deleteTokenId) setJustCreatedToken(null);
     loadTokens();
   };
 
@@ -258,6 +263,16 @@ const ApiTokensSection = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTokenId}
+        title="حذف هذا التوكن؟"
+        description="لن يتمكن أي تطبيق يستخدمه من الوصول للـ API."
+        confirmLabel="حذف"
+        destructive
+        onConfirm={confirmDeleteToken}
+        onCancel={() => setDeleteTokenId(null)}
+      />
     </div>
   );
 };

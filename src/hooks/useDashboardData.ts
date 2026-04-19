@@ -37,6 +37,20 @@ export interface ChannelStatus {
   tokenRefreshError: string | null;
 }
 
+export interface AgentStat {
+  id: string;
+  full_name: string;
+  open_convs: number;
+  messages_7days: number;
+  messages_today: number;
+  read_msgs: number;
+  delivered_msgs: number;
+}
+
+export interface HourStat { hour: number; count: number; }
+export interface DayStat { day: string; day_num: number; count: number; }
+export interface TopCustomer { customer_name: string; customer_phone: string; msg_count: number; last_message: string; }
+
 export interface DashboardData {
   /** @deprecated use channels array */
   waStatus: WhatsAppStatus;
@@ -52,6 +66,12 @@ export interface DashboardData {
   orgName: string;
   planName: string;
   subscriptionStatus: string;
+  agents: AgentStat[];
+  hourStats: HourStat[];
+  dayStats: DayStat[];
+  topCustomers: TopCustomer[];
+  csatAverage: number | null;
+  csatCount: number;
   /** @deprecated use channels array */
   metaPhoneStatus: string | null;
   /** @deprecated use channels array */
@@ -90,6 +110,12 @@ export const useDashboardData = (): DashboardData => {
     orgName: "",
     planName: "",
     subscriptionStatus: "trial",
+    agents: [],
+    hourStats: [],
+    dayStats: [],
+    topCustomers: [],
+    csatAverage: null,
+    csatCount: 0,
     metaPhoneStatus: null,
     metaBusinessVerification: null,
     metaQualityRating: null,
@@ -110,17 +136,22 @@ export const useDashboardData = (): DashboardData => {
         const days7 = getDateRange(7);
         const days30 = getDateRange(30);
 
-        const [waConfigs, openConvsCount, totalConvsCount, automations, wallet, org] = await Promise.all([
+        const [waConfigs, openConvsCount, totalConvsCount, automations, wallet, org, convRows, profilesData, csatRatings] = await Promise.all([
           supabase.from("whatsapp_config_safe").select("*").eq("org_id", orgId).eq("is_connected", true).order("created_at"),
           supabase.from("conversations").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "active").eq("conversation_type", "private"),
           supabase.from("conversations").select("id", { count: "exact", head: true }).eq("org_id", orgId),
           supabase.from("automation_rules").select("id", { count: "exact", head: true }).eq("org_id", orgId),
           supabase.from("wallets").select("balance").eq("org_id", orgId).maybeSingle(),
           supabase.from("organizations").select("name, subscription_status, plans(name_ar)").eq("id", orgId).maybeSingle(),
+          supabase.from("conversations").select("id, assigned_to_id, status, conversation_type").eq("org_id", orgId),
+          supabase.from("profiles").select("id, full_name").eq("org_id", orgId),
+          supabase.from("satisfaction_ratings" as any).select("rating").eq("org_id", orgId).gte("created_at", days30),
         ]);
 
-        // Fetch message stats
-        const [sentTodayQ, sent7Q, sent30Q, deliveredTodayQ, failedTodayQ, delivered7Q, failed7Q, delivered30Q, failed30Q, receivedQ] = await Promise.all([
+        const allConvIds = (convRows.data || []).map((c: any) => c.id);
+
+        // Fetch message stats + employee messages in parallel
+        const [sentTodayQ, sent7Q, sent30Q, deliveredTodayQ, failedTodayQ, delivered7Q, failed7Q, delivered30Q, failed30Q, receivedQ, msgs7Res, msgs30Res] = await Promise.all([
           supabase.rpc("count_org_messages", { _org_id: orgId, _from: today, _sender: "agent", _status: null }),
           supabase.rpc("count_org_messages", { _org_id: orgId, _from: days7, _sender: "agent", _status: null }),
           supabase.rpc("count_org_messages", { _org_id: orgId, _from: days30, _sender: "agent", _status: null }),
@@ -131,7 +162,99 @@ export const useDashboardData = (): DashboardData => {
           supabase.rpc("count_org_messages", { _org_id: orgId, _from: days30, _sender: "agent", _status: "delivered" }),
           supabase.rpc("count_org_messages", { _org_id: orgId, _from: days30, _sender: "agent", _status: "failed" }),
           supabase.rpc("count_org_messages", { _org_id: orgId, _from: days30, _sender: "customer", _status: null }),
+          allConvIds.length > 0
+            ? supabase.from("messages").select("metadata, status, created_at, sender").eq("sender", "agent").gte("created_at", days7).in("conversation_id", allConvIds)
+            : Promise.resolve({ data: [] }),
+          allConvIds.length > 0
+            ? supabase.from("messages").select("created_at, sender").gte("created_at", days30).in("conversation_id", allConvIds)
+            : Promise.resolve({ data: [] }),
         ]);
+
+        const msgs7 = (msgs7Res as any).data || [];
+        const msgs30 = (msgs30Res as any).data || [];
+        const allConvRows = convRows.data || [];
+        const profiles = profilesData.data || [];
+
+        // توقيت السعودية
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayUTC = new Date(todayStart.getTime() - 3 * 36e5);
+
+        // أداء الموظفين — open_convs من assigned_to_id مباشرة (private فقط)
+        const agents: AgentStat[] = profiles.map((p: any) => {
+          const am = msgs7.filter((m: any) => m.metadata?.sender_name === p.full_name);
+          const tm = am.filter((m: any) => new Date(m.created_at) >= todayUTC);
+          const openC = allConvRows.filter((c: any) =>
+            c.assigned_to_id === p.id &&
+            c.status === "active" &&
+            c.conversation_type === "private"
+          ).length;
+          return {
+            id: p.id,
+            full_name: p.full_name,
+            open_convs: openC,
+            messages_7days: am.length,
+            messages_today: tm.length,
+            read_msgs: am.filter((m: any) => m.status === "read").length,
+            delivered_msgs: am.filter((m: any) => m.status === "delivered").length,
+          };
+        }).filter((a: AgentStat) => a.messages_7days > 0 || a.open_convs > 0)
+          .sort((a: AgentStat, b: AgentStat) => b.messages_today - a.messages_today);
+
+        // إحصائيات الساعات (بتوقيت السعودية)
+        const hMap: Record<number, number> = {};
+        msgs30.forEach((m: any) => {
+          const h = (new Date(m.created_at).getUTCHours() + 3) % 24;
+          hMap[h] = (hMap[h] || 0) + 1;
+        });
+        const hourStats: HourStat[] = Array.from({ length: 24 }, (_, i) => ({ hour: i, count: hMap[i] || 0 }));
+
+        // إحصائيات الأيام
+        const dMap: Record<number, number> = {};
+        msgs30.forEach((m: any) => {
+          const d = new Date(new Date(m.created_at).getTime() + 3 * 36e5).getUTCDay();
+          dMap[d] = (dMap[d] || 0) + 1;
+        });
+        const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const dayStats: DayStat[] = dayNames.map((name, i) => ({ day: name, day_num: i, count: dMap[i] || 0 }));
+
+        // أكثر العملاء تواصلاً
+        const privateConvIds = allConvRows.filter((c: any) => c.conversation_type === "private").map((c: any) => c.id);
+        let topCustomers: TopCustomer[] = [];
+        if (privateConvIds.length > 0) {
+          const { data: custMsgs } = await supabase
+            .from("messages")
+            .select("conversation_id")
+            .eq("sender", "customer")
+            .gte("created_at", days30)
+            .in("conversation_id", privateConvIds);
+
+          const convCount: Record<string, number> = {};
+          (custMsgs || []).forEach((m: any) => {
+            convCount[m.conversation_id] = (convCount[m.conversation_id] || 0) + 1;
+          });
+          const topConvIds = Object.entries(convCount).sort(([, a], [, b]) => b - a).slice(0, 8).map(([id]) => id);
+
+          if (topConvIds.length > 0) {
+            const { data: convDetails } = await supabase
+              .from("conversations")
+              .select("id, customer_name, customer_phone, last_message_at")
+              .in("id", topConvIds);
+            topCustomers = (convDetails || []).map((c: any) => ({
+              customer_name: c.customer_name || c.customer_phone,
+              customer_phone: c.customer_phone,
+              msg_count: convCount[c.id] || 0,
+              last_message: c.last_message_at,
+            })).sort((a, b) => b.msg_count - a.msg_count);
+          }
+        }
+
+        // CSAT
+        const csatRatingsData = (csatRatings as any).data || [];
+        const csatCount = csatRatingsData.length;
+        const csatAverage = csatCount > 0
+          ? Math.round((csatRatingsData.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / csatCount) * 10) / 10
+          : null;
 
         const allChannels = (waConfigs.data || []) as any[];
 
@@ -205,6 +328,12 @@ export const useDashboardData = (): DashboardData => {
           orgName: org.data?.name || "",
           planName: planData?.plans?.name_ar || "غير محدد",
           subscriptionStatus: org.data?.subscription_status || "trial",
+          agents,
+          hourStats,
+          dayStats,
+          topCustomers,
+          csatAverage,
+          csatCount,
           metaPhoneStatus: firstChannel?.metaPhoneStatus || null,
           metaBusinessVerification: firstChannel?.metaBusinessVerification || null,
           metaQualityRating: firstChannel?.metaQualityRating || null,

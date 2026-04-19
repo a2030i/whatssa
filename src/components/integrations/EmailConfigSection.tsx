@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase, invokeCloud } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface EmailConfig {
   id: string;
@@ -159,6 +160,7 @@ const EmailConfigSection = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<ProviderKey>(DEFAULT_PROVIDER);
   const [showGuide, setShowGuide] = useState(true);
+  const [deleteEmailId, setDeleteEmailId] = useState<string | null>(null);
   const [form, setForm] = useState({
     email_address: "",
     smtp_host: PROVIDERS.gmail.smtp_host,
@@ -367,8 +369,12 @@ const EmailConfigSection = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("هل أنت متأكد من حذف هذا البريد؟")) return;
+  const handleDelete = (id: string) => { setDeleteEmailId(id); };
+
+  const confirmDeleteEmail = async () => {
+    const id = deleteEmailId;
+    if (!id) return;
+    setDeleteEmailId(null);
     const { error } = await invokeCloud("email-config-manage", {
       body: { action: "delete", id, org_id: orgId },
     });
@@ -941,6 +947,15 @@ const EmailConfigSection = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteEmailId}
+        title="حذف هذا البريد الإلكتروني؟"
+        confirmLabel="حذف"
+        destructive
+        onConfirm={confirmDeleteEmail}
+        onCancel={() => setDeleteEmailId(null)}
+      />
     </div>
   );
 };

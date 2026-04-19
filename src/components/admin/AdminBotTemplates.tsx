@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { Bot, Search, RefreshCw, Plus, CheckCircle2, XCircle, ChevronDown, ChevronUp, Trash2, Save, Edit, X, ArrowRight, Zap, MessageSquare } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -103,6 +104,7 @@ const AdminBotTemplates = () => {
   const [editWelcome, setEditWelcome] = useState("");
   const [editNodes, setEditNodes] = useState<BotNode[]>([]);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteBotId, setDeleteBotId] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -157,8 +159,12 @@ const AdminBotTemplates = () => {
     setTogglingFlow(null);
   };
 
-  const deleteFlow = async (flowId: string) => {
-    if (!confirm("هل أنت متأكد من حذف هذا البوت؟")) return;
+  const deleteFlow = (flowId: string) => { setDeleteBotId(flowId); };
+
+  const confirmDeleteFlow = async () => {
+    const flowId = deleteBotId;
+    if (!flowId) return;
+    setDeleteBotId(null);
     const { error } = await supabase.from("chatbot_flows").delete().eq("id", flowId);
     if (error) toast.error("فشل الحذف");
     else { toast.success("تم الحذف"); if (editingFlow === flowId) setEditingFlow(null); loadData(); }
@@ -474,6 +480,15 @@ const AdminBotTemplates = () => {
           ))
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteBotId}
+        title="حذف هذا البوت؟"
+        confirmLabel="حذف"
+        destructive
+        onConfirm={confirmDeleteFlow}
+        onCancel={() => setDeleteBotId(null)}
+      />
     </div>
   );
 };

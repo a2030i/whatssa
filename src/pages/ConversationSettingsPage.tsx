@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import SlaManagement from "@/components/settings/SlaManagement";
 import CsatDashboard from "@/components/settings/CsatDashboard";
+import BlacklistSection from "@/components/settings/BlacklistSection";
 
 const strategyOptions = [
   { key: "manual", label: "يدوي", icon: Hand, description: "المدير يسند المحادثات يدوياً لكل موظف", color: "text-muted-foreground" },
@@ -382,34 +383,34 @@ const ConversationSettingsPage = () => {
             ))}
           </div>
         )}
-        {currentSat.enabled ? (
-          <div className="p-5 space-y-4">
-            <p className="text-xs text-muted-foreground">{selectedSatChannel === "global" ? "إعداد افتراضي — يمكنك تخصيص كل قناة." : "إعداد خاص بهذه القناة فقط."}</p>
-            <div className="space-y-2">
-              <Label className="text-xs">نص رسالة التقييم</Label>
-              <Textarea value={currentSat.message} onChange={(e) => updateSat("message", e.target.value)} className="bg-secondary border-0 min-h-[120px] text-sm" placeholder="اكتب رسالة التقييم..." />
-            </div>
-            <div className="bg-primary/5 rounded-xl p-3 space-y-1.5">
-              <p className="text-xs font-semibold text-primary">كيف يعمل؟</p>
-              <ul className="text-[11px] text-muted-foreground space-y-1 list-disc list-inside">
-                <li>بعد إغلاق المحادثة يُرسل الاستبيان تلقائياً للعميل</li>
-                <li>العميل يرد برقم من 1 (ممتاز) إلى 5 (ضعيف)</li>
-                <li>يتم ربط التقييم بالموظف المسؤول</li>
-                <li>النتائج تظهر في التقارير</li>
-              </ul>
-            </div>
-            <div className="flex justify-end">
-              <Button size="sm" onClick={saveSatSettings} disabled={savingSat} className="gap-1.5"><Save className="w-3.5 h-3.5" />{savingSat ? "جاري الحفظ..." : "حفظ"}</Button>
-            </div>
+        <div className="p-5 space-y-4">
+          <p className="text-xs text-muted-foreground">
+            {selectedSatChannel === "global"
+              ? "إعداد على مستوى المنظمة — يُطبق على جميع القنوات ما لم يُخصص لكل قناة."
+              : "إعداد خاص بهذه القناة فقط."}
+          </p>
+          <div className="space-y-2">
+            <Label className="text-xs">نص رسالة التقييم</Label>
+            <Textarea value={currentSat.message} onChange={(e) => updateSat("message", e.target.value)} className="bg-secondary border-0 min-h-[120px] text-sm" placeholder="اكتب رسالة التقييم..." />
           </div>
-        ) : (
-          <div className="p-5">
-            <p className="text-xs text-muted-foreground">الميزة معطلة. فعّلها لإرسال استبيان تقييم بعد إغلاق المحادثة.</p>
-            <div className="flex justify-end mt-3">
-              <Button size="sm" onClick={saveSatSettings} disabled={savingSat} variant="outline" className="gap-1.5"><Save className="w-3.5 h-3.5" /> حفظ</Button>
+          {!currentSat.enabled && (
+            <div className="bg-warning/5 border border-warning/20 rounded-lg px-3 py-2">
+              <p className="text-[11px] text-warning font-medium">الميزة معطلة — فعّلها من الزر أعلاه لإرسال الاستبيان تلقائياً بعد إغلاق المحادثات.</p>
             </div>
+          )}
+          <div className="bg-primary/5 rounded-xl p-3 space-y-1.5">
+            <p className="text-xs font-semibold text-primary">كيف يعمل؟</p>
+            <ul className="text-[11px] text-muted-foreground space-y-1 list-disc list-inside">
+              <li>بعد إغلاق المحادثة يُرسل الاستبيان تلقائياً للعميل</li>
+              <li>العميل يرد برقم من 1 (ممتاز) إلى 5 (ضعيف)</li>
+              <li>يتم ربط التقييم بالموظف المسؤول</li>
+              <li>النتائج تظهر في التقارير</li>
+            </ul>
           </div>
-        )}
+          <div className="flex justify-end">
+            <Button size="sm" onClick={saveSatSettings} disabled={savingSat} className="gap-1.5"><Save className="w-3.5 h-3.5" />{savingSat ? "جاري الحفظ..." : "حفظ"}</Button>
+          </div>
+        </div>
       </div>
 
       {/* Saved Replies */}
@@ -458,6 +459,11 @@ const ConversationSettingsPage = () => {
       {/* CSAT Dashboard */}
       <div className="bg-card rounded-2xl border shadow-card p-5">
         <CsatDashboard />
+      </div>
+
+      {/* Blacklist */}
+      <div className="bg-card rounded-2xl border shadow-card p-5">
+        <BlacklistSection />
       </div>
 
       {/* Saved Reply Dialog */}

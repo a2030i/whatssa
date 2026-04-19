@@ -24,6 +24,8 @@ const isLikelyRealCustomerPhone = (phone?: string | null) => {
   if (!digits) return false;
   if (digits.length < 8 || digits.length > 15) return false;
   if (digits.startsWith("120363") || digits.startsWith("1440")) return false;
+  // Reject obvious fake numbers: all same digit (e.g. 00000000, 11111111)
+  if (/^(\d)\1+$/.test(digits)) return false;
   return true;
 };
 
@@ -38,6 +40,7 @@ const CustomersPage = () => {
   const [editCustomer, setEditCustomer] = useState<any>(null);
   const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", tags: [] as string[], company: "", source: "whatsapp" });
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -55,28 +58,33 @@ const CustomersPage = () => {
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
     if (!form.phone.trim()) { toast.error("رقم الجوال مطلوب"); return; }
-    const payload: any = {
-      name: form.name || null, phone: form.phone, email: form.email || null,
-      notes: form.notes || null, tags: form.tags,
-      company: form.company || null,
-      source: form.source || "whatsapp",
-      custom_fields: Object.keys(customFields).length > 0 ? customFields : {},
-    };
-
-    if (editCustomer) {
-      await supabase.from("customers").update(payload).eq("id", editCustomer.id);
-      toast.success("تم تحديث العميل");
-    } else {
-      const { error } = await supabase.from("customers").insert({ ...payload, org_id: orgId });
-      if (error?.code === "23505") { toast.error("هذا الرقم موجود مسبقاً"); return; }
-      if (error) { toast.error("حدث خطأ"); return; }
-      toast.success("تم إضافة العميل");
+    setIsSaving(true);
+    try {
+      const payload: any = {
+        name: form.name || null, phone: form.phone, email: form.email || null,
+        notes: form.notes || null, tags: form.tags,
+        company: form.company || null,
+        source: form.source || "whatsapp",
+        custom_fields: Object.keys(customFields).length > 0 ? customFields : {},
+      };
+      if (editCustomer) {
+        await supabase.from("customers").update(payload).eq("id", editCustomer.id);
+        toast.success("تم تحديث العميل");
+      } else {
+        const { error } = await supabase.from("customers").insert({ ...payload, org_id: orgId });
+        if (error?.code === "23505") { toast.error("هذا الرقم موجود مسبقاً"); return; }
+        if (error) { toast.error("حدث خطأ"); return; }
+        toast.success("تم إضافة العميل");
+      }
+      setShowAdd(false);
+      setEditCustomer(null);
+      resetForm();
+      load();
+    } finally {
+      setIsSaving(false);
     }
-    setShowAdd(false);
-    setEditCustomer(null);
-    resetForm();
-    load();
   };
 
   const resetForm = () => {
@@ -446,7 +454,7 @@ const CustomersPage = () => {
               ))}
             </div>
 
-            <Button className="w-full" onClick={handleSave}>{editCustomer ? "تحديث" : "إضافة"}</Button>
+            <Button className="w-full" onClick={handleSave} disabled={isSaving}>{isSaving ? "جاري الحفظ..." : editCustomer ? "تحديث" : "إضافة"}</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -15,6 +15,7 @@ import InternalNotes from "./InternalNotes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import TicketsTab from "./TicketsTab";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface CustomerInfoPanelProps {
   conversation: Conversation;
@@ -123,6 +124,7 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
   const [isGroupAdmin, setIsGroupAdmin] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [savingMembers, setSavingMembers] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ title: string; action: () => void } | null>(null);
   const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
@@ -287,61 +289,77 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
     }
   };
 
-  const handleRemoveGroupMember = async (phone: string) => {
-    if (!confirm(`هل تريد إزالة ${phone} من القروب؟`)) return;
-    try {
-      const { error } = await invokeCloud("evolution-manage", {
-        body: { action: "group_remove", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
-      });
-      if (error) throw error;
-      toast.success("✅ تمت إزالة العضو");
-      setGroupParticipants(prev => prev.filter(p => p.phone !== phone));
-    } catch (err: any) {
-      toast.error("فشل إزالة العضو: " + (err.message || ""));
-    }
+  const handleRemoveGroupMember = (phone: string) => {
+    setConfirmAction({
+      title: `إزالة ${phone} من القروب؟`,
+      action: async () => {
+        try {
+          const { error } = await invokeCloud("evolution-manage", {
+            body: { action: "group_remove", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
+          });
+          if (error) throw error;
+          toast.success("✅ تمت إزالة العضو");
+          setGroupParticipants(prev => prev.filter(p => p.phone !== phone));
+        } catch (err: any) {
+          toast.error("فشل إزالة العضو: " + (err.message || ""));
+        }
+      },
+    });
   };
 
-  const handleLeaveGroup = async () => {
-    if (!confirm("هل أنت متأكد من الخروج من هذا القروب؟")) return;
-    try {
-      const { error } = await invokeCloud("evolution-manage", {
-        body: { action: "leave_group", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
-      });
-      if (error) throw error;
-      toast.success("✅ تم الخروج من القروب");
-    } catch (err: any) {
-      toast.error("فشل الخروج: " + (err.message || ""));
-    }
+  const handleLeaveGroup = () => {
+    setConfirmAction({
+      title: "الخروج من القروب؟",
+      action: async () => {
+        try {
+          const { error } = await invokeCloud("evolution-manage", {
+            body: { action: "leave_group", group_jid: conversation.customerPhone, channel_id: conversation.channelId },
+          });
+          if (error) throw error;
+          toast.success("✅ تم الخروج من القروب");
+        } catch (err: any) {
+          toast.error("فشل الخروج: " + (err.message || ""));
+        }
+      },
+    });
   };
 
-  const handlePromoteMember = async (participantId: string, name: string) => {
-    if (!confirm(`هل تريد ترقية ${name} إلى مشرف؟`)) return;
-    try {
-      const phone = participantId.replace(/@.*/, "");
-      const { error } = await invokeCloud("evolution-manage", {
-        body: { action: "group_promote", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
-      });
-      if (error) throw error;
-      toast.success("✅ تمت ترقية العضو إلى مشرف");
-      loadGroupInfo();
-    } catch (err: any) {
-      toast.error("فشل الترقية: " + (err.message || ""));
-    }
+  const handlePromoteMember = (participantId: string, name: string) => {
+    setConfirmAction({
+      title: `ترقية ${name} إلى مشرف؟`,
+      action: async () => {
+        try {
+          const phone = participantId.replace(/@.*/, "");
+          const { error } = await invokeCloud("evolution-manage", {
+            body: { action: "group_promote", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
+          });
+          if (error) throw error;
+          toast.success("✅ تمت ترقية العضو إلى مشرف");
+          loadGroupInfo();
+        } catch (err: any) {
+          toast.error("فشل الترقية: " + (err.message || ""));
+        }
+      },
+    });
   };
 
-  const handleDemoteMember = async (participantId: string, name: string) => {
-    if (!confirm(`هل تريد تنزيل ${name} من المشرفين؟`)) return;
-    try {
-      const phone = participantId.replace(/@.*/, "");
-      const { error } = await invokeCloud("evolution-manage", {
-        body: { action: "group_demote", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
-      });
-      if (error) throw error;
-      toast.success("✅ تم تنزيل العضو من المشرفين");
-      loadGroupInfo();
-    } catch (err: any) {
-      toast.error("فشل التنزيل: " + (err.message || ""));
-    }
+  const handleDemoteMember = (participantId: string, name: string) => {
+    setConfirmAction({
+      title: `تنزيل ${name} من المشرفين؟`,
+      action: async () => {
+        try {
+          const phone = participantId.replace(/@.*/, "");
+          const { error } = await invokeCloud("evolution-manage", {
+            body: { action: "group_demote", group_jid: conversation.customerPhone, participants: [phone], channel_id: conversation.channelId },
+          });
+          if (error) throw error;
+          toast.success("✅ تم تنزيل العضو من المشرفين");
+          loadGroupInfo();
+        } catch (err: any) {
+          toast.error("فشل التنزيل: " + (err.message || ""));
+        }
+      },
+    });
   };
 
   const handleToggleGroupSetting = async (setting: string, label: string) => {
@@ -1216,6 +1234,15 @@ const CustomerInfoPanel = ({ conversation, onUpdateNotes, onAssignAgent, onAssig
           <InternalNotes conversationId={conversation.id} />
         </TabsContent>
       </Tabs>
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.title || ""}
+        confirmLabel="تأكيد"
+        destructive
+        onConfirm={() => { confirmAction?.action(); setConfirmAction(null); }}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 };

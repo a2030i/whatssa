@@ -2,10 +2,26 @@ import { useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
-/**
- * Hook that plays a notification sound and updates the tab title
- * when a new customer message arrives while the tab is not visible.
- */
+const requestPushPermission = () => {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission().catch(() => {});
+  }
+};
+
+const showBrowserNotification = (senderName: string, preview: string) => {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (document.visibilityState === "visible") return;
+  try {
+    const n = new Notification(`رسالة من ${senderName}`, {
+      body: preview,
+      icon: "/favicon.ico",
+      tag: "whatssa-msg",
+      silent: true,
+    });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch {}
+};
+
 const useNotificationSound = () => {
   const { orgId, user } = useAuth();
   const unreadCountRef = useRef(0);
@@ -30,6 +46,11 @@ const useNotificationSound = () => {
     } else {
       document.title = originalTitleRef.current;
     }
+  }, []);
+
+  // Request browser notification permission once on mount
+  useEffect(() => {
+    requestPushPermission();
   }, []);
 
   // Reset unread count when tab becomes visible
@@ -99,10 +120,20 @@ const useNotificationSound = () => {
             if (!conv || conv.org_id !== orgId) return;
           }
 
-          // If tab is not visible, play sound and update title
+          // Resolve sender info for notification
+          const senderName: string = msg.metadata?.sender_name || msg.metadata?.customer_name || "عميل";
+          const preview: string = msg.content
+            ? String(msg.content).slice(0, 80)
+            : msg.message_type === "image" ? "📷 صورة"
+            : msg.message_type === "audio" ? "🎵 رسالة صوتية"
+            : msg.message_type === "document" ? "📄 ملف"
+            : "رسالة جديدة";
+
+          // If tab is not visible, play sound, update title, and show browser notification
           if (document.visibilityState !== "visible") {
             unreadCountRef.current += 1;
             updateTitle(unreadCountRef.current);
+            showBrowserNotification(senderName, preview);
 
             try {
               const audio = getAudio();

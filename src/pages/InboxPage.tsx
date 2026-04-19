@@ -15,8 +15,9 @@ import { buildTemplateComponents, mapMetaTemplate, type WhatsAppTemplate } from 
 
 const TYPING_TIMEOUT = 3000;
 const SENTIMENT_ANALYSIS_INTERVAL = 5; // Analyze every N customer messages
-const MESSAGE_RESYNC_INTERVAL = 4000;
+const MESSAGE_RESYNC_INTERVAL = 10000;
 const sentimentCounters = new Map<string, number>();
+const MAX_SENTIMENT_CACHE = 200;
 
 const sortMessagesByCreatedAt = (messages: Message[]) =>
   [...messages].sort((a, b) => {
@@ -32,6 +33,7 @@ const isReactionPlaceholderMessage = (message: Pick<Message, "type" | "text">) =
 };
 
 const triggerSentimentAnalysis = async (conversationId: string, orgId: string) => {
+  if (sentimentCounters.size > MAX_SENTIMENT_CACHE) sentimentCounters.clear();
   const count = (sentimentCounters.get(conversationId) || 0) + 1;
   sentimentCounters.set(conversationId, count);
   if (count % SENTIMENT_ANALYSIS_INTERVAL !== 0) return;
@@ -112,48 +114,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const deepLinkApplied = useRef(false);
   const fetchConversationsRef = useRef<(() => Promise<void>) | null>(null);
   const conversationsRef = useRef<Conversation[]>([]);
-  const lateAlertShownRef = useRef<Set<string>>(new Set());
-  const slaThresholdMsRef = useRef<number>(10 * 60 * 1000); // default 10 min, updated from DB
 
-  // Load SLA policy threshold from DB once
-  useEffect(() => {
-    if (!orgId) return;
-    supabase
-      .from("sla_policies")
-      .select("first_response_minutes")
-      .eq("org_id", orgId)
-      .eq("is_active", true)
-      .order("first_response_minutes", { ascending: true })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.first_response_minutes) {
-          slaThresholdMsRef.current = data.first_response_minutes * 60 * 1000;
-        }
-      });
-  }, [orgId]);
-
-  // Late response alert — check every 60s for conversations waiting beyond SLA threshold
-  useEffect(() => {
-    const checkLateResponses = () => {
-      const now = Date.now();
-      conversationsRef.current.forEach(conv => {
-        if (conv.status === "closed" || conv.lastMessageSender !== "customer" || !conv.lastCustomerMessageAt || conv.conversationType === "group") return;
-        const elapsed = now - new Date(conv.lastCustomerMessageAt).getTime();
-        if (elapsed >= slaThresholdMsRef.current && !lateAlertShownRef.current.has(conv.id)) {
-          lateAlertShownRef.current.add(conv.id);
-          const mins = Math.floor(elapsed / 60000);
-          toast.warning(`⏱️ ${conv.customerName || conv.customerPhone} ينتظر رد منذ ${mins} دقيقة`, {
-            duration: 8000,
-            action: { label: "فتح", onClick: () => setSelectedId(conv.id) },
-          });
-        }
-      });
-    };
-    const interval = setInterval(checkLateResponses, 60000);
-    const timeout = setTimeout(checkLateResponses, 5000);
-    return () => { clearInterval(interval); clearTimeout(timeout); };
-  }, []);
 
   const isMobile = useIsMobile();
 
@@ -254,7 +215,7 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       // Try with channel_label first; if it fails (column missing on external DB), retry without it
       const convPromise = supabase
         .from("conversations")
-        .select("*")
+        .select("id, customer_name, customer_phone, last_message, last_message_at, last_message_sender, unread_count, assigned_to, assigned_to_id, assigned_team, assigned_team_id, status, tags, notes, first_response_at, conversation_type, channel_id, customer_profile_pic, unread_mention_count, is_pinned, is_archived, dedicated_agent_id, sentiment, sentiment_score, closed_by")
         .eq("org_id", currentOrgId)
         .order("last_message_at", { ascending: false })
         .limit(500);
@@ -317,22 +278,15 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           .from("employee_group_access")
           .select("conversation_id")
           .eq("profile_id", myId);
-        console.log("[INBOX] employee_group_access query:", { myId, groupAccess, gaErr, isRegularMember });
         grantedGroupIds = new Set((groupAccess || []).map((g: any) => g.conversation_id));
 
-        const beforeCount = filteredData.length;
-        const groupConvs = filteredData.filter((c: any) => c.conversation_type === "group");
-        console.log("[INBOX] groups in raw data:", groupConvs.length, "granted:", [...grantedGroupIds]);
-
         filteredData = filteredData.filter((conv: any) => {
-          // Explicitly granted group access
           if (grantedGroupIds.has(conv.id)) return true;
           if (conv.assigned_to_id === myId) return true;
           if (conv.assigned_team_id && myTeamIds.includes(conv.assigned_team_id)) return true;
           if (!conv.channel_id) return true;
           return accessibleChannelIds.has(conv.channel_id);
         });
-        console.log("[INBOX] filtered:", beforeCount, "->", filteredData.length, "groups after filter:", filteredData.filter((c: any) => c.conversation_type === "group").length);
       }
 
       const mapped: Conversation[] = (filteredData).map((conversation: any) => {
@@ -426,21 +380,22 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
         return conv.conversationType !== "email";
       });
 
-      // Zero out unread for the currently viewed conversation
+      // Zero out unread for the currently viewed conversation (immutable update)
       const activeId = selectedIdRef.current;
+      let finalFiltered = modeFiltered;
       if (activeId) {
         const activeConv = modeFiltered.find(c => c.id === activeId);
         if (activeConv && activeConv.unread > 0) {
-          activeConv.unread = 0;
+          finalFiltered = modeFiltered.map(c => c.id === activeId ? { ...c, unread: 0 } : c);
           supabase.from("conversations").update({ unread_count: 0 }).eq("id", activeId).then();
         }
         if (activeConv && (activeConv.unreadMentionCount || 0) > 0) {
-          activeConv.unreadMentionCount = 0;
+          finalFiltered = finalFiltered.map(c => c.id === activeId ? { ...c, unreadMentionCount: 0 } : c);
           supabase.from("conversations").update({ unread_mention_count: 0 }).eq("id", activeId).then();
         }
       }
 
-      setConversations(modeFiltered);
+      setConversations(finalFiltered);
       // On first load, honour deep link; otherwise auto-select first
       if (!deepLinkApplied.current) {
         deepLinkApplied.current = true;
@@ -510,13 +465,13 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       const [msgResult, emailDetailsResult] = await Promise.all([
         supabase
           .from("messages")
-          .select("*")
+          .select("id, conversation_id, content, sender, status, created_at, message_type, media_url, wa_message_id, metadata")
           .eq("conversation_id", currentConversationId)
           .order("created_at", { ascending: true }),
         isEmailConv
           ? supabase
               .from("email_message_details" as any)
-              .select("*")
+              .select("message_id, email_subject, email_from, email_from_name, email_to, email_cc, email_bcc, email_message_id, email_attachments, direction")
               .eq("conversation_id", currentConversationId)
           : Promise.resolve({ data: null, error: null }),
       ]);
@@ -1326,6 +1281,10 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   }, [conversations]);
 
   const handleDeleteConversation = useCallback(async (convId: string) => {
+    if (!isSuperAdmin && userRole !== "admin") {
+      toast.error("ليس لديك صلاحية حذف المحادثات");
+      return;
+    }
     try {
       // Delete all messages first, then the conversation
       await supabase.from("messages").delete().eq("conversation_id", convId);
@@ -1343,10 +1302,11 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
       }
       
       toast.success("🗑️ تم حذف المحادثة");
-    } catch (e: any) {
-      toast.error("فشل حذف المحادثة: " + (e.message || ""));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error("فشل حذف المحادثة: " + msg);
     }
-  }, [selectedId]);
+  }, [selectedId, isSuperAdmin, userRole]);
 
   const handleEditMessage = useCallback(async (msgId: string, waMessageId: string, newText: string, convPhone: string) => {
     const conv = conversations.find(c => c.customerPhone === convPhone);

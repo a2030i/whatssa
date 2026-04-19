@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface FlowField {
   id: string;
@@ -158,6 +159,7 @@ const WhatsAppFlowsPage = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [submissionsExpanded, setSubmissionsExpanded] = useState<Record<string, boolean>>({});
+  const [deleteFlowId, setDeleteFlowId] = useState<string | null>(null);
 
   // Builder state
   const [flowName, setFlowName] = useState("");
@@ -235,9 +237,12 @@ const WhatsAppFlowsPage = () => {
     }
   };
 
-  const handleDeleteFlow = async (id: string) => {
-    if (!confirm("هل أنت متأكد من حذف هذا النموذج؟")) return;
-    const { error } = await supabase.from("wa_flows").delete().eq("id", id);
+  const handleDeleteFlow = (id: string) => { setDeleteFlowId(id); };
+
+  const confirmDeleteFlow = async () => {
+    if (!deleteFlowId) return;
+    setDeleteFlowId(null);
+    const { error } = await supabase.from("wa_flows").delete().eq("id", deleteFlowId);
     if (error) toast.error("حدث خطأ في الحذف");
     else { toast.success("تم حذف النموذج"); fetchFlows(); }
   };
@@ -801,6 +806,16 @@ const WhatsAppFlowsPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteFlowId}
+        title="حذف هذا النموذج؟"
+        description="سيُحذف النموذج وجميع بياناته نهائياً."
+        confirmLabel="حذف"
+        destructive
+        onConfirm={confirmDeleteFlow}
+        onCancel={() => setDeleteFlowId(null)}
+      />
     </div>
   );
 };

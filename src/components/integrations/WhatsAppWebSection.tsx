@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase, invokeCloud } from "@/lib/supabase";
 import { toast } from "sonner";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 interface Props {
   orgId: string | null;
@@ -182,6 +183,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [maxUnofficialPhones, setMaxUnofficialPhones] = useState<number>(1);
   const [unofficialCount, setUnofficialCount] = useState<number>(0);
+  const [confirmType, setConfirmType] = useState<"logout" | "delete" | null>(null);
   const [editingLabel, setEditingLabel] = useState(false);
   const [labelText, setLabelText] = useState("");
   const pollRef = useRef<NodeJS.Timeout | null>(null);
@@ -475,7 +477,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
   };
 
   const logout = async () => {
-    if (!instanceName || !confirm("هل تريد فصل الرقم؟")) return;
+    if (!instanceName) return;
     const { data } = await invokeCloud("evolution-manage", {
       body: { action: "logout", instance_name: instanceName },
     });
@@ -490,7 +492,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
   };
 
   const deleteInstance = async () => {
-    if (!instanceName || !confirm("هل تريد حذف الجلسة نهائياً؟")) return;
+    if (!instanceName) return;
     setIsDeleting(true);
     const { data } = await invokeCloud("evolution-manage", {
       body: { action: "delete", instance_name: instanceName },
@@ -625,7 +627,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
                     {isCheckingStatus ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                     تحقق
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 text-destructive" onClick={logout}>
+                  <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 text-destructive" onClick={() => setConfirmType("logout")}>
                     <LogOut className="w-3 h-3" /> فصل
                   </Button>
                 </div>
@@ -665,7 +667,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
               )}
 
               {isSuperAdmin && (
-                <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={deleteInstance} disabled={isDeleting}>
+                <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={() => setConfirmType("delete")} disabled={isDeleting}>
                   {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                   حذف الجلسة نهائياً
                 </Button>
@@ -723,7 +725,7 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
               </Button>
 
               {instanceName && isSuperAdmin && (
-                <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={deleteInstance} disabled={isDeleting}>
+                <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 text-destructive border-destructive/30" onClick={() => setConfirmType("delete")} disabled={isDeleting}>
                   {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                   حذف الجلسة
                 </Button>
@@ -732,6 +734,25 @@ const WhatsAppWebSection = ({ orgId, isSuperAdmin, autoOpen = false, forNewNumbe
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmType === "logout"}
+        title="فصل الرقم؟"
+        description="ستنقطع الجلسة وتحتاج لمسح QR مجدداً."
+        confirmLabel="فصل"
+        destructive
+        onConfirm={() => { setConfirmType(null); logout(); }}
+        onCancel={() => setConfirmType(null)}
+      />
+      <ConfirmDialog
+        open={confirmType === "delete"}
+        title="حذف الجلسة نهائياً؟"
+        description="لا يمكن التراجع عن هذا الإجراء."
+        confirmLabel="حذف"
+        destructive
+        onConfirm={() => { setConfirmType(null); deleteInstance(); }}
+        onCancel={() => setConfirmType(null)}
+      />
     </div>
   );
 };

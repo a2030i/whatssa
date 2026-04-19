@@ -17,6 +17,7 @@ import {
   Eye, BarChart3, MousePointer, Globe, Smartphone, Monitor,
   RefreshCw, Check, Code2, Palette, ArrowRight, Settings, TrendingUp
 } from "lucide-react";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 /* ═══════════════════════════════════════════════
    WhatsApp Widget Generator Tab
@@ -26,6 +27,7 @@ const WidgetTab = ({ orgId }: { orgId: string }) => {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showCode, setShowCode] = useState<string | null>(null);
+  const [deleteWidgetId, setDeleteWidgetId] = useState<string | null>(null);
   const [form, setForm] = useState({
     phone_number: "",
     welcome_message: "مرحباً! كيف يمكننا مساعدتك؟",
@@ -61,8 +63,13 @@ const WidgetTab = ({ orgId }: { orgId: string }) => {
   };
 
   const deleteWidget = async (id: string) => {
-    if (!confirm("حذف هذا الويدجت؟")) return;
-    await supabase.from("widget_configs").delete().eq("id", id);
+    setDeleteWidgetId(id);
+  };
+
+  const confirmDeleteWidget = async () => {
+    if (!deleteWidgetId) return;
+    setDeleteWidgetId(null);
+    await supabase.from("widget_configs").delete().eq("id", deleteWidgetId);
     toast.success("تم الحذف");
     fetch_();
   };
@@ -183,6 +190,15 @@ const WidgetTab = ({ orgId }: { orgId: string }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteWidgetId}
+        title="حذف الويدجت؟"
+        confirmLabel="حذف"
+        destructive
+        onConfirm={confirmDeleteWidget}
+        onCancel={() => setDeleteWidgetId(null)}
+      />
     </div>
   );
 };
@@ -196,6 +212,7 @@ const ShortLinksTab = ({ orgId }: { orgId: string }) => {
   const [showCreate, setShowCreate] = useState(false);
   const [showClicks, setShowClicks] = useState<string | null>(null);
   const [clicks, setClicks] = useState<any[]>([]);
+  const [deleteLinkId, setDeleteLinkId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", target_phone: "", prefilled_message: "", utm_source: "", utm_medium: "", utm_campaign: "" });
 
   const baseUrl = window.location.origin;
@@ -227,9 +244,12 @@ const ShortLinksTab = ({ orgId }: { orgId: string }) => {
     fetch_();
   };
 
-  const deleteLink = async (id: string) => {
-    if (!confirm("حذف هذا الرابط؟")) return;
-    await supabase.from("short_links").delete().eq("id", id);
+  const deleteLink = (id: string) => { setDeleteLinkId(id); };
+
+  const confirmDeleteLink = async () => {
+    if (!deleteLinkId) return;
+    setDeleteLinkId(null);
+    await supabase.from("short_links").delete().eq("id", deleteLinkId);
     toast.success("تم الحذف");
     fetch_();
   };
@@ -346,6 +366,15 @@ const ShortLinksTab = ({ orgId }: { orgId: string }) => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteLinkId}
+        title="حذف هذا الرابط؟"
+        confirmLabel="حذف"
+        destructive
+        onConfirm={confirmDeleteLink}
+        onCancel={() => setDeleteLinkId(null)}
+      />
     </div>
   );
 };
@@ -359,6 +388,7 @@ const ZapierTab = ({ orgId }: { orgId: string }) => {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("Zapier Webhook");
+  const [deleteWebhookId, setDeleteWebhookId] = useState<string | null>(null);
   const cloudUrl = import.meta.env.VITE_SUPABASE_URL;
 
   const fetch_ = useCallback(async () => {
@@ -388,9 +418,12 @@ const ZapierTab = ({ orgId }: { orgId: string }) => {
     fetch_();
   };
 
-  const deleteIncoming = async (id: string) => {
-    if (!confirm("حذف هذا الويب هوك؟")) return;
-    await supabase.from("zapier_webhooks").delete().eq("id", id);
+  const deleteIncoming = (id: string) => { setDeleteWebhookId(id); };
+
+  const confirmDeleteWebhook = async () => {
+    if (!deleteWebhookId) return;
+    setDeleteWebhookId(null);
+    await supabase.from("zapier_webhooks").delete().eq("id", deleteWebhookId);
     toast.success("تم الحذف");
     fetch_();
   };
@@ -483,6 +516,15 @@ const ZapierTab = ({ orgId }: { orgId: string }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteWebhookId}
+        title="حذف هذا الويب هوك؟"
+        confirmLabel="حذف"
+        destructive
+        onConfirm={confirmDeleteWebhook}
+        onCancel={() => setDeleteWebhookId(null)}
+      />
     </div>
   );
 };

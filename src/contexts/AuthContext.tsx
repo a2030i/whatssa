@@ -2,10 +2,22 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { supabase, invokeCloud } from "@/lib/supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
+export interface UserProfile {
+  id: string;
+  full_name: string | null;
+  org_id: string | null;
+  is_supervisor: boolean | null;
+  team_id: string | null;
+  is_online: boolean | null;
+  phone: string | null;
+  email_signature: string | null;
+  [key: string]: unknown;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  profile: any;
+  profile: UserProfile | null;
   userRole: string | null;
   orgId: string | null;
   teamId: string | null;
@@ -51,7 +63,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [isEcommerce, setIsEcommerce] = useState(false);
@@ -87,6 +99,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Set profile & role immediately (no waiting for org queries)
     if (profileData) {
+      if (profileData.is_suspended) {
+        await supabase.auth.signOut();
+        return;
+      }
       setProfile(profileData);
       setOrgId(orgIdVal);
     }
@@ -195,11 +211,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Set offline on tab close / navigate away
     const handleOffline = () => {
-      navigator.sendBeacon?.(
-        `${(supabase as any).supabaseUrl}/rest/v1/profiles?id=eq.${user.id}`,
-        // sendBeacon doesn't support PATCH, so we use the interval approach as primary
-      );
-      // Fallback: just update via supabase
       supabase
         .from("profiles")
         .update({ is_online: false, last_seen_at: new Date().toISOString() })
@@ -300,6 +311,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signOut = async () => {
+    lastFetchRef.current = { userId: "", ts: 0 };
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

@@ -1190,7 +1190,22 @@ const TemplatesPage = () => {
             )}
 
             <div className="space-y-1.5">
-              <Label className="text-xs">{isReviewMode ? "Message body *" : "محتوى الرسالة *"}</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{isReviewMode ? "Message body *" : "محتوى الرسالة *"}</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] gap-1 px-2"
+                  onClick={() => {
+                    const vars = (formData.body.match(/\{\{(\d+)\}\}/g) || []).map((v) => parseInt(v.replace(/\D/g, "")));
+                    const next = vars.length ? Math.max(...vars) + 1 : 1;
+                    setFormData({ ...formData, body: formData.body + `{{${next}}}` });
+                  }}
+                >
+                  <Plus className="w-3 h-3" /> {isReviewMode ? "Add variable" : "إضافة متغير"}
+                </Button>
+              </div>
               <Textarea
                 value={formData.body}
                 onChange={(event) => setFormData({ ...formData, body: event.target.value })}
@@ -1233,7 +1248,6 @@ const TemplatesPage = () => {
                       className="h-7 text-[10px] gap-1"
                       onClick={() => setFormData({ ...formData, buttons: [...formData.buttons, { type: "phone", text: "", value: "" }] })}
                     >
-                      <Phone className="w-3 h-3" /> {isReviewMode ? "Phone button" : "رقم هاتف"}
                       <Phone className="w-3 h-3" /> {isReviewMode ? "Phone button" : "رقم هاتف"}
                     </Button>
                     <Button

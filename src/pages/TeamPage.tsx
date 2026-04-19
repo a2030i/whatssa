@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import ShiftManagement from "@/components/team/ShiftManagement";
 import EmployeeGroupAccess from "@/components/team/EmployeeGroupAccess";
 import AttendanceReport from "@/components/team/AttendanceReport";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 const roleConfig: Record<string, { label: string; className: string }> = {
   admin: { label: "مدير", className: "bg-kpi-3/10 text-kpi-3" },
@@ -97,6 +98,8 @@ const TeamPage = () => {
   const [employeeShifts, setEmployeeShifts] = useState<Record<string, string>>({});
   const [attendanceDialog, setAttendanceDialog] = useState<any>(null);
   const [formShiftId, setFormShiftId] = useState<string>("");
+  const [deleteConfirm, setDeleteConfirm] = useState<any>(null);
+  const [suspendConfirm, setSuspendConfirm] = useState<any>(null);
 
   // Assignment config dialog
   const [assignDialog, setAssignDialog] = useState<any>(null);
@@ -280,7 +283,11 @@ const TeamPage = () => {
   };
 
   const handleDeleteMember = async (profile: any) => {
-    if (!confirm(`هل أنت متأكد من حذف "${profile.full_name}"؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+    setDeleteConfirm(profile);
+  };
+
+  const confirmDeleteMember = async (profile: any) => {
+    setDeleteConfirm(null);
     try {
       // Delete role, profile data via edge function
       const { data, error } = await invokeCloud("admin-delete-member", {
@@ -295,6 +302,17 @@ const TeamPage = () => {
     } catch (e: any) {
       toast.error(e.message || "خطأ غير متوقع");
     }
+  };
+
+  const confirmToggleSuspend = async () => {
+    if (!suspendConfirm) return;
+    const profile = suspendConfirm;
+    setSuspendConfirm(null);
+    const newState = !profile.is_suspended;
+    const { error } = await supabase.from("profiles").update({ is_suspended: newState }).eq("id", profile.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(newState ? `تم إيقاف ${profile.full_name}` : `تم تفعيل ${profile.full_name}`);
+    load();
   };
 
   const openSchedule = (profile: any) => {
@@ -537,7 +555,10 @@ const TeamPage = () => {
                     <div className={cn("absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-card", (profile.is_online || (profile.last_seen_at && Date.now() - new Date(profile.last_seen_at).getTime() < 2.5 * 60 * 1000)) ? "bg-success" : "bg-muted-foreground/40")} />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">{profile.full_name || "بدون اسم"}</p>
+                    <p className="font-medium text-sm flex items-center gap-1.5">
+                      {profile.full_name || "بدون اسم"}
+                      {profile.is_suspended && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">موقوف</span>}
+                    </p>
                     <div className="flex items-center gap-2 flex-wrap">
                       {/* Last seen */}
                       <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
@@ -602,6 +623,9 @@ const TeamPage = () => {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setAttendanceDialog(profile)} className="gap-2 text-xs">
                           <BarChart3 className="w-3.5 h-3.5" /> سجل الحضور
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSuspendConfirm(profile)} className="gap-2 text-xs text-warning">
+                          {profile.is_suspended ? <><CheckCircle className="w-3.5 h-3.5" /> تفعيل الموظف</> : <><Hand className="w-3.5 h-3.5" /> إيقاف الموظف</>}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDeleteMember(profile)} className="gap-2 text-xs text-destructive">
                           <Trash2 className="w-3.5 h-3.5" /> حذف الموظف
@@ -1304,6 +1328,24 @@ const TeamPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        title={`حذف "${deleteConfirm?.full_name}"؟`}
+        description="لا يمكن التراجع عن هذا الإجراء."
+        confirmLabel="حذف"
+        destructive
+        onConfirm={() => confirmDeleteMember(deleteConfirm)}
+        onCancel={() => setDeleteConfirm(null)}
+      />
+      <ConfirmDialog
+        open={!!suspendConfirm}
+        title={suspendConfirm?.is_suspended ? `تفعيل "${suspendConfirm?.full_name}"؟` : `إيقاف "${suspendConfirm?.full_name}"؟`}
+        description={suspendConfirm?.is_suspended ? "سيتمكن الموظف من تسجيل الدخول مجدداً." : "لن يتمكن الموظف من تسجيل الدخول حتى يُفعَّل مجدداً."}
+        confirmLabel={suspendConfirm?.is_suspended ? "تفعيل" : "إيقاف"}
+        onConfirm={confirmToggleSuspend}
+        onCancel={() => setSuspendConfirm(null)}
+      />
     </div>
   );
 };
