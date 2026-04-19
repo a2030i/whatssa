@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2, Forward, Star, BarChart3, Timer as TimerIcon, Tag, Ticket, CornerDownLeft, WrapText, Mail, Users } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2, Forward, Star, BarChart3, Timer as TimerIcon, Tag, Ticket, CornerDownLeft, WrapText, Mail, Users, BellOff } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
@@ -24,6 +24,8 @@ import InputAreaNew from "@/components/inbox/InputAreaNew";
 import ExportConversation from "./ExportConversation";
 import { useAuth } from "@/contexts/AuthContext";
 import FollowUpDialog from "./FollowUpDialog";
+import SnoozeDialog from "./SnoozeDialog";
+import ConversationEventsLog from "./ConversationEventsLog";
 import ScheduleMessagePopover from "./ScheduleMessagePopover";
 import ForwardMessageDialog from "./ForwardMessageDialog";
 import PollCreatorDialog from "./PollCreatorDialog";
@@ -1025,6 +1027,8 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
   const [showTransfer, setShowTransfer] = useState(false);
   const [showClosureReason, setShowClosureReason] = useState(false);
   const [showFollowUp, setShowFollowUp] = useState(false);
+  const [showSnooze, setShowSnooze] = useState(false);
+  const [snoozedUntil, setSnoozedUntil] = useState<string | null>((conversation as any).snoozed_until || null);
   const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -2364,6 +2368,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 </span>
               </div>
             )}
+            {/* Snooze indicator */}
+            {snoozedUntil && new Date(snoozedUntil) > new Date() && (
+              <button
+                onClick={() => setShowSnooze(true)}
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
+                title="محادثة مؤجلة"
+              >
+                <BellOff className="w-4 h-4" />
+                <span className="text-[11px] font-medium">
+                  مؤجلة حتى {new Date(snoozedUntil).toLocaleTimeString("ar-SA-u-ca-gregory", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </button>
+            )}
             {/* Desktop: Transfer button directly visible */}
             {conversation.status !== "closed" && (
               <button
@@ -2394,6 +2411,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setShowFollowUp(true)}>
                   <Clock className="w-4 h-4 ml-2 text-primary" /> جدولة متابعة
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowSnooze(true)}>
+                  <BellOff className="w-4 h-4 ml-2 text-warning" />
+                  {snoozedUntil ? "تعديل التأجيل" : "تأجيل المحادثة"}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => {
                   setShowTicketDialog(true);
@@ -2645,6 +2666,9 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
           </Button>
         </div>
       )}
+
+      {/* Conversation Events Log (system events timeline) */}
+      <ConversationEventsLog conversationId={conversation.id} />
 
       {/* Closed Conversation Banner */}
       {conversation.status === "closed" && (
@@ -3607,6 +3631,14 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
         onOpenChange={setShowClosureReason}
         conversationId={conversation.id}
         onClose={onStatusChange}
+      />
+
+      {/* Snooze Dialog */}
+      <SnoozeDialog
+        open={showSnooze}
+        onOpenChange={setShowSnooze}
+        conversationId={conversation.id}
+        onSnoozed={(until) => setSnoozedUntil(until)}
       />
 
       {/* Follow-Up Dialog */}
