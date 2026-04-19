@@ -938,6 +938,155 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
           );
         }
 
+        // === REACTION MESSAGE ===
+        if (msg.type === "reaction") {
+          const meta = msg.metadata as any;
+          const emoji   = meta?.reaction?.text || meta?.emoji || msg.text?.replace(/\[reaction[^\]]*\]/i, "").trim() || "❤️";
+          const onMsg   = meta?.reaction?.key?.id || meta?.quoted_id;
+          if (!emoji || emoji.startsWith("[")) {
+            // invisible reaction placeholder — skip rendering
+            return <></>;
+          }
+          return (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-muted/40 border border-border/30 text-sm">
+              <span className="text-xl leading-none">{emoji}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {msg.sender === "customer" ? "تفاعل العميل" : "تفاعلت"}{onMsg ? " على رسالة" : ""}
+              </span>
+              {timestampEl}
+            </div>
+          );
+        }
+
+        // === POLL RESPONSE / POLL UPDATE ===
+        if (msg.type === "poll_update" || msg.type === "poll_response") {
+          const meta = msg.metadata as any;
+          const votes: string[] = meta?.selected_options || meta?.votes || [];
+          return (
+            <div className="px-3 py-2 rounded-2xl bg-muted/40 border border-border/30 space-y-1">
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-semibold">
+                <span>📊</span>
+                <span>صوّت في استطلاع</span>
+              </div>
+              {votes.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {votes.map((v, i) => (
+                    <span key={i} className="text-[11px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{v}</span>
+                  ))}
+                </div>
+              )}
+              {timestampEl}
+            </div>
+          );
+        }
+
+        // === ORDER MESSAGE ===
+        if (msg.type === "order") {
+          const meta = msg.metadata as any;
+          const items: any[] = meta?.order?.product_items || meta?.products || [];
+          const total   = meta?.order?.total_amount;
+          const currency = meta?.order?.currency || "SAR";
+          return (
+            <div className="px-3 py-2.5 rounded-2xl bg-muted/40 border border-border/30 space-y-1.5 min-w-[180px]">
+              <div className="flex items-center gap-1.5 text-[12px] font-semibold">
+                <ShoppingBag className="w-4 h-4 text-primary shrink-0" />
+                <span>طلب منتجات</span>
+              </div>
+              {items.length > 0 && (
+                <div className="space-y-0.5">
+                  {items.slice(0, 3).map((item: any, i: number) => (
+                    <div key={i} className="flex justify-between items-center text-[11px]">
+                      <span className="text-foreground truncate max-w-[130px]">{item.product_name || item.name || "منتج"}</span>
+                      <span className="text-muted-foreground shrink-0 mr-2">x{item.quantity || 1}</span>
+                    </div>
+                  ))}
+                  {items.length > 3 && <span className="text-[10px] text-muted-foreground">+{items.length - 3} منتجات أخرى</span>}
+                </div>
+              )}
+              {total && (
+                <div className="text-[11px] font-semibold text-primary border-t border-border/30 pt-1">
+                  الإجمالي: {Number(total) / 1000} {currency}
+                </div>
+              )}
+              {timestampEl}
+            </div>
+          );
+        }
+
+        // === CALL LOG ===
+        if (msg.type === "call_log" || msg.type === "call") {
+          const meta = msg.metadata as any;
+          const status   = meta?.call_status || (msg.text?.includes("missed") ? "missed" : "received");
+          const duration = meta?.duration;
+          const isMissed = status === "missed" || status === "rejected";
+          return (
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl border ${isMissed ? "bg-destructive/5 border-destructive/20" : "bg-success/5 border-success/20"}`}>
+              <PhoneIcon className={`w-4 h-4 shrink-0 ${isMissed ? "text-destructive" : "text-success"}`} />
+              <div className="flex flex-col">
+                <span className={`text-[11px] font-semibold ${isMissed ? "text-destructive" : "text-success"}`}>
+                  {isMissed ? "مكالمة فائتة" : "مكالمة واتساب"}
+                </span>
+                {duration && <span className="text-[10px] text-muted-foreground">{Math.floor(Number(duration) / 60)}:{String(Number(duration) % 60).padStart(2, "0")}</span>}
+              </div>
+              {timestampEl}
+            </div>
+          );
+        }
+
+        // === EPHEMERAL / DISAPPEARING MESSAGE NOTICE ===
+        if (msg.type === "ephemeral" || msg.type === "disappearing") {
+          return (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-muted/30 border border-dashed border-border/30 text-[11px] text-muted-foreground">
+              <Timer className="w-3.5 h-3.5 shrink-0" />
+              <span>تم تفعيل الرسائل المختفية</span>
+              {timestampEl}
+            </div>
+          );
+        }
+
+        // === PAYMENT / INVOICE ===
+        if (msg.type === "payment") {
+          const meta = msg.metadata as any;
+          const amount   = meta?.amount;
+          const currency = meta?.currency || "SAR";
+          return (
+            <div className="px-3 py-2.5 rounded-2xl bg-success/5 border border-success/20 space-y-0.5 min-w-[160px]">
+              <div className="flex items-center gap-1.5 text-[12px] font-semibold text-success">
+                <CreditCard className="w-4 h-4 shrink-0" />
+                <span>طلب دفع</span>
+              </div>
+              {amount && <div className="text-[12px] font-bold">{amount} {currency}</div>}
+              {timestampEl}
+            </div>
+          );
+        }
+
+        // === UNSUPPORTED / UNKNOWN FALLBACK ===
+        const isUnsupportedText = !msg.text || msg.text.startsWith("[") || msg.text === "null" || msg.text === "undefined";
+        if (isUnsupportedText && !msg.mediaUrl) {
+          const typeLabel: Record<string, { icon: string; label: string }> = {
+            "gif":           { icon: "🎞️", label: "صورة متحركة GIF" },
+            "sticker_pack":  { icon: "🎨", label: "مجموعة ملصقات" },
+            "product":       { icon: "🛍️", label: "منتج" },
+            "catalog":       { icon: "📂", label: "كتالوج منتجات" },
+            "cta_url":       { icon: "🔗", label: "رابط زر" },
+            "interactive":   { icon: "📋", label: "رسالة تفاعلية" },
+            "button_reply":  { icon: "🔘", label: "ردّ على زر" },
+            "list_reply":    { icon: "📝", label: "اختيار من قائمة" },
+            "system":        { icon: "⚙️", label: "رسالة نظام" },
+            "native_flow":   { icon: "📱", label: "نموذج واتساب" },
+            "request_welcome":{ icon: "👋", label: "طلب بدء محادثة" },
+          };
+          const fallback = typeLabel[msg.type || ""] || { icon: "📎", label: `رسالة (${msg.type || "غير معروف"})` };
+          return (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-muted/30 border border-dashed border-border/30">
+              <span className="text-base leading-none">{fallback.icon}</span>
+              <span className="text-[11px] text-muted-foreground italic">{fallback.label}</span>
+              {timestampEl}
+            </div>
+          );
+        }
+
         // === PURE TEXT MESSAGE (no media) ===
         return (
           <div className={cn(
