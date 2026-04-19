@@ -106,7 +106,7 @@ export const useDashboardData = (): DashboardData => {
     }
     const load = async () => {
       try {
-        const today = getDateRange(0).split("T")[0] + "T21:00:00Z";
+        const today = new Date().toISOString().split("T")[0] + "T00:00:00+03:00";
         const days7 = getDateRange(7);
         const days30 = getDateRange(30);
 

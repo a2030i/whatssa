@@ -1,193 +1,558 @@
-import { useState, useEffect, useCallback } from "react";
 import { useDashboardData } from "@/hooks/useDashboardData";
-import StatusBar from "@/components/dashboard/StatusBar";
-import SmartAlerts from "@/components/dashboard/SmartAlerts";
-import OperationalMetrics from "@/components/dashboard/OperationalMetrics";
-import AccountHealth from "@/components/dashboard/AccountHealth";
-import SmartInsight from "@/components/dashboard/SmartInsight";
-import VerificationCard from "@/components/dashboard/VerificationCard";
-import TokenAlert from "@/components/dashboard/TokenAlert";
-import WhatsAppSafetyBanner from "@/components/dashboard/WhatsAppSafetyBanner";
-import LiveMonitorWidget from "@/components/dashboard/LiveMonitorWidget";
-import { Loader2, LayoutDashboard, Settings2, GripVertical, Eye, EyeOff, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
-} from "@/components/ui/sheet";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { Loader2 } from "lucide-react";
 
-interface WidgetConfig {
-  id: string;
-  label: string;
-  visible: boolean;
-  order: number;
+interface AgentStat {
+  full_name: string;
+  open_convs: number;
+  messages_7days: number;
+  messages_today: number;
+  read_msgs: number;
+  delivered_msgs: number;
 }
 
-const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: "safety_banner", label: "تنبيهات السلامة", visible: true, order: 0 },
-  { id: "live_monitor", label: "المراقبة الحية", visible: true, order: 1 },
-  { id: "status_bar", label: "شريط الحالة", visible: true, order: 2 },
-  { id: "token_alert", label: "تنبيه التوكن", visible: true, order: 3 },
-  { id: "verification", label: "حالة التحقق", visible: true, order: 4 },
-  { id: "smart_alerts", label: "التنبيهات الذكية", visible: true, order: 5 },
-  { id: "smart_insight", label: "رؤى ذكية", visible: true, order: 6 },
-  { id: "operational", label: "المقاييس التشغيلية", visible: true, order: 7 },
-  { id: "account_health", label: "صحة الحساب", visible: true, order: 8 },
-];
+interface HourStat { hour: number; count: number; }
+interface DayStat { day: string; day_num: number; count: number; }
+interface TopCustomer { customer_name: string; customer_phone: string; msg_count: number; last_message: string; }
 
-const STORAGE_KEY = "dashboard_widget_config";
+const DAYS_AR: Record<string, string> = {
+  Sunday:"الأحد", Monday:"الاثنين", Tuesday:"الثلاثاء",
+  Wednesday:"الأربعاء", Thursday:"الخميس", Friday:"الجمعة", Saturday:"السبت"
+};
 
-const DashboardPage = () => {
+const DashboardPageNew = () => {
   const data = useDashboardData();
-  const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return DEFAULT_WIDGETS;
-  });
-  const [editMode, setEditMode] = useState(false);
-  const [dragItem, setDragItem] = useState<number | null>(null);
+  const { profile, orgId } = useAuth();
+  const [agents, setAgents]           = useState<AgentStat[]>([]);
+  const [hourStats, setHourStats]     = useState<HourStat[]>([]);
+  const [dayStats, setDayStats]       = useState<DayStat[]>([]);
+  const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
+  const [loading, setLoading]         = useState(true);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets));
-  }, [widgets]);
+    if (!orgId) return;
+    const run = async () => {
+      setLoading(true);
 
-  const toggleVisibility = (id: string) => {
-    setWidgets(prev => prev.map(w => w.id === id ? { ...w, visible: !w.visible } : w));
-  };
+      // conversation IDs للمنظمة
+      const { data: convRows } = await supabase
+        .from("conversations")
+        .select("id, assigned_to_id, status, conversation_type")
+        .eq("org_id", orgId);
+      const allConvIds = (convRows || []).map((c:any) => c.id);
 
-  const resetLayout = () => {
-    setWidgets(DEFAULT_WIDGETS);
-    localStorage.removeItem(STORAGE_KEY);
-  };
+      // profiles
+      const { data: profiles } = await supabase
+        .from("profiles").select("id, full_name").eq("org_id", orgId);
 
-  const handleDragStart = (index: number) => setDragItem(index);
+      // رسائل آخر 7 أيام
+      const { data: msgs7 } = await supabase
+        .from("messages")
+        .select("metadata, status, created_at, sender")
+        .eq("sender", "agent")
+        .gte("created_at", new Date(Date.now()-7*864e5).toISOString())
+        .in("conversation_id", allConvIds);
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (dragItem === null || dragItem === index) return;
+      // رسائل آخر 30 يوم للإحصائيات
+      const { data: msgs30 } = await supabase
+        .from("messages")
+        .select("created_at, sender")
+        .gte("created_at", new Date(Date.now()-30*864e5).toISOString())
+        .in("conversation_id", allConvIds);
 
-    const newWidgets = [...widgets];
-    const [dragged] = newWidgets.splice(dragItem, 1);
-    newWidgets.splice(index, 0, dragged);
-    // Update order
-    newWidgets.forEach((w, i) => w.order = i);
-    setWidgets(newWidgets);
-    setDragItem(index);
-  };
+      // أكثر العملاء — خاص فقط
+      const privateConvIds = (convRows||[])
+        .filter((c:any) => c.conversation_type === "private")
+        .map((c:any) => c.id);
 
-  const handleDragEnd = () => setDragItem(null);
+      const { data: custMsgs } = await supabase
+        .from("messages")
+        .select("conversation_id")
+        .eq("sender", "customer")
+        .gte("created_at", new Date(Date.now()-30*864e5).toISOString())
+        .in("conversation_id", privateConvIds);
 
-  const renderWidget = (widget: WidgetConfig) => {
-    if (!widget.visible) return null;
+      // احسب أكثر العملاء
+      const convCount: Record<string,number> = {};
+      (custMsgs||[]).forEach((m:any) => {
+        convCount[m.conversation_id] = (convCount[m.conversation_id]||0)+1;
+      });
+      const topConvIds = Object.entries(convCount)
+        .sort(([,a],[,b]) => b-a).slice(0,8).map(([id]) => id);
 
-    const wrapper = (children: React.ReactNode) => (
-      <div
-        key={widget.id}
-        className={cn("relative group", editMode && "ring-1 ring-dashed ring-border/50 rounded-xl p-1")}
-        draggable={editMode}
-        onDragStart={() => handleDragStart(widgets.indexOf(widget))}
-        onDragOver={(e) => handleDragOver(e, widgets.indexOf(widget))}
-        onDragEnd={handleDragEnd}
-      >
-        {editMode && (
-          <div className="absolute top-2 left-2 z-10 cursor-grab active:cursor-grabbing bg-card/90 backdrop-blur-sm rounded-lg p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-            <GripVertical className="w-4 h-4 text-muted-foreground" />
-          </div>
-        )}
-        {children}
-      </div>
-    );
+      let topCusts: TopCustomer[] = [];
+      if (topConvIds.length > 0) {
+        const { data: convDetails } = await supabase
+          .from("conversations")
+          .select("id, customer_name, customer_phone, last_message_at")
+          .in("id", topConvIds);
+        topCusts = (convDetails||[]).map((c:any) => ({
+          customer_name: c.customer_name || c.customer_phone,
+          customer_phone: c.customer_phone,
+          msg_count: convCount[c.id] || 0,
+          last_message: c.last_message_at,
+        })).sort((a,b) => b.msg_count - a.msg_count);
+        setTopCustomers(topCusts);
+      }
 
-    switch (widget.id) {
-      case "safety_banner": return wrapper(<WhatsAppSafetyBanner />);
-      case "live_monitor": return wrapper(<LiveMonitorWidget />);
-      case "status_bar": return wrapper(<StatusBar data={data} />);
-      case "token_alert": return wrapper(<TokenAlert data={data} />);
-      case "verification": return wrapper(<VerificationCard data={data} />);
-      case "smart_alerts": return wrapper(<SmartAlerts data={data} />);
-      case "smart_insight": return wrapper(<SmartInsight data={data} />);
-      case "operational": return wrapper(<OperationalMetrics data={data} />);
-      case "account_health": return wrapper(<AccountHealth data={data} />);
-      default: return null;
-    }
-  };
+      // توقيت السعودية
+      const todayStart = new Date();
+      todayStart.setHours(0,0,0,0);
+      const todayUTC = new Date(todayStart.getTime()-3*36e5);
 
-  if (data.isLoading) {
+      // أداء الموظفين
+      if (profiles && msgs7) {
+        const stats: AgentStat[] = profiles.map((p:any) => {
+          const am = msgs7.filter((m:any) => m.metadata?.sender_name === p.full_name);
+          const tm = am.filter((m:any) => new Date(m.created_at) >= todayUTC);
+          const openC = (convRows||[]).filter((c:any) => c.assigned_to_id===p.id && c.status==="active").length;
+          return {
+            full_name: p.full_name,
+            open_convs: openC,
+            messages_7days: am.length,
+            messages_today: tm.length,
+            read_msgs: am.filter((m:any) => m.status==="read").length,
+            delivered_msgs: am.filter((m:any) => m.status==="delivered").length,
+          };
+        }).filter((a:AgentStat) => a.messages_7days>0||a.open_convs>0)
+          .sort((a:AgentStat,b:AgentStat) => b.messages_today-a.messages_today);
+        setAgents(stats);
+      }
+
+      // إحصائيات الساعات (بتوقيت السعودية)
+      if (msgs30) {
+        const hMap: Record<number,number> = {};
+        msgs30.forEach((m:any) => {
+          const h = (new Date(m.created_at).getUTCHours()+3)%24;
+          hMap[h] = (hMap[h]||0)+1;
+        });
+        setHourStats(Array.from({length:24},(_,i) => ({hour:i, count:hMap[i]||0})));
+
+        const dMap: Record<number,number> = {};
+        msgs30.forEach((m:any) => {
+          const d = new Date(new Date(m.created_at).getTime()+3*36e5).getUTCDay();
+          dMap[d] = (dMap[d]||0)+1;
+        });
+        const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+        setDayStats(dayNames.map((name,i) => ({day:name, day_num:i, count:dMap[i]||0})));
+      }
+
+      setLoading(false);
+    };
+    run();
+  }, [orgId]);
+
+  if (data.isLoading || loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">جاري التحميل...</span>
-        </div>
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
+  const sentToday      = data.messageStats.sentToday;
+  const openConvs      = data.openConversations;
+  const totalConvs     = data.totalConversations;
+  const deliveredToday = data.messageStats.deliveredToday;
+  const deliveredRate  = sentToday>0 ? Math.round((deliveredToday/sentToday)*100) : 0;
+  const failedToday    = data.messageStats.failedToday;
+  const sent7          = data.messageStats.sent7Days;
+  const delivered7     = data.messageStats.delivered7Days;
+  const failed7        = data.messageStats.failed7Days;
+  const successRate7   = sent7>0 ? Math.round(((delivered7+Math.max(0,sent7-delivered7-failed7))/sent7)*100) : 0;
+  const orgName        = data.orgName||"المنظمة";
+  const planName       = data.planName||"غير محدد";
+  const isTrial        = data.subscriptionStatus==="trial";
+  const wallet         = Number(data.walletBalance)||0;
+  const isConnected    = data.channels[0]?.waStatus?.isConnected||false;
+  const agentName      = profile?.full_name||orgName;
+  const hour           = new Date().getHours();
+  const greeting       = hour<12?"صباح الخير":hour<17?"مساء الخير":"مساء النور";
+  const colors         = ["#25D366","#6366f1","#f59e0b","#0ea5e9","#ec4899","#14b8a6","#f97316","#8b5cf6"];
+  const totalToday     = agents.reduce((a,b)=>a+b.messages_today,0);
+  const maxHour        = Math.max(...hourStats.map(h=>h.count),1);
+  const maxDay         = Math.max(...dayStats.map(d=>d.count),1);
+  const peakHour       = hourStats.reduce((a,b)=>a.count>b.count?a:b,{hour:0,count:0});
+  const peakDay        = dayStats.reduce((a,b)=>a.count>b.count?a:b,{day:"",day_num:0,count:0});
+
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-[1280px] mx-auto space-y-6 min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between animate-fade-in">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-glow shrink-0">
-            <LayoutDashboard className="w-6 h-6 text-primary-foreground" />
+    <div dir="rtl" style={{fontFamily:"'Tajawal',sans-serif",background:"#f0f2f5",minHeight:"100vh"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"/>
+      <style>{`
+        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+        .wu{animation:fadeUp .4s ease both;background:#fff;border-radius:20px;border:1px solid #e2e8f0;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+        .live{animation:pulse 1.8s infinite}
+        .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+        @media(min-width:768px){.g2{grid-template-columns:repeat(4,1fr)}.row2{display:grid!important;grid-template-columns:3fr 2fr;gap:14px}.row2b{display:grid!important;grid-template-columns:1fr 1fr;gap:14px}}
+        .row2{display:flex;flex-direction:column;gap:14px}
+        .row2b{display:flex;flex-direction:column;gap:14px}
+        .bar-h:hover{opacity:.8;cursor:pointer}
+        .cust-row:hover{background:#f8fafc}
+      `}</style>
+
+      {/* ══ HERO ══ */}
+      <div style={{background:"linear-gradient(135deg,#064e35 0%,#25D366 100%)",padding:"28px 20px 80px",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:-60,left:-60,width:220,height:220,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
+        <div style={{position:"absolute",bottom:-80,right:-30,width:280,height:280,borderRadius:"50%",background:"rgba(255,255,255,.03)"}}/>
+        <div style={{position:"absolute",top:20,left:"40%",width:100,height:100,borderRadius:"50%",background:"rgba(255,255,255,.03)"}}/>
+        <div style={{position:"relative",zIndex:1}}>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20}}>
+            <div>
+              <p style={{color:"rgba(255,255,255,.65)",fontSize:13,margin:0}}>{greeting} 👋</p>
+              <h1 style={{color:"#fff",fontSize:24,fontWeight:900,margin:"4px 0 0",lineHeight:1.2}}>{agentName}</h1>
+              <p style={{color:"rgba(255,255,255,.45)",fontSize:11,margin:"4px 0 0"}}>{orgName}</p>
+            </div>
+            <div style={{background:"rgba(255,255,255,.12)",borderRadius:16,padding:"10px 16px",backdropFilter:"blur(12px)",textAlign:"center",border:"1px solid rgba(255,255,255,.15)"}}>
+              <p style={{color:"rgba(255,255,255,.6)",fontSize:10,margin:0,letterSpacing:1}}>الخطة</p>
+              <p style={{color:"#fff",fontSize:14,fontWeight:800,margin:"2px 0 0"}}>{planName}</p>
+              <p style={{color:isTrial?"#fbbf24":"#4ade80",fontSize:10,margin:"3px 0 0",fontWeight:700}}>{isTrial?"⏱ تجريبية":"✅ فعّالة"}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-black text-foreground tracking-tight">لوحة التحكم</h1>
-            <p className="text-sm text-muted-foreground">
-              {data.orgName && `${data.orgName} • `}
-              <span className="font-semibold">{data.planName}</span>
-              {" • "}
-              <span className={data.subscriptionStatus === "trial" ? "text-warning font-semibold" : "text-success font-semibold"}>
-                {data.subscriptionStatus === "trial" ? "فترة تجريبية" : data.subscriptionStatus === "active" ? "فعّال" : data.subscriptionStatus}
-              </span>
-            </p>
+
+          {/* Live Status */}
+          <div style={{background:"rgba(255,255,255,.1)",borderRadius:16,padding:"12px 18px",backdropFilter:"blur(12px)",border:"1px solid rgba(255,255,255,.12)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span className="live" style={{width:9,height:9,borderRadius:"50%",background:isConnected?"#4ade80":"#f87171",display:"inline-block",boxShadow:isConnected?"0 0 0 3px rgba(74,222,128,.3)":"none"}}/>
+                <span style={{color:"#fff",fontSize:13,fontWeight:700}}>{isConnected?"الاتصال نشط":"غير متصل"}</span>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {data.channels.map((ch,i) => (
+                  <span key={i} style={{background:"rgba(255,255,255,.15)",borderRadius:20,padding:"4px 12px",fontSize:11,color:"#fff",fontWeight:600,border:"1px solid rgba(255,255,255,.1)"}}>
+                    {ch.channelType==="official"?"📱":"💻"} {ch.channelLabel||ch.waStatus.displayPhone||`قناة ${i+1}`}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{padding:"0 16px 32px",marginTop:-56,position:"relative",zIndex:2}}>
+
+        {/* ══ KPI Cards ══ */}
+        <div className="g2" style={{marginBottom:16}}>
+          {[
+            {icon:"💬",val:sentToday,          label:"أُرسل اليوم",   sub:`${data.messageStats.sent7Days} هذا الأسبوع`, bg:"linear-gradient(135deg,#dcfce7,#bbf7d0)", ac:"#15803d", ic:"#dcfce7"},
+            {icon:"📂",val:openConvs,           label:"مفتوحة الآن",   sub:`${totalConvs} إجمالي`,                        bg:"linear-gradient(135deg,#dbeafe,#bfdbfe)", ac:"#1d4ed8", ic:"#dbeafe"},
+            {icon:"✅",val:`${deliveredRate}%`, label:"توصيل اليوم",   sub:`${deliveredToday} وصلت • ${failedToday} فشلت`, bg:"linear-gradient(135deg,#fef3c7,#fde68a)", ac:"#b45309", ic:"#fef3c7"},
+            {icon:"👥",val:agents.length,       label:"موظف نشط",      sub:`${totalToday} رسالة اليوم`,                   bg:"linear-gradient(135deg,#ede9fe,#ddd6fe)", ac:"#6d28d9", ic:"#ede9fe"},
+          ].map((s,i) => (
+            <div key={i} className="wu" style={{padding:"16px",overflow:"hidden",position:"relative"}}>
+              <div style={{width:40,height:40,borderRadius:12,background:s.ic,display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,marginBottom:12}}>{s.icon}</div>
+              <div style={{fontSize:26,fontWeight:900,color:"#0f172a",lineHeight:1}}>{s.val}</div>
+              <div style={{color:"#64748b",fontSize:11,marginTop:4,fontWeight:500}}>{s.label}</div>
+              <div style={{marginTop:10,background:s.ic,borderRadius:20,padding:"3px 10px",display:"inline-flex",alignItems:"center"}}>
+                <span style={{fontSize:10,fontWeight:700,color:s.ac}}>{s.sub}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ══ Wallet Card (Visa Style) ══ */}
+        <div style={{marginBottom:16,background:"linear-gradient(135deg,#1e3a5f 0%,#0f172a 50%,#1e3a5f 100%)",borderRadius:24,padding:"24px",position:"relative",overflow:"hidden",boxShadow:"0 8px 32px rgba(15,23,42,.35)"}}>
+          {/* Background circles */}
+          <div style={{position:"absolute",top:-40,left:-40,width:160,height:160,borderRadius:"50%",background:"rgba(255,255,255,.03)"}}/>
+          <div style={{position:"absolute",bottom:-60,right:-20,width:200,height:200,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
+          <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle,rgba(37,211,102,.08) 0%,transparent 70%)"}}/>
+
+          <div style={{position:"relative",zIndex:1}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
+              <div>
+                <p style={{color:"rgba(255,255,255,.5)",fontSize:11,margin:0,letterSpacing:2,textTransform:"uppercase"}}>رصيد المحفظة</p>
+                <p style={{color:"rgba(255,255,255,.3)",fontSize:10,margin:"2px 0 0"}}>{orgName}</p>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:"rgba(255,193,7,.8)"}}/>
+                <div style={{width:28,height:28,borderRadius:"50%",background:"rgba(255,120,7,.5)",marginRight:-14}}/>
+                <span style={{color:"rgba(255,255,255,.6)",fontSize:11,marginRight:8,fontWeight:600}}>whatssa</span>
+              </div>
+            </div>
+
+            <div style={{marginBottom:24}}>
+              <p style={{color:"rgba(255,255,255,.4)",fontSize:12,margin:"0 0 4px"}}>الرصيد المتاح</p>
+              <p style={{color:"#fff",fontSize:38,fontWeight:900,margin:0,letterSpacing:-1}}>
+                {wallet.toFixed(2)} <span style={{fontSize:18,fontWeight:500,color:"rgba(255,255,255,.6)"}}>ر.س</span>
+              </p>
+            </div>
+
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+              <div>
+                <p style={{color:"rgba(255,255,255,.4)",fontSize:10,margin:"0 0 2px",letterSpacing:2}}>الحالة</p>
+                <p style={{color:isTrial?"#fbbf24":"#4ade80",fontSize:13,fontWeight:700,margin:0}}>{isTrial?"⏱ تجريبية":"✅ فعّالة"}</p>
+              </div>
+              <div style={{textAlign:"left"}}>
+                <p style={{color:"rgba(255,255,255,.4)",fontSize:10,margin:"0 0 2px",letterSpacing:2}}>الخطة</p>
+                <p style={{color:"rgba(255,255,255,.8)",fontSize:13,fontWeight:700,margin:0}}>{planName}</p>
+              </div>
+              <div style={{width:50,height:36,borderRadius:6,background:"linear-gradient(135deg,rgba(255,255,255,.15),rgba(255,255,255,.05))",border:"1px solid rgba(255,255,255,.1)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:2}}>
+                  {[...Array(4)].map((_,i) => (
+                    <div key={i} style={{width:8,height:8,borderRadius:2,background:"rgba(255,255,255,.3)"}}/>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="text-xs gap-1.5 rounded-xl">
-              <Settings2 className="w-3.5 h-3.5" /> تخصيص
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-80" dir="rtl">
-            <SheetHeader>
-              <SheetTitle className="text-base">تخصيص لوحة التحكم</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4 space-y-1">
-              <p className="text-xs text-muted-foreground mb-3">أخفِ أو أظهر الويدجتات واسحبها لإعادة ترتيبها</p>
+        {/* ══ Performance + Agents ══ */}
+        <div className="row2" style={{marginBottom:16}}>
 
-              {widgets.map((w) => (
-                <div key={w.id} className="flex items-center justify-between py-2.5 px-2 rounded-lg hover:bg-secondary/50 transition-colors">
-                  <div className="flex items-center gap-2">
-                    {w.visible ? <Eye className="w-3.5 h-3.5 text-primary" /> : <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />}
-                    <span className={cn("text-sm", !w.visible && "text-muted-foreground")}>{w.label}</span>
-                  </div>
-                  <Switch checked={w.visible} onCheckedChange={() => toggleVisibility(w.id)} />
+          {/* Agents */}
+          <div className="wu" style={{padding:20}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:4,height:22,borderRadius:99,background:"#25D366"}}/>
+                <div>
+                  <p style={{fontSize:15,fontWeight:800,color:"#0f172a",margin:0}}>أداء الموظفين</p>
+                  <p style={{fontSize:11,color:"#64748b",margin:"2px 0 0"}}>اليوم — {agents.length} موظف نشط</p>
                 </div>
-              ))}
+              </div>
+              <span style={{fontSize:22}}>🏆</span>
+            </div>
+            {agents.map((a,i) => {
+              const pct = totalToday>0 ? Math.round((a.messages_today/totalToday)*100) : 0;
+              const sr  = a.messages_7days>0 ? Math.round(((a.read_msgs+a.delivered_msgs)/a.messages_7days)*100) : 0;
+              return (
+                <div key={i} style={{marginBottom:16,paddingBottom:16,borderBottom:i<agents.length-1?"1px solid #f1f5f9":"none"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                    <div style={{width:38,height:38,borderRadius:"50%",background:colors[i%colors.length],display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:900,color:"#fff",flexShrink:0,boxShadow:`0 3px 8px ${colors[i%colors.length]}55`}}>
+                      {a.full_name[0]}
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <span style={{fontSize:13,fontWeight:700,color:"#0f172a"}}>{a.full_name}</span>
+                        <div style={{textAlign:"left"}}>
+                          <span style={{fontSize:15,fontWeight:900,color:colors[i%colors.length]}}>{a.messages_today}</span>
+                          <span style={{fontSize:10,color:"#64748b",marginRight:2}}> اليوم</span>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:8,marginTop:3,flexWrap:"wrap"}}>
+                        <span style={{fontSize:10,color:"#64748b",background:"#f1f5f9",borderRadius:20,padding:"1px 8px"}}>📂 {a.open_convs} مفتوحة</span>
+                        <span style={{fontSize:10,color:"#64748b",background:"#f1f5f9",borderRadius:20,padding:"1px 8px"}}>📅 {a.messages_7days} / 7أيام</span>
+                        <span style={{fontSize:10,fontWeight:700,background:sr>=80?"#dcfce7":sr>=60?"#fef3c7":"#fee2e2",color:sr>=80?"#15803d":sr>=60?"#b45309":"#dc2626",borderRadius:20,padding:"1px 8px"}}>
+                          {sr>=80?"✅":"⚠️"} {sr}% نجاح
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{height:6,background:"#f1f5f9",borderRadius:99,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${pct}%`,background:colors[i%colors.length],borderRadius:99,transition:"width .8s ease"}}/>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+                    <span style={{fontSize:9,color:"#94a3b8"}}>{pct}% من رسائل اليوم</span>
+                    <span style={{fontSize:9,color:"#94a3b8"}}>قُرئت {a.read_msgs} • وصلت {a.delivered_msgs}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-              <div className="pt-4 border-t border-border/40 flex gap-2">
-                <Button variant="outline" size="sm" className="text-xs gap-1.5 flex-1" onClick={resetLayout}>
-                  <RotateCcw className="w-3 h-3" /> استعادة الافتراضي
-                </Button>
-                <Button variant={editMode ? "default" : "outline"} size="sm" className="text-xs gap-1.5 flex-1" onClick={() => setEditMode(!editMode)}>
-                  <GripVertical className="w-3 h-3" /> {editMode ? "إنهاء الترتيب" : "ترتيب"}
-                </Button>
+          {/* Right column */}
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+            {/* 7-day stats */}
+            <div className="wu" style={{padding:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+                <div style={{width:4,height:22,borderRadius:99,background:"#6366f1"}}/>
+                <p style={{fontSize:15,fontWeight:800,color:"#0f172a",margin:0}}>آخر 7 أيام</p>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+                {[
+                  {icon:"📤",val:sent7,     label:"أُرسل",  color:"#0f172a"},
+                  {icon:"👁", val:Math.max(0,sent7-delivered7-failed7),label:"قُرئ",color:"#6366f1"},
+                  {icon:"✅",val:delivered7,label:"وصل",    color:"#16a34a"},
+                  {icon:"❌",val:failed7,   label:"فشل",    color:"#dc2626"},
+                ].map((s,i) => (
+                  <div key={i} style={{background:"#f8fafc",borderRadius:14,padding:"12px",textAlign:"center"}}>
+                    <div style={{fontSize:20,marginBottom:4}}>{s.icon}</div>
+                    <div style={{fontSize:20,fontWeight:900,color:s.color}}>{s.val}</div>
+                    <div style={{fontSize:10,color:"#64748b",marginTop:2}}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{background:successRate7>=80?"#dcfce7":successRate7>=60?"#fef3c7":"#fee2e2",borderRadius:14,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#374151",fontWeight:600}}>معدل النجاح الكلي</span>
+                <span style={{fontSize:20,fontWeight:900,color:successRate7>=80?"#15803d":successRate7>=60?"#b45309":"#dc2626"}}>{successRate7}%</span>
               </div>
             </div>
-          </SheetContent>
-        </Sheet>
-      </div>
 
-      {/* Widgets */}
-      {widgets.map(renderWidget)}
+            {/* Channels */}
+            <div className="wu" style={{padding:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+                <div style={{width:4,height:22,borderRadius:99,background:"#0ea5e9"}}/>
+                <p style={{fontSize:15,fontWeight:800,color:"#0f172a",margin:0}}>القنوات</p>
+                <span className="live" style={{width:7,height:7,borderRadius:"50%",background:isConnected?"#25D366":"#ef4444",display:"inline-block",marginRight:"auto",boxShadow:isConnected?"0 0 0 3px rgba(37,211,102,.2)":"none"}}/>
+              </div>
+              {data.channels.map((ch,i) => (
+                <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<data.channels.length-1?"1px solid #f1f5f9":"none"}}>
+                  <div style={{width:38,height:38,borderRadius:12,background:ch.waStatus.isConnected?"#dcfce7":"#fee2e2",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>
+                    {ch.channelType==="official"?"📱":"💻"}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontSize:12,fontWeight:700,color:"#0f172a",margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      {ch.channelLabel||ch.waStatus.displayPhone||`قناة ${i+1}`}
+                    </p>
+                    <p style={{fontSize:10,color:"#64748b",margin:"2px 0 0"}}>{ch.channelType==="official"?"Meta API":"Evolution API"}</p>
+                  </div>
+                  <span style={{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:ch.waStatus.isConnected?"#dcfce7":"#fee2e2",color:ch.waStatus.isConnected?"#15803d":"#dc2626",flexShrink:0,whiteSpace:"nowrap"}}>
+                    {ch.waStatus.isConnected?"✅ متصل":"❌ منقطع"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ══ Hour Chart ══ */}
+        <div className="wu" style={{padding:20,marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:4,height:22,borderRadius:99,background:"#f59e0b"}}/>
+              <div>
+                <p style={{fontSize:15,fontWeight:800,color:"#0f172a",margin:0}}>أكثر أوقات الرسائل</p>
+                <p style={{fontSize:11,color:"#64748b",margin:"2px 0 0"}}>آخر 30 يوم — بتوقيت السعودية</p>
+              </div>
+            </div>
+            <div style={{background:"#fef3c7",borderRadius:12,padding:"6px 12px",textAlign:"center"}}>
+              <p style={{fontSize:10,color:"#b45309",margin:0}}>ذروة النشاط</p>
+              <p style={{fontSize:14,fontWeight:800,color:"#b45309",margin:0}}>{peakHour.hour}:00</p>
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"flex-end",gap:3,height:80,paddingBottom:4}}>
+            {hourStats.map((h,i) => {
+              const pct = maxHour>0 ? (h.count/maxHour)*100 : 0;
+              const isPeak = h.count===peakHour.count;
+              const isWork = h.hour>=9 && h.hour<=21;
+              return (
+                <div key={i} className="bar-h" title={`${h.hour}:00 — ${h.count} رسالة`}
+                  style={{flex:1,height:`${Math.max(4,pct)}%`,borderRadius:"3px 3px 0 0",
+                    background:isPeak?"#f59e0b":isWork?"#25D366":"#cbd5e1",
+                    transition:"all .3s ease",position:"relative"}}
+                />
+              );
+            })}
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
+            {[0,3,6,9,12,15,18,21].map(h => (
+              <span key={h} style={{fontSize:9,color:"#94a3b8",flex:1,textAlign:"center"}}>{h}</span>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:12,marginTop:10,flexWrap:"wrap"}}>
+            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:10,height:10,borderRadius:2,background:"#f59e0b"}}/><span style={{fontSize:10,color:"#64748b"}}>ذروة النشاط</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:10,height:10,borderRadius:2,background:"#25D366"}}/><span style={{fontSize:10,color:"#64748b"}}>ساعات العمل</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:10,height:10,borderRadius:2,background:"#cbd5e1"}}/><span style={{fontSize:10,color:"#64748b"}}>خارج وقت العمل</span></div>
+          </div>
+        </div>
+
+        {/* ══ Day Chart ══ */}
+        <div className="wu" style={{padding:20,marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:4,height:22,borderRadius:99,background:"#8b5cf6"}}/>
+              <div>
+                <p style={{fontSize:15,fontWeight:800,color:"#0f172a",margin:0}}>أكثر أيام الأسبوع نشاطاً</p>
+                <p style={{fontSize:11,color:"#64748b",margin:"2px 0 0"}}>آخر 30 يوم</p>
+              </div>
+            </div>
+            <div style={{background:"#ede9fe",borderRadius:12,padding:"6px 12px",textAlign:"center"}}>
+              <p style={{fontSize:10,color:"#6d28d9",margin:0}}>أنشط يوم</p>
+              <p style={{fontSize:14,fontWeight:800,color:"#6d28d9",margin:0}}>{DAYS_AR[peakDay.day?.trim()]||peakDay.day}</p>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"flex-end",height:100}}>
+            {dayStats.map((d,i) => {
+              const pct = maxDay>0 ? (d.count/maxDay)*100 : 0;
+              const isPeak = d.count===peakDay.count;
+              const isWeekend = d.day_num===5||d.day_num===6;
+              return (
+                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <span style={{fontSize:9,color:isPeak?"#6d28d9":"#94a3b8",fontWeight:isPeak?800:400}}>{d.count}</span>
+                  <div className="bar-h" style={{width:"100%",height:`${Math.max(8,pct)}%`,borderRadius:"6px 6px 0 0",
+                    background:isPeak?"#8b5cf6":isWeekend?"#f59e0b":"#25D366",
+                    transition:"all .3s ease"}}
+                  />
+                  <span style={{fontSize:9,color:isPeak?"#6d28d9":"#64748b",fontWeight:isPeak?800:400,textAlign:"center",lineHeight:1.2}}>
+                    {(DAYS_AR[d.day?.trim()]||d.day).slice(0,3)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ══ Top Customers ══ */}
+        <div className="wu" style={{padding:20,marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:4,height:22,borderRadius:99,background:"#ec4899"}}/>
+              <div>
+                <p style={{fontSize:15,fontWeight:800,color:"#0f172a",margin:0}}>أكثر العملاء تواصلاً</p>
+                <p style={{fontSize:11,color:"#64748b",margin:"2px 0 0"}}>آخر 30 يوم — محادثات خاصة فقط</p>
+              </div>
+            </div>
+            <span style={{fontSize:22}}>🏅</span>
+          </div>
+          {topCustomers.map((c,i) => {
+            const maxC = topCustomers[0]?.msg_count||1;
+            const pct  = Math.round((c.msg_count/maxC)*100);
+            const lastMsg = new Date(c.last_message);
+            const diffH = Math.floor((Date.now()-lastMsg.getTime())/36e5);
+            const lastStr = diffH<1?"منذ أقل من ساعة":diffH<24?`منذ ${diffH} ساعة`:`منذ ${Math.floor(diffH/24)} يوم`;
+            const medals = ["🥇","🥈","🥉"];
+            return (
+              <div key={i} className="cust-row" style={{display:"flex",alignItems:"center",gap:10,padding:"10px 8px",borderRadius:12,borderBottom:i<topCustomers.length-1?"1px solid #f1f5f9":"none",transition:"background .15s"}}>
+                <div style={{width:32,height:32,borderRadius:"50%",background:i<3?"transparent":colors[i%colors.length],display:"flex",alignItems:"center",justifyContent:"center",fontSize:i<3?20:13,fontWeight:800,color:"#fff",flexShrink:0}}>
+                  {i<3?medals[i]:c.customer_name[0]}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                    <span style={{fontSize:13,fontWeight:700,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{c.customer_name}</span>
+                    <span style={{fontSize:13,fontWeight:900,color:"#ec4899",flexShrink:0}}>{c.msg_count} رسالة</span>
+                  </div>
+                  <div style={{height:4,background:"#f1f5f9",borderRadius:99,overflow:"hidden",marginBottom:4}}>
+                    <div style={{height:"100%",width:`${pct}%`,background:"linear-gradient(90deg,#ec4899,#f472b6)",borderRadius:99}}/>
+                  </div>
+                  <span style={{fontSize:10,color:"#94a3b8"}}>{lastStr}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ══ Summary ══ */}
+        <div className="wu" style={{padding:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+            <div style={{width:4,height:22,borderRadius:99,background:"#25D366"}}/>
+            <p style={{fontSize:15,fontWeight:800,color:"#0f172a",margin:0}}>ملخص النشاط الكلي</p>
+          </div>
+          <div className="g3">
+            {[
+              {icon:"📨",val:data.messageStats.sent30Days,   lbl:"رسائل 30 يوم"},
+              {icon:"📥",val:data.messageStats.totalReceived, lbl:"مستلمة 30 يوم"},
+              {icon:"📂",val:totalConvs,                      lbl:"إجمالي المحادثات"},
+              {icon:"🔓",val:openConvs,                       lbl:"مفتوحة الآن"},
+              {icon:"👥",val:agents.length,                   lbl:"موظف نشط"},
+              {icon:"⚡",val:data.automationCount,            lbl:"قواعد الأتمتة"},
+            ].map((s,i) => (
+              <div key={i} style={{background:"#f8fafc",borderRadius:14,padding:"14px 8px",textAlign:"center",border:"1px solid #e2e8f0"}}>
+                <div style={{fontSize:22,marginBottom:6}}>{s.icon}</div>
+                <div style={{fontSize:18,fontWeight:900,color:"#0f172a"}}>{s.val}</div>
+                <div style={{fontSize:10,color:"#64748b",marginTop:3}}>{s.lbl}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 };
 
-export default DashboardPage;
-
+export default DashboardPageNew;
