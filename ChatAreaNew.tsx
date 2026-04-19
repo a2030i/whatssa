@@ -687,7 +687,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                 className="block rounded-xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:opacity-90 transition-opacity"
               >
                 <img
-                  src={`https://maps.googleapis.com/maps/api/staticmap?center=${msg.location.latitude},${msg.location.longitude}&zoom=15&size=280x150&markers=color:red|${msg.location.latitude},${msg.location.longitude}&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY||''}`}
+                  src={`https://maps.googleapis.com/maps/api/staticmap?center=${msg.location.latitude},${msg.location.longitude}&zoom=15&size=280x150&markers=color:red|${msg.location.latitude},${msg.location.longitude}&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8`}
                   alt="موقع"
                   className="w-[280px] h-[150px] object-cover"
                   onError={(e) => {

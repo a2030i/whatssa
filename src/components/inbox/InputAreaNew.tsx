@@ -134,7 +134,7 @@ export const InputAreaNew = ({
             disabled={windowExpired && !isNoteMode}
             rows={1}
             className={cn(
-              "flex-1 bg-transparent border-0 outline-none resize-none text-[14px] leading-relaxed min-h-[36px] max-h-[140px] placeholder:text-gray-300",
+              "flex-1 bg-transparent border-0 outline-none resize-none text-[16px] leading-relaxed min-h-[36px] max-h-[140px] placeholder:text-gray-300",
               isNoteMode ? "text-amber-900 placeholder:text-amber-300" : "text-gray-800",
               (windowExpired && !isNoteMode) && "opacity-40 cursor-not-allowed"
             )}
