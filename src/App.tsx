@@ -31,7 +31,7 @@ const IntegrationsPage = lazy(() => import("./pages/IntegrationsPage"));
 const OrdersPage = lazy(() => import("./pages/OrdersPage"));
 const AbandonedCartsPage = lazy(() => import("./pages/AbandonedCartsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const DashboardPage = lazy(() => import("./pages/DashboardPageNew"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const ApiDocsPage = lazy(() => import("./pages/ApiDocsPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
