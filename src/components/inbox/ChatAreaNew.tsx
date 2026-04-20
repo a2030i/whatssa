@@ -287,7 +287,7 @@ const ResolvedMedia = ({ url, type, isAgent = false, onImageClick }: { url: stri
   return null;
 };
 
-const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants, onCopyLink, onForward, onStar, translationText }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }>; onCopyLink?: (msgId: string) => void; onForward?: (msg: Message) => void; onStar?: (msg: Message) => void; translationText?: string }) => {
+const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, onImageClick, hasAiConfig, groupParticipants, onCopyLink, onForward, onStar, translationText, isFirstInGroup }: { msg: Message; conversation: Conversation; onReply: (msg: Message) => void; onEdit?: (msg: Message) => void; onDelete?: (msg: Message) => void; onImageClick?: (src: string) => void; hasAiConfig?: boolean; groupParticipants?: Array<{ id: string; name: string; phone: string; rawDigits?: string }>; onCopyLink?: (msgId: string) => void; onForward?: (msg: Message) => void; onStar?: (msg: Message) => void; translationText?: string; isFirstInGroup?: boolean }) => {
   const swipeDirection = msg.sender === "agent" ? "left" : "right";
   const isEmailConversation = conversation.channelType === "email" || conversation.conversationType === "email";
   const canReply = msg.type !== "note" && !msg.isDeleted;
@@ -783,8 +783,8 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
         if (shouldSplitMedia) {
           return (
             <div className="inline-flex flex-col gap-1 max-w-full">
-              {/* Group sender label */}
-              {groupSenderEl && (
+              {/* Group sender label — only for first in consecutive group */}
+              {groupSenderEl && isFirstInGroup !== false && (
                 <span className="text-[10.5px] font-bold flex items-center gap-1" style={{ color: groupSenderEl.color }}>
                   {groupSenderEl.name}
                   {groupSenderEl.isAdmin && <Crown className="w-2.5 h-2.5 inline shrink-0" />}
@@ -1120,7 +1120,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
               ? "bg-card text-foreground rounded-br-sm shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
               : "bg-[hsl(158,45%,42%)] text-white rounded-bl-sm"
           )} style={{ wordBreak: "normal", overflowWrap: "anywhere", whiteSpace: "pre-wrap", writingMode: "horizontal-tb" }}>
-            {groupSenderEl && (
+            {groupSenderEl && isFirstInGroup !== false && (
               <div className="text-[10.5px] font-bold mb-0.5 flex items-center gap-1" style={{ color: groupSenderEl.color }}>
                 {groupSenderEl.name}
                 {groupSenderEl.isAdmin && <Crown className="w-2.5 h-2.5 inline shrink-0" />}
@@ -2962,15 +2962,19 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
             return m.senderPhone || m.senderJid || m.senderName || m.sender;
           };
           const senderKey = getMsgSenderKey(msg);
+          const GROUP_WINDOW_MS = 5 * 60 * 1000;
+          const sameWindow = (a: Message, b: Message) =>
+            !!a.createdAt && !!b.createdAt &&
+            Math.abs(new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) < GROUP_WINDOW_MS;
           const nextMsg = messages[msgIdx + 1];
-          const showAvatar = !nextMsg || getMsgSenderKey(nextMsg) !== senderKey || nextMsg.sender === "system";
+          const showAvatar = !nextMsg || getMsgSenderKey(nextMsg) !== senderKey || nextMsg.sender === "system" || !sameWindow(msg, nextMsg);
           const prevMsg = messages[msgIdx - 1];
-          const isFirstInGroup = !prevMsg || getMsgSenderKey(prevMsg) !== senderKey || prevMsg.sender === "system";
+          const isFirstInGroup = !prevMsg || getMsgSenderKey(prevMsg) !== senderKey || prevMsg.sender === "system" || !sameWindow(prevMsg, msg);
           return (
           <div key={msg.id} id={`msg-${msg.id}`} className={cn(
             "flex",
             msg.sender === "agent" ? "justify-end" : msg.sender === "system" ? "justify-center" : "justify-start",
-            !isFirstInGroup && "mt-0.5"
+            isFirstInGroup ? "mt-3" : "mt-0.5"
           )}>
             {/* Selection checkbox */}
             {selectingMessages && msg.sender !== "system" && (
@@ -3106,9 +3110,10 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                       toast.success(starred ? "⭐ تم تمييز الرسالة" : "تم إلغاء التمييز");
                     }}
                     translationText={translations[msg.id]}
+                    isFirstInGroup={isFirstInGroup}
                   />
-                  {/* Agent name label below bubble — always show for agent messages */}
-                  {msg.sender === "agent" && msg.senderName && conversation.conversationType !== "group" && (
+                  {/* Agent name label below bubble — only for first in consecutive group */}
+                  {msg.sender === "agent" && msg.senderName && isFirstInGroup && conversation.conversationType !== "group" && (
                     <span className="text-[10px] text-muted-foreground/60 mt-0.5 mr-1 font-medium">{msg.senderName}</span>
                   )}
                 </div>
