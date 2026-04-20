@@ -1,6 +1,8 @@
 ﻿import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Search, Filter, Clock, MessageSquare, Plus, CheckSquare, Square, Pencil, Trash2, ArrowUpDown } from "lucide-react";
+import { Search, Filter, Clock, MessageSquare, Plus, CheckSquare, Square, Pencil, Trash2, ArrowUpDown, Mail, RefreshCw, MailOpen } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ar } from "date-fns/locale";
 import BulkActionsBar from "./BulkActionsBar";
 import { cn } from "@/lib/utils";
 import { Conversation } from "@/data/mockData";
@@ -10,6 +12,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import CustomInboxBuilder, { type CustomInbox } from "./CustomInboxBuilder";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
+
+const getEmailSubject = (conv: Conversation) =>
+  conv.conversationType === "email"
+    ? (conv.notes || "").replace(/^📧\s*/, "").trim() || "(بدون موضوع)"
+    : null;
 
 const getConversationDisplayName = (conv: Conversation) => {
   if (conv.conversationType === "group") return conv.customerName && conv.customerName !== conv.customerPhone ? conv.customerName : "مجموعة واتساب";
@@ -36,6 +43,9 @@ interface ConversationListProps {
   onTogglePin?: (id: string) => void;
   onToggleArchive?: (id: string) => void;
   inboxMode?: "whatsapp" | "email";
+  emailSyncing?: boolean;
+  emailLastSync?: Date | null;
+  onEmailSync?: () => void;
 }
 
 // ── Virtual conversation row ──────────────────────────────────────────────────
@@ -65,8 +75,10 @@ const VirtualConvList = ({ conversations, selectedId, bulkMode, bulkSelected, on
         const conv = conversations[vItem.index];
         const isSelected    = conv.id === selectedId;
         const displayName   = getConversationDisplayName(conv);
+        const emailSubject  = getEmailSubject(conv);
+        const isEmail       = conv.conversationType === "email";
         const hasUnread     = conv.unread > 0;
-        const waitTime      = getWaitTime(conv);
+        const waitTime      = isEmail ? null : getWaitTime(conv);
         const isBulkSelected = bulkSelected.has(conv.id);
 
         return (
@@ -110,7 +122,14 @@ const VirtualConvList = ({ conversations, selectedId, bulkMode, bulkSelected, on
                   </div>
                 )}
                 <div className="relative shrink-0">
-                  {conv.profilePic ? (
+                  {isEmail ? (
+                    <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center",
+                      hasUnread
+                        ? isSelected ? "bg-blue-100 text-blue-600" : "bg-blue-50 text-blue-500"
+                        : isSelected ? "bg-blue-50 text-blue-400" : "bg-gray-100 text-gray-400")}>
+                      {hasUnread ? <Mail className="w-5 h-5" /> : <MailOpen className="w-5 h-5" />}
+                    </div>
+                  ) : conv.profilePic ? (
                     <img src={conv.profilePic} alt={displayName} className="w-11 h-11 rounded-2xl object-cover ring-2 ring-gray-100" onError={e => { (e.target as HTMLImageElement).style.display="none"; }} />
                   ) : (
                     <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center text-[15px] font-bold",
@@ -118,22 +137,33 @@ const VirtualConvList = ({ conversations, selectedId, bulkMode, bulkSelected, on
                       {conv.conversationType === "group" ? "👥" : displayName.charAt(0)}
                     </div>
                   )}
-                  <span className={cn("absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-white",
-                    conv.status === "active" ? "bg-[#25D366]" : conv.status === "waiting" ? "bg-amber-400" : "bg-gray-300")} />
+                  {!isEmail && (
+                    <span className={cn("absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-white",
+                      conv.status === "active" ? "bg-[#25D366]" : conv.status === "waiting" ? "bg-amber-400" : "bg-gray-300")} />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-0.5">
                     <p className={cn("text-[13px] truncate", hasUnread ? "font-bold text-gray-900" : "font-semibold text-gray-700")}>
                       {conv.isPinned && <span className="text-[#25D366] ml-1">📌</span>}
-                      {displayName}
+                      {isEmail ? emailSubject : displayName}
                     </p>
-                    <span className={cn("text-[10px] shrink-0", hasUnread ? "text-[#25D366] font-bold" : "text-gray-300")}>
+                    <span className={cn("text-[10px] shrink-0", hasUnread ? (isEmail ? "text-blue-500" : "text-[#25D366]") + " font-bold" : "text-gray-300")}>
                       {conv.timestamp}
                     </span>
                   </div>
+                  {/* Email: show sender name/address */}
+                  {isEmail && (
+                    <p className="text-[11px] text-gray-500 truncate font-medium mb-0.5">
+                      من: {displayName !== conv.customerPhone ? displayName : conv.customerPhone}
+                    </p>
+                  )}
                   <p className={cn("text-[12px] truncate leading-snug mb-1.5",
                     hasUnread ? "text-gray-600 font-medium" : "text-gray-400")}>
-                    {conv.lastMessage || "لا توجد رسائل بعد"}
+                    {isEmail
+                      ? (conv.lastMessage || "").replace(/^📧\s*[^\n]*\n?/, "").replace(/<[^>]+>/g, "").substring(0, 80).trim() || "انقر لعرض الإيميل"
+                      : conv.lastMessage || "لا توجد رسائل بعد"
+                    }
                   </p>
                   {waitTime && (
                     <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl mb-1.5",
@@ -175,7 +205,7 @@ const VirtualConvList = ({ conversations, selectedId, bulkMode, bulkSelected, on
   );
 };
 
-const ConversationListNew = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive, inboxMode = "whatsapp" }: ConversationListProps) => {
+const ConversationListNew = ({ conversations, selectedId, onSelect, hasSelection, onNewConversation, onTogglePin, onToggleArchive, inboxMode = "whatsapp", emailSyncing, emailLastSync, onEmailSync }: ConversationListProps) => {
   const { orgId, profile, userRole, isSuperAdmin } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -300,7 +330,11 @@ const ConversationListNew = ({ conversations, selectedId, onSelect, hasSelection
 
   const filtered = useMemo(() => {
     let list = conversations.filter(conv => {
-      if (searchQuery && !conv.customerName.includes(searchQuery) && !conv.lastMessage.includes(searchQuery) && !conv.customerPhone.includes(searchQuery)) return false;
+      if (searchQuery) {
+        const subject = getEmailSubject(conv) || "";
+        const matches = conv.customerName.includes(searchQuery) || conv.lastMessage.includes(searchQuery) || conv.customerPhone.includes(searchQuery) || subject.includes(searchQuery);
+        if (!matches) return false;
+      }
       if (activeInbox) return applyCustomFilters(conv, activeInbox);
       if (activeQuickFilter !== "archived" && conv.isArchived) return false;
       if (activeQuickFilter !== "closed" && activeQuickFilter !== "archived" && conv.status === "closed") return false;
@@ -383,6 +417,27 @@ const ConversationListNew = ({ conversations, selectedId, onSelect, hasSelection
             </button>
           </div>
         </div>
+
+        {/* ── Email sync bar ── */}
+        {inboxMode === "email" && (
+          <div className="flex items-center justify-between px-4 pb-2">
+            <span className="text-[10px] text-gray-400">
+              {emailSyncing
+                ? "⏳ جاري المزامنة..."
+                : emailLastSync
+                  ? `آخر مزامنة: ${formatDistanceToNow(emailLastSync, { locale: ar, addSuffix: true })}`
+                  : "لم تتم المزامنة بعد"}
+            </span>
+            <button
+              onClick={onEmailSync}
+              disabled={emailSyncing}
+              className="flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-700 disabled:opacity-40 transition-colors"
+            >
+              <RefreshCw className={cn("w-3 h-3", emailSyncing && "animate-spin")} />
+              مزامنة
+            </button>
+          </div>
+        )}
 
         {/* ── إحصائيات سريعة ── */}
         <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-none">

@@ -117,6 +117,8 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
   const [mobileCustomerInfoOpen, setMobileCustomerInfoOpen] = useState(false);
   const [desktopInfoOpen, setDesktopInfoOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [emailSyncing, setEmailSyncing] = useState(false);
+  const [emailLastSync, setEmailLastSync] = useState<Date | null>(null);
   const selectedIdRef = useRef<string | null>(null);
   const deepLinkApplied = useRef(false);
   const fetchConversationsRef = useRef<(() => Promise<void>) | null>(null);
@@ -136,6 +138,23 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  // Auto-sync emails every 60s when email inbox is open
+  useEffect(() => {
+    if (inboxMode !== "email" || authLoading || !orgId) return;
+    const syncEmails = async (silent = false) => {
+      if (!silent) setEmailSyncing(true);
+      try {
+        await invokeCloud("email-fetch-imap", { body: {} });
+        setEmailLastSync(new Date());
+        await fetchConversationsRef.current?.();
+      } catch (_) {}
+      if (!silent) setEmailSyncing(false);
+    };
+    syncEmails(true); // silent on mount
+    const iv = setInterval(() => syncEmails(true), 60_000);
+    return () => clearInterval(iv);
+  }, [inboxMode, orgId, authLoading]);
 
   // Sync URL when selectedId changes
   useEffect(() => {
@@ -1535,6 +1554,17 @@ const InboxPage = ({ inboxMode = "whatsapp" }: InboxPageProps) => {
           onTogglePin={handleTogglePin}
           onToggleArchive={handleToggleArchive}
           inboxMode={inboxMode}
+          emailSyncing={emailSyncing}
+          emailLastSync={emailLastSync}
+          onEmailSync={async () => {
+            setEmailSyncing(true);
+            try {
+              await invokeCloud("email-fetch-imap", { body: {} });
+              setEmailLastSync(new Date());
+              await fetchConversationsRef.current?.();
+            } catch (_) {}
+            setEmailSyncing(false);
+          }}
         />
       )}
 
