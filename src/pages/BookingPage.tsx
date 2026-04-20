@@ -20,26 +20,36 @@ async function callBookingFn(body: Record<string, unknown>) {
 type MeetingType = { id: string; name: string; duration_minutes: number; description: string | null; color: string; price: number | null; is_active: boolean };
 type BookingPageData = { id: string; slug: string; title: string; bio: string | null; advance_booking_days: number; min_notice_hours: number; profile_id: string; profiles: { full_name: string; avatar_url: string | null } };
 
+const TZ = "Asia/Riyadh";
 const MONTH_NAMES_AR = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 const DAY_NAMES_AR = ["أحد","اثنين","ثلاثاء","أربعاء","خميس","جمعة","سبت"];
+
+// Returns today's date string (YYYY-MM-DD) in Riyadh timezone
+function getTodayRiyadh(): Date {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const y = parts.find(p => p.type === "year")!.value;
+  const m = parts.find(p => p.type === "month")!.value;
+  const d = parts.find(p => p.type === "day")!.value;
+  return new Date(`${y}-${m}-${d}`);
+}
 
 function formatDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
 }
 
 function formatDateAr(iso: string): string {
-  const d = new Date(iso);
-  return `${DAY_NAMES_AR[d.getDay()]} ${d.getDate()} ${MONTH_NAMES_AR[d.getMonth()]} ${d.getFullYear()}`;
+  return new Date(iso).toLocaleDateString("ar-SA-u-ca-gregory", {
+    timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
 }
 
 // ── Mini Calendar ─────────────────────────────────────────────────────────────
 function MiniCalendar({ value, onChange, minDate, maxDate }: { value: string | null; onChange: (d: string) => void; minDate: Date; maxDate: Date }) {
-  const today = new Date();
+  const today = getTodayRiyadh();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
@@ -174,8 +184,7 @@ export default function BookingPage() {
     setBooked(data);
   };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getTodayRiyadh();
   const maxDate = new Date(today);
   maxDate.setDate(today.getDate() + (page?.advance_booking_days || 30));
 

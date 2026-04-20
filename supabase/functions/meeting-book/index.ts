@@ -131,8 +131,9 @@ async function computeSlots(profileId: string, date: string, durationMin: number
 
   if (!avail) return [];
 
-  const dayStart = new Date(`${date}T${avail.start_time}`);
-  const dayEnd   = new Date(`${date}T${avail.end_time}`);
+  // Treat stored times as Saudi Arabia time (UTC+3)
+  const dayStart = new Date(`${date}T${avail.start_time}+03:00`);
+  const dayEnd   = new Date(`${date}T${avail.end_time}+03:00`);
   const now      = new Date();
   const minNotice = new Date(now.getTime() + minNoticeHours * 3600_000);
 
