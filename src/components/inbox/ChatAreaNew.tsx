@@ -857,10 +857,29 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             });
           };
 
+          // "Name <email>" → "Name", or just "email" if no display name
+          const extractDisplayName = (addr: string): string => {
+            const m = addr.match(/^(.+?)\s*<[^>]+>$/);
+            if (m) return m[1].trim().replace(/^["']|["']$/g, "");
+            return addr.trim();
+          };
+
+          // Remove <mailto:…> fragments: "Name <mailto:email>" → "Name"
+          const stripMailto = (s: string): string =>
+            s.replace(/<mailto:[^>]+>/gi, "").replace(/\s{2,}/g, " ").trim();
+
+          // Parse a comma-separated address list into display names
+          const parseAddressList = (raw: string): string[] => {
+            if (!raw) return [];
+            // Split on commas that are NOT inside angle brackets
+            const parts = raw.split(/,(?![^<]*>)/);
+            return parts.map(p => extractDisplayName(decodeMime(p.trim()))).filter(Boolean);
+          };
+
           const decodedSubject = decodeMime(em.subject);
-          const decodedFrom = decodeMime(em.from);
-          const decodedTo = decodeMime(em.to);
-          const decodedCc = decodeMime(em.cc);
+          const decodedFrom = extractDisplayName(decodeMime(em.from || ""));
+          const decodedTo = extractDisplayName(decodeMime(em.to || ""));
+          const ccNames = parseAddressList(em.cc || "");
 
           // Strip the "📧 subject\n\n" prefix from display text if present
           let emailDisplayText = textWithoutUrl;
@@ -898,7 +917,7 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
             return trimmedLines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
           };
 
-          emailDisplayText = cleanEmailDisplay(emailDisplayText);
+          emailDisplayText = cleanEmailDisplay(stripMailto(emailDisplayText));
 
           return (
             <div className={cn(
@@ -930,14 +949,22 @@ const SwipeableMessageBubble = ({ msg, conversation, onReply, onEdit, onDelete, 
                     <span className="text-foreground/80 truncate">{decodedTo}</span>
                   </div>
                 )}
-                {/* CC */}
-                {decodedCc && (
-                  <div className="flex items-center gap-2 text-[11px]">
-                    <Users className="w-3 h-3 text-muted-foreground/50 shrink-0" />
-                    <span className="text-muted-foreground/70 font-medium">نسخة:</span>
-                    <span className="text-foreground/70 truncate">{decodedCc}</span>
-                  </div>
-                )}
+                {/* CC — show first 2 names + "and N more" */}
+                {ccNames.length > 0 && (() => {
+                  const visible = ccNames.slice(0, 2);
+                  const rest = ccNames.length - 2;
+                  return (
+                    <div className="flex items-center gap-1.5 text-[11px] flex-wrap">
+                      <span className="text-muted-foreground/70 font-medium">نسخة:</span>
+                      {visible.map((name, i) => (
+                        <span key={i} className="bg-secondary/60 text-foreground/70 px-1.5 py-0.5 rounded-md">{name}</span>
+                      ))}
+                      {rest > 0 && (
+                        <span className="text-muted-foreground/50">و {rest} آخرين</span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               {/* Attachments */}
               {em.attachments && em.attachments.length > 0 && (
