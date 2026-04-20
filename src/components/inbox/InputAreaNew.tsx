@@ -128,10 +128,14 @@ export const InputAreaNew = ({
           <button
             onClick={() => setToolsOpen(p => !p)}
             className={cn(
-              "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mb-0.5 transition-all",
+              "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mb-0.5 transition-all border",
               toolsOpen
-                ? isNoteMode ? "bg-amber-100 text-amber-500" : "bg-[#25D366]/10 text-[#25D366]"
-                : "hover:bg-gray-100 text-gray-300 hover:text-gray-500"
+                ? isNoteMode
+                  ? "bg-amber-100 text-amber-600 border-amber-200"
+                  : "bg-[#25D366]/15 text-[#25D366] border-[#25D366]/30"
+                : isNoteMode
+                  ? "bg-amber-50 text-amber-400 border-amber-200"
+                  : "bg-primary/8 text-primary border-primary/20 hover:bg-primary/15"
             )}
             title={toolsOpen ? "إخفاء الأدوات" : "إظهار الأدوات"}
             tabIndex={-1}
