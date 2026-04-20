@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, ChevronRight, ChevronLeft, Clock, Calendar, User, Phone, Mail, MessageSquare, Loader2, AlertCircle, X } from "lucide-react";
 
-const SUPABASE_URL = (supabase as any).supabaseUrl as string;
-const ANON_KEY = (supabase as any).supabaseKey as string;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://ovbrrumnqfvtgmqsscat.supabase.co";
+const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  || import.meta.env.VITE_SUPABASE_ANON_KEY
+  || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92YnJydW1ucWZ2dGdtcXNzY2F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzc4ODQsImV4cCI6MjA5MDY1Mzg4NH0.-ed8-nrAbfO1lMm9Rc5bjwsIzmonunVKkcwRY586SrQ";
 
 async function callBookingFn(body: Record<string, unknown>) {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/meeting-book`, {
