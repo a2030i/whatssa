@@ -141,7 +141,7 @@ export default function BookingPage() {
 
   const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "" });
   const [submitting, setSubmitting] = useState(false);
-  const [booked, setBooked] = useState<{ meeting: { start_time: string; end_time: string; title: string } } | null>(null);
+  const [booked, setBooked] = useState<{ meeting: { start_time: string; end_time: string; title: string; meeting_url?: string | null } } | null>(null);
 
   // Load page data
   useEffect(() => {
@@ -226,6 +226,13 @@ export default function BookingPage() {
             <span>{selectedType?.name} مع {page?.profiles.full_name}</span>
           </div>
         </div>
+        {booked.meeting.meeting_url && (
+          <a href={booked.meeting.meeting_url} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm transition-all mb-4 shadow-md shadow-blue-100">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M15 8v8H5V8h10m1-2H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4V7a1 1 0 00-1-1z"/></svg>
+            انضم للاجتماع الآن
+          </a>
+        )}
         <p className="text-[11px] text-gray-400">ستصلك رسالة تأكيد على واتساب إن أمكن</p>
       </div>
     </div>

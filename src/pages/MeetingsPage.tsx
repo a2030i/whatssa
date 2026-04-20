@@ -18,7 +18,7 @@ interface Meeting {
   customer_name: string; customer_phone: string | null; customer_email: string | null;
   title: string; notes: string | null; agent_notes: string | null;
   start_time: string; end_time: string; status: "confirmed"|"cancelled"|"completed"|"no_show";
-  conversation_id: string | null; meeting_url: string | null; booking_source: string;
+  conversation_id: string | null; meeting_url: string | null; meeting_link?: string | null; booking_source: string;
   created_at: string;
 }
 interface MeetingType {
@@ -81,6 +81,13 @@ const MeetingCard = ({ meeting, onAction }: { meeting: Meeting; onAction: (id: s
             </span>
           </div>
           {meeting.notes && <p className="text-[11px] text-gray-500 mt-1 truncate">📝 {meeting.notes}</p>}
+          {meeting.meeting_url && !past && (
+            <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition-colors">
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M15 8v8H5V8h10m1-2H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4V7a1 1 0 00-1-1z"/></svg>
+              انضم للاجتماع
+            </a>
+          )}
         </div>
       </div>
 

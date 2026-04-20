@@ -85,6 +85,10 @@ Deno.serve(async (req) => {
         .eq("profile_id", profile_id)
         .maybeSingle();
 
+      // Generate unique Jitsi Meet link
+      const roomId = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+      const meetingUrl = `https://meet.jit.si/respondly-${roomId}`;
+
       const { data: meeting, error: insertErr } = await admin
         .from("meetings")
         .insert({
@@ -99,6 +103,7 @@ Deno.serve(async (req) => {
           start_time: start.toISOString(),
           end_time: end.toISOString(),
           booking_source: "booking_page",
+          meeting_url: meetingUrl,
         })
         .select()
         .single();
@@ -199,7 +204,8 @@ async function notifyEmployee(admin: any, meeting: any, mtype: any, profileId: s
     });
     const timeStr = startDate.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
 
-    const msg = `📅 *موعد جديد تم حجزه*\n\nالعميل: ${meeting.customer_name}\nالخدمة: ${mtype.name}\nالتاريخ: ${dateStr}\nالوقت: ${timeStr}\nالهاتف: ${meeting.customer_phone || "غير محدد"}`;
+    const meetLink = meeting.meeting_url ? `\n🎥 رابط الاجتماع: ${meeting.meeting_url}` : "";
+    const msg = `📅 *موعد جديد تم حجزه*\n\nالعميل: ${meeting.customer_name}\nالخدمة: ${mtype.name}\nالتاريخ: ${dateStr}\nالوقت: ${timeStr}\nالهاتف: ${meeting.customer_phone || "غير محدد"}${meetLink}`;
 
     const funcName = channel.channel_type === "meta_api" ? "whatsapp-send" : "evolution-send";
     await admin.functions.invoke(funcName, {
