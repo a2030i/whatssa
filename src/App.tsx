@@ -58,6 +58,8 @@ const SafetyGuidePage = lazy(() => import("./pages/SafetyGuidePage"));
 const GrowthToolsPage = lazy(() => import("./pages/GrowthToolsPage"));
 const PermissionsPage = lazy(() => import("./pages/PermissionsPage"));
 const InstallPage = lazy(() => import("./pages/InstallPage"));
+const MeetingsPage = lazy(() => import("./pages/MeetingsPage"));
+const BookingPage = lazy(() => import("./pages/BookingPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -170,6 +172,8 @@ const AppRoutes = () => {
         <Route path="/wa-flows" element={<ProtectedRoute minRole="admin"><AppLayout><WhatsAppFlowsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/locked-features" element={<ProtectedRoute><AppLayout><LockedFeaturesPage /></AppLayout></ProtectedRoute>} />
         <Route path="/tasks" element={<ProtectedRoute><AppLayout><TasksPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/meetings" element={<ProtectedRoute><AppLayout><MeetingsPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/book/:slug" element={<BookingPage />} />
         <Route path="/tickets" element={<ProtectedRoute><AppLayout><TicketsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/safety-guide" element={<ProtectedRoute><AppLayout><SafetyGuidePage /></AppLayout></ProtectedRoute>} />
         <Route path="/growth-tools" element={<ProtectedRoute minRole="admin"><AppLayout><GrowthToolsPage /></AppLayout></ProtectedRoute>} />

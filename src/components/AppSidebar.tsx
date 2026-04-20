@@ -5,7 +5,7 @@ import {
   ShoppingCart, ShoppingBag, ChevronDown, LayoutDashboard, Code2,
   Database, Mail, Brain, Sparkles,
   Zap, Bell, CircleDot, Headphones, TrendingUp, Clock, Lock, ClipboardList,
-  Workflow, Send, Warehouse, DollarSign, Package, ClipboardCheck, Ticket
+  Workflow, Send, Warehouse, DollarSign, Package, ClipboardCheck, Ticket, CalendarDays
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -50,6 +50,7 @@ const buildGroups = (isEcommerce: boolean, hasMetaApi: boolean, ticketBadge?: st
       { label: "صندوق الإيميل", icon: Mail, path: "/email-inbox", emoji: "📧", minRole: "member" },
       { label: "التذاكر", icon: Ticket, path: "/tickets", emoji: "🎫", badge: ticketBadge },
       { label: "المهام", icon: ClipboardCheck, path: "/tasks", emoji: "✅" },
+      { label: "المواعيد", icon: CalendarDays, path: "/meetings", emoji: "📅" },
     ],
   },
   {

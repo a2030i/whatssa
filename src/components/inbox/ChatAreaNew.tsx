@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2, Forward, Star, BarChart3, Timer as TimerIcon, Tag, Ticket, CornerDownLeft, WrapText, Mail, Users, BellOff } from "lucide-react";
+import { Send, MoreVertical, ArrowRight, Smile, Paperclip, Zap, Check, CheckCheck, StickyNote, UserPlus, XCircle, CheckCircle2, FileText, AlertTriangle, Clock, AtSign, Mic, Loader2, X, Play, Image as ImageIcon, Video, Reply, Plus, Timer, ShieldCheck, Wifi, MapPin, Contact, Phone as PhoneIcon, Pencil, Trash2, Brain, Languages, Sparkles, Search as SearchIcon, Square, ShoppingBag, Ban, ShieldOff, LogOut, UserMinus, Crown, ChevronUp, ChevronDown, Link2, Forward, Star, BarChart3, Timer as TimerIcon, Tag, Ticket, CornerDownLeft, WrapText, Mail, Users, BellOff, CalendarDays } from "lucide-react";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
 import ImageLightbox from "./ImageLightbox";
 import MessageSearch from "./MessageSearch";
@@ -2632,6 +2632,15 @@ const ChatArea = ({ conversation, messages, templates, onBack, onSendMessage, on
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={async () => {
+                  const { data: bp } = await supabase.from("booking_pages" as any).select("slug").eq("profile_id", profile?.id).eq("is_active", true).maybeSingle();
+                  if (!bp) { toast.error("لا توجد صفحة حجز مفعّلة، أنشئها من صفحة المواعيد أولاً"); return; }
+                  const link = `${window.location.origin}/book/${(bp as any).slug}`;
+                  onSendMessage(conversation.id, `📅 يمكنك حجز موعد معي مباشرةً عبر الرابط التالي:\n${link}`);
+                  toast.success("تم إرسال رابط الحجز");
+                }}>
+                  <CalendarDays className="w-4 h-4 ml-2 text-emerald-500" /> إرسال رابط الحجز
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={copyConversationLink}>
                   <Link2 className="w-4 h-4 ml-2 text-primary" /> نسخ رابط المحادثة
                 </DropdownMenuItem>
